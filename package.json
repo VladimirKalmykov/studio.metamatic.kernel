@@ -1,0 +1,21 @@
+{
+    "name": "studio.metamatic.kernel",
+    "version": "0.1.0",
+    "displayName": "Metamatic Kernel",
+    "description": "Basis functionaly of metamatic framework",
+    "unity": "2021.1",
+    "unityRelease": "1f1",
+    "keywords": [
+      "kernel",
+      "toolkit",
+      "core"
+    ],
+    "author": {
+      "name": "Vladimir Kalmykov",
+      "email": "vladimirkalmykovdev@gmail.com",
+      "url": "http://github.com/VladimirKalmykov"
+    },
+    "dependencies": {
+      "com.unity.addressables": "1.18.16"
+    }
+  }

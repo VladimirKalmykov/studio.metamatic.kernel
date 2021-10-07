@@ -1,0 +1,45 @@
+.PluginsPanelHeader {
+    background-color: #4b4b4b;
+    border-color: #303030;
+    border-width: 1px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 3px 4px 3px 8px;
+    margin: 0px;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    -unity-text-align: middle-left;
+}
+
+.PluginsPanelHeader:hover {
+    background-color: #505050;
+}
+
+.PluginsPanelHeader:hover Label {
+    color: white;
+}
+
+.PluginItem {
+    display: flex;
+    background-color: #4b4b4b;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    padding: 2px 4px 2px 6px;
+    margin: 0 0 2px 0;
+}
+
+.PluginItem.selected {
+    background-color: #005255;
+}
+
+.PluginItem.selected:hover Label {
+    color: white;
+}
+
+.InlineIcon {
+    width: 10px;
+    height: 10px;
+    margin: 0px 3px 0px 0px;
+}
