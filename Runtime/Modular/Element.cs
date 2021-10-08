@@ -3,6 +3,7 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
 
     [ExecuteAlways]
+    [DisallowMultipleComponent]
     public class Element: MonoBehaviour {
         [BoxGroup("Element"), ShowInInspector, ReadOnly]
         public Element parentElement { get; private set; }
