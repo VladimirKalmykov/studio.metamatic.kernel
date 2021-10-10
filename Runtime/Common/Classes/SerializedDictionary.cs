@@ -8,7 +8,7 @@ namespace Metamatic {
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
-    /// <markdown path="Packages\com.unity.darkmatter\Documentation\AbstractClasses\SerializedDictionary.md" />
+    /// <markdown path="Packages\studio.metamatic.kernel\Documentation\AbstractClasses\SerializedDictionary.md" />
     public abstract class SerializedDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
     {
         [SerializeField, HideInInspector]

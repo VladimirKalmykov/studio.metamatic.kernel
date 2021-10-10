@@ -37,7 +37,12 @@ namespace Metamatic {
             OnConnectorEnabled();
         }
 
+        void OnDisable() {
+            OnConnectorDisabled();
+        }
+
         protected virtual void OnConnectorEnabled() {}
+        protected virtual void OnConnectorDisabled() {}
 
         #if UNITY_EDITOR
         private Color GetSocketConnectionColor() {

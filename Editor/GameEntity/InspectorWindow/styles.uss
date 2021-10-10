@@ -1,0 +1,104 @@
+:root {
+    --panel-background-color: #3c3c3c;
+}
+
+.MarkdownDocument {
+    background-color: white;
+    padding: 12px;
+    border-radius: 3px;
+}
+
+.Wrapper {
+    padding: 6px;
+}
+
+.InlineEditor {
+    padding: 10px;
+    border-color: #000;
+}
+
+.Header {
+    flex-direction: row;
+    align-items: flex-start;
+    background-color: var(--panel-background-color);
+    border-bottom-width: 1px;
+    border-color: #1a1a1a;
+    padding: 6px;
+    padding-bottom: 18px;
+}
+
+.Header > .HeaderIcon {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+}
+
+.Header > .HeaderBody {
+    flex-grow: 10;
+}
+
+.Header > .HeaderBody #Title {
+    font-size: 18px;
+    color: var(--unity-colors-default-text);
+    -unity-font-style: bold;
+    margin-bottom: 7px;
+}
+
+.Header > .HeaderBody #Description {
+    font-size: 10px;
+    color: var(--unity-colors-default-text);
+}
+
+.Header #Tools {
+    flex-direction: row;
+}
+
+.PreviewContainer {
+    padding: 12px;
+}
+
+.PreviewContainer #Picture {
+    border-width: 1px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-color: #000;
+}
+
+.Tab .TabHeader {
+    background-color: var(--panel-background-color);
+    border-bottom-width: 1px;
+    border-color: #303030;
+    height: 20px;
+    flex-basis: 20px;
+    padding-left: 8px;
+    -unity-font-style: bold;
+    flex-direction: row;
+    align-items: center;
+}
+
+.Tab .TabHeader:hover {
+    background-color: #474747;
+}
+
+.Tab .TabHeader #Arrow {
+    width: 10px;
+    height: 10px;
+    background-image: url(Assets/ArrowCollapsed.png);
+    margin-right: 4px;
+}
+
+.Tab.Expanded .TabHeader #Arrow {
+    background-image: url(Assets/ArrowExpanded.png);
+}
+
+.Tab .TabHeader #Icon {
+    width: 10px;
+    height: 10px;
+    margin-right: 24px;
+}
+
+.Tab .TabBody {}
+
+.Tab.Padded .TabBody {
+    padding: 8px 4px 10px 19px;
+}

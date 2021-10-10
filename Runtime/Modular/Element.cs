@@ -4,7 +4,7 @@ namespace Metamatic {
 
     [ExecuteAlways]
     [DisallowMultipleComponent]
-    public class Element: MonoBehaviour {
+    public class Element: PluggableMonoBehaviour {
         [BoxGroup("Element"), ShowInInspector, ReadOnly]
         public Element parentElement { get; private set; }
         public Configurator configurator { get; private set; }

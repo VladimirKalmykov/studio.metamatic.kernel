@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<engine:UXML
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:engine="UnityEngine.UIElements"
+>
+
+    <engine:VisualElement name="Tab" class="Tab">
+        <engine:VisualElement name="TabHeader" class="TabHeader">
+            <engine:VisualElement name="Arrow" />
+            <engine:Image name="Icon" />
+            <engine:Label name="Label" />
+        </engine:VisualElement>
+        <engine:VisualElement name="TabBody" class="TabBody" />
+    </engine:VisualElement>
+</engine:UXML>
