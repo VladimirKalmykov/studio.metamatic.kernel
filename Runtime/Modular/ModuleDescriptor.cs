@@ -4,7 +4,7 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
     using Metamatic.GameAccessManagment;
 
-    [CreateAssetMenu(fileName = "ModuleDescriptor", menuName = "Dark Matter/Module Descriptor", order = 1)]
+    [CreateAssetMenu(fileName = "ModuleDescriptor", menuName = "Metamatic/Module Descriptor", order = 1)]
     public class ModuleDescriptor: ScriptableObject, IAccessable {
         [BoxGroup("Metadata")]
         public string title;

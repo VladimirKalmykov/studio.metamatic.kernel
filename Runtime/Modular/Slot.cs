@@ -42,10 +42,10 @@ namespace Metamatic {
 
         void GetConfigurator() {
             if (useConfigurator != null) {
-                useConfigurator.OnConfigurationChange.RemoveListener(HandleConfigurationChange);
+                useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
             }
             useConfigurator = GetComponent<UseConfigurator>() ?? gameObject.AddComponent<UseConfigurator>();
-            useConfigurator.OnConfigurationChange.AddListener(HandleConfigurationChange);
+            useConfigurator.SubscribeConfigurationChange(HandleConfigurationChange);
             if (Application.isPlaying || (runInEditor && !useConfigurator.runInEditor)) {
                 useConfigurator.ForceRefresh();
             }
@@ -53,7 +53,7 @@ namespace Metamatic {
 
         void ReleaseConfigurator() {
             if (useConfigurator != null) {
-                useConfigurator.OnConfigurationChange.RemoveListener(HandleConfigurationChange);
+                useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
                 useConfigurator = null;
             }
             if (this.prefab != null) {
@@ -63,7 +63,7 @@ namespace Metamatic {
 
         void OnDestroy() {
             if (useConfigurator != null) {
-                useConfigurator.OnConfigurationChange.RemoveListener(HandleConfigurationChange);
+                useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
             }
         }
 
@@ -95,12 +95,20 @@ namespace Metamatic {
         }
 
         void HandleConfigurationChange(Configuration config) {
+            Debug.Log($"Configuration change: {config}");
             #if UNITY_EDITOR
             var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
             if (isPartOfAnyPrefab) {
                 return;
             }
             #endif
+
+            if (config == null) {
+                if (defaultPrefab != null && defaultPrefab != this.prefab) {
+                    ApplyPrefab(defaultPrefab, isPartOfAnyPrefab);
+                }
+                return;
+            }
             
             var modulePreset = config.GetModulePreset(useLocalName ? name : relativeName);
 
@@ -129,31 +137,7 @@ namespace Metamatic {
             }
             
             if (prefab != this.prefab) {
-                this.prefab = prefab;
-                ClearChildren();
-
-                if (prefab != null) {
-                    #if UNITY_EDITOR
-                    if (!Application.isPlaying) {
-                        if (!isPartOfAnyPrefab) {
-                            UnityEditor.EditorApplication.delayCall += () => {
-                                moduleGameObject = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab, transform);
-                                moduleGameObject.transform.localPosition = Vector3.zero;
-                                moduleGameObject.transform.localRotation = Quaternion.identity;
-                            };
-                        } else {
-                            return;
-                        }
-                    } else {
-                    #endif
-                        moduleGameObject = Instantiate(prefab, transform);
-                        moduleGameObject.transform.localPosition = Vector3.zero;
-                        moduleGameObject.transform.localRotation = Quaternion.identity;
-                    #if UNITY_EDITOR
-                    }
-                    #endif
-                    
-                }
+                ApplyPrefab(prefab, isPartOfAnyPrefab);
             }
 
             #if UNITY_EDITOR
@@ -174,6 +158,34 @@ namespace Metamatic {
                 }
                 var skinApplier = moduleGameObject.GetComponent<SkinApplier>() ?? moduleGameObject.AddComponent<SkinApplier>();
                 skinApplier.skin = skin != null ? skin : skinApplier.defaultSkin;
+            }
+        }
+
+        void ApplyPrefab(GameObject prefab, bool isPartOfAnyPrefab) {
+            this.prefab = prefab;
+            ClearChildren();
+
+            if (prefab != null) {
+                #if UNITY_EDITOR
+                if (!Application.isPlaying) {
+                    if (!isPartOfAnyPrefab) {
+                        UnityEditor.EditorApplication.delayCall += () => {
+                            moduleGameObject = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab, transform);
+                            moduleGameObject.transform.localPosition = Vector3.zero;
+                            moduleGameObject.transform.localRotation = Quaternion.identity;
+                        };
+                    } else {
+                        return;
+                    }
+                } else {
+                #endif
+                    moduleGameObject = Instantiate(prefab, transform);
+                    moduleGameObject.transform.localPosition = Vector3.zero;
+                    moduleGameObject.transform.localRotation = Quaternion.identity;
+                #if UNITY_EDITOR
+                }
+                #endif
+                
             }
         }
 

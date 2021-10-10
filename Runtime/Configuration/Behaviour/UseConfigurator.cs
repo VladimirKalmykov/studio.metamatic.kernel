@@ -4,13 +4,14 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
 
     public class UseConfigurator: MonoBehaviour {
-        [System.Serializable]
-        public class ConfigurationChangeEvent: UnityEvent<Configuration> {}
         public bool runInEditor = false;
         protected Configurator configurator;
         Configurator cached_Configurator;
-        public ConfigurationChangeEvent OnConfigurationChange = new ConfigurationChangeEvent();
+        public event System.Action<Configuration> OnConfigurationChange;
          public bool wasStarted {
+            get; private set;
+        } = false;
+        public bool hasInitialized {
             get; private set;
         } = false;
 
@@ -27,6 +28,7 @@ namespace Metamatic {
                     }
                 }
                 
+                hasInitialized = true;
                 ConfigurationConsumerInitialize();
             #if UNITY_EDITOR
             }
@@ -57,10 +59,26 @@ namespace Metamatic {
                         configurator.OnChange.AddListener(InternalConfigurationUpdate);
                     }
                 }
+                hasInitialized = true;
                 ConfigurationConsumerInitialize();
             }
             #endif
             wasStarted = true;
+
+            if (configurator == null) {
+                OnConfigurationChange?.Invoke(null);
+            }
+        }
+
+        public void SubscribeConfigurationChange(System.Action<Configuration> handler) {
+            if (hasInitialized) {
+                handler(configurator?.configuration ?? null);
+            }
+            OnConfigurationChange += handler;
+        }
+
+        public void UnsubscribeConfigurationChange(System.Action<Configuration> handler) {
+            OnConfigurationChange -= handler;
         }
 
         void OnTransformParentChanged() {
@@ -103,7 +121,7 @@ namespace Metamatic {
         protected virtual void BeforeConfigurationConsumerInitialize() {}
         protected virtual void ConfigurationConsumerInitialize() {}
         void InternalConfigurationUpdate() {
-            OnConfigurationChange.Invoke(configurator.configuration);
+            OnConfigurationChange?.Invoke(configurator.configuration);
         }
     }
 }

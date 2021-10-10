@@ -7,7 +7,7 @@ using Sirenix.OdinInspector;
 using UnityEngine.AddressableAssets;
 
 namespace Metamatic.GameAccessManagment {
-    [CreateAssetMenu(fileName = "Certificate", menuName = "Dark Matter/Game Access Managment/Certificate", order = 0)]
+    [CreateAssetMenu(fileName = "Certificate", menuName = "Metamatic/Game Access Managment/Certificate", order = 0)]
     public class Certificate: ScriptableObject, ISerializationCallbackReceiver, IProduct {
         public enum CERTIFICATE_GRADE {
             AUTO,

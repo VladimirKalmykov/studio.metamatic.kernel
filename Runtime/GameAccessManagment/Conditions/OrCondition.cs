@@ -1,7 +1,7 @@
 namespace Metamatic.GameAccessManagment {
     using UnityEngine;
 
-    [CreateAssetMenu(fileName = "OrCondition", menuName = "Dark Matter/Conditions/OrCondition", order = 0)]
+    [CreateAssetMenu(fileName = "OrCondition", menuName = "Metamatic/Conditions/OrCondition", order = 0)]
     /// <summary>
     /// Verify several conditions with OR logic
     /// </summary>

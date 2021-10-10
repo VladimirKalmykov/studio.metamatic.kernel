@@ -1,7 +1,7 @@
 namespace Metamatic.GameAccessManagment {
     using UnityEngine;
 
-    [CreateAssetMenu(fileName = "CodeCondition", menuName = "Dark Matter/Conditions/CodeCondition", order = 0)]
+    [CreateAssetMenu(fileName = "CodeCondition", menuName = "Metamatic/Conditions/CodeCondition", order = 0)]
     /// <summary>
     /// Character must have pass MinLevelPass and its level must be greater or equal to minLevel
     /// </summary>
