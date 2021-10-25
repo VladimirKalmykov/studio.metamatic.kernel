@@ -95,7 +95,6 @@ namespace Metamatic {
         }
 
         void HandleConfigurationChange(Configuration config) {
-            Debug.Log($"Configuration change: {config}");
             #if UNITY_EDITOR
             var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
             if (isPartOfAnyPrefab) {

@@ -54,6 +54,7 @@ namespace Metamatic {
                 #endif
                 var newGo = Instantiate(prefab.gameObject);
                 newGo.transform.SetParent(null);
+                var gameObjectFromPool = newGo.GetComponent<GameObjectFromPool>() ?? newGo.AddComponent<GameObjectFromPool>();
                 var component = newGo.GetComponent<T>();
                 prewarmed.Add(component);
                 result[i] = component;

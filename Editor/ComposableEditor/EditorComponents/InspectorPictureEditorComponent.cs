@@ -40,8 +40,12 @@ namespace Metamatic {
                     if (assetPath.Length > 0) {
                         object[] slicedImages = AssetDatabase.LoadAllAssetsAtPath(assetPath);
                         if (slicedImages.Length > 0) {
-                            Sprite sprite = (Sprite)slicedImages[1];
-                            root.Add(GUIHelpers.Create3SliedImageGUI(sprite));
+                            try {   
+                                Sprite sprite = (Sprite)slicedImages[1];
+                                root.Add(GUIHelpers.Create3SliedImageGUI(sprite));
+                            } catch (Exception e) {
+                                // Skip
+                            }
                         }
                     }
                 }
