@@ -4,6 +4,11 @@ using UnityEngine.EventSystems;
 #if ODIN_INSPECTOR_3
 using Sirenix.OdinInspector;
 #endif
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
+#endif
+using Metamatic.DevTools;
 
 namespace Metamatic.UI {
     /// <summary>
@@ -143,6 +148,12 @@ namespace Metamatic.UI {
         bool pointerEntered = false;
         #endregion
 
+        void Awake() {
+            #if ENABLE_INPUT_SYSTEM
+            EnhancedTouchSupport.Enable();
+            #endif
+        }
+
         void OnEnable() {
             rectTransform = GetComponent<RectTransform>();
         }
@@ -157,7 +168,15 @@ namespace Metamatic.UI {
             #region Global input
             if (pointerIsEnabled) {
                 #region Standalone Input
-                if ((useGlobalInput || pointerEntered) && Input.GetMouseButtonDown(0)) {
+                
+                if (
+                    (useGlobalInput || pointerEntered)
+                    #if ENABLE_INPUT_SYSTEM
+                    && Mouse.current.leftButton.wasPressedThisFrame
+                    #else
+                    && Input.GetMouseButtonDown(0)
+                    #endif
+                ) {
                     /// <summary>
                     /// Determins that user press pointer (mouse or touchsreen)
                     /// </summary>
@@ -166,19 +185,43 @@ namespace Metamatic.UI {
                     /// Memorize start pointer position
                     /// </summary>
                     /// <returns></returns>
+                    #if ENABLE_INPUT_SYSTEM
+                    userStartPosition = (Vector2)Mouse.current.position.ReadValue();
+                    #else
                     userStartPosition = (Vector2)Input.mousePosition;
+                    #endif
                 }
+                #if ENABLE_INPUT_SYSTEM
+                if (Mouse.current.leftButton.wasReleasedThisFrame) {
+                #else
                 if (Input.GetMouseButtonUp(0)) {
+                #endif
                     isPressed = false;
                 }
                 #endregion
 
                 #region Mobile Input
+                #if ENABLE_INPUT_SYSTEM
+                if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches.Count > 0) {
+                #else
                 if (Input.touchCount > 0) {
+                #endif
+                    #if ENABLE_INPUT_SYSTEM
+                    if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Began) {
+                    #else
                     if (Input.touches[0].phase == TouchPhase.Began) {
+                    #endif
                         isPressed = true;
+                        #if ENABLE_INPUT_SYSTEM
+                        userStartPosition = UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition;
+                        #else
                         userStartPosition = Input.touches[0].position;
-                    } else if (Input.touches[0].phase == TouchPhase.Ended || Input.touches[0].phase == TouchPhase.Canceled) {
+                        #endif
+                    #if ENABLE_INPUT_SYSTEM
+                    } else if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Ended || UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Canceled) {
+                    #else
+                    } else if (Input.touches[0].phase == UnityEngine.TouchPhase.Ended || Input.touches[0].phase == UnityEngine.TouchPhase.Canceled) {
+                    #endif
                         isPressed = false;
                     }
                 }
@@ -189,26 +232,61 @@ namespace Metamatic.UI {
             if (isPressed) {
                 #region Global input
                 if (pointerIsEnabled) {
+                    #if ENABLE_INPUT_SYSTEM
+                    if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches.Count > 0) {
+                    #else
                     if (Input.touchCount > 0) {
+                    #endif
                         distance = distance + new Vector2(
+                            #if ENABLE_INPUT_SYSTEM
+                            UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition.x - userStartPosition.x,
+                            UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition.y - userStartPosition.y
+                            #else
                             Input.touches[0].position.x - userStartPosition.x,
                             Input.touches[0].position.y - userStartPosition.y
+                            #endif
                         );
                         magnitude = new Vector2(
+                            #if ENABLE_INPUT_SYSTEM
+                            prevPointerPosition.x - UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition.x,
+                            prevPointerPosition.y - UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition.y
+                            #else
                             prevPointerPosition.x - Input.touches[0].position.x,
                             prevPointerPosition.y - Input.touches[0].position.y
-                        ) / Time.deltaTime;;
+                            #endif
+                        ) / Time.deltaTime;
+                        #if ENABLE_INPUT_SYSTEM
+                        prevPointerPosition = UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition;
+                        #else
                         prevPointerPosition = (Vector2)Input.touches[0].position;
+                        #endif
                     } else {
-                        distance = distance + new Vector2(
+                        var mousePositon = (Vector2)Mouse.current.position.ReadValue();
+                        UILog.Add("Mouse position", $"{mousePositon.x}, {mousePositon.y}");
+                        distance = new Vector2(
+                            #if ENABLE_INPUT_SYSTEM
+                            mousePositon.x - userStartPosition.x,
+                            mousePositon.y - userStartPosition.y
+                            #else
                             Input.mousePosition.x - userStartPosition.x,
                             Input.mousePosition.y - userStartPosition.y
+                            #endif
                         );
                         magnitude = new Vector2(
-                            Input.mousePosition.x - prevPointerPosition.x,
-                            Input.mousePosition.y - prevPointerPosition.y
+                            #if ENABLE_INPUT_SYSTEM
+                                mousePositon.x - prevPointerPosition.x,
+                                mousePositon.y - prevPointerPosition.y
+                            #else
+                                Input.mousePosition.x - prevPointerPosition.x,
+                                Input.mousePosition.y - prevPointerPosition.y
+                            #endif
+                            
                         ) / Time.deltaTime;
-                        prevPointerPosition = (Vector2)Input.mousePosition;
+                        #if ENABLE_INPUT_SYSTEM
+                        prevPointerPosition = mousePositon;
+                        #else
+                        prevPointerPosition = (Vector2)Input.touches[0].position;
+                        #endif
                     }
                 }
                 #endregion
@@ -238,10 +316,13 @@ namespace Metamatic.UI {
                 magnitude.x / rectTransform.rect.width,
                 magnitude.y / rectTransform.rect.height
             );
+            UILog.Add("distance", distance);
+            UILog.Add("rectTransform.rect.width", rectTransform.rect.width);
             ratio = new Vector2(
                 distance.x / rectTransform.rect.width,
                 distance.y / rectTransform.rect.height
             );
+            UILog.Add("Ratio", ratio);
         }
 
         public void Release() {
