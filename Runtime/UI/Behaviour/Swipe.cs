@@ -262,7 +262,6 @@ namespace Metamatic.UI {
                         #endif
                     } else {
                         var mousePositon = (Vector2)Mouse.current.position.ReadValue();
-                        UILog.Add("Mouse position", $"{mousePositon.x}, {mousePositon.y}");
                         distance = new Vector2(
                             #if ENABLE_INPUT_SYSTEM
                             mousePositon.x - userStartPosition.x,
@@ -316,8 +315,6 @@ namespace Metamatic.UI {
                 magnitude.x / rectTransform.rect.width,
                 magnitude.y / rectTransform.rect.height
             );
-            UILog.Add("distance", distance);
-            UILog.Add("rectTransform.rect.width", rectTransform.rect.width);
             ratio = new Vector2(
                 distance.x / rectTransform.rect.width,
                 distance.y / rectTransform.rect.height

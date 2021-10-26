@@ -67,7 +67,7 @@ namespace Metamatic {
             }
         }
 
-        void Clear() {
+        public void Clear() {
             this.prefab = null;
             #if UNITY_EDITOR
             var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
