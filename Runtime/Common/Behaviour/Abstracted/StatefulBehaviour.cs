@@ -1,4 +1,5 @@
 namespace Metamatic {
+    using System;
     using UnityEngine;
 
     public abstract class StatefulBehaviour<State>: MonoBehaviour, ISerializationCallbackReceiver
@@ -14,6 +15,7 @@ namespace Metamatic {
                 stateful_ShouldUpdate = true;
             }
         }
+        public event Action<State, State> stateListeners;
 
         protected virtual void OnStateChange(State state, State prevState) {}
 
@@ -27,6 +29,18 @@ namespace Metamatic {
             state = nextState;
         }
 
+        public Action SubscribeState(Action<State, State> handler) {
+            stateListeners += handler;
+            handler(state, default);
+            return () => {
+                UnsubscribeState(handler);
+            };
+        }
+
+        public void UnsubscribeState(Action<State, State> handler) {
+            stateListeners -= handler;
+        }
+
         void ISerializationCallbackReceiver.OnBeforeSerialize() {}
 
         void ISerializationCallbackReceiver.OnAfterDeserialize() {
@@ -37,6 +51,7 @@ namespace Metamatic {
             if (stateful_ShouldUpdate) {
                 stateful_ShouldUpdate = false;
                 OnStateChange(stateful_State, stateful_PrevState);
+                stateListeners?.Invoke(stateful_State, stateful_PrevState);
                 stateful_PrevState = stateful_State;
             }
         }
