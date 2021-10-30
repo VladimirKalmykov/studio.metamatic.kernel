@@ -131,11 +131,13 @@ namespace Metamatic.UI {
                     UpdateChildren();
                     return;
                 }
-                if (cached_Boxes[i] != null) {
-                    totalGrow += cached_Boxes[i].grow;
-                    growCount++;
-                } else {
-                    usedSpace += direction == DIRECTION.ROW ? child.rect.width : child.rect.height;
+                if (child.transform.gameObject.activeInHierarchy && child.transform.gameObject.activeSelf) {
+                    if (cached_Boxes[i] != null) {
+                        totalGrow += cached_Boxes[i].grow;
+                        growCount++;
+                    } else {
+                        usedSpace += direction == DIRECTION.ROW ? child.rect.width : child.rect.height;
+                    }
                 }
                 i++;
             }
@@ -147,17 +149,19 @@ namespace Metamatic.UI {
             var margin = 0f;
             i = 0;
             foreach(RectTransform child in transform) {
-                child.anchoredPosition = new Vector3(
-                    direction == DIRECTION.ROW ? margin : 0,
-                    direction == DIRECTION.ROW ? 0 : margin
-                );
+                if (child.transform.gameObject.activeInHierarchy) {
+                    child.anchoredPosition = new Vector3(
+                        direction == DIRECTION.ROW ? margin : 0,
+                        direction == DIRECTION.ROW ? 0 : margin
+                    );
 
-                if (cached_Boxes[i] != null) {
-                    child.sizeDelta = direction == DIRECTION.COLUMN
-                        ? new Vector2(0, growUnitWeight * cached_Boxes[i].grow)
-                        : new Vector2(growUnitWeight * cached_Boxes[i].grow, 0);
+                    if (cached_Boxes[i] != null) {
+                        child.sizeDelta = direction == DIRECTION.COLUMN
+                            ? new Vector2(0, growUnitWeight * cached_Boxes[i].grow)
+                            : new Vector2(growUnitWeight * cached_Boxes[i].grow, 0);
+                    }
+                    margin = margin + (direction == DIRECTION.ROW ? child.sizeDelta.x : -child.sizeDelta.y);
                 }
-                margin = margin + (direction == DIRECTION.ROW ? child.sizeDelta.x : -child.sizeDelta.y);
                 i++;
             }
         }

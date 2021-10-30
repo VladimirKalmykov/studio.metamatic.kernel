@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
 using UnityEngine;
@@ -614,6 +615,32 @@ namespace Metamatic {
         public static string NormalizePath(string path) {
             char replaceSymbol = Path.DirectorySeparatorChar == '/' ? '\\' : '/';
             return MiscUtils.PathSimplify(path.Replace(replaceSymbol, Path.DirectorySeparatorChar));
+        }
+
+        /// <summary>
+        /// Get transform's path (the names of all of its parents separated by delimiter)
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <param name="delimiter"></param>
+        /// <returns></returns>
+        public static string GetGameObjectPath(Transform transform, string delimiter = ".") {
+            var path = new List<string>();
+            var currentTransform = transform;
+            while(currentTransform != null && currentTransform.parent != null) {
+                path.Add(currentTransform.name);
+                currentTransform = currentTransform.parent;   
+            }
+            return String.Join(delimiter, path.ToArray());
+        }
+
+        /// <summary>
+        /// Get game object's path (the names of all of its parents separated by delimiter)
+        /// </summary>
+        /// <param name="gameObject"></param>
+        /// <param name="delimiter"></param>
+        /// <returns></returns>
+        public static string GetGameObjectPath(GameObject gameObject, string delimiter = ".") {
+            return GetGameObjectPath(gameObject.transform, delimiter);
         }
     }
 }
