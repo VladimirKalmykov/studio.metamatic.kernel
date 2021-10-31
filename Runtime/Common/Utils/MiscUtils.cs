@@ -214,6 +214,26 @@ namespace Metamatic {
         }
 
         /// <summary>
+        /// Set color brightness
+        /// </summary>
+        /// <param name="color"></param>
+        /// <param name="brightness">The brightness value</param>
+        /// <param name="multiply">If true new brightness multiplied to current brightness</param>
+        /// <returns></returns>
+        public static Color SetColorBrightness(Color color, float brightness, bool multiply = false) {
+            /* Create special color for additional smoke (it should have main color but with resetted saturation and value) */
+            float H = 0f;
+            float S = 0f;
+            float V = 0f;
+            
+            Color.RGBToHSV(color, out H, out S, out V);
+
+            V = multiply ? brightness * V : brightness;
+
+            return  Color.HSVToRGB(H, S, V);
+        }
+
+        /// <summary>
         /// Inscribe rect with gived aspect ratio range to the another rect
         /// </summary>
         /// <param name="rect"></param>
