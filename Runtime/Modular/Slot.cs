@@ -104,7 +104,14 @@ namespace Metamatic {
 
             if (config == null) {
                 if (defaultPrefab != null && defaultPrefab != this.prefab) {
-                    ApplyPrefab(defaultPrefab, isPartOfAnyPrefab);
+                    ApplyPrefab(
+                        defaultPrefab,
+                        #if UNITY_EDITOR
+                        isPartOfAnyPrefab
+                        #else
+                        false
+                        #endif
+                    );
                 }
                 return;
             }
@@ -124,6 +131,8 @@ namespace Metamatic {
         async void HandleModulePresetChange(ModulePreset modulePreset) {
             #if UNITY_EDITOR
             var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
+            #else
+            var isPartOfAnyPrefab = false;
             #endif
             GameObject prefab = null;
             prefab = await modulePreset.GetPrefabAsync();
