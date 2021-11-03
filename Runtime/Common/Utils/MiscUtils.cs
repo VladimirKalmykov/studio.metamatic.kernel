@@ -713,5 +713,15 @@ namespace Metamatic {
                 });
             return new Vector2Int(divisors[0], n / divisors[0]);
         }
+        
+        /// <summary>
+        /// Simulate of dropping game dice with one-in-count change to get true value
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public static bool Dice(int count, bool negative = false)
+        {
+            return (UnityEngine.Random.Range(0, count + 1) == count) != negative;
+        }
     }
 }
