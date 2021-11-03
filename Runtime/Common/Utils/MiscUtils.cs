@@ -57,6 +57,21 @@ namespace Metamatic {
 
             return default;
         }
+        
+        /// <summary>
+        /// Create Plane by mesh (You should use it with Plane primitive)
+        /// </summary>
+        /// <param name="gameObject">The object must contains MeshFilter</param>
+        /// <returns></returns>
+        public static Plane MeshToPlane(MeshFilter filter, GameObject gameObject) {
+            var normal = Vector3.zero;
+
+            if (!filter || filter.mesh.normals.Length <= 0) return default;
+            normal = filter.transform.TransformDirection(filter.mesh.normals[0]);
+
+            return new Plane(normal, gameObject.transform.position);
+
+        }
 
         /// <summary>
         /// Get world distance from viewport distabce 
