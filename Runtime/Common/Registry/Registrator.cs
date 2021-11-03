@@ -14,7 +14,7 @@ namespace Metamatic.Experimental {
         public ScriptableRegistry[] permanent;
 
         void Awake() {
-            T self = typeof(T) == typeof(GameObject)
+            var self = typeof(T) == typeof(GameObject)
                 ? this.gameObject as T
                 : GetComponent<T>();
             /* Register sub objects */
@@ -24,11 +24,12 @@ namespace Metamatic.Experimental {
         }
 
         void OnEnable() {
-            T self = typeof(T) == typeof(GameObject)
+            var self = typeof(T) == typeof(GameObject)
                 ? this.gameObject as T
                 : GetComponent<T>();
             /* Register sub objects */
             foreach(var registry in active) {
+                Debug.Log($"Add GameObject {name} to the registry ({registry.GetInstanceID()})");
                 (registry as ScriptableRegistry<T>).Add(self);
             }
         }
@@ -38,7 +39,7 @@ namespace Metamatic.Experimental {
         /// </summary>
         void OnDisable()
         {
-            T self = typeof(T) == typeof(GameObject)
+            var self = typeof(T) == typeof(GameObject)
                 ? this.gameObject as T
                 : GetComponent<T>();
             /* Register sub objects */
@@ -48,7 +49,7 @@ namespace Metamatic.Experimental {
         }
 
         void OnDestroy() {
-            T self = typeof(T) == typeof(GameObject)
+            var self = typeof(T) == typeof(GameObject)
                 ? this.gameObject as T
                 : GetComponent<T>();
             /* Register sub objects */

@@ -58,7 +58,7 @@ namespace Metamatic {
                     x = 0;
                     y++;
                 }
-                if (y > rowSize - 1) {
+                if (y > rowsCount - 1) {
                     y = 0;
                 }
             }

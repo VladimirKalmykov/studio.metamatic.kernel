@@ -662,5 +662,41 @@ namespace Metamatic {
         public static string GetGameObjectPath(GameObject gameObject, string delimiter = ".") {
             return GetGameObjectPath(gameObject.transform, delimiter);
         }
+        
+        /// <summary>
+        /// Get two integer divisors of an integer which are maximum close to root of this number
+        /// </summary>
+        /// <param name="n"></param>
+        /// <returns></returns>
+        public static Vector2Int GetOptimalDivisors(int n)
+        {
+            if (n <= 0)
+            {
+                return Vector2Int.zero;
+            }
+            var root = Mathf.Sqrt(n);
+            var divisors = new List<int>();
+            for (var i = 1; i <= root; i++)
+            {
+                if (n % i != 0) continue;
+                divisors.Add(i);
+                if (i != n / i)
+                {
+                    divisors.Add(n / i);
+                }
+            }
+
+            divisors
+                .Sort((d1, d2) =>
+                {
+                    if (d1 == d2)
+                    {
+                        return 0;
+                    }
+
+                    return Mathf.Abs(root - d1) > Mathf.Abs(root - d2) ? 1 : -1;
+                });
+            return new Vector2Int(divisors[0], n / divisors[0]);
+        }
     }
 }
