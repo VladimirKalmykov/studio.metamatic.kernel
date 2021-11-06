@@ -129,7 +129,6 @@ namespace Metamatic {
         public ResourceTreeView(TreeViewState treeViewState)
             : base(treeViewState)
         {
-            Debug.Log("Resources tree reload");
             Reload();
         }
 

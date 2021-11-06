@@ -29,7 +29,6 @@ namespace Metamatic.Experimental {
                 : GetComponent<T>();
             /* Register sub objects */
             foreach(var registry in active) {
-                Debug.Log($"Add GameObject {name} to the registry ({registry.GetInstanceID()})");
                 (registry as ScriptableRegistry<T>).Add(self);
             }
         }

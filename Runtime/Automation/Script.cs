@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace Metamatic{
     public static partial class Automation {
@@ -58,6 +59,7 @@ namespace Metamatic{
                 this.durationIsLocked = config.durationIsLocked; 
                 this.overlapMode = config.overlapMode;
                 this.timingMode = config.timingMode;
+                this.realTime = config.realTime;
                 TypeInfo scriptTypeInfo = this.GetType().GetTypeInfo();
                 /* Invoke script AutomationStart message handler*/
                 this.OnRunDeclaredMethod = scriptTypeInfo.GetDeclaredMethod("OnRun");
@@ -116,6 +118,7 @@ namespace Metamatic{
                 }
 
                 /* Create runtime */
+                Debug.Log($"Play in realtime: {this.realTime}");
                 Automation.Runtime runtime = new Automation.Runtime(new Automation.Runtime.Config {
                     timingMode = this.timingMode,
                     realTime = this.realTime

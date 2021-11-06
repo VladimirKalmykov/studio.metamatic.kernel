@@ -69,40 +69,40 @@ namespace Metamatic {
                 : ((GameObject)camera).GetComponent<Camera>();
         }
 
-        void FixedUpdate() {
-            if (player != null) {
-                playerBounds = playerRenderers[0].bounds;
-                for (var i = 1; i < playerRenderers.Length; i++)
-                {
-                    playerBounds.Encapsulate(playerRenderers[i].bounds);
-                }
-                var ext = playerBounds.extents;
+        void FixedUpdate()
+        {
+            if (player == null) return;
+            playerBounds = playerRenderers[0].bounds;
+            for (var i = 1; i < playerRenderers.Length; i++)
+            {
+                playerBounds.Encapsulate(playerRenderers[i].bounds);
+            }
+            var ext = playerBounds.extents;
 
-                float maxY = -999999, maxX = -999999, minY = 99999, minX = 99999;
+            float maxY = -999999, maxX = -999999, minY = 99999, minX = 99999;
 
-                for (var x = -1; x < 2; x+=2)
+            for (var x = -1; x < 2; x+=2)
+            {
+                for (var y = -1; y < 2; y+=2)
                 {
-                    for (var y = -1; y < 2; y+=2)
+                    for (var z = -1; z < 2; z+=2)
                     {
-                        for (var z = -1; z < 2; z+=2)
-                        {
-                            var vect = playerBounds.center+new Vector3(ext.x*x, ext.y*y, ext.z*z);
-                            var worldPoint = camera.WorldToScreenPoint(vect);
+                        var vect = playerBounds.center+new Vector3(ext.x*x, ext.y*y, ext.z*z);
+                        var worldPoint = camera.WorldToScreenPoint(vect);
 
-                            maxY = Mathf.Max(maxY, worldPoint.y);
-                            maxX = Mathf.Max(maxX, worldPoint.x);
-                            minY = Mathf.Min(minY, worldPoint.y);
-                            minX = Mathf.Min(minX, worldPoint.x);
-                        }
+                        maxY = Mathf.Max(maxY, worldPoint.y);
+                        maxX = Mathf.Max(maxX, worldPoint.x);
+                        minY = Mathf.Min(minY, worldPoint.y);
+                        minX = Mathf.Min(minX, worldPoint.x);
                     }
                 }
-
-                playerisVisible = !(minY > Screen.height || minX > Screen.width || maxY < 0 || maxX < 0);
-
-                #if UNITY_EDITOR
-                editor_BoundsCenter = playerBounds.center;
-                #endif
             }
+
+            playerisVisible = !(minY > Screen.height || minX > Screen.width || maxY < 0 || maxX < 0);
+
+#if UNITY_EDITOR
+                editor_BoundsCenter = playerBounds.center;
+#endif
         }
 
         void VisibilityChange(bool visible) {

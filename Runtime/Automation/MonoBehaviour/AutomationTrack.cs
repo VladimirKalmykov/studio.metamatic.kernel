@@ -78,8 +78,9 @@ namespace Metamatic {
             return Run(script, duration, cancellationToken);
         }
 
-        public Automation.Runtime Run<T>(object props, float duration = 0f, CancellationToken cancellationToken = default) where T: Automation.Script, new()  {
+        public Automation.Runtime Run<T>(object props, float duration = 0f, CancellationToken cancellationToken = default, Action<T> modifier = null) where T: Automation.Script, new()  {
             var script = new T();
+            modifier?.Invoke(script);
             return Run(script, duration, props, cancellationToken);
         }
 

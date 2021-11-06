@@ -9,7 +9,7 @@ namespace Metamatic {
     /// Draws a grid in the space and adds each children to the each cell
     /// </summary>
     [ExecuteAlways]
-    public class SpaceGrid : MonoBehaviour
+    public class SpaceGrid : PluggableMonoBehaviour
     {
         [BoxGroup("Main")]
         public int colsCount = 2;
