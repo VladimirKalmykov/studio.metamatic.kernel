@@ -19,10 +19,10 @@ namespace Metamatic {
         /// </summary>
         protected int reservedCount = 0;
 
-        public T[] Get(int count = 1) {
-            int index = 0;
-            T[] result = new T[count];
-            for (int i = prewarmed.Count - 1; i >= 0; i--) {
+        public T[] Get(int count = 1, Transform parent = null, System.Action<T> beforeEnableHook = null) {
+            var index = 0;
+            var result = new T[count];
+            for (var i = prewarmed.Count - 1; i >= 0; i--) {
                 var component = prewarmed[i];
                 if (component == null) {
                     /* Remove deleted component */
@@ -30,14 +30,15 @@ namespace Metamatic {
                     continue;
                 }
                 /* Check component already in use */
-                if (!component.gameObject.activeInHierarchy) {
-                    result[index] = component;
-                    /* Activate right now to prevent situation when two scripts got the same game object */
-                    component.gameObject.SetActive(true);
-                    index++;
-                    if (index >= count) {
-                        break;
-                    }
+                if (component.gameObject.activeInHierarchy) continue;
+                result[index] = component;
+                component.transform.SetParent(parent);
+                beforeEnableHook?.Invoke(component);
+                /* Activate right now to prevent situation when two scripts got the same game object */
+                component.gameObject.SetActive(true);
+                index++;
+                if (index >= count) {
+                    break;
                 }
             }
             #if UNITY_EDITOR
@@ -46,16 +47,16 @@ namespace Metamatic {
             }
             #endif
             /* Filled missing components */
-            for (int i = index; i <= count - 1; i++) {
+            for (var i = index; i <= count - 1; i++) {
                 #if UNITY_EDITOR
                 if (prefab == null) {
                     throw new System.Exception("Uncompleted scriptable pool");
                 }
                 #endif
-                var newGo = Instantiate(prefab.gameObject);
-                newGo.transform.SetParent(null);
+                var newGo = Instantiate(prefab.gameObject, parent, true);
                 var gameObjectFromPool = newGo.GetComponent<GameObjectFromPool>() ?? newGo.AddComponent<GameObjectFromPool>();
                 var component = newGo.GetComponent<T>();
+                beforeEnableHook?.Invoke(component);
                 prewarmed.Add(component);
                 result[i] = component;
                 newGo.SetActive(true);
@@ -89,7 +90,7 @@ namespace Metamatic {
 
         protected override void OnPrewarm(int count) {
             reservedCount += count;
-            for (int i = 0; i < count; i++) {
+            for (var i = 0; i < count; i++) {
                 var newGo = Instantiate(prefab.gameObject);
                 newGo.SetActive(false);
                 newGo.transform.SetParent(null);
@@ -101,7 +102,7 @@ namespace Metamatic {
         protected override void OnPrewarmRelease(int count) {
             reservedCount -= count;
 
-            for (int i = prewarmed.Count - 1; i >= 0; i--) {
+            for (var i = prewarmed.Count - 1; i >= 0; i--) {
                 var component = prewarmed[i];
                 if (prewarmed.Count > reservedCount && (component == null || !component.gameObject.activeInHierarchy)) {
                     prewarmed.RemoveAt(i);
