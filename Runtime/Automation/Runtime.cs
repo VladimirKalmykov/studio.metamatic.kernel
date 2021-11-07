@@ -17,8 +17,8 @@ namespace Metamatic{
                     if (fromTime >= toTime) {
                         throw new Exception("Start time can be grater or equal to end time");
                     }
-                    int startTimeMs = (int)(fromTime * 1000f);
-                    int endTimeMs = (int)(toTime * 1000f);
+                    var startTimeMs = (int)(fromTime * 1000f);
+                    var endTimeMs = (int)(toTime * 1000f);
                     float totalDuration = endTimeMs - startTimeMs;
                     Action handler = null;
                     handler = () => {
@@ -121,10 +121,13 @@ namespace Metamatic{
             } = false;
             TaskCompletionSource<object> taskCompletionSource;
             CancellationTokenSource cancellationTokenSource;
+            private Config m_Config;
             
-            public Runtime(Config config, float duration = -1f, CancellationToken outerCancellationToken = default) {
-                Automation.TimingMode timingMode = config.timingMode;
-                bool realTime = config.realTime;
+            public Runtime(Config config, float duration = -1f, CancellationToken outerCancellationToken = default)
+            {
+                m_Config = config;
+                var timingMode = config.timingMode;
+                var realTime = config.realTime;
 
                 this.timingMode = timingMode;
 
@@ -203,14 +206,12 @@ namespace Metamatic{
                     await taskCompletionSource.Task;
                 } catch(TaskCanceledException ex) {
                     /* Invoke cancel event */
-                    if (ex != null) {
-                        if (this.OnCancel != null) {
-                            this.OnCancel();
-                        }
-                    } else {
-                        if (this.OnFault != null) {
-                            this.OnFault();
-                        }
+                    if (ex != null)
+                    {
+                        this.OnCancel?.Invoke();
+                    } else
+                    {
+                        this.OnFault?.Invoke();
                     }
                 } finally {
                     if (hasBeenStarted) {
@@ -219,11 +220,10 @@ namespace Metamatic{
                         this.timer.TryStop();
                     }
 
-                    if (!taskCompletionSource.Task.IsCanceled && !taskCompletionSource.Task.IsFaulted) {
+                    if (!taskCompletionSource.Task.IsCanceled && !taskCompletionSource.Task.IsFaulted)
+                    {
                         /* Invoke complete event */
-                        if (this.OnComplete != null) {
-                            this.OnComplete();
-                        }
+                        this.OnComplete?.Invoke();
                     }
 
                     if (this != null) {
@@ -232,44 +232,40 @@ namespace Metamatic{
                 }
             }
 
-            private void OnTimerComplete() {
-                if (!IsOver) {
-                    switch (timingMode) {
-                        case Automation.TimingMode.Autocomplete:
-                            /* Let script call complete before it will be forced */
-                            if (OnExpire != null) {
-                                OnExpire();
-                            }
-                            
-                            /* If it is still not over */
-                            if (!IsOver) {
-                                Complete();
-                            }
+            private void OnTimerComplete()
+            {
+                if (IsOver) return;
+                switch (timingMode) {
+                    case Automation.TimingMode.Autocomplete:
+                        /* Let script call complete before it will be forced */
+                        OnExpire?.Invoke();
+
+                        /* If it is still not over */
+                        if (!IsOver) {
+                            Complete();
+                        }
                         break;
-                        case Automation.TimingMode.Autocancel:
-                            Cancel();
+                    case Automation.TimingMode.Autocancel:
+                        Cancel();
                         break;
-                        case Automation.TimingMode.Autothrow:
-                            ThrowException(new Exception($"Playback countdown has expired, but script not complete yet."));
+                    case Automation.TimingMode.Autothrow:
+                        ThrowException(new Exception($"Playback countdown has expired, but script not complete yet."));
                         break;
-                        case Automation.TimingMode.Passive:
-                        default:
-                            /* Do nothing */
+                    case Automation.TimingMode.Passive:
+                    default:
+                        /* Do nothing */
                         break;
-                    }
                 }
             }
 
-            public void Update() {
-                if (this.OnUpdate != null) {
-                    this.OnUpdate();
-                }
+            public void Update()
+            {
+                this.OnUpdate?.Invoke();
             }
 
-            public void FixedUpdate() {
-                if (this.OnFixedUpdate != null) {
-                    this.OnFixedUpdate();
-                }
+            public void FixedUpdate()
+            {
+                this.OnFixedUpdate?.Invoke();
             }
 
             public void Release() {
@@ -341,11 +337,9 @@ namespace Metamatic{
             /// Disable autocompletion (turn off сountdown)
             /// </summary>
             /// <returns></returns>
-            public int Detain() {
-                if (duration > 0) {
-                    return this.timer.Stop();
-                }
-                return 0;
+            public int Detain()
+            {
+                return duration > 0 ? this.timer.Stop() : 0;
             }
 
             public TaskAwaiter<object> GetAwaiter() {
@@ -380,26 +374,27 @@ namespace Metamatic{
             }
             
             public void EveryMilliseconds(int ms, Action handler) {
-                float seconds = (float)ms / 1000f;
-                float startTime = Time.time;
-                this.OnUpdate += () => {
-                    if (Time.time - startTime >= seconds) {
-                        float surplus = Time.time - startTime - seconds;
-                        startTime = Time.time + surplus;
-                        handler();
-                    }
+                var seconds = (float)ms / 1000f;
+                var startTime = m_Config.realTime ? Time.unscaledTime : Time.time;
+                this.OnUpdate += () =>
+                {
+                    var time = m_Config.realTime ? Time.unscaledTime : Time.time;
+                    if (!(time - startTime >= seconds)) return;
+                    var surplus = time - startTime - seconds;
+                    startTime = time + surplus;
+                    handler();
                 };
             }
 
             public void EveryRealtimeMilliseconds(int ms, Action handler) {
-                float seconds = (float)ms / 1000f;
-                float startTime = Time.unscaledTime;
-                this.OnUpdate += () => {
-                    if (Time.unscaledTime - startTime >= seconds) {
-                        float surplus = Time.unscaledTime - startTime - seconds;
-                        startTime = Time.unscaledTime + surplus;
-                        handler();
-                    }
+                var seconds = (float)ms / 1000f;
+                var startTime = Time.unscaledTime;
+                this.OnUpdate += () =>
+                {
+                    if (!(Time.unscaledTime - startTime >= seconds)) return;
+                    var surplus = Time.unscaledTime - startTime - seconds;
+                    startTime = Time.unscaledTime + surplus;
+                    handler();
                 };
             }
 
