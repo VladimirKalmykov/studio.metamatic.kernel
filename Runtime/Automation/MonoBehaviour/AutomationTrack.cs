@@ -202,5 +202,25 @@ namespace Metamatic {
         public Automation.Playable CreatePlayable(Automation.Script script) {
             return new Automation.Playable(script, this);
         }
+        
+        public static AutomationTrack GetAutomationTrack(Behaviour component, string name = null) {
+            if (name == null) {
+                var track = component.GetComponent<AutomationTrack>();
+                if (track == null) {
+                    return component.gameObject.AddComponent<AutomationTrack>();
+                }
+            } else {
+                var tracks = component.GetComponents<AutomationTrack>();
+                foreach(var track in tracks) {
+                    if (track.name == name) {
+                        return track;
+                    }
+                }
+            }
+
+            var newTrack = component.gameObject.AddComponent<AutomationTrack>();
+            newTrack.name = name;
+            return newTrack;
+        }
     }
 }
