@@ -11,7 +11,7 @@ namespace Metamatic {
     /// In shorts, you can always call PLay method of this object, even if it have not implemented
     /// In such way all playable behaviours have the same play entry method
     /// </summary>
-    public class PlayableMonoBehaviour: MonoBehaviour, IPlayable {
+    public abstract class PlayableMonoBehaviour: MonoBehaviour, IPlayable {
         public UnityEvent OnBeforePlay {
             get; private set;
         } = new UnityEvent();
@@ -67,8 +67,11 @@ namespace Metamatic {
             return taskCompletionSource.Task;
         }
 
+        protected virtual void AfterPlay() {}
+
         private IEnumerator InvokeAfterPlay() {
             yield return new WaitForEndOfFrame();
+            AfterPlay();
             OnAfterPlay.Invoke();
         }
     }
