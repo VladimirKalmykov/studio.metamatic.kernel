@@ -116,7 +116,7 @@ namespace Metamatic.DevTools {
         void OnGUI() {
             CompileMessages();
             GUIStyle style = new GUIStyle();
-            style.fontSize = Screen.height / 67;
+            style.fontSize = Screen.height / 50;
             style.normal.textColor = Color.HSVToRGB(0.48f, 0.26f, 1f);
             GUILayout.BeginArea(new Rect(10, 10, Screen.width / 2, Screen.height / 2));
             GUILayout.Label(_text, style);
