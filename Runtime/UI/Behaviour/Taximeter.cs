@@ -27,7 +27,6 @@
                 runtime.EveryMilliseconds((int)(props.step * 1000f), () =>
                 {
                     var nextValue = Mathf.Lerp(props.startValue, props.nextValue, runtime.timer.ratio);
-                    Debug.Log($"Update text: {nextValue}");
                     props.Update(nextValue);
                 });
 
