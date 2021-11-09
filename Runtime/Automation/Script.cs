@@ -118,7 +118,6 @@ namespace Metamatic{
                 }
 
                 /* Create runtime */
-                Debug.Log($"Play in realtime: {this.realTime}");
                 Automation.Runtime runtime = new Automation.Runtime(new Automation.Runtime.Config {
                     timingMode = this.timingMode,
                     realTime = this.realTime
