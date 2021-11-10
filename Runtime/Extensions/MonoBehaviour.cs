@@ -1,3 +1,4 @@
+using System.Threading;
 using UnityEngine;
 
 namespace Metamatic {
@@ -16,5 +17,11 @@ namespace Metamatic {
 
             return (T)component;
         }
+
+        // public static CancellationTokenSource CreateCancellationTokenSource(this MonoBehaviour gameObject, CancellationToken parentCancellationToken)
+        // {
+        //     var cancellationTokenSource = new CancellationTokenSource();
+        //     
+        // }
     }
 }

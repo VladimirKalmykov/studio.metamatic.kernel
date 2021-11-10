@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -20,6 +21,14 @@ namespace Metamatic
                 return m_TaskCompletionSource.Task;
             }
         }
+
+        public Task<T> Task
+        {
+            get
+            {
+                return m_TaskCompletionSource.Task;
+            }
+        }
         
         public bool isFinalised { get; private set; } = false;
 
@@ -27,8 +36,11 @@ namespace Metamatic
 
         public event Action OnFinally;
         public event Action OnCancel;
-        public Promise(InitializeHandler initialize)
+        private CancellationTokenRegistration cancellationTokenRegistration;
+        public Promise(InitializeHandler initialize, CancellationToken cancellationToken = default)
         {
+            cancellationTokenRegistration = cancellationToken.Register(Cancel);
+            
             this.m_TaskCompletionSource = new TaskCompletionSource<T>();
             initialize(Complete, SetError, this);
         }
@@ -40,7 +52,7 @@ namespace Metamatic
             Finallize();
         }
 
-        private void Complete(T result)
+        private void Complete(T result = default)
         {
             if (!m_TaskCompletionSource.TrySetResult(result))
             {
@@ -57,6 +69,7 @@ namespace Metamatic
 
         private void Finallize()
         {
+            cancellationTokenRegistration.Dispose();
             isFinalised = true;
             OnFinally?.Invoke();
         }
@@ -64,6 +77,6 @@ namespace Metamatic
 
     public class Promise : Promise<object>
     {
-        public Promise(InitializeHandler initializer): base(initializer) {}
+        public Promise(InitializeHandler initializer, CancellationToken cancellationToken = default): base(initializer, cancellationToken) {}
     }
 }

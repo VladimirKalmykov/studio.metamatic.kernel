@@ -23,25 +23,6 @@ namespace Metamatic
     /// </details>
     public abstract class Logic: IDisposable
     {
-        public class EventResult
-        {
-            public readonly Type type;
-
-            public EventResult(Type type)
-            {
-                this.type = type;
-            }
-        }
-
-        public class EventResult<T> : EventResult
-        {
-            public readonly T data;
-
-            public EventResult(in T data): base(typeof(T))
-            {
-                this.data = data;
-            }
-        }
         public class EventData
         {
             public class EventHandler
@@ -110,9 +91,9 @@ namespace Metamatic
             listeners.Add(eventHandler);
         }
 
-        public Task<EventResult> AsyncEvent<T>(CancellationToken cancellationToken = default)
+        public Task<Payload> AsyncEvent<T>(CancellationToken cancellationToken = default)
         {
-            var taskCompletionSource = new TaskCompletionSource<EventResult>();
+            var taskCompletionSource = new TaskCompletionSource<Payload>();
             CancellationTokenRegistration registration;
             Action<T> handler = null;
             handler = (T data) =>
@@ -120,7 +101,7 @@ namespace Metamatic
                 // ReSharper disable once AccessToModifiedClosure
                 registration.Dispose();
                 RemoveListener(handler);
-                taskCompletionSource.SetResult(new EventResult<T>(data));
+                taskCompletionSource.SetResult(new Payload<T>(data));
             };
             registration = cancellationToken.Register(() =>
             {
