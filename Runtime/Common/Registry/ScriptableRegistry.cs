@@ -43,15 +43,15 @@ namespace Metamatic {
             }
             OnChange?.Invoke(items.ToArray());
         }
-        public void Remove(T item) {
-            if (items.Contains(item)) {
-                items.Remove(item);
+        public void Remove(T item)
+        {
+            if (!items.Contains(item)) return;
+            items.Remove(item);
 
-                if (items.Count == 0) {
-                    OnFirstChange?.Invoke(default(T));
-                }
-                OnRemove?.Invoke(item);
+            if (items.Count == 0) {
+                OnFirstChange?.Invoke(default(T));
             }
+            OnRemove?.Invoke(item);
         }
         public Action Subscribe(Action<T> addHandler, Action<T> removeHandler) {
             foreach(var record in items) {

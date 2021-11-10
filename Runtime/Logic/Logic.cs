@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
@@ -19,8 +21,27 @@ namespace Metamatic
     /// 1. U can use state, setState API just like with statefulBehaviour.
     /// 2. U can listen for events
     /// </details>
-    public abstract class Logic
+    public abstract class Logic: IDisposable
     {
+        public class EventResult
+        {
+            public readonly Type type;
+
+            public EventResult(Type type)
+            {
+                this.type = type;
+            }
+        }
+
+        public class EventResult<T> : EventResult
+        {
+            public readonly T data;
+
+            public EventResult(in T data): base(typeof(T))
+            {
+                this.data = data;
+            }
+        }
         public class EventData
         {
             public class EventHandler
@@ -87,6 +108,29 @@ namespace Metamatic
             };
             var eventHandler = new EventData.EventHandler<T>(handler, syntheticHandler);
             listeners.Add(eventHandler);
+        }
+
+        public Task<EventResult> AsyncEvent<T>(CancellationToken cancellationToken = default)
+        {
+            var taskCompletionSource = new TaskCompletionSource<EventResult>();
+            CancellationTokenRegistration registration;
+            Action<T> handler = null;
+            handler = (T data) =>
+            {
+                // ReSharper disable once AccessToModifiedClosure
+                registration.Dispose();
+                RemoveListener(handler);
+                taskCompletionSource.SetResult(new EventResult<T>(data));
+            };
+            registration = cancellationToken.Register(() =>
+            {
+                RemoveListener(handler);
+                taskCompletionSource.SetCanceled();
+                ;
+            });
+            AddListener<T>(handler);
+            
+            return taskCompletionSource.Task;
         }
 
         public void RemoveListener<T>(Action<T> handler)
