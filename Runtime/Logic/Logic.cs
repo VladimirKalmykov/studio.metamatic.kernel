@@ -124,6 +124,7 @@ namespace Metamatic
             };
             registration = cancellationToken.Register(() =>
             {
+                Debug.Log("AsyncEvent is cancelled");
                 RemoveListener(handler);
                 taskCompletionSource.SetCanceled();
                 ;

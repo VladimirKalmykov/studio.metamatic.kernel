@@ -104,7 +104,6 @@
         }
 
         private void SetValue(float value) {
-            Debug.Log($"Value: {value}");
             this.value = value;
         }
 
