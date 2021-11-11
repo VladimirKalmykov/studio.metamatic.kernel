@@ -28,9 +28,9 @@ namespace Metamatic {
         /// <param name="C">Angle between</param>
         /// <returns></returns>
         public static Triplet<double> SolveTriangleAnglesByCosineTheorem(double a, double b, double C) {
-            double c = SolveTriangleEdgeByCosineTheorem(a, b, C);
-            double A = Math.Acos((b*b + c*c - a*a)/(2*b*c));
-            double B = (180 * Mathf.Deg2Rad) - A - C;
+            var c = SolveTriangleEdgeByCosineTheorem(a, b, C);
+            var A = Math.Acos((b*b + c*c - a*a)/(2*b*c));
+            var B = (180 * Mathf.Deg2Rad) - A - C;
 
             return new Triplet<double>(A, B, C);
         }
@@ -62,14 +62,14 @@ namespace Metamatic {
         /// <param name="values"></param>
         /// <returns></returns>
         public static float[] Ratio(float[] values) {
-            float sum = 0f;
-            foreach(float value in values)
+            var sum = 0f;
+            foreach(var value in values)
             {
                 sum += value;
             }
 
-            float[] result = new float[values.Length];
-            for (int i = 0; i < values.Length; i++)
+            var result = new float[values.Length];
+            for (var i = 0; i < values.Length; i++)
             {
                 result[i] = values[i] / sum;
             }
@@ -84,13 +84,13 @@ namespace Metamatic {
         /// <returns></returns>
         public static double[] Ratio(double[] values) {
             double sum = 0f;
-            foreach(double value in values)
+            foreach(var value in values)
             {
                 sum += value;
             }
 
-            double[] result = new double[values.Length];
-            for (int i = 0; i < values.Length; i++)
+            var result = new double[values.Length];
+            for (var i = 0; i < values.Length; i++)
             {
                 result[i] = values[i] / sum;
             }
@@ -115,19 +115,19 @@ namespace Metamatic {
         }
         /** Get unsigned angle (360 degrees) between two points */
         public static float GetAngle360(Vector2 point1, Vector2 point2) {
-            float degrees = (float)((Math.Atan2(point2.y - point1.y, point2.x - point1.x) * 180) / Math.PI);
+            var degrees = (float)((Math.Atan2(point2.y - point1.y, point2.x - point1.x) * 180) / Math.PI);
             return degrees = (degrees + 360) % 360;
         }
         /** Get unsigned angle (360 degrees) between two points */
         public static float GetAngle360Inverted(Vector2 point1, Vector2 point2) {
-            float degrees = (float)((Math.Atan2(point2.x - point1.x, point2.y - point1.y) * 180) / Math.PI);
+            var degrees = (float)((Math.Atan2(point2.x - point1.x, point2.y - point1.y) * 180) / Math.PI);
             return degrees = (degrees + 360) % 360;
         }
         /** Get the coordinates betwen two points with t factor */
         public static Vector3 InterpolatePoints(Vector3 point1, Vector3 point2, float t) {
-            float nx = point1.x + (point2.x - point1.x) * t;
-            float ny = point1.y + (point2.y - point1.y) * t;
-            float nz = point1.z + (point2.z - point1.z) * t;
+            var nx = point1.x + (point2.x - point1.x) * t;
+            var ny = point1.y + (point2.y - point1.y) * t;
+            var nz = point1.z + (point2.z - point1.z) * t;
             return new Vector3(nx, ny, nz);
         }
         /** Get angle between two lines */
@@ -151,7 +151,7 @@ namespace Metamatic {
         /// <returns></returns>
         public static Vector2? GetRaysIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2)
         {
-            float tmp = (B2.x - B1.x) * (A2.y - A1.y) - (B2.y - B1.y) * (A2.x - A1.x);
+            var tmp = (B2.x - B1.x) * (A2.y - A1.y) - (B2.y - B1.y) * (A2.x - A1.x);
         
             if (tmp == 0)
             {
@@ -159,7 +159,7 @@ namespace Metamatic {
                 return null;
             }
         
-            float mu = ((A1.x - B1.x) * (A2.y - A1.y) - (A1.y - B1.y) * (A2.x - A1.x)) / tmp;
+            var mu = ((A1.x - B1.x) * (A2.y - A1.y) - (A1.y - B1.y) * (A2.x - A1.x)) / tmp;
         
             return new Vector2(
                 B1.x + (B2.x - B1.x) * mu,
@@ -176,7 +176,7 @@ namespace Metamatic {
         /// <param name="thickness">Thickness of line (when zero intersection point will be difficult to determine, better value is 0.1f)</param>
         /// <returns></returns>
         public static bool IsPointOnTheLine(Vector2 A1, Vector2 A2, Vector2 point, float thickness = 0.1f) {
-            float sum = Vector2.Distance(A1, point) + Vector2.Distance(A2, point) - thickness;
+            var sum = Vector2.Distance(A1, point) + Vector2.Distance(A2, point) - thickness;
             return sum <= Vector2.Distance(A1, A2);
         }
 
@@ -191,7 +191,7 @@ namespace Metamatic {
         /// <param name="thickness">Thickness of line (when zero intersection point will be difficult to determine)</param>
         /// <returns></returns>
         public static Vector2? getLinesIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2, float thickness = 0.1f) {
-            Vector2? point = GetRaysIntersectionPoint(A1, A2, B1, B2);
+            var point = GetRaysIntersectionPoint(A1, A2, B1, B2);
             
             if (point.HasValue) {
                 if (IsPointOnTheLine(A1, A2, point.Value, thickness) && IsPointOnTheLine(B1, B2, point.Value, thickness)) {
@@ -215,20 +215,20 @@ namespace Metamatic {
         public static Vector2? GetInnerRectRayIntersect(Vector2 topLeft, Vector2 topRight, Vector2 bottomRight, Vector2 bottomLeft, Vector2 innerPoint, Vector2 outerPoint) {
             /* Get four angles between point and corners */
             
-            float angleTopRight = Trigf.GetAngleInverted(
+            var angleTopRight = Trigf.GetAngleInverted(
                 innerPoint,
                 topRight
             );
-            float angleBottomRight = Trigf.GetAngleInverted(
+            var angleBottomRight = Trigf.GetAngleInverted(
                 innerPoint,
                 bottomRight
             );
-            float angleBottomLeft = Trigf.GetAngleInverted(
+            var angleBottomLeft = Trigf.GetAngleInverted(
                 innerPoint,
                 bottomLeft
             );
             /* Get angle between point and direction */
-            float pointAngle = Trigf.GetAngleInverted(
+            var pointAngle = Trigf.GetAngleInverted(
                 innerPoint,
                 outerPoint
             );
@@ -264,24 +264,24 @@ namespace Metamatic {
         /// <returns></returns>
         public static Vector2? GetInnerRectRayIntersect(Rect rect, Vector2 innerPoint, Vector2 outerPoint) {
             /* Get four angles between point and corners */
-            Vector2 topLeft = new Vector2(0f, rect.height);
-            Vector2 bottomRight = new Vector2(rect.width, 0f);
-            Vector2 bottomLeft = new Vector2(0f, 0f);
-            Vector2 topRight = new Vector2(rect.width, rect.height);
-            float angleTopRight = Trigf.GetAngleInverted(
+            var topLeft = new Vector2(0f, rect.height);
+            var bottomRight = new Vector2(rect.width, 0f);
+            var bottomLeft = new Vector2(0f, 0f);
+            var topRight = new Vector2(rect.width, rect.height);
+            var angleTopRight = Trigf.GetAngleInverted(
                 innerPoint,
                 topRight
             );
-            float angleBottomRight = Trigf.GetAngleInverted(
+            var angleBottomRight = Trigf.GetAngleInverted(
                 innerPoint,
                 bottomRight
             );
-            float angleBottomLeft = Trigf.GetAngleInverted(
+            var angleBottomLeft = Trigf.GetAngleInverted(
                 innerPoint,
                 bottomLeft
             );
             /* Get angle between point and direction */
-            float pointAngle = Trigf.GetAngleInverted(
+            var pointAngle = Trigf.GetAngleInverted(
                 innerPoint,
                 outerPoint
             );
@@ -315,11 +315,11 @@ namespace Metamatic {
         /// <param name="distance"></param>
         /// <returns></returns>
         public static Vector2 GetPointAtAngle2D(float angle, float distance = 1) {
-            float angle2 = 180 - 90 - angle;
-            float x =
+            var angle2 = 180 - 90 - angle;
+            var x =
             (distance * (float)Math.Sin((double)(angle * Math.PI) / 180)) /
             (float)Math.Sin((double)(90 * Math.PI) / 180);
-            float y =
+            var y =
             (distance * (float)Math.Sin((double)(angle2 * Math.PI) / 180)) /
             (float)Math.Sin((double)(90 * Math.PI) / 180);
 
@@ -334,10 +334,23 @@ namespace Metamatic {
         /// <param name="angles"></param>
         /// <returns></returns>
         public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 angles) {
-            Vector3 dir = point - pivot;
+            var dir = point - pivot;
             dir = Quaternion.Euler(angles) * dir;
             point = dir + pivot;
             return point;
+        }
+        
+        /// <summary>
+        /// Rotate `point` around `pivot`
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="pivot"></param>
+        /// <param name="angles"></param>
+        /// <returns></returns>
+        public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Quaternion angles) {
+            var dir = point - pivot;
+            dir = angles * dir;
+            return dir + pivot;
         }
 
         /// <summary>
@@ -349,7 +362,7 @@ namespace Metamatic {
         /// <param name="angle"></param>
         /// <returns></returns>
         public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 axis, float angle) {
-            Vector3 dir = point - pivot;
+            var dir = point - pivot;
             dir = Quaternion.AngleAxis(angle, axis) * dir;
             point = dir + pivot;
             return point;
@@ -363,7 +376,7 @@ namespace Metamatic {
         /// <param name="angles"></param>
         /// <returns></returns>
         public static Vector3 RotatePointAroundPivot(Vector2 point, Vector2 pivot, float angle) {
-            Vector2 dir = point - pivot;
+            var dir = point - pivot;
             dir = Quaternion.Euler(new Vector3(0f, 0f, angle)) * dir;
             point = dir + pivot;
             return point;
@@ -388,8 +401,8 @@ namespace Metamatic {
         public static UnityEngine.Vector2 GetRandomPointOnRadius2D(float radius) {
             var angle = UnityEngine.Random.Range(0f, 1f) * Math.PI * 2;
 
-            float x = (float)Math.Cos(angle) * radius;
-            float y = (float)Math.Sin(angle) * radius;
+            var x = (float)Math.Cos(angle) * radius;
+            var y = (float)Math.Sin(angle) * radius;
 
             return new Vector2(x, y);
         }

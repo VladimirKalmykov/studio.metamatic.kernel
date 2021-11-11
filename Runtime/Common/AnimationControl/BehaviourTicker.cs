@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -42,7 +43,7 @@ namespace Metamatic
         /// <param name="duration"></param>
         /// <param name="animationCallback"></param>
         /// <param name="realTime"></param>
-        public Promise UpdateFor(float duration, UpdateForCallback animationCallback, bool realTime = false)
+        public Promise UpdateFor(float duration, UpdateForCallback animationCallback, bool realTime = false, CancellationToken cancellationToken = default)
         {
             var asyncOperation = new Promise((resolve, reject, self) =>
             {
@@ -70,7 +71,7 @@ namespace Metamatic
                 {
                     OnUpdate -= UpdateHandler;
                 });
-            });
+            }, cancellationToken);
             
             
             asyncOperations.Add(asyncOperation);

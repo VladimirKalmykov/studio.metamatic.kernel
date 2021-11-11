@@ -11,6 +11,7 @@ namespace Metamatic
     public class SpaceGridFitScreen : MonoBehaviour
     {
         public float distance = 10f;
+        public bool invertAxis = false;
         private SpaceGrid m_SpaceGrid;
         private Transform m_SpaceGridTransform;
         private Camera m_CachedCamera;
@@ -65,8 +66,17 @@ namespace Metamatic
             var topRight = MiscUtils.ViewportToPerspectivePoint(new Vector2(1, 1), m_CachedCamera, plane);
             var bottomRight = MiscUtils.ViewportToPerspectivePoint(new Vector2(1, 0), m_CachedCamera, plane);
 
-            m_SpaceGrid.width = Vector3.Distance(bottomLeft, bottomRight);
-            m_SpaceGrid.height = Vector3.Distance(bottomLeft, topLeft);
+            if (invertAxis)
+            {
+                m_SpaceGrid.width = Vector3.Distance(bottomLeft, topLeft);
+                m_SpaceGrid.height = Vector3.Distance(bottomLeft, bottomRight);
+            }
+            else
+            {
+                 m_SpaceGrid.width = Vector3.Distance(bottomLeft, bottomRight);
+                m_SpaceGrid.height = Vector3.Distance(bottomLeft, topLeft);
+            }
+           
             
             #if UNITY_EDITOR
             debug_CenterPoint = centerPoint;
@@ -89,7 +99,7 @@ namespace Metamatic
         }
         
         #if UNITY_EDITOR
-        private void OnDrawGizmosSelected()
+        private void OnDrawGizmos()
         {
             if (m_CachedCamera == null) return;
             Handles.color = Color.red;
