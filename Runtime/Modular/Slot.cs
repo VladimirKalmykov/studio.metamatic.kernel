@@ -6,7 +6,7 @@ namespace Metamatic {
 
     [ExecuteAlways]
     public class Slot: Element {
-        UseConfigurator useConfigurator;
+        private UseConfigurator useConfigurator;
         // public Stock stock; 
         [BoxGroup("Configurable")]
         [Tooltip("Children module can be attached by the confugurator")]
@@ -32,7 +32,7 @@ namespace Metamatic {
         private GameObject moduleGameObject = null;
         private ModulePreset m_ActiveModulePreset = null;
 
-        void Start() {
+        private void Start() {
             m_CachedRunInEditor = runInEditor;
             m_CachedConfigurable = configurable;
             if (configurable) {
@@ -40,7 +40,7 @@ namespace Metamatic {
             }
         }
 
-        void GetConfigurator() {
+        private void GetConfigurator() {
             if (useConfigurator != null) {
                 useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
             }
@@ -51,7 +51,7 @@ namespace Metamatic {
             }
         }
 
-        void ReleaseConfigurator() {
+        private void ReleaseConfigurator() {
             if (useConfigurator != null) {
                 useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
                 useConfigurator = null;
@@ -61,7 +61,7 @@ namespace Metamatic {
             }
         }
 
-        void OnDestroy() {
+        private void OnDestroy() {
             if (useConfigurator != null) {
                 useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
             }
@@ -94,7 +94,7 @@ namespace Metamatic {
             #endif
         }
 
-        void HandleConfigurationChange(Configuration config) {
+        private void HandleConfigurationChange(Configuration config) {
             #if UNITY_EDITOR
             var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
             if (isPartOfAnyPrefab) {
@@ -121,14 +121,13 @@ namespace Metamatic {
             if (m_ActiveModulePreset != null && m_ActiveModulePreset != modulePreset) {
                 m_ActiveModulePreset.Unsubscribe(HandleModulePresetChange);
             }
-            
-            if (modulePreset != null) {
-                m_ActiveModulePreset = modulePreset;
-                m_ActiveModulePreset.Subscribe(HandleModulePresetChange);
-            }
+
+            if (modulePreset == null) return;
+            m_ActiveModulePreset = modulePreset;
+            m_ActiveModulePreset.Subscribe(HandleModulePresetChange);
         }
 
-        async void HandleModulePresetChange(ModulePreset modulePreset) {
+        private async void HandleModulePresetChange(ModulePreset modulePreset) {
             #if UNITY_EDITOR
             var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
             #else
@@ -158,107 +157,102 @@ namespace Metamatic {
                 (moduleGameObject.GetComponent<Configurator>() ?? moduleGameObject.AddComponent<Configurator>()).configuration = modulePreset.configuration;
             }
 
-            if (moduleGameObject != null && modulePreset != null) {
-                var skin = await modulePreset.GetSkinAsync();
-                /* Do not continue if another modulePreset already was handled */
-                if (m_ActiveModulePreset != modulePreset) {
-                    return;
-                }
-                var skinApplier = moduleGameObject.GetComponent<SkinApplier>() ?? moduleGameObject.AddComponent<SkinApplier>();
-                skinApplier.skin = skin != null ? skin : skinApplier.defaultSkin;
+            if (moduleGameObject == null || modulePreset == null) return;
+            var skin = await modulePreset.GetSkinAsync();
+            /* Do not continue if another modulePreset already was handled */
+            if (m_ActiveModulePreset != modulePreset) {
+                return;
             }
+            var skinApplier = moduleGameObject.GetComponent<SkinApplier>() ?? moduleGameObject.AddComponent<SkinApplier>();
+            skinApplier.skin = skin != null ? skin : skinApplier.defaultSkin;
         }
 
-        void ApplyPrefab(GameObject prefab, bool isPartOfAnyPrefab) {
+        private void ApplyPrefab(GameObject prefab, bool isPartOfAnyPrefab) {
             this.prefab = prefab;
             ClearChildren();
 
-            if (prefab != null) {
-                #if UNITY_EDITOR
-                if (!Application.isPlaying) {
-                    if (!isPartOfAnyPrefab) {
-                        UnityEditor.EditorApplication.delayCall += () => {
-                            moduleGameObject = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab, transform);
-                            moduleGameObject.transform.localPosition = Vector3.zero;
-                            moduleGameObject.transform.localRotation = Quaternion.identity;
-                        };
-                    } else {
-                        return;
-                    }
+            if (prefab == null) return;
+#if UNITY_EDITOR
+            if (!Application.isPlaying) {
+                if (!isPartOfAnyPrefab) {
+                    UnityEditor.EditorApplication.delayCall += () => {
+                        moduleGameObject = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab, transform);
+                        moduleGameObject.transform.localPosition = Vector3.zero;
+                        moduleGameObject.transform.localRotation = Quaternion.identity;
+                    };
                 } else {
-                #endif
-                    moduleGameObject = Instantiate(prefab, transform);
-                    moduleGameObject.transform.localPosition = Vector3.zero;
-                    moduleGameObject.transform.localRotation = Quaternion.identity;
-                #if UNITY_EDITOR
+                    return;
                 }
-                #endif
-                
+            } else {
+#endif
+                moduleGameObject = Instantiate(prefab, transform);
+                moduleGameObject.transform.localPosition = Vector3.zero;
+                moduleGameObject.transform.localRotation = Quaternion.identity;
+#if UNITY_EDITOR
             }
+#endif
         }
 
-        void ClearChildren() {
+        private void ClearChildren() {
             #if UNITY_EDITOR
             var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
             #endif
 
             /* Clear all */
             #if UNITY_EDITOR
-            if (Application.isPlaying || !isPartOfAnyPrefab) {
-            #endif
-                Transform[] children = new Transform[transform.childCount];
-                int index = 0;
-                foreach(Transform child in transform) {
-                    children[index++] = child;
-                }
-
-                #if UNITY_EDITOR
-                if (Application.isPlaying) {
-                #endif
-                    for (int i = transform.childCount; i > 0; --i) {
-                        children[0].SetParent(null);
-                        GameObject.Destroy(children[0].gameObject);
-                    }
-                #if UNITY_EDITOR
-                } else {
-                    UnityEditor.EditorApplication.delayCall += () => {
-                        for (int i = transform.childCount; i > 0; --i) {
-                            DestroyImmediate(transform.GetChild(0).gameObject);
-                        }
-                    };
-                }
-                #endif
-
-                // 1234
-                
-            #if UNITY_EDITOR
+            if (!Application.isPlaying && isPartOfAnyPrefab) return;
+#endif
+            var children = new Transform[transform.childCount];
+            var index = 0;
+            foreach(Transform child in transform) {
+                children[index++] = child;
             }
-            #endif
+
+#if UNITY_EDITOR
+            if (Application.isPlaying) {
+#endif
+                for (var i = transform.childCount; i > 0; --i) {
+                    children[0].SetParent(null);
+                    GameObject.Destroy(children[0].gameObject);
+                }
+#if UNITY_EDITOR
+            } else {
+                UnityEditor.EditorApplication.delayCall += () => {
+                    for (var i = transform.childCount; i > 0; --i) {
+                        DestroyImmediate(transform.GetChild(0).gameObject);
+                    }
+                };
+            }
+#endif
+
+            // 1234
+                
+#if UNITY_EDITOR
+#endif
         }
 
-        bool m_CachedRunInEditor = false;
-        bool m_CachedConfigurable = false;
+        private bool m_CachedRunInEditor = false;
+        private bool m_CachedConfigurable = false;
 
         #if (UNITY_EDITOR)
-        void OnValidate() {
-            if (runInEditor != m_CachedRunInEditor || configurable != m_CachedConfigurable) {
-                m_CachedRunInEditor = runInEditor;
-                m_CachedConfigurable = configurable;
-                if (!Application.isPlaying) {
-                    if (runInEditor && configurable) {
-                        GetConfigurator();
-                    } else {
-                        ReleaseConfigurator();
-                    }
-                }
+        private void OnValidate()
+        {
+            if (runInEditor == m_CachedRunInEditor && configurable == m_CachedConfigurable) return;
+            m_CachedRunInEditor = runInEditor;
+            m_CachedConfigurable = configurable;
+            if (Application.isPlaying) return;
+            if (runInEditor && configurable) {
+                GetConfigurator();
+            } else {
+                ReleaseConfigurator();
             }
         }
         #endif
 
         #if (UNITY_EDITOR)
-        public void OnDrawGizmos() {
+        public void OnDrawGizmosSelected() {
             Gizmos.color = gizmosColor;
-            Matrix4x4 rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);
+            var rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);
             Gizmos.matrix = rotationMatrix;
             /* Draw player object face direction */
             Gizmos.DrawLine(Vector3.zero, (Vector3.forward.normalized * gizmosLineLength));
