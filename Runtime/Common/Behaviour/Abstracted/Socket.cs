@@ -1,3 +1,5 @@
+using System;
+
 namespace Metamatic {
     using System.Collections;
     using System.Collections.Generic;
@@ -38,13 +40,21 @@ namespace Metamatic {
 
         }
 
-        void Awake() {
+        private void Awake() {
             this.OnSocketAwake();
             this.OnSocketAttach();
         }
 
-        void OnTransformParentChanged() {
+        private void OnTransformParentChanged() {
             this.OnSocketAttach();
+        }
+
+        public event Action OnDidUpdate;
+
+        public void DidUpdate()
+        {
+            
+            OnDidUpdate?.Invoke();
         }
     }
 

@@ -14,7 +14,8 @@ namespace Metamatic {
         [GUIColor("GetSocketConnectionColor")]
         [ShowInInspector, ReadOnly]
         protected GameObject medium;
-        void OnEnable() {
+
+        private void OnEnable() {
             target = GetComponent<TargetT>();
 
             if (target == null) {
@@ -37,7 +38,7 @@ namespace Metamatic {
             OnConnectorEnabled();
         }
 
-        void OnDisable() {
+        private void OnDisable() {
             OnConnectorDisabled();
         }
 
