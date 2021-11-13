@@ -19,6 +19,19 @@ namespace Metamatic {
                 Math.Pow(a, 2) + Math.Pow(b, 2) - (2 * a * b * Math.Cos(C))
             );
         }
+        
+        /// <summary>
+        /// Find edge "c" by edge "a" and edge "c" and the angle between "a" and "b" (С in radians)
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <param name="C"></param>
+        /// <returns></returns>
+        public static float SolveTriangleEdgeByCosineTheorem(float a, float b, float C) {
+            return Mathf.Sqrt(
+                Mathf.Pow(a, 2) + Mathf.Pow(b, 2) - (2 * a * b * Mathf.Cos(C))
+            );
+        }
 
         /// <summary>
         /// Finds triangle angles by two sides and angle between it (angles in radian)
