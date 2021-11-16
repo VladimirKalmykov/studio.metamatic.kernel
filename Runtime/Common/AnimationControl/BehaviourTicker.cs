@@ -11,6 +11,27 @@ namespace Metamatic
     /// </summary>
     public class BehaviourTicker : MonoBehaviour
     {
+        public static BehaviourTicker GetBehaviourTicker(Behaviour component, string name = null) {
+            if (name == null) {
+                var track = component.GetComponent<BehaviourTicker>();
+                if (track == null) {
+                    return component.gameObject.AddComponent<BehaviourTicker>();
+                }
+            } else {
+                var tracks = component.GetComponents<BehaviourTicker>();
+                foreach(var track in tracks) {
+                    if (track.name == name) {
+                        return track;
+                    }
+                }
+            }
+
+            var newTrack = component.gameObject.AddComponent<BehaviourTicker>();
+            newTrack.name = name;
+            return newTrack;
+        }
+
+        public new string name = "Default";
         public event Action OnUpdate = () => { };
         public event Action OnLateUpdate = () => { };
 
