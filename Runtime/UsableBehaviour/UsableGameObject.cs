@@ -9,4 +9,12 @@ namespace Metamatic
     {
         
     }
+
+    [DisallowMultipleComponent]
+    public abstract class UsableGameObject<TProps> : UsableBehaviour<TProps>
+        where TProps: struct
+
+    {
+
+    }
 }

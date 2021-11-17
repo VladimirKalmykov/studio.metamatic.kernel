@@ -10,6 +10,34 @@
         [InlineEditor]
         public T defaultBehaviour;
         private T m_ActiveBehaviour;
+        private T m_ActiveDisabledBehaviour;
+
+        private bool m_BehaviourEnabled = true;
+
+        public bool behaviourEnabled
+        {
+            get
+            {
+                return m_BehaviourEnabled;
+            }
+            set
+            {
+                if (value == m_BehaviourEnabled) return;
+                m_BehaviourEnabled = value;
+                if (value && m_ActiveDisabledBehaviour)
+                {
+                    var previouslyDisabledBehaviour = m_ActiveDisabledBehaviour;
+                    m_ActiveDisabledBehaviour = null;
+                    activeBehaviour = previouslyDisabledBehaviour;
+                }
+                else
+                {
+                    m_ActiveDisabledBehaviour = m_ActiveBehaviour;
+                    activeBehaviour = null;
+                }
+            }
+        }
+        
         [ShowInInspector, HideInEditorMode]
         public T activeBehaviour {
             get { return m_ActiveBehaviour; }
@@ -30,7 +58,17 @@
             m_ActiveBehaviour = defaultBehaviour;
         }
 
-        private bool m_Started = false;
+        private bool m_Started;
+
+        public void EnableBehaviour()
+        {
+            m_ActiveBehaviour.OnBehaviourEnable();
+        }
+
+        public void DisableBehaviour()
+        {
+            m_ActiveBehaviour.OnBehaviourDisable();
+        }
 
         private void Awake() {
             if (m_ActiveBehaviour != null) {
@@ -44,6 +82,7 @@
                 return;
             }
             m_ActiveBehaviour.OnBehaviourEnable();
+            OnBehaviourEnable();
         }
 
         private void Start() {
@@ -51,6 +90,8 @@
             if (m_ActiveBehaviour != null) {
                 StartBehaviour();
             }
+
+            OnBehaviourStart();
         }
 
         private void Update() {
@@ -71,15 +112,22 @@
                 return;
             }
             m_ActiveBehaviour.OnBehaviourDisable();
+            OnBehaviourDisable();
         }
 
         private void OnDestroy() {
             if (m_ActiveBehaviour != null) {
                 m_ActiveBehaviour.OnBehaviourDestroy();
             }
+            OnBehaviourDestroy();
         }
 
         private void AttachBehaviour(T scriptableBehaviour) {
+            if (scriptableBehaviour == null)
+            {
+                enabled = false;
+                return;
+            }
             scriptableBehaviour.gameObject = gameObject;
             scriptableBehaviour.OnBehaviourAttach();
             enabled = true;
@@ -110,9 +158,13 @@
                 m_ActiveBehaviour.OnBehaviourStop();
             }
         }
-        
-        #region Virtual ExtensionMethods
+
+        #region Virtual Methods
+        protected virtual void OnBehaviourEnable() {}
+        protected virtual void OnBehaviourDisable() {}
         protected virtual void OnBehaviourDidUpdate() {}
+        protected virtual void OnBehaviourStart() {}
+        protected virtual void OnBehaviourDestroy() {}
         #endregion
     }
 }

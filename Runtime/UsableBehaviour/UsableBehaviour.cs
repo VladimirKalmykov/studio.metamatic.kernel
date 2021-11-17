@@ -72,15 +72,15 @@ namespace Metamatic
 
             m_DeactivationRequestTaskCompletionSource = new TaskCompletionSource<CancellationToken>();
             m_ActivityTaskCompletionSource = new TaskCompletionSource<object>();
-            StartActivity();
+            StartActivity(m_CancellationTokenSource.Token);
             return this;
         }
 
-        private async void StartActivity()
+        protected virtual async void StartActivity(CancellationToken token)
         {
             try
             {
-                await Activity(m_CancellationTokenSource.Token);
+                await Activity(token);
             }
             catch (OperationCanceledException e)
             {
@@ -90,7 +90,7 @@ namespace Metamatic
             }
             finally
             {
-                Complete();
+                CompleteAndFinalize();
             }
         }
 
@@ -107,22 +107,35 @@ namespace Metamatic
             }
 
             m_IsActivated = false;
-            CompleteAndInitialize();
+            CompleteAndRenew();
             m_DeactivationCancellationTokenSource = new CancellationTokenSource();
             m_DeactivationRequestTaskCompletionSource.SetResult(m_DeactivationCancellationTokenSource.Token);
         }
-
-        private void Complete()
+        
+        /// <summary>
+        /// Just complete task
+        /// </summary>
+        protected void Complete()
         {
             m_ActivityTaskCompletionSource?.TrySetResult(null);
-            m_ActivityTaskCompletionSource = null;
-            SetFinallized();
         }
-
-        protected void CompleteAndInitialize()
+        
+        /// <summary>
+        /// Complete task and start new
+        /// </summary>
+        protected void CompleteAndRenew()
         {
             Complete();
             m_ActivityTaskCompletionSource = new TaskCompletionSource<object>();
+        }
+        
+        /// <summary>
+        /// Complete task and nullify
+        /// </summary>
+        protected void CompleteAndFinalize()
+        {
+            m_ActivityTaskCompletionSource?.TrySetResult(null);
+            m_ActivityTaskCompletionSource = null;
         }
 
         #endregion
@@ -148,17 +161,51 @@ namespace Metamatic
         //     OnComplete += continuation;
         // }
     
-        private void SetFinallized()
-        {
+        // private void SetFinallized()
+        // {
             // IsCompleted = true;
             // OnComplete?.Invoke();
             // OnComplete = null;
-        }
+        // }
     
         // public TaskAwaiter GetAwaiter()
         // {
         //     return activityTask == null ? Task.CompletedTask.GetAwaiter() : activityTask.GetAwaiter();
         // }
         #endregion
+    }
+
+    public abstract class UsableBehaviour<TProps> : UsableBehaviour
+    {
+        private TProps m_UsableProps;
+        public UsableBehaviour Activate(in TProps props, CancellationToken cancellationToken = default)
+        {
+            this.m_UsableProps = props;
+            return base.Activate(cancellationToken);
+        }
+
+        protected override async void StartActivity(CancellationToken token)
+        {
+            try
+            {
+                await Activity(m_UsableProps, token);
+            }
+            catch (OperationCanceledException e)
+            {
+                // Ignore
+                Debug.Log("Activity was cancelled");
+                return;
+            }
+            finally
+            {
+                CompleteAndFinalize();
+            }
+        }
+        protected abstract Task Activity(TProps props, CancellationToken cancellationToken);
+
+        protected override sealed Task Activity(CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("This method should not be called in opposite to its generic version");
+        }
     }
 }

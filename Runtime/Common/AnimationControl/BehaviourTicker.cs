@@ -9,7 +9,7 @@ namespace Metamatic
     /// <summary>
     /// Allows to get access to the behaviour lifecycle events
     /// </summary>
-    public class BehaviourTicker : MonoBehaviour
+    public sealed class BehaviourTicker : MonoBehaviour
     {
         public static BehaviourTicker GetBehaviourTicker(Behaviour component, string name = null) {
             if (name == null) {
@@ -33,11 +33,17 @@ namespace Metamatic
 
         public new string name = "Default";
         public event Action OnUpdate = () => { };
+        public event Action OnFixedUpdate = () => { };
         public event Action OnLateUpdate = () => { };
 
         private void Update()
         {
             OnUpdate?.Invoke();
+        }
+
+        public void FixedUpdate()
+        {
+            OnFixedUpdate?.Invoke();
         }
         
         private void LateUpdate()
@@ -153,5 +159,48 @@ namespace Metamatic
 
             return asyncOperation;
         }
+
+        
+        #region EveryFrame
+        public enum FrameType
+        {
+            Update,
+            FixedUpdate,
+            LateUpdate
+        }
+        
+        public IDisposable EveryFrame(Action callback, FrameType frameType = FrameType.Update)
+        {
+            Action disposeCallback = null;
+            switch (frameType)
+            {
+                case FrameType.Update:
+                    OnUpdate += callback;
+                    disposeCallback = () =>
+                    {
+                        OnUpdate -= callback;
+                    };
+                    break;
+                case FrameType.FixedUpdate:
+                    OnFixedUpdate += callback;
+                    disposeCallback = () =>
+                    {
+                        OnFixedUpdate -= callback;
+                    };
+                    break;
+                case FrameType.LateUpdate:
+                    OnLateUpdate += callback;
+                    disposeCallback = () =>
+                    {
+                        OnLateUpdate -= callback;
+                    };
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(frameType), frameType, null);
+            }
+
+            return new DisposableCallback(disposeCallback);
+        }
+        #endregion
     }
 }
