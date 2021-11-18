@@ -9,6 +9,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 #endif
 using Metamatic.DevTools;
+using Sirenix.OdinInspector;
 
 namespace Metamatic.UI {
     /// <summary>
@@ -261,7 +262,11 @@ namespace Metamatic.UI {
                         prevPointerPosition = (Vector2)Input.touches[0].position;
                         #endif
                     } else {
+                        #if ENABLE_INPUT_SYSTEM
                         var mousePositon = (Vector2)Mouse.current.position.ReadValue();
+                        #else
+                        var mousePositon = (Vector2) Input.mousePosition;
+                        #endif
                         distance = new Vector2(
                             #if ENABLE_INPUT_SYSTEM
                             mousePositon.x - userStartPosition.x,
