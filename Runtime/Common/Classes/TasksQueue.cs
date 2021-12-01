@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -15,6 +16,17 @@ namespace Metamatic
             get;
             private set;
         }
+
+        public int signal
+        {
+            get;
+            private set;
+        } = -1;
+        public TasksQueue()
+        {
+            
+        }
+        
         public TasksQueue(IEnumerable<Task> tasks)
         {
             m_UnresolvedTasks = tasks.ToList();
@@ -32,12 +44,18 @@ namespace Metamatic
                 }
                 m_UnresolvedTasks.RemoveAt(index);
                 currentTask = resolvedTask;
+                signal = m_UnresolvedTasks.FindIndex(t => t.Id == resolvedTask.Id);
                 return true;
             }
             else
             {
                 return false;
             }
+        }
+
+        public void Add(Task task)
+        {
+            m_UnresolvedTasks.Add(task);
         }
 
         public void Dispose()

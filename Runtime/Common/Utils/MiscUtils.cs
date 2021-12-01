@@ -33,7 +33,7 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
-            Ray ray = camera.ScreenPointToRay(screenPos);
+            var ray = camera.ScreenPointToRay(screenPos);
             float distance;
             
             plane.Value.Raycast(ray, out distance);
@@ -47,15 +47,13 @@ namespace Metamatic {
         /// <returns></returns>
         public static Plane MeshToPlane(GameObject gameObject) {
             var filter = gameObject.GetComponent<MeshFilter>();
-            Vector3 normal = Vector3.zero;
+            var normal = Vector3.zero;
 
-            if(filter && filter.mesh.normals.Length > 0) {
-                normal = filter.transform.TransformDirection(filter.mesh.normals[0]);
+            if (!filter || filter.mesh.normals.Length <= 0) return default;
+            normal = filter.transform.TransformDirection(filter.mesh.normals[0]);
 
-                return new Plane(normal, gameObject.transform.position);
-            }
+            return new Plane(normal, gameObject.transform.position);
 
-            return default;
         }
         
         /// <summary>
@@ -90,7 +88,7 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
-            Ray ray = camera.ViewportPointToRay(viewportPos);
+            var ray = camera.ViewportPointToRay(viewportPos);
             float distance;
             
             plane.Value.Raycast(ray, out distance);
@@ -115,8 +113,8 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
-            Vector3 worldPoint1 = ScreenToPerspectivePoint(Vector2.zero, camera, plane.Value);
-            Vector3 worldPoint2 = ScreenToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
+            var worldPoint1 = ScreenToPerspectivePoint(Vector2.zero, camera, plane.Value);
+            var worldPoint2 = ScreenToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
             return Vector3.Distance(worldPoint1, worldPoint2);
         }
 
@@ -137,8 +135,8 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
-            Vector3 worldPoint1 = ScreenToPerspectivePoint(Vector2.zero, camera, plane.Value);
-            Vector3 worldPoint2 = ScreenToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
+            var worldPoint1 = ScreenToPerspectivePoint(Vector2.zero, camera, plane.Value);
+            var worldPoint2 = ScreenToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
             return Vector3.Distance(worldPoint1, worldPoint2);
         }
 
@@ -152,8 +150,8 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
-            Vector3 worldPoint1 = ViewportToPerspectivePoint(Vector2.zero, camera, plane.Value);
-            Vector3 worldPoint2 = ViewportToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
+            var worldPoint1 = ViewportToPerspectivePoint(Vector2.zero, camera, plane.Value);
+            var worldPoint2 = ViewportToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
             return Vector3.Distance(worldPoint1, worldPoint2);
         }
 
@@ -166,8 +164,8 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
-            Vector3 min = camera.ScreenToWorldPoint(new Vector3(rect.xMin, rect.yMin, camera.nearClipPlane));
-            Vector3 max = camera.ScreenToWorldPoint(new Vector3(rect.xMax, rect.yMax, camera.nearClipPlane));
+            var min = camera.ScreenToWorldPoint(new Vector3(rect.xMin, rect.yMin, camera.nearClipPlane));
+            var max = camera.ScreenToWorldPoint(new Vector3(rect.xMax, rect.yMax, camera.nearClipPlane));
 
             return new Rect(min.x, min.y, max.x - min.x, max.y - min.y);
         }
@@ -237,9 +235,9 @@ namespace Metamatic {
         /// <returns></returns>
         public static Color SetColorBrightness(Color color, float brightness, bool multiply = false) {
             /* Create special color for additional smoke (it should have main color but with resetted saturation and value) */
-            float H = 0f;
-            float S = 0f;
-            float V = 0f;
+            var H = 0f;
+            var S = 0f;
+            var V = 0f;
             
             Color.RGBToHSV(color, out H, out S, out V);
 
@@ -256,9 +254,9 @@ namespace Metamatic {
         /// <param name="maxRatio"></param>
         /// <returns></returns>
         public static Rect InscribeAspectRatioToRect(Rect rect, float minRatio, float maxRatio) {
-            float rectRatio = rect.width / rect.height;
-            float width = rect.width;
-            float height = rect.height;
+            var rectRatio = rect.width / rect.height;
+            var width = rect.width;
+            var height = rect.height;
 
             // 1.7777
             // 0.5625
@@ -277,8 +275,8 @@ namespace Metamatic {
                 }
             }
 
-            float left = (rect.width - width) / 2;
-            float top = (rect.height - height) / 2;
+            var left = (rect.width - width) / 2;
+            var top = (rect.height - height) / 2;
 
             return new Rect(left, top, width, height);
         }
@@ -310,14 +308,14 @@ namespace Metamatic {
                 areaScreenHeight = areaScreenWidth * minRatio;
             }
 
-            float left = (Screen.width - areaScreenWidth) / 2;
+            var left = (Screen.width - areaScreenWidth) / 2;
 
             Vector2 bottomLeft = camera.ScreenToWorldPoint(new Vector3(left, 0, camera.nearClipPlane));
             Vector2 topLeft = camera.ScreenToWorldPoint(new Vector3(left + 0, areaScreenHeight, camera.nearClipPlane));
             Vector2 bottomRight = camera.ScreenToWorldPoint(new Vector3(left + areaScreenWidth, 0f, camera.nearClipPlane));
 
-            float worldWidth = bottomRight.x - bottomLeft.x;
-            float worldHeight = bottomLeft.y - topLeft.y;
+            var worldWidth = bottomRight.x - bottomLeft.x;
+            var worldHeight = bottomLeft.y - topLeft.y;
 
             return new Rect(topLeft.x, topLeft.y, worldWidth, worldHeight);
         }
@@ -328,12 +326,12 @@ namespace Metamatic {
         /// <param name="spriteRenderer"></param>
         /// <param name="size"></param>
         public static void fitSprite2DScaleToRect(SpriteRenderer spriteRenderer, Rect rect) {
-            float defaultBoundX = spriteRenderer.bounds.size.x / spriteRenderer.transform.localScale.x;
-            float defaultBoundY = spriteRenderer.bounds.size.y / spriteRenderer.transform.localScale.y;
-            float width = rect.width == 0 ? defaultBoundX : rect.width;
-            float height = rect.height == 0 ? defaultBoundY : rect.height;
-            float scaleX = width / defaultBoundX;
-            float scaleY = height / defaultBoundY;
+            var defaultBoundX = spriteRenderer.bounds.size.x / spriteRenderer.transform.localScale.x;
+            var defaultBoundY = spriteRenderer.bounds.size.y / spriteRenderer.transform.localScale.y;
+            var width = rect.width == 0 ? defaultBoundX : rect.width;
+            var height = rect.height == 0 ? defaultBoundY : rect.height;
+            var scaleX = width / defaultBoundX;
+            var scaleY = height / defaultBoundY;
             spriteRenderer.transform.localScale = new Vector3(
                 scaleX,
                 scaleY,
@@ -353,8 +351,8 @@ namespace Metamatic {
         /// <param name="spriteRenderer"></param>
         /// <param name="size"></param>
         public static void fitSprite2DScaleToSize(SpriteRenderer spriteRenderer, Vector2 size) {
-            float defaultBoundX = spriteRenderer.bounds.size.x / spriteRenderer.transform.localScale.x;
-            float defaultBoundY = spriteRenderer.bounds.size.y / spriteRenderer.transform.localScale.y;
+            var defaultBoundX = spriteRenderer.bounds.size.x / spriteRenderer.transform.localScale.x;
+            var defaultBoundY = spriteRenderer.bounds.size.y / spriteRenderer.transform.localScale.y;
             float width;
             float height;
 
@@ -368,8 +366,8 @@ namespace Metamatic {
             } else {
                 width = size.x == 0 ? defaultBoundX : size.x;
                 height = size.y == 0 ? defaultBoundY : size.y;
-                float scaleX = width / defaultBoundX;
-                float scaleY = height / defaultBoundY;
+                var scaleX = width / defaultBoundX;
+                var scaleY = height / defaultBoundY;
 
                 spriteRenderer.transform.localScale = new Vector3(
                     scaleX,
@@ -386,7 +384,7 @@ namespace Metamatic {
         /// <param name="y"></param>
         /// <returns></returns>
         public static float Superimpose(float x, float y) {
-            float result = (x * y > 0.0f)
+            var result = (x * y > 0.0f)
                     ? (x >= 0 ? Mathf.Max(x, y) : Mathf.Min(x, y))
                     : x + y;
             return result;
@@ -473,7 +471,7 @@ namespace Metamatic {
         /// <param name="camera"></param>
         /// <returns></returns>
         public static Rect GetRenderersBoundingRect(Renderer[] renderers) {
-            Bounds bounds = renderers[0].bounds;
+            var bounds = renderers[0].bounds;
             for (var i = 1; i < renderers.Length; i++)
             {
                 bounds.Encapsulate(renderers[i].bounds);
@@ -508,7 +506,7 @@ namespace Metamatic {
         /// <param name="camera"></param>
         /// <returns></returns>
         public static Bounds GetRenderersBounds(Renderer[] renderers) {
-            Bounds bounds = renderers[0].bounds;
+            var bounds = renderers[0].bounds;
             for (var i = 1; i < renderers.Length; i++)
             {
                 bounds.Encapsulate(renderers[i].bounds);
@@ -524,7 +522,7 @@ namespace Metamatic {
         /// <param name="camera"></param>
         /// <returns></returns>
         public static Bounds GetColiidersBounds(Collider[] colliders) {
-            Bounds bounds = colliders[0].bounds;
+            var bounds = colliders[0].bounds;
             for (var i = 1; i < colliders.Length; i++)
             {
                 bounds.Encapsulate(colliders[i].bounds);
@@ -543,7 +541,7 @@ namespace Metamatic {
             if (camera == null) {
                 camera = Camera.main;
             }
-            Bounds bounds = renderers[0].bounds;
+            var bounds = renderers[0].bounds;
             for (var i = 1; i < renderers.Length; i++)
             {
                 bounds.Encapsulate(renderers[i].bounds);
@@ -582,7 +580,7 @@ namespace Metamatic {
             if (camera == null) {
                 camera = Camera.main;
             }
-            Bounds bounds = colliders[0].bounds;
+            var bounds = colliders[0].bounds;
             for (var i = 1; i < colliders.Length; i++)
             {
                 bounds.Encapsulate(colliders[i].bounds);
@@ -640,7 +638,7 @@ namespace Metamatic {
             path = path.Replace($"{Path.DirectorySeparatorChar}.{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}");
             while (true)
             {
-                String newPath = new Regex(@"[^\\/]+(?<!\.\.)[\\/]\.\.[\\/]").Replace(path, "" );
+                var newPath = new Regex(@"[^\\/]+(?<!\.\.)[\\/]\.\.[\\/]").Replace(path, "" );
                 if (newPath == path) break;
                 path = newPath;
             }
@@ -648,7 +646,7 @@ namespace Metamatic {
         }
 
         public static string NormalizePath(string path) {
-            char replaceSymbol = Path.DirectorySeparatorChar == '/' ? '\\' : '/';
+            var replaceSymbol = Path.DirectorySeparatorChar == '/' ? '\\' : '/';
             return MiscUtils.PathSimplify(path.Replace(replaceSymbol, Path.DirectorySeparatorChar));
         }
 
