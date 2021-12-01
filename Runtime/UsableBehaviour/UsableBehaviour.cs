@@ -10,7 +10,7 @@ namespace Metamatic
     /// <summary>
     /// Allows to use behaviour component with operator usage
     /// </summary>
-    public abstract class UsableBehaviour : MonoBehaviour, IDisposable
+    public abstract class UsableBehaviour : MonoBehaviour, IDisposable, INotifyCompletion
     {
         #region Serialized Fields
 
@@ -49,9 +49,9 @@ namespace Metamatic
         }
         public UsableBehaviour Activate(CancellationToken token = default)
         {
-            if (m_IsActivated)
+            if (!IsCompleted)
             {
-                throw new Exception("UsableBehaviour has been activated by another call");
+                throw new Exception("UsableBehaviour is not completed");
             }
             /* Cancel previous deactivation if exists */
             if (m_DeactivationCancellationTokenSource != null &&
@@ -118,6 +118,7 @@ namespace Metamatic
         protected void Complete()
         {
             m_ActivityTaskCompletionSource?.TrySetResult(null);
+            SetFinallized();
         }
         
         /// <summary>
@@ -126,6 +127,7 @@ namespace Metamatic
         protected void CompleteAndRenew()
         {
             Complete();
+            IsCompleted = false;
             m_ActivityTaskCompletionSource = new TaskCompletionSource<object>();
         }
         
@@ -134,7 +136,7 @@ namespace Metamatic
         /// </summary>
         protected void CompleteAndFinalize()
         {
-            m_ActivityTaskCompletionSource?.TrySetResult(null);
+            Complete();
             m_ActivityTaskCompletionSource = null;
         }
 
@@ -149,33 +151,34 @@ namespace Metamatic
         #region Crital Notify Completion
         // ReSharper disable once InconsistentNaming
         // ReSharper disable once UnusedAutoPropertyAccessor.Global
-        // public bool IsCompleted { get; private set; }
-        // public event Action OnComplete;
+        public bool IsCompleted { get; private set; }
+        public event Action OnComplete;
         // void ICriticalNotifyCompletion.UnsafeOnCompleted(Action continuation)
         // {
         //     OnComplete += continuation;
         // }
         //
-        // void INotifyCompletion.OnCompleted(Action continuation)
-        // {
-        //     OnComplete += continuation;
-        // }
+        void INotifyCompletion.OnCompleted(Action continuation)
+        {
+            OnComplete += continuation;
+        }
+        
+        private void SetFinallized()
+        {
+            IsCompleted = true;
+            OnComplete?.Invoke();
+            OnComplete = null;
+        }
     
-        // private void SetFinallized()
-        // {
-            // IsCompleted = true;
-            // OnComplete?.Invoke();
-            // OnComplete = null;
-        // }
-    
-        // public TaskAwaiter GetAwaiter()
-        // {
-        //     return activityTask == null ? Task.CompletedTask.GetAwaiter() : activityTask.GetAwaiter();
-        // }
+        public TaskAwaiter GetAwaiter()
+        {
+            return activityTask == null ? Task.CompletedTask.GetAwaiter() : activityTask.GetAwaiter();
+        }
         #endregion
     }
 
     public abstract class UsableBehaviour<TProps> : UsableBehaviour
+    where TProps : notnull
     {
         private TProps m_UsableProps;
         public UsableBehaviour Activate(in TProps props, CancellationToken cancellationToken = default)
