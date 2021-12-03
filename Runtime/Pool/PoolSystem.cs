@@ -45,12 +45,14 @@ namespace Metamatic {
             while (i < totalCount)
             {
                 var item = pool[i];
-                if (item != null)
+                if (item == null)
                 {
                     pool.RemoveAt(i);
                     totalCount--;
                     i--;
                 }
+
+                i++;
 
                 if (item.gameObject.activeInHierarchy) continue;
                 item.gameObject.SetActive(true);

@@ -7,8 +7,9 @@ using UnityEngine;
 namespace Metamatic
 {
     /// <summary>
-    /// Allows to get access to the behaviour lifecycle events
+    ///  Allows to get access to the behaviour lifecycle events
     /// </summary>
+    [ExecuteAlways]
     public sealed class BehaviourTicker : MonoBehaviour
     {
         public static BehaviourTicker GetBehaviourTicker(Behaviour component, string name = null) {

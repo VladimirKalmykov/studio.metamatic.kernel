@@ -34,7 +34,6 @@ namespace Metamatic.Effects
             m_CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
             var startTime = Time.unscaledTime;
             await RunEffect(m_CancellationTokenSource.Token);
-            Debug.Log("Run effect complete");
             m_ExecuteTaskCompletionSource.SetResult(Time.unscaledTime - startTime);
             m_IsCompleted = true;
             OnComplete?.Invoke();

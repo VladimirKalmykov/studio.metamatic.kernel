@@ -10,31 +10,50 @@ namespace Metamatic
     public class AsyncEvent: IDisposable
     {
         public readonly struct CancellationEventMessage {}
-        private TaskCompletionSource<Payload> m_TaskCompletionSource = null;
-        public void Emit<T>(T value = default)
+        private List<Action<Payload>> listeners = new List<Action<Payload>>();
+        private TaskCompletionSource<bool> m_EventHandlingProcessed = null;
+        public async void Emit<T>(T value = default)
         {
-            var source = m_TaskCompletionSource;
-            if (source == null) return;
-            m_TaskCompletionSource = null;
-            source.SetResult(new Payload<T>(value));
-            source.Task.Dispose();
+            while (m_EventHandlingProcessed != null)
+            {
+                await m_EventHandlingProcessed.Task;
+            }
+            m_EventHandlingProcessed = new TaskCompletionSource<bool>();
+            var payload = new Payload<T>(value);
+            foreach (var listener in listeners.ToArray())
+            {
+                listener(payload);
+            }
+
+            var pendingTask = m_EventHandlingProcessed;
+            m_EventHandlingProcessed = null;
+            pendingTask.SetResult(true);
         }
 
         public async Task<Payload> WhenEmit(CancellationToken cancellationToken = default)
         {
-            if (m_TaskCompletionSource == null)
+            var taskCompletionSource = new TaskCompletionSource<Payload>();
+
+            Action<Payload> listener = null;
+            listener = (Payload payload) =>
             {
-                m_TaskCompletionSource = new TaskCompletionSource<Payload>();
-            }
+                listeners.Remove(listener);
+                taskCompletionSource.SetResult(payload);
+            };
+            listeners.Add(listener);
 
             var waitCancelTask = new Promise<Payload>((resolve, reject, self) =>
             {
-                var registration = cancellationToken.Register(() => resolve(new Payload<CancellationEventMessage>()));
+                var registration = cancellationToken.Register(() =>
+                {
+                    listeners.Remove(listener);
+                    resolve(new Payload<CancellationEventMessage>());
+                });
                 self.OnFinally += () => { registration.Dispose(); };
             }).Task;
 
             var resultTask = await Task.WhenAny(new Task<Payload>[] {
-                    m_TaskCompletionSource.Task,
+                    taskCompletionSource.Task,
                     waitCancelTask
             });
             var result = await resultTask;
@@ -47,7 +66,14 @@ namespace Metamatic
         
         public void Dispose()
         {
-            m_TaskCompletionSource?.Task.Dispose();
+            var boiloutPayload = new Payload<CancellationEventMessage>();
+            foreach (var listener in listeners.ToArray())
+            {
+                listener(boiloutPayload);
+            }
+
+            listeners.Clear();
+            listeners = null;
         }
     }
 }
