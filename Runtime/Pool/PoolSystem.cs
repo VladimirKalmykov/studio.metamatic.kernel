@@ -18,7 +18,7 @@ namespace Metamatic {
             }
         }
         
-        private class PoolInstancesDictionary: Dictionary<Type, List<Behaviour>> {}
+        private class PoolInstancesDictionary: Dictionary<int, List<Behaviour>> {}
 
         private static PoolInstancesDictionary instances = new PoolInstancesDictionary();
         
@@ -29,15 +29,15 @@ namespace Metamatic {
         /// <returns></returns>
         public static Behaviour Boil(Behaviour component)
         {
-            var type = component.GetType();
+            var id = component.gameObject.GetInstanceID();
             List<Behaviour> pool;
-            if (!instances.ContainsKey(type))
+            if (!instances.ContainsKey(id))
             {
-                pool = instances[type] = new List<Behaviour>();
+                pool = instances[id] = new List<Behaviour>();
             }
             else
             {
-                pool = instances[type];
+                pool = instances[id];
             }
 
             var totalCount = pool.Count;

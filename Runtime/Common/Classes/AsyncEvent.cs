@@ -46,7 +46,7 @@ namespace Metamatic
             {
                 var registration = cancellationToken.Register(() =>
                 {
-                    listeners.Remove(listener);
+                    listeners?.Remove(listener);
                     resolve(new Payload<CancellationEventMessage>());
                 });
                 self.OnFinally += () => { registration.Dispose(); };
