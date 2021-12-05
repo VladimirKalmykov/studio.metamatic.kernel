@@ -25,40 +25,46 @@ namespace Metamatic {
         }
         public override VisualElement CreateInspectorGUI()
         {
-            VisualElement root = new VisualElement();
+            var root = new VisualElement();
             root.style.paddingBottom = 10;
             root.style.paddingRight = 2;
 
             /* Handle target attibutes */
-            Component target = (Component)this.target;
+            var target = (Component)this.target;
             var attributes = target.GetType().GetCustomAttributes(true);
-            foreach (object attribute in attributes)
+            foreach (var attribute in attributes)
             {
-                InspectorPictureAttribute inspectorImageHeaderAttribute = attribute as InspectorPictureAttribute;
-                if (inspectorImageHeaderAttribute != null) {
-                    string assetPath = inspectorImageHeaderAttribute.assetPath;
-                    if (assetPath.Length > 0) {
-                        object[] slicedImages = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                        if (slicedImages.Length > 0) {
-                            try {   
-                                Sprite sprite = (Sprite)slicedImages[1];
-                                root.Add(GUIHelpers.Create3SliedImageGUI(sprite));
-                            } catch (Exception e) {
-                                // Skip
+                switch (attribute)
+                {
+                    case InspectorPictureAttribute inspectorImageHeaderAttribute:
+                    {
+                        var assetPath = inspectorImageHeaderAttribute.assetPath;
+                        if (assetPath.Length > 0) {
+                            object[] slicedImages = AssetDatabase.LoadAllAssetsAtPath(assetPath);
+                            if (slicedImages.Length > 0) {
+                                try {   
+                                    var sprite = (Sprite)slicedImages[1];
+                                    root.Add(GUIHelpers.Create3SliedImageGUI(sprite));
+                                } catch {
+                                    // Skip
+                                }
                             }
                         }
-                    }
-                }
 
-                SetPicture picture = attribute as SetPicture;
-                if (picture != null) {
-                    string assetPath = picture.assetPath;
-                    if (assetPath.Length > 0) {
-                        object[] slicedImages = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                        if (slicedImages.Length > 0) {
-                            Sprite sprite = (Sprite)slicedImages[1];
-                            root.Add(GUIHelpers.Create3SliedImageGUI(sprite));
+                        break;
+                    }
+                    case SetPicture picture:
+                    {
+                        var assetPath = picture.assetPath;
+                        if (assetPath.Length > 0) {
+                            object[] slicedImages = AssetDatabase.LoadAllAssetsAtPath(assetPath);
+                            if (slicedImages.Length > 0) {
+                                var sprite = (Sprite)slicedImages[1];
+                                root.Add(GUIHelpers.Create3SliedImageGUI(sprite));
+                            }
                         }
+
+                        break;
                     }
                 }
             }
