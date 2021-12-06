@@ -1,8 +1,6 @@
 namespace Metamatic {
     using UnityEngine;
     using Sirenix.OdinInspector;
-    using UnityEngine.ResourceManagement.AsyncOperations;
-    using UnityEngine.AddressableAssets;
 
     [ExecuteAlways]
     public class Slot: Element {

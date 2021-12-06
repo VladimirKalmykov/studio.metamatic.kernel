@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace Metamatic
+namespace Metamatic.Nature.Services
 {
     [AddComponentMenu("Metamatic/Systems/Vfx")]
     public class VfxSystem : ServiceSystem

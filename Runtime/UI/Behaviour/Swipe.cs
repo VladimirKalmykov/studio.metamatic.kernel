@@ -9,7 +9,6 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 #endif
 using Metamatic.DevTools;
-using Sirenix.OdinInspector;
 
 namespace Metamatic.UI {
     /// <summary>
@@ -77,9 +76,7 @@ namespace Metamatic.UI {
 
         
         #region events
-        public event Action OnSwipeLeft;
-        public event Action OnSwipeRight;
-        public event Action OnSwipeMax;
+
         #endregion
 
         #region internal
@@ -101,7 +98,8 @@ namespace Metamatic.UI {
                 }
             }
         }
-        Vector2 m_StartPosition = Vector2.zero;
+
+        private Vector2 m_StartPosition = Vector2.zero;
         public Vector2 userStartPosition {
             get {
                 return m_StartPosition;
@@ -133,39 +131,40 @@ namespace Metamatic.UI {
                 if (changed) {
                     if (value && transform.parent != null) {
                         disabledSwipeParents = transform.parent.GetComponentsInParent<Swipe>();
-                        foreach(Swipe parent in disabledSwipeParents) {
+                        foreach(var parent in disabledSwipeParents) {
                             parent.disabled = true;
                         }
                     } else {
-                        foreach(Swipe parent in disabledSwipeParents) {
+                        foreach(var parent in disabledSwipeParents) {
                             parent.disabled = false;
                         }
                     }
                 }
             }
         }
-        RectTransform rectTransform;
-        RectTransform movableRectTransform;
-        bool pointerEntered = false;
+
+        private RectTransform rectTransform;
+        private RectTransform movableRectTransform;
+        private bool pointerEntered = false;
         #endregion
 
-        void Awake() {
+        private void Awake() {
             #if ENABLE_INPUT_SYSTEM
             EnhancedTouchSupport.Enable();
             #endif
         }
 
-        void OnEnable() {
+        private void OnEnable() {
             rectTransform = GetComponent<RectTransform>();
         }
 
-        void OnDisable() {
-            foreach(Swipe parent in disabledSwipeParents) {
+        private void OnDisable() {
+            foreach(var parent in disabledSwipeParents) {
                 parent.disabled = false;
             }
         }
 
-        void Update() {
+        private void Update() {
             #region Global input
             if (pointerIsEnabled) {
                 #region Standalone Input
@@ -178,14 +177,8 @@ namespace Metamatic.UI {
                     && Input.GetMouseButtonDown(0)
                     #endif
                 ) {
-                    /// <summary>
-                    /// Determins that user press pointer (mouse or touchsreen)
-                    /// </summary>
+                   
                     isPressed = true;
-                    /// <summary>
-                    /// Memorize start pointer position
-                    /// </summary>
-                    /// <returns></returns>
                     #if ENABLE_INPUT_SYSTEM
                     userStartPosition = (Vector2)Mouse.current.position.ReadValue();
                     #else
@@ -205,25 +198,31 @@ namespace Metamatic.UI {
                 #if ENABLE_INPUT_SYSTEM
                 if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches.Count > 0) {
                 #else
-                if (Input.touchCount > 0) {
-                #endif
+                if (Input.touchCount > 0)
+                {
+#endif
                     #if ENABLE_INPUT_SYSTEM
                     if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Began) {
                     #else
-                    if (Input.touches[0].phase == TouchPhase.Began) {
-                    #endif
-                        isPressed = true;
-                        #if ENABLE_INPUT_SYSTEM
+                    switch (Input.touches[0].phase)
+                    {
+                        case TouchPhase.Began:
+#endif
+                            isPressed = true;
+#if ENABLE_INPUT_SYSTEM
                         userStartPosition = UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition;
-                        #else
-                        userStartPosition = Input.touches[0].position;
-                        #endif
-                    #if ENABLE_INPUT_SYSTEM
+#else
+                            userStartPosition = Input.touches[0].position;
+#endif
+#if ENABLE_INPUT_SYSTEM
                     } else if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Ended || UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Canceled) {
-                    #else
-                    } else if (Input.touches[0].phase == UnityEngine.TouchPhase.Ended || Input.touches[0].phase == UnityEngine.TouchPhase.Canceled) {
-                    #endif
-                        isPressed = false;
+#else
+                            break;
+                        case UnityEngine.TouchPhase.Ended:
+                        case UnityEngine.TouchPhase.Canceled:
+#endif
+                            isPressed = false;
+                            break;
                     }
                 }
                 #endregion
@@ -295,19 +294,36 @@ namespace Metamatic.UI {
                 }
                 #endregion
 
-                if (!stopPropagation) {
-                    if (orientation == Orientation.HORIZONTAL) {
-                        if (Mathf.Abs(magnitude.x) > stopPropagationMagnitude) {
-                            stopPropagation = true;
+                if (!stopPropagation)
+                {
+                    switch (orientation)
+                    {
+                        case Orientation.HORIZONTAL:
+                        {
+                            if (Mathf.Abs(magnitude.x) > stopPropagationMagnitude) {
+                                stopPropagation = true;
+                            }
+
+                            break;
                         }
-                    } else if (orientation == Orientation.VERTICAL) {
-                        if (Mathf.Abs(magnitude.y) > stopPropagationMagnitude) {
-                            stopPropagation = true;
+                        case Orientation.VERTICAL:
+                        {
+                            if (Mathf.Abs(magnitude.y) > stopPropagationMagnitude) {
+                                stopPropagation = true;
+                            }
+
+                            break;
                         }
-                    } else {
-                        if (Mathf.Abs(magnitude.x) > stopPropagationMagnitude || Mathf.Abs(magnitude.y) > stopPropagationMagnitude) {
-                            stopPropagation = true;
+                        case Orientation.BOTH:
+                        {
+                            if (Mathf.Abs(magnitude.x) > stopPropagationMagnitude || Mathf.Abs(magnitude.y) > stopPropagationMagnitude) {
+                                stopPropagation = true;
+                            }
+
+                            break;
                         }
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
                 }
             } else {
@@ -316,13 +332,14 @@ namespace Metamatic.UI {
             }
 
             /* Calculate swipe ratio */
+            var rect = rectTransform.rect;
             magnitudeRatio = new Vector2(
-                magnitude.x / rectTransform.rect.width,
-                magnitude.y / rectTransform.rect.height
+                magnitude.x / rect.width,
+                magnitude.y / rect.height
             );
             ratio = new Vector2(
-                distance.x / rectTransform.rect.width,
-                distance.y / rectTransform.rect.height
+                distance.x / rect.width,
+                distance.y / rect.height
             );
             UILog.Add("Ratio", ratio);
         }
@@ -336,7 +353,7 @@ namespace Metamatic.UI {
         /// Called when the script is loaded or a value is changed in the
         /// inspector (Called in the editor only).
         /// </summary>
-        void OnValidate()
+        private void OnValidate()
         {
             
         }

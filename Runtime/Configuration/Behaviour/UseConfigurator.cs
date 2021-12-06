@@ -1,7 +1,5 @@
 namespace Metamatic {
     using UnityEngine;
-    using UnityEngine.Events;
-    using Sirenix.OdinInspector;
 
     public class UseConfigurator: MonoBehaviour {
         public bool runInEditor = false;

@@ -3,7 +3,6 @@ using System.Linq;
 
 namespace Metamatic
 {
-    using System.Collections;
     using System.Collections.Generic;
     using UnityEngine;
     using UnityEngine.Events;
@@ -39,8 +38,7 @@ namespace Metamatic
         
         [BoxGroup("Debug"), ShowInInspector, ReadOnly]
         public List<Collider> enteredColliders = new List<Collider>();
-        private new Collider m_Collider;
-        // Dictionary<GameObject, TimeProgress> debouncings = new Dictionary<GameObject, TimeProgress>();
+        private Collider m_Collider;
         private void Awake()
         {
             m_Collider = GetComponentInChildren<Collider>();

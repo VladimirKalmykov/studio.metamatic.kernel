@@ -1,6 +1,4 @@
 namespace Metamatic {
-    using System;
-    using System.Collections.Generic;
     using UnityEngine;
 
     [PluginFor(typeof(BehaviourState))]

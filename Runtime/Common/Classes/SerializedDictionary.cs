@@ -1,8 +1,7 @@
 namespace Metamatic {
     using System.Collections.Generic;
     using UnityEngine;
-    using Sirenix.OdinInspector;
-    
+
     /// <summary>
     /// Serialized dictionary
     /// </summary>

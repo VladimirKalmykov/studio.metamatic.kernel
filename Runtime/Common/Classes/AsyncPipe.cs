@@ -1,10 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections;
 using System.Collections.Generic;
 using Metamatic;
-using UnityEngine;
 
 public class AsyncPipe
 {
@@ -54,7 +52,7 @@ public class AsyncPipe
             {
                 payload = await queueCopy[i](payload, cancellationTokenSource.Token);
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException)
             {
                 cancellationTokenSource.Dispose();
                 processes.Remove(cancellationTokenSource);

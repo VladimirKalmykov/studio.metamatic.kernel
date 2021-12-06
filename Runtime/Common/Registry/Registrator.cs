@@ -1,8 +1,4 @@
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
-using Metamatic;
-using Sirenix.OdinInspector;
 
 namespace Metamatic.Experimental {
     public abstract class Registrator<T>: MonoBehaviour

@@ -2,7 +2,6 @@ using UnityEngine;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
-using System.Runtime.CompilerServices;
 
 namespace Metamatic
 {

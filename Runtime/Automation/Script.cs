@@ -1,10 +1,6 @@
 using System;
 using System.Reflection;
-using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using UnityEngine;
 
 namespace Metamatic{
     public static partial class Automation {

@@ -1,6 +1,5 @@
 namespace Metamatic {
     using UnityEngine;
-    using Sirenix.OdinInspector;
 
     [ExecuteAlways]
     public class Module: Element {

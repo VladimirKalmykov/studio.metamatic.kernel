@@ -2,10 +2,6 @@
 
 namespace Metamatic
 {
-    using System;
-    using System.Runtime.CompilerServices;
-    using System.Threading;
-
     public static class TaskExtensions
     {
         public static async Task<int> WhenAnySignal(this Task task, Task[] tasks)

@@ -1,9 +1,7 @@
  namespace Metamatic {
     using UnityEngine;
-    using System.Collections.Generic;
     using UnityEngine.Events;
     using Sirenix.OdinInspector;
-    using UnityEngine.AddressableAssets;
 
     public class Configurator: MonoBehaviour {
         // public Configuration localConfiguration;

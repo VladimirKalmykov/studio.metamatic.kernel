@@ -1,6 +1,3 @@
-using Metamatic;
-using System.Collections.Generic;
-
 namespace Metamatic.GameAccessManagment {
     public class GameAccessUtils {
         public static AccessDetails GetAccess(IAccessable accessable, Pass[] passes) {

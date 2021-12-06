@@ -1,9 +1,7 @@
 ﻿namespace Metamatic {
     using UnityEngine;
-    using Metamatic;
-    #if UNITY_EDITOR
-    using UnityEditor;
-    #endif
+#if UNITY_EDITOR
+#endif
 
     [ExecuteAlways]
     public class DisplayMesh : MonoBehaviour

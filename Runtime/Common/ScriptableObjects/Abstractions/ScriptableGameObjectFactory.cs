@@ -1,7 +1,6 @@
 namespace Metamatic {
     using System;
     using UnityEngine;
-    using Sirenix.Serialization;
 
     // TODO: add pool system
 

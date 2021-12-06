@@ -6,18 +6,17 @@ namespace Metamatic
     
     public class GameplayTimeSystem : MonoBehaviour
     {
-        private static GameplayTimeSystem instance;
-        private float m_RequiredTimeScale = 1f;
-        private float m_TransitionDuration = 4f;
-        private float m_DefaultTimeScale = 1f;
-        private AutomationTrack track;
+        private static GameplayTimeSystem m_Instance;
+        private const float TRANSITION_DURATION = 4f;
+        private const float DEFAULT_TIME_SCALE = 1f;
+        private AutomationTrack m_Track;
         private void Awake()
         {
-            if (instance != null)
+            if (m_Instance != null)
             {
                 throw new InvalidOperationException("GameplayTimeSystem can not be instantiated twice");
             }
-            instance = this;
+            m_Instance = this;
         }
     
         public static void SetTime(float timeScale)
@@ -27,9 +26,9 @@ namespace Metamatic
     
         public static void ResetTime()
         {
-            if (instance != null)
+            if (m_Instance != null)
             {
-                instance.InstanceResetTime();
+                m_Instance.InstanceResetTime();
             }
             Time.timeScale = 1f;
             Time.fixedDeltaTime = Time.timeScale * 0.02f;
@@ -37,36 +36,36 @@ namespace Metamatic
     
         public static void PlayStopEffect()
         {
-            if (instance == null)
+            if (m_Instance == null)
             {
                 Debug.LogError("Can not play stop effect because GameplayTimeSystem's instance is undefined");
                 return;
             }
     
-            instance.InstancePlayStopEffect();
+            m_Instance.InstancePlayStopEffect();
         }
     
         public void InstanceResetTime()
         {
-            if (track != null)
+            if (m_Track != null)
             {
-                track.CancelAll();
+                m_Track.CancelAll();
             }
         }
     
         private void InstancePlayStopEffect()
         {
-            track = this.GetAutomationTrack("RealTimeEffects");
+            m_Track = this.GetAutomationTrack("RealTimeEffects");
             var config = new Automation.Script.Config
             {
                 overlapMode = Automation.OverlapMode.Cancel,
                 timingMode = Automation.TimingMode.Autocomplete,
                 realTime = true
             };
-            track.Run(new Automation.FunctionScript(StopEffect, config), m_TransitionDuration);
+            m_Track.Run(new Automation.FunctionScript(StopEffect, config), TRANSITION_DURATION);
         }
     
-        private void StopEffect(Automation.Runtime runtime)
+        private static void StopEffect(Automation.Runtime runtime)
         {
             runtime.OnUpdate += () =>
             {
@@ -75,7 +74,7 @@ namespace Metamatic
             };
             runtime.OnCancel += () =>
             {
-                Time.timeScale = m_DefaultTimeScale;
+                Time.timeScale = DEFAULT_TIME_SCALE;
             };
         }
     }

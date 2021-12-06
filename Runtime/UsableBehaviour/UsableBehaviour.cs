@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,9 +6,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    /// <summary>
-    /// Allows to use behaviour component with operator usage
-    /// </summary>
+    [Obsolete("Use RunnableBehaviour instead", false)]
     public abstract class UsableBehaviour : MonoBehaviour, IDisposable, INotifyCompletion
     {
         #region Serialized Fields
@@ -82,7 +79,7 @@ namespace Metamatic
             {
                 await Activity(token);
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException)
             {
                 // Ignore
                 Debug.Log("Activity was cancelled");
@@ -193,7 +190,7 @@ namespace Metamatic
             {
                 await Activity(m_UsableProps, token);
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException)
             {
                 // Ignore
                 Debug.Log("Activity was cancelled");

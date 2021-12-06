@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
+using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -76,6 +76,42 @@ namespace Metamatic
 
             tokenSource = new CancellationTokenSource();
             return callback(tokenSource.Token);
+        }
+        
+        /// <summary>
+        /// Forget about task
+        /// </summary>
+        /// <param name="task"></param>
+        /// <param name="acceptableExceptions"></param>
+        public static async void Forget(this Task task, params Type[] acceptableExceptions)
+        {
+            try
+            {
+                await task.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // TODO: consider whether derived types are also acceptable.
+                if (!((IList) acceptableExceptions).Contains(ex.GetType()))
+                    throw;
+            }
+        }
+        
+        /// <summary>
+        /// Forget about task except non-cancellation exceptions
+        /// </summary>
+        /// <param name="task"></param>
+        public static async void ForgetCancellation(this Task task)
+        {
+            try
+            {
+                await task.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                if (!(ex is OperationCanceledException))
+                    throw;
+            }
         }
     }
 }

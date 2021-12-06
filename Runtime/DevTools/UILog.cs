@@ -2,7 +2,6 @@ using System.Linq;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEditor;
 
 namespace Metamatic.DevTools {
     /// <summary>

@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Metamatic {
     public static class AddressableUtils {

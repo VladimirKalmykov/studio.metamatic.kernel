@@ -3,7 +3,6 @@ namespace Metamatic {
     using System.Collections.Generic;
     using UnityEngine;
     using UnityEngine.AddressableAssets;
-    using Sirenix.OdinInspector;
 
     [System.Serializable]
     public class Configuration {

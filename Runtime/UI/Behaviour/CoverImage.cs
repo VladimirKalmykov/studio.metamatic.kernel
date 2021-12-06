@@ -1,9 +1,6 @@
 namespace Metamatic.UI {
-    using System.Collections;
     using System.Collections.Generic;
-    using System;
     using UnityEngine;
-    using UnityEngine.Sprites;
     using UnityEngine.UI;
     using Sirenix.OdinInspector;
     using UnityEngine.U2D;

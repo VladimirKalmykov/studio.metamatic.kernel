@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Reflection;
 
 namespace Metamatic {
     public static class AutomationUtils {

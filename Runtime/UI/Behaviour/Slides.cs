@@ -1,6 +1,6 @@
+using System.Linq;
+
 namespace Metamatic.UI {
-    using System.Collections;
-    using System.Collections.Generic;
     using UnityEngine;
     using Sirenix.OdinInspector;
 
@@ -23,29 +23,33 @@ namespace Metamatic.UI {
         }
         public int count {
             get {
-                return cachedChildren.Length;
+                return m_CachedChildren.Length;
             }
         }
         #endregion
 
         #region Private properties
-        RectTransform rect;
-        Transform[] cachedChildren = new Transform[0];
-        int currentSlide = 0;
+
+        private RectTransform m_Rect;
+        private Transform[] m_CachedChildren = new Transform[0];
         #endregion
-        void Awake() {
-            rect = (RectTransform)transform;
+
+        private void Awake() {
+            m_Rect = (RectTransform)transform;
         }
-        void Start() {
+
+        private void Start() {
             NormalizeChildren();
         }
-        void Update() {
-            size = new Vector2(rect.rect.width, rect.rect.height);
 
-            rect.offsetMin = positionRatio * size;
-            rect.offsetMax = positionRatio * size;
+        private void Update() {
+            size = new Vector2(m_Rect.rect.width, m_Rect.rect.height);
+
+            m_Rect.offsetMin = positionRatio * size;
+            m_Rect.offsetMax = positionRatio * size;
         }
-        void FixedUpdate() {
+
+        private void FixedUpdate() {
             if (GetChildrenHaveChanged()) {
                 NormalizeChildren();
             }
@@ -55,20 +59,14 @@ namespace Metamatic.UI {
         /// Checks if children have changed
         /// </summary>
         /// <returns></returns>
-        bool GetChildrenHaveChanged() {
-            if (cachedChildren.Length != transform.childCount) {
-                return true; 
-            }
-            for (int i = 0; i < cachedChildren.Length; i++) {
-                if (cachedChildren[i] != transform.GetChild(i)) {
-                    return true;
-                }
-            }
-            return false;
+        private bool GetChildrenHaveChanged()
+        {
+            return m_CachedChildren.Length != transform.childCount || m_CachedChildren.Where((t, i) => t != transform.GetChild(i)).Any();
         }
-        void NormalizeChildren() {
-            int index = 0;
-            cachedChildren = new Transform[transform.childCount];
+
+        private void NormalizeChildren() {
+            var index = 0;
+            m_CachedChildren = new Transform[transform.childCount];
             foreach(RectTransform child in transform) {
                 child.anchoredPosition = Vector2.zero;
                 child.sizeDelta = Vector2.zero;
@@ -80,13 +78,13 @@ namespace Metamatic.UI {
                     child.anchorMax = new Vector2(1, index + 1);
                 }
                 child.pivot = Vector2.zero;
-                cachedChildren[index] = child as Transform;
+                m_CachedChildren[index] = child as Transform;
                 index++;
             }
         }
 
         #if UNITY_EDITOR
-        void OnValidate() {
+        private void OnValidate() {
             NormalizeChildren();
         }
         #endif

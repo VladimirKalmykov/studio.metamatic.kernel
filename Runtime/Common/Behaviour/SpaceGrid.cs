@@ -1,9 +1,6 @@
 namespace Metamatic {
-    using System.Collections;
-    using System.Collections.Generic;
     using UnityEngine;
     using Sirenix.OdinInspector;
-    using Metamatic;
 
     /// <summary>
     /// Draws a grid in the space and adds each children to the each cell

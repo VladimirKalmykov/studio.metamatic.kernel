@@ -1,9 +1,9 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using System;
 using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Use UsableBehaviour instead", false)]
     [DisallowMultipleComponent]
     public abstract class UsableGameObject : UsableBehaviour
     {
