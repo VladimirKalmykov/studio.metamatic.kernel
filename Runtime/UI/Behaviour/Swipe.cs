@@ -222,7 +222,6 @@ namespace Metamatic.UI {
                         case UnityEngine.TouchPhase.Canceled:
 #endif
                             isPressed = false;
-                            break;
                     }
                 }
                 #endregion
