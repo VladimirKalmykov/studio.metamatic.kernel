@@ -26,13 +26,14 @@ namespace Metamatic {
             this.constantMax = value;
         }
 
-        public float GetValue() {
-            if (mode == Mode.Constant) {
-                return constant;
-            } else if (mode == Mode.Range) {
-                return UnityEngine.Random.Range(constantMin, constantMax);
-            }
-            return 0f;
+        public float GetValue()
+        {
+            return mode switch
+            {
+                Mode.Constant => constant,
+                Mode.Range => UnityEngine.Random.Range(constantMin, constantMax),
+                _ => 0f
+            };
         }
 
         public float GetMaxValue() {

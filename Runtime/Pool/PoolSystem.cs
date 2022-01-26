@@ -24,7 +24,8 @@ namespace Metamatic {
         /// </summary>
         /// <param name="component"></param>
         /// <returns></returns>
-        public static Behaviour Boil(Behaviour component)
+        public static T Boil<T>(T component)
+        where T: Behaviour
         {
             var id = component.gameObject.GetInstanceID();
             List<Behaviour> pool;
@@ -53,10 +54,10 @@ namespace Metamatic {
 
                 if (item.gameObject.activeInHierarchy) continue;
                 item.gameObject.SetActive(true);
-                return item;
+                return (T)item;
             }
             
-            var newBehaviour = (Behaviour) Instantiate(component.gameObject).GetComponent(component.GetType());
+            var newBehaviour = (T) Instantiate(component.gameObject).GetComponent(component.GetType());
             pool.Add(newBehaviour);
             return newBehaviour;
         }
