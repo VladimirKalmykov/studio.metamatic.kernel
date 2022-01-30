@@ -8,7 +8,7 @@ namespace Metamatic {
         public class ScriptablePoolDictionary: SerializedDictionary<ScriptablePoolBase, int> {}
         public ScriptablePoolDictionary alwaysReservedPools;
 
-        void Start() {
+        private void Start() {
             foreach(var poolReserve in alwaysReservedPools) {
                 var pool = poolReserve.Key;
                 pool.Prepare(poolReserve.Value);
@@ -58,6 +58,7 @@ namespace Metamatic {
             }
             
             var newBehaviour = (T) Instantiate(component.gameObject).GetComponent(component.GetType());
+            newBehaviour.gameObject.AddComponent<ObjectFromPool>();
             pool.Add(newBehaviour);
             return newBehaviour;
         }
