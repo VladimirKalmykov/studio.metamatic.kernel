@@ -9,6 +9,12 @@ namespace Metamatic
         {
             OnEmit?.Invoke();
         }
+        
+        public void Emit(Action<InstantEvent> mutator)
+        {
+            mutator(this);
+            Emit();
+        }
 
         public object Persist()
         {
