@@ -39,10 +39,10 @@ namespace Metamatic
             this.locked = locked;
         }
 
-        ~MutablePayload()
+        /*~MutablePayload()
         {
             Debug.Log("Mutable payload have released");
-        }
+        }*/
 
         public void SetValue(in T value)
         {
