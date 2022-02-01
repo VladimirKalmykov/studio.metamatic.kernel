@@ -8,13 +8,26 @@ namespace Metamatic {
                 return default(T);
             }
 
-            T component = (T)gameObject.transform.parent.gameObject.GetComponentInParent<T>();
+            var component = (T)gameObject.transform.parent.gameObject.GetComponentInParent<T>();
 
             if (component == null) {
                 return default(T);
             }
 
             return (T)component;
+        }
+
+        public static void Release(this MonoBehaviour gameObject)
+        {
+            var releasable = gameObject.GetComponent<Releasable>();
+            if (releasable != null)
+            {
+                releasable.Release();
+            }
+            else
+            {
+                Object.Destroy(gameObject);
+            }
         }
 
         // public static CancellationTokenSource CreateCancellationTokenSource(this MonoBehaviour gameObject, CancellationToken parentCancellationToken)
