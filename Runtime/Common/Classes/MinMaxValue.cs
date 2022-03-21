@@ -14,7 +14,7 @@ namespace Metamatic {
 
         public MinMaxValue(float min, float max) {
             this.mode = Mode.Range;
-            this.constant = 0f;
+            this.constant = min;
             this.constantMin = min;
             this.constantMax = max;
         }
@@ -22,17 +22,18 @@ namespace Metamatic {
         public MinMaxValue(float value) {
             this.mode = Mode.Constant;
             this.constant = value;
-            this.constantMin = 0f;
-            this.constantMax = 0f;
+            this.constantMin = value;
+            this.constantMax = value;
         }
 
-        public float GetValue() {
-            if (mode == Mode.Constant) {
-                return constant;
-            } else if (mode == Mode.Range) {
-                return UnityEngine.Random.Range(constantMin, constantMax);
-            }
-            return 0f;
+        public float GetValue()
+        {
+            return mode switch
+            {
+                Mode.Constant => constant,
+                Mode.Range => UnityEngine.Random.Range(constantMin, constantMax),
+                _ => 0f
+            };
         }
 
         public float GetMaxValue() {

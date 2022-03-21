@@ -451,5 +451,30 @@ namespace Metamatic {
             }
             return Mathf.Atan2(Vector3.Dot(v, right), Vector3.Dot(v, forward)) * Mathf.Rad2Deg;
         }
+        
+        /// <summary>
+        /// Get a twirl angle around the axis formed by the direction to the target (for example it can be facing a rocket that strives to target and uses feint) */
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="pivot"></param>
+        /// <param name="angle"></param>
+        /// <param name="progress"></param>
+        /// <returns></returns>
+        public static Quaternion TwirlRotationAroundDirection(Vector3 pivot, Vector3 target, float angle, float progress)
+        {
+            /* Get direction to target relative pivot */
+            var relativePos = target - pivot;
+            /* Get twirl angles for x, y axis */
+            var x = EasingFunction.EaseInOutSine(-angle, angle, Mathf.PingPong(progress + 0.5f, 1));
+            var y = EasingFunction.EaseInOutSine(-angle, angle, Mathf.PingPong(progress, 1));
+            var feint = new Vector3(
+                x,
+                y,
+                0f
+            );
+
+            return Quaternion.LookRotation(relativePos,
+                Vector3.up) * Quaternion.Euler(feint);
+        }
     }
 }

@@ -203,27 +203,30 @@ namespace Metamatic.UI {
 #endif
                     #if ENABLE_INPUT_SYSTEM
                     if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Began) {
+                         isPressed = true;
+                        userStartPosition = Input.touches[0].position;
+                    } else if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Ended || UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Canceled) {
+                        isPressed = false;
+                    }
                     #else
                     switch (Input.touches[0].phase)
                     {
                         case TouchPhase.Began:
-#endif
                             isPressed = true;
-#if ENABLE_INPUT_SYSTEM
-                        userStartPosition = UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].screenPosition;
-#else
                             userStartPosition = Input.touches[0].position;
-#endif
-#if ENABLE_INPUT_SYSTEM
-                    } else if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Ended || UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches[0].phase == UnityEngine.InputSystem.TouchPhase.Canceled) {
-#else
                             break;
                         case UnityEngine.TouchPhase.Ended:
                         case UnityEngine.TouchPhase.Canceled:
-#endif
                             isPressed = false;
                             break;
+                        case TouchPhase.Moved:
+                            break;
+                        case TouchPhase.Stationary:
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
+                    #endif
                 }
                 #endregion
             }
