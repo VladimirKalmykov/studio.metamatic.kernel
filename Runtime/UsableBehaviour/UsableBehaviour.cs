@@ -50,6 +50,8 @@ namespace Metamatic
             {
                 throw new Exception("UsableBehaviour is not completed");
             }
+
+            IsCompleted = false;
             /* Cancel previous deactivation if exists */
             if (m_DeactivationCancellationTokenSource != null &&
                 !m_DeactivationCancellationTokenSource.IsCancellationRequested)
@@ -148,7 +150,7 @@ namespace Metamatic
         #region Crital Notify Completion
         // ReSharper disable once InconsistentNaming
         // ReSharper disable once UnusedAutoPropertyAccessor.Global
-        public bool IsCompleted { get; private set; }
+        public bool IsCompleted { get; private set; } = true;
         public event Action OnComplete;
         // void ICriticalNotifyCompletion.UnsafeOnCompleted(Action continuation)
         // {

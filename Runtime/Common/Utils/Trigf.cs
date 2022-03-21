@@ -476,5 +476,29 @@ namespace Metamatic {
             return Quaternion.LookRotation(relativePos,
                 Vector3.up) * Quaternion.Euler(feint);
         }
+        
+        /// <summary>
+        /// Get reflected point of the target projection through the pivot at given distantion
+        /// </summary>
+        /// <explanation>
+        /// The most similar real life situation is how the light particle gets to the photo matrix through the pinhole camera
+        /// =                 |
+        ///     -             |
+        ///         -         |
+        ///             -     |       |
+        ///                 -         | Pinhole
+        ///                   | -     | matrix
+        ///                   |     - x
+        ///                   |         
+        ///                   |
+        /// </explanation>
+        /// <param name="target"></param>
+        /// <param name="pivot"></param>
+        /// <param name="distance"></param>
+        /// <returns></returns>
+        private static Vector3 GetReflectedProjection(Vector3 target, float distanceToTarget, float distanceToProjection)
+        {
+            return target * -1 * (distanceToProjection / distanceToTarget);
+        }
     }
 }
