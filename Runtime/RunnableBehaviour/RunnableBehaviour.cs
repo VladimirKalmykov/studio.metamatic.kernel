@@ -19,6 +19,16 @@ namespace Metamatic
             m_CancellationTokenSource = null;
             OnDispose();
         }
+        
+        /// <summary>
+        /// Run behaviour automatically after game start
+        /// </summary>
+        private void Start()
+        {
+            if (!ShouldRunOnStart()) return;
+            var cancellationTokenSource = new CancellationTokenSource();
+            Run(cancellationTokenSource.Token);
+        }
 
         public async Task Run(CancellationToken cancellationToken = default)
         {
@@ -72,5 +82,10 @@ namespace Metamatic
 
         protected abstract Task RunBehaviour(CancellationToken cancellationToken);
         protected virtual void OnDispose() {}
+
+        protected virtual bool ShouldRunOnStart()
+        {
+            return false;
+        }
     }
 }

@@ -1,9 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
-#if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
-#endif
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;

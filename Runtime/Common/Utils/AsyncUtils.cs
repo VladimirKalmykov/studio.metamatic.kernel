@@ -21,7 +21,7 @@ namespace Metamatic
             set;
         }
 
-        private static BehaviourTicker GetTicker()
+        public static BehaviourTicker GetTicker()
         {
             if (ticker != null) return ticker;
             ticker = GameObject.Find("__CommonBahaviourTicker__")?.GetComponent<BehaviourTicker>();
