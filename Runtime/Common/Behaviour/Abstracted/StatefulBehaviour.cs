@@ -2,7 +2,67 @@ namespace Metamatic {
     using System;
     using UnityEngine;
 
-    public abstract class StatefulBehaviour<State>: MonoBehaviour, ISerializationCallbackReceiver
+    public abstract class StatefulBehaviour : MonoBehaviour
+    {
+        protected event Action OnStatePreLateUpdate;
+        public class Debouncer
+        {
+            private float m_Duration = 1f;
+            private float m_StartTime;
+            private Action m_Action;
+            public event Action OnDispose;
+
+            private StatefulBehaviour m_Host;
+
+            public Debouncer(StatefulBehaviour statefulBehaviour)
+            {
+                m_Host = statefulBehaviour;
+            }
+
+            public void Debounce(Action action, float duration)
+            {
+                m_StartTime = Time.time;
+                m_Duration = duration;
+                m_Action = action;
+                m_Host.OnStatePreLateUpdate += Tick;
+            }
+
+            public void Tick()
+            {
+                if (m_StartTime == 0f || Time.time - m_StartTime < m_Duration) return;
+                m_StartTime = 0f;
+                Apply();
+            }
+
+            private void Apply()
+            {
+                m_StartTime = 0f;
+                m_Host.OnStatePreLateUpdate -= Tick;
+                m_Action.Invoke();
+            }
+
+            public void Dispose()
+            {
+                m_Host.OnStatePreLateUpdate -= Tick;
+                m_StartTime = 0f;
+                m_Action = null;
+            }
+        }
+
+        public Debouncer CreateDebouncer()
+        {
+            var valueStabilizer = new Debouncer(this);
+
+            return valueStabilizer;
+        }
+
+        protected void StatePreLateUpdate()
+        {
+            OnStatePreLateUpdate?.Invoke();
+        }
+    }
+    
+    public abstract class StatefulBehaviour<State>: StatefulBehaviour, ISerializationCallbackReceiver
         where State : struct
     {
         public delegate void StateChangeHandler(ref State state, ref State prevState);
@@ -72,6 +132,7 @@ namespace Metamatic {
 
         private void LateUpdate()
         {
+            StatePreLateUpdate();
             if (!stateful_ShouldUpdate) return;
             stateful_ShouldUpdate = false;
             stateListeners?.Invoke(ref stateful_NextState, ref stateful_State);
