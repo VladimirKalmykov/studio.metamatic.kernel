@@ -17,11 +17,14 @@ namespace Metamatic
             }
 
             serviceSystem.RegisterService(this);
+            OnServiceAwake();
         }
 
         private void OnDestroy()
         {
             serviceSystem.UnregisterSerive(this);
         }
+        
+        protected virtual void OnServiceAwake() {}
     }
 }
