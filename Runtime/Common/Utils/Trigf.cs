@@ -488,6 +488,16 @@ namespace Metamatic {
         }
         
         /// <summary>
+        /// Get sign of float ot zero if float equals zero
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static int SignOrZero(float value, float gap)
+        {
+            return Mathf.Abs(value) < gap ? 0 : (int)Mathf.Sign(value);
+        }
+        
+        /// <summary>
         /// Get reflected point of the target projection through the pivot at given distantion
         /// </summary>
         /// <explanation>

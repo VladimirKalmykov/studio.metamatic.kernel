@@ -10,6 +10,7 @@ namespace Metamatic {
             private float m_Duration = 1f;
             private float m_StartTime;
             private Action m_Action;
+            private bool m_IsThrottle = false;
             public event Action OnDispose;
 
             private StatefulBehaviour m_Host;
@@ -19,9 +20,13 @@ namespace Metamatic {
                 m_Host = statefulBehaviour;
             }
 
-            public void Debounce(Action action, float duration)
+            public void Debounce(Action action, float duration, bool throttle = false)
             {
-                m_StartTime = Time.time;
+                if (!throttle || m_StartTime == 0f)
+                {
+                    m_StartTime = Time.time;
+                }
+                m_IsThrottle = throttle;
                 m_Duration = duration;
                 m_Action = action;
                 m_Host.OnStatePreLateUpdate += Tick;
