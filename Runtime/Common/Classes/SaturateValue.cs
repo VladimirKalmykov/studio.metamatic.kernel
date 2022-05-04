@@ -49,9 +49,27 @@ namespace Metamatic {
             return Time.time;
         }
 
-        public T Set(T value)
+        public T Set(T value, bool immediate = false)
         {
             var cachedCurrentTime = GetCurrentTime();
+            if (immediate)
+            {
+                for (var i = 0; i < m_InitializedCount; i++)
+                {
+                    m_Weights[i] = 0f;
+                }
+
+                if (!m_TIndexMap.TryGetValue(value, out m_CurrentValueIndex))
+                {
+                    AddItem(value);
+                }
+
+                m_Weights[m_CurrentValueIndex] = 1f;
+                m_CurrentValueTime = cachedCurrentTime;
+                m_Sum = 1f;
+                return value;
+            }
+            
             if (m_InitializedCount == 0)
             {
                 AddItem(value);
@@ -109,14 +127,6 @@ namespace Metamatic {
                 AddItem(value);
             }
             m_CurrentValueTime = cachedCurrentTime;
-
-            for (var i = 0; i < m_InitializedCount; i++)
-            {
-                var itemWeight = m_Weights[i];
-                var itemValue = m_Values[i];
-                
-                UILog.Add($"Saturate {itemValue}", $"{itemWeight}");
-            }
 
             return m_Values[valueWithMaxWeightIndex];
         }

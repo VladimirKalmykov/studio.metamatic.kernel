@@ -342,7 +342,6 @@ namespace Metamatic.UI {
                 distance.x / rect.width,
                 distance.y / rect.height
             );
-            UILog.Add("Ratio", ratio);
         }
 
         public void Release() {
