@@ -26,7 +26,7 @@ namespace Metamatic
 
         private TargetJoint2D m_TargetJoint;
 
-        void Update ()
+        private void Update ()
         {
             // Calculate the world position for the mouse.
             #if ENABLE_INPUT_SYSTEM

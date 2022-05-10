@@ -8,29 +8,30 @@ namespace Metamatic.DevTools {
     /// Provides static 
     /// </summary>
     public class UILog: MonoBehaviour {
-        private enum ValueDefinitionType {
+        protected enum ValueDefinitionType {
             String,
             Func
         }
-        private class ValueDefinition {
+        protected class ValueDefinition {
             public string value;
             public Func<object> func;
             public ValueDefinitionType type;
         }
+
+        protected const string COMMON_SECTION_NAME = "Common";
         private static GameObject GetGo() {
-            GameObject UILogGo = GameObject.Find("DarkMatter__UILog__Singleton");
-            if (UILogGo is null) {
-                if (Application.isPlaying) {
-                    UILogGo = UILog.InstantiateGo();
-                } else {
-                    return null;
-                }
+            var UILogGo = GameObject.Find("__METAMATIC.UILOG__");
+            if (UILogGo is { }) return UILogGo;
+            if (Application.isPlaying) {
+                UILogGo = UILog.InstantiateGo();
+            } else {
+                return null;
             }
 
             return UILogGo;
         }
         private static GameObject InstantiateGo() {
-            GameObject go = new GameObject("DarkMatter__UILog__Singleton");
+            var go = new GameObject("__METAMATIC.UILOG__");
 
             if (go != null) {
                 go.AddComponent<UILog>();   
@@ -41,80 +42,148 @@ namespace Metamatic.DevTools {
             if (!Application.isPlaying) {
                 return;
             }
-            GameObject go = UILog.GetGo();
+            var go = UILog.GetGo();
 
-            if (go != null) {
-                UILog db = go.GetComponent<UILog>();
-                db.InternalAdd(key, message);
-            }
+            if (go == null) return;
+            var db = go.GetComponent<UILog>();
+            db.InternalAdd(key, message);
         }
+        public static void Add(string sectionName, string key, object message) {
+            if (!Application.isPlaying) {
+                return;
+            }
+            var go = UILog.GetGo();
 
+            if (go == null) return;
+            var db = go.GetComponent<UILog>();
+            db.InternalAdd(sectionName, key, message);
+        }
+        public static void Add(string sectionNane, string key, Func<object> getter) {
+            if (!Application.isPlaying) {
+                return;
+            }
+            var go = UILog.GetGo();
+
+            if (go == null) return;
+            var db = go.GetComponent<UILog>();
+            db.InternalAdd(sectionNane, key, getter);
+        }
         public static void Add(string key, Func<object> getter) {
             if (!Application.isPlaying) {
                 return;
             }
-            GameObject go = UILog.GetGo();
+            var go = UILog.GetGo();
 
-            if (go != null) {
-                UILog db = go.GetComponent<UILog>();
-                db.InternalAdd(key, getter);
-            }
+            if (go == null) return;
+            var db = go.GetComponent<UILog>();
+            db.InternalAdd(key, getter);
         }
 
+        public static void Remove(string sectionName, string key) {
+            if (!Application.isPlaying) {
+                return;
+            }
+            var go = UILog.GetGo();
+
+            var db = go.GetComponent<UILog>();
+            db.InternalRemove(sectionName, key);
+        }
+        
         public static void Remove(string key) {
             if (!Application.isPlaying) {
                 return;
             }
-            GameObject go = UILog.GetGo();
+            var go = UILog.GetGo();
 
-            UILog db = go.GetComponent<UILog>();
-            db.InternalRemove(key);
+            var db = go.GetComponent<UILog>();
+            db.InternalRemove(COMMON_SECTION_NAME, key);
         }
-
-        private IDictionary<string, ValueDefinition> _keyvalues = new Dictionary<string, ValueDefinition>();
+        
+        protected class LogPair: Dictionary<string, ValueDefinition> {}
+        private IDictionary<string, LogPair> m_Log = new Dictionary<string, LogPair>();
         private string _text = "";
+        
+        public void InternalAdd(string sectionName, string key, object message) {
+            if (!m_Log.ContainsKey(sectionName))
+            {
+                m_Log.Add(sectionName, new LogPair());
+            }
 
-        public void InternalAdd(string key, object message) {
-            if (!_keyvalues.ContainsKey(key)) {
-                _keyvalues.Add(key, new ValueDefinition {
+            var section = m_Log[sectionName];
+            if (!section.ContainsKey(key)) {
+                section.Add(key, new ValueDefinition {
                     value = "",
                     type = ValueDefinitionType.String
                 });
             }
-            _keyvalues[key].type = ValueDefinitionType.String;
-            _keyvalues[key].value = message.ToString();
+            section[key].type = ValueDefinitionType.String;
+            section[key].value = message == null ? "null" : message.ToString();
+        }
+        
+        public void InternalAdd(string sectionName, string key, Func<object> getter) {
+            if (!m_Log.ContainsKey(sectionName))
+            {
+                m_Log.Add(sectionName, new LogPair());
+            }
+
+            var section = m_Log[sectionName];
+            if (!section.ContainsKey(key)) {
+                section.Add(key, new ValueDefinition {
+                    value = "",
+                    type = ValueDefinitionType.String
+                });
+            }
+            section[key].type = ValueDefinitionType.Func;
+            section[key].func = getter;
+        }
+
+        public void InternalAdd(string key, object message)
+        {
+            InternalAdd(COMMON_SECTION_NAME, key, message);
         }
 
         public void InternalAdd(string key, Func<object> getter) {
-            if (!_keyvalues.ContainsKey(key)) {
-                _keyvalues.Add(key, new ValueDefinition {
-                    func = getter,
-                    type = ValueDefinitionType.Func
-                });
-            }
-            _keyvalues[key].type = ValueDefinitionType.Func;
-            _keyvalues[key].func = getter;
+            InternalAdd(COMMON_SECTION_NAME, key, getter);
         }
 
-        public void InternalRemove(string key) {
-            _keyvalues.Remove(key);
+        public void InternalRemove(string sectionName, string key)
+        {
+            if (!m_Log.ContainsKey(sectionName)) return;
+            var section = m_Log[sectionName];
+            if (!section.ContainsKey(key)) return;
+            section.Remove(key);
+            if (section.Count == 0)
+            {
+                m_Log.Remove(sectionName);
+            }
+        }
+
+        public void InternalRemove(string key)
+        {
+            InternalRemove(COMMON_SECTION_NAME, key);
         }
 
         private void CompileMessages() {
-            List<string> lines = new List<string>();
-            foreach( KeyValuePair<string, ValueDefinition> item in _keyvalues.ToList<KeyValuePair<string, ValueDefinition>>()) {
-                if (item.Value.type == ValueDefinitionType.String) {
-                    lines.Add($"{item.Key}: {item.Value.value}");
-                } else {
-                    lines.Add($"{item.Key}: {item.Value.func().ToString()}");
+            var lines = new List<string>();
+            foreach (var secionPair in m_Log)
+            {
+                lines.Add($"<b>{secionPair.Key}</b>:");
+                foreach( var item in secionPair.Value) {
+                    if (item.Value.type == ValueDefinitionType.String) {
+                        lines.Add($"{item.Key}: {item.Value.value}");
+                    } else {
+                        lines.Add($"{item.Key}: {item.Value.func().ToString()}");
+                    }
                 }
+                lines.Add("");
             }
-            _text = String.Join("\n ", lines.ToArray());
+            
+            _text = string.Join("\n ", lines.ToArray());
         }
 
-        void OnGUI() {
+        private void OnGUI() {
             CompileMessages();
-            GUIStyle style = new GUIStyle();
+            var style = new GUIStyle();
             style.fontSize = Screen.height / 50;
             style.normal.textColor = Color.HSVToRGB(0.48f, 0.26f, 1f);
             GUILayout.BeginArea(new Rect(10, 10, Screen.width / 2, Screen.height / 2));

@@ -1,3 +1,8 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using Metamatic.DevTools;
+
 namespace Metamatic {
     using System;
     using UnityEngine;
@@ -5,6 +10,9 @@ namespace Metamatic {
     public abstract class StatefulBehaviour : MonoBehaviour
     {
         protected event Action OnStatePreLateUpdate;
+        #if DEBUG
+        [SerializeField, HideInInspector] protected string[] statful_EditorShowStateKeys;
+        #endif
         public class Debouncer
         {
             private float m_Duration = 1f;
@@ -65,6 +73,7 @@ namespace Metamatic {
         {
             OnStatePreLateUpdate?.Invoke();
         }
+        
     }
     
     public abstract class StatefulBehaviour<State>: StatefulBehaviour, ISerializationCallbackReceiver
@@ -75,7 +84,9 @@ namespace Metamatic {
         public delegate void StateModifier(ref State state);
         private State stateful_State;
         private State stateful_NextState;
+        private State stateful_OverloadedState;
         private bool stateful_ShouldUpdate = false;
+        private bool stateful_UpdateInProcess = false;
         public State state {
             get { return stateful_State; }
             protected set
@@ -85,14 +96,22 @@ namespace Metamatic {
             }
         }
         public event StateChangeHandler stateListeners;
+        private event StateModifier m_PostUpdateModifiying = delegate {};
 
         protected virtual void OnStateChange(ref State state, ref State prevState) {}
 
         protected virtual void OnInitState() {}
 
         public void SetState(StateModifier modifier) {
-            modifier(ref stateful_NextState);
-            ForceUpdateState();
+            if (stateful_UpdateInProcess)
+            {
+                m_PostUpdateModifiying += modifier;
+            }
+            else
+            {
+                modifier(ref stateful_NextState);
+                ForceUpdateState();
+            }
         }
 
         /*public void SetState(in State nextState) {
@@ -106,6 +125,10 @@ namespace Metamatic {
         /// <returns>Next state</returns>
         public ref State GetNextStateRef()
         {
+            if (stateful_UpdateInProcess)
+            {
+                throw new Exception("You can not get reference to state while update in process");
+            }
             return ref stateful_NextState;
         }
         
@@ -130,20 +153,64 @@ namespace Metamatic {
         }
 
         void ISerializationCallbackReceiver.OnBeforeSerialize() {}
-
+        
+        #if DEBUG
+        private string[] statful_cached_AddedEditorShowStateKeys;
+        private bool stateful_ShouldApplyLogging;
+        #endif
         void ISerializationCallbackReceiver.OnAfterDeserialize() {
             OnInitState();
+            
+            #if DEBUG
+            stateful_ShouldApplyLogging = true;
+#endif
         }
+        
+        #if DEBUG
+        private void ApplyLogging()
+        {
+            var type = this.GetType();
+            var stateType = stateful_State.GetType();
+            var sectionName = $"{type.Name} ({name})";
+            if (statful_cached_AddedEditorShowStateKeys != null) foreach (var addedKey in statful_cached_AddedEditorShowStateKeys)
+            {
+                if (!statful_EditorShowStateKeys.Contains(addedKey))
+                {
+                    UILog.Remove(sectionName, addedKey);
+                }
+            }
+            foreach (var fieldName in statful_EditorShowStateKeys)
+            {
+                var field = stateType.GetField(fieldName);
+                UILog.Add(sectionName, fieldName, () => field.GetValue(stateful_State));
+            }
+
+            statful_cached_AddedEditorShowStateKeys = statful_EditorShowStateKeys.ToArray();
+        }
+        #endif
 
         private void LateUpdate()
         {
             StatePreLateUpdate();
             if (!stateful_ShouldUpdate) return;
             stateful_ShouldUpdate = false;
+            stateful_UpdateInProcess = true;
             stateListeners?.Invoke(ref stateful_NextState, ref stateful_State);
+            
+            #if DEBUG
+            if (stateful_ShouldApplyLogging)
+            {
+                stateful_ShouldApplyLogging = false;
+                ApplyLogging();
+            }
+            #endif
+            
             OnStateChange(ref stateful_NextState, ref stateful_State);
             stateful_State = stateful_NextState;
-            
+            m_PostUpdateModifiying.Invoke(ref stateful_NextState);
+            m_PostUpdateModifiying = delegate { };
+            stateful_UpdateInProcess = false;
+
         }
     }
 }
