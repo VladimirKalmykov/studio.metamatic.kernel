@@ -29,9 +29,16 @@ namespace Metamatic
 
         public override void OnInspectorGUI()
         {
+            base.OnInspectorGUI();
             var index = 0;
             var changed = false;
             var enabledCount = 0;
+            var bold = new GUIStyle();
+            bold.normal.textColor = new Color(0.16f, 0.58f, 0.89f);
+            bold.fontStyle = FontStyle.Bold;
+            GUILayout.Space(10);
+            GUILayout.Label(new GUIContent("State logging"), bold);
+            GUILayout.Space(2);
             m_CurrentlyActiveKeys = new string[m_ShowStateKeys.arraySize];
 
             for (var ai = 0; ai < m_ShowStateKeys.arraySize; ai++)
@@ -84,14 +91,6 @@ namespace Metamatic
                 
                 serializedObject.ApplyModifiedProperties();
             }
-            else
-            {
-                Debug.Log("CHECK!");
-            }
-
-            
-            
-            base.OnInspectorGUI();
         }
     }
 }

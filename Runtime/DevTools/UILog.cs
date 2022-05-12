@@ -171,8 +171,10 @@ namespace Metamatic.DevTools {
                 foreach( var item in secionPair.Value) {
                     if (item.Value.type == ValueDefinitionType.String) {
                         lines.Add($"{item.Key}: {item.Value.value}");
-                    } else {
-                        lines.Add($"{item.Key}: {item.Value.func().ToString()}");
+                    } else
+                    {
+                        var payload = item.Value.func();
+                        lines.Add($"{item.Key}: {(payload == null ? "null" : payload.ToString())}");
                     }
                 }
                 lines.Add("");
