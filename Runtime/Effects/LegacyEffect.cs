@@ -15,7 +15,7 @@ namespace Metamatic.Effects
     public interface IEffectWithProps<TTarget, TProps> : IEffect<TTarget>
         where TTarget: MonoBehaviour
     {
-        public Task RunEffect(Effector<TTarget> effector, TProps props, CancellationToken token);
+        public void RunEffect(Effector<TTarget> effector, TProps props, CancellationTokenSource tokenSource);
     }
     
     public abstract class ScriptableEffect<TContext>: ScriptableObject

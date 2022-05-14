@@ -15,13 +15,11 @@ namespace Metamatic.Effects
     {
         public readonly Effector effector;
         public readonly CancellationTokenSource cancellationTokenSource;
-        public readonly Task task;
 
-        public EffectPlayback(Effector effector, CancellationTokenSource cancellationTokenSource, Task task)
+        public EffectPlayback(Effector effector, CancellationTokenSource cancellationTokenSource)
         {
             this.effector = effector;
             this.cancellationTokenSource = cancellationTokenSource;
-            this.task = task;
             effector.playbacks.Add(this);
             OnCompleted(Release);
         }
@@ -38,30 +36,30 @@ namespace Metamatic.Effects
         
         #region Notify completion
         
-        public bool IsCompleted => this.task.IsCompleted;
+        public bool IsCompleted => this.cancellationTokenSource.IsCancellationRequested;
 
         public void GetResult() { }
 
         public void OnCompleted(Action continuation)
         {
-            if (this.task.IsCompleted)
+            if (this.cancellationTokenSource.IsCancellationRequested)
             {
                 continuation();
                 return;
             }
 
-            AsyncUtils.AwaitCallback(this.task, continuation);
+            cancellationTokenSource.Token.Register(continuation);
         }
 
         public void UnsafeOnCompleted(Action continuation)
         {
-            if (this.task.IsCompleted)
+            if (this.cancellationTokenSource.IsCancellationRequested)
             {
                 continuation();
                 return;
             }
 
-            AsyncUtils.AwaitCallback(this.task, continuation);
+            cancellationTokenSource.Token.Register(continuation);
         }
             
         public EffectPlayback GetAwaiter()
@@ -106,12 +104,13 @@ namespace Metamatic.Effects
             return ApplyEffect(effect as IEffectWithProps<TTarget, object>);
         }
 
-        public EffectPlayback ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
+        public EffectPlayback ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, ref TEffectProps props)
         {
             // var playback = new EffectPlaybackContext<TTarget>(this, effect);
             // playbacks.Add(playback);
             var cancellationTokenSource = new CancellationTokenSource();
-            return new EffectPlayback(this, cancellationTokenSource, effect.RunEffect(this, props, cancellationTokenSource.Token));
+            effect.RunEffect(this, props, cancellationTokenSource);
+            return new EffectPlayback(this, cancellationTokenSource);
 
             // return playback;
         }
