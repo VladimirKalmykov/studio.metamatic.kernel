@@ -5,10 +5,10 @@ namespace Metamatic.Effects
     /// <summary>
     /// The kind of effect which can be applied to the concrete target
     /// </summary>
-    public abstract class ObjectEffect: Effect
+    public abstract class ObjectLegacyEffect: LegacyEffect
     {
         public readonly GameObject target;
-        public ObjectEffect(GameObject target) : base()
+        public ObjectLegacyEffect(GameObject target) : base()
         {
             this.target = target;
         }

@@ -89,11 +89,6 @@ namespace Metamatic {
         private bool stateful_UpdateInProcess = false;
         public State state {
             get { return stateful_State; }
-            protected set
-            {
-                stateful_NextState = value;
-                stateful_ShouldUpdate = true;
-            }
         }
         public event StateChangeHandler stateListeners;
         private event StateModifier m_PostUpdateModifiying = delegate {};
@@ -114,10 +109,10 @@ namespace Metamatic {
             }
         }
 
-        /*public void SetState(in State nextState) {
+        public void SetState(in State nextState) {
             stateful_NextState = nextState;
             stateful_ShouldUpdate = true;
-        }*/
+        }
         
         /// <summary>
         /// Return by ref next state for direct editing (fastest way to mofidy next state, use it inside cycles and frames)

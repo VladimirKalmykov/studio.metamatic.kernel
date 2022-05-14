@@ -5,10 +5,10 @@ namespace Metamatic.Effects
     /// <summary>
     /// The kind of effect that can be applied to the point in space
     /// </summary>
-    public abstract class SpaceEffect: Effect
+    public abstract class SpaceLegacyEffect: LegacyEffect
     {
         public readonly Vector3 position;
-        public SpaceEffect(Vector3 position) : base()
+        public SpaceLegacyEffect(Vector3 position) : base()
         {
             this.position = position;
         }

@@ -6,7 +6,29 @@ using UnityEngine;
 
 namespace Metamatic.Effects
 {
-    public abstract class Effect : IRunnable, INotifyCompletion
+    public interface IEffect<TContext>
+        where TContext: MonoBehaviour
+    {
+    }
+
+    public interface IEffectWithProps<TTarget, TProps> : IEffect<TTarget>
+        where TTarget: MonoBehaviour
+    {
+        public Task RunEffect(Effector<TTarget> effector, TProps props, CancellationToken token);
+    }
+    
+    public abstract class ScriptableEffect<TContext>: ScriptableObject
+        where TContext: MonoBehaviour
+    {
+    }
+    
+    public abstract class ScriptableEffectWithProps<TTarget, TProps> : ScriptableEffect<TTarget>
+        where TTarget: MonoBehaviour
+    {
+        public abstract Task RunEffect(Effector<TTarget> effector, TProps props, CancellationToken token);
+    }
+    
+    public abstract class LegacyEffect : IRunnable, INotifyCompletion
     {
         private TaskCompletionSource<float> m_ExecuteTaskCompletionSource;
         private CancellationTokenSource m_CancellationTokenSource;
@@ -19,17 +41,19 @@ namespace Metamatic.Effects
             }
         }
 
-        public Effect()
+        public LegacyEffect()
         {
-            m_ExecuteTaskCompletionSource = new TaskCompletionSource<float>();
+            
         }
 
         public async Task Run(CancellationToken token)
         {
-            if (m_CancellationTokenSource != null)
+            if (m_ExecuteTaskCompletionSource.Task.Status == TaskStatus.Running || m_CancellationTokenSource != null)
             {
                 throw new InvalidOperationException("You can not run effect twice");
             }
+
+            m_ExecuteTaskCompletionSource?.TrySetCanceled();
             m_DeactivationRequestTaskCompletionSource = new TaskCompletionSource<bool>();
             m_CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
             var startTime = Time.unscaledTime;
@@ -53,6 +77,7 @@ namespace Metamatic.Effects
         public async void Dispose()
         {
             m_CancellationTokenSource.Cancel();
+            m_CancellationTokenSource = null;
             m_DeactivationRequestTaskCompletionSource.SetResult(true);
         }
 

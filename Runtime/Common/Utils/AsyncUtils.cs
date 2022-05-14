@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -49,11 +50,17 @@ namespace Metamatic
             return tokenSource.Token;
         }
 
-        public static async void AwaitCallback(Task awaitable, Action callback)
+        public static async void AwaitCallback(Task awaitable, Action callback, bool allowCancellation = false)
         {
             try
             {
                 await awaitable;
+            }
+            catch (Exception ex)
+            {
+                // ReSharper disable once UseNegatedPatternInIsExpression
+                if (!allowCancellation || !(ex is OperationCanceledException))
+                    throw;
             }
             finally
             {
@@ -109,9 +116,62 @@ namespace Metamatic
             }
             catch (Exception ex)
             {
+                // ReSharper disable once UseNegatedPatternInIsExpression
                 if (!(ex is OperationCanceledException))
                     throw;
             }
+        }
+
+        public readonly struct SimpleCancellationTokenAwaiter: ICriticalNotifyCompletion
+        {
+            public readonly CancellationToken token;
+            public SimpleCancellationTokenAwaiter(CancellationToken token)
+            {
+                this.token = token;
+            }
+
+            public bool IsCompleted => this.token.IsCancellationRequested;
+
+            public void GetResult() { }
+
+            public void OnCompleted(Action continuation)
+            {
+                if (this.token.IsCancellationRequested)
+                {
+                    continuation();
+                }
+                else
+                {
+                    this.token.Register(continuation);
+                }
+            }
+
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                if (this.token.IsCancellationRequested)
+                {
+                    continuation();
+                }
+                else
+                {
+                    this.token.Register(continuation);
+                }
+            }
+            
+            public SimpleCancellationTokenAwaiter GetAwaiter()
+            {
+                return this;
+            }
+        }
+
+        public static SimpleCancellationTokenAwaiter WhenCancellationToken(CancellationToken token)
+        {
+            return new SimpleCancellationTokenAwaiter(token);
+        }
+
+        public static SimpleCancellationTokenAwaiter WhenCancelled(this CancellationToken token)
+        {
+            return new SimpleCancellationTokenAwaiter(token);
         }
     }
 }
