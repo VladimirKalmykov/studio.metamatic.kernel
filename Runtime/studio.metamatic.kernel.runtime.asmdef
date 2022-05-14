@@ -5,7 +5,8 @@
         "UnityEngine.UI",
         "Unity.Addressables",
         "Unity.ResourceManager",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

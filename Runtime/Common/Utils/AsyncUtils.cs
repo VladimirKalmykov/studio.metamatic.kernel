@@ -3,6 +3,7 @@ using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
@@ -51,6 +52,24 @@ namespace Metamatic
         }
 
         public static async void AwaitCallback(Task awaitable, Action callback, bool allowCancellation = false)
+        {
+            try
+            {
+                await awaitable;
+            }
+            catch (Exception ex)
+            {
+                // ReSharper disable once UseNegatedPatternInIsExpression
+                if (!allowCancellation || !(ex is OperationCanceledException))
+                    throw;
+            }
+            finally
+            {
+                callback();
+            }
+        }
+        
+        public static async void AwaitCallback(UniTask awaitable, Action callback, bool allowCancellation = false)
         {
             try
             {

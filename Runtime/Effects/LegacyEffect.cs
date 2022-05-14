@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic.Effects
@@ -52,6 +53,8 @@ namespace Metamatic.Effects
             {
                 throw new InvalidOperationException("You can not run effect twice");
             }
+            
+            UniTask x = UniTask.NextFrame();
 
             m_ExecuteTaskCompletionSource?.TrySetCanceled();
             m_DeactivationRequestTaskCompletionSource = new TaskCompletionSource<bool>();
