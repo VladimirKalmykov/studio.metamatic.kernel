@@ -82,14 +82,11 @@ namespace Metamatic {
         public delegate void StateChangeHandler(ref State state, ref State prevState);
 
         public delegate void StateModifier(ref State state);
-        private State stateful_State;
+        public State state;
         private State stateful_NextState;
         private State stateful_OverloadedState;
         private bool stateful_ShouldUpdate = false;
         private bool stateful_UpdateInProcess = false;
-        public State state {
-            get { return stateful_State; }
-        }
         public event StateChangeHandler stateListeners;
         private event StateModifier m_PostUpdateModifiying = delegate {};
 
@@ -137,7 +134,7 @@ namespace Metamatic {
 
         public Action SubscribeState(StateChangeHandler handler) {
             stateListeners += handler;
-            handler(ref stateful_State, ref stateful_State);
+            handler(ref state, ref state);
             return () => {
                 UnsubscribeState(handler);
             };
@@ -165,7 +162,7 @@ namespace Metamatic {
         private void ApplyLogging()
         {
             var type = this.GetType();
-            var stateType = stateful_State.GetType();
+            var stateType = state.GetType();
             var sectionName = $"{type.Name} ({name})";
             if (statful_cached_AddedEditorShowStateKeys != null) foreach (var addedKey in statful_cached_AddedEditorShowStateKeys)
             {
@@ -177,7 +174,7 @@ namespace Metamatic {
             foreach (var fieldName in statful_EditorShowStateKeys)
             {
                 var field = stateType.GetField(fieldName);
-                UILog.Add(sectionName, fieldName, () => field.GetValue(stateful_State));
+                UILog.Add(sectionName, fieldName, () => field.GetValue(state));
             }
 
             statful_cached_AddedEditorShowStateKeys = statful_EditorShowStateKeys.ToArray();
@@ -190,7 +187,7 @@ namespace Metamatic {
             if (!stateful_ShouldUpdate) return;
             stateful_ShouldUpdate = false;
             stateful_UpdateInProcess = true;
-            stateListeners?.Invoke(ref stateful_NextState, ref stateful_State);
+            stateListeners?.Invoke(ref stateful_NextState, ref state);
             
             #if DEBUG
             if (stateful_ShouldApplyLogging)
@@ -200,8 +197,8 @@ namespace Metamatic {
             }
             #endif
             
-            OnStateChange(ref stateful_NextState, ref stateful_State);
-            stateful_State = stateful_NextState;
+            OnStateChange(ref stateful_NextState, ref state);
+            state = stateful_NextState;
             m_PostUpdateModifiying.Invoke(ref stateful_NextState);
             m_PostUpdateModifiying = delegate { };
             stateful_UpdateInProcess = false;

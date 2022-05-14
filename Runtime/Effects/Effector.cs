@@ -6,21 +6,31 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Metamatic;
+using Metamatic.DevTools;
 
 namespace Metamatic.Effects
 {
-    public readonly struct CancellableEffectPlayback: ICriticalNotifyCompletion
+    public class EffectPlayback: ICriticalNotifyCompletion, IDisposable
     {
+        public readonly Effector effector;
         public readonly CancellationTokenSource cancellationTokenSource;
         public readonly Task task;
 
-        public CancellableEffectPlayback(CancellationTokenSource cancellationTokenSource, Task task)
+        public EffectPlayback(Effector effector, CancellationTokenSource cancellationTokenSource, Task task)
         {
+            this.effector = effector;
             this.cancellationTokenSource = cancellationTokenSource;
             this.task = task;
+            effector.playbacks.Add(this);
+            OnCompleted(Release);
         }
 
-        public void Cancel()
+        public void Release()
+        {
+            effector.playbacks.Remove(this);
+        }
+
+        public void Dispose()
         {
             this.cancellationTokenSource.Cancel();
         }
@@ -53,7 +63,7 @@ namespace Metamatic.Effects
             AsyncUtils.AwaitCallback(this.task, continuation);
         }
             
-        public CancellableEffectPlayback GetAwaiter()
+        public EffectPlayback GetAwaiter()
         {
             return this;
         }
@@ -61,24 +71,46 @@ namespace Metamatic.Effects
         #endregion
     }
 
-    public class Effector<TTarget> : MonoBehaviour
+    public class Effector : MonoBehaviour
+    {
+        public readonly List<EffectPlayback> playbacks = new List<EffectPlayback>();
+
+        private void Awake()
+        {
+            playbacks.Capacity = 10000;
+            
+        }
+
+        private void Start()
+        {
+            UILog.Add("Effector", "playbacks.Count", () => playbacks.Count);
+        }
+        
+        private void OnDestroy()
+        {
+            foreach (var playback in playbacks)
+            {
+                playback.Dispose();
+            }
+        }
+    }
+    
+    public class Effector<TTarget> : Effector
         where TTarget: MonoBehaviour
     {
         public TTarget target { get; private set; }
-
         
-        
-        public CancellableEffectPlayback ApplyEffect(IEffect<TTarget> effect)
+        public EffectPlayback ApplyEffect(IEffect<TTarget> effect)
         {
             return ApplyEffect(effect as IEffectWithProps<TTarget, object>);
         }
 
-        public CancellableEffectPlayback ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
+        public EffectPlayback ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
         {
             // var playback = new EffectPlaybackContext<TTarget>(this, effect);
             // playbacks.Add(playback);
             var cancellationTokenSource = new CancellationTokenSource();
-            return new CancellableEffectPlayback(cancellationTokenSource, effect.RunEffect(this, props, cancellationTokenSource.Token));
+            return new EffectPlayback(this, cancellationTokenSource, effect.RunEffect(this, props, cancellationTokenSource.Token));
 
             // return playback;
         }
@@ -93,9 +125,6 @@ namespace Metamatic.Effects
             target = GetComponent<TTarget>();
         }
 
-        private void OnDestroy()
-        {
-            
-        }
+        
     }
 }

@@ -1,6 +1,4 @@
 using System;
-using PlasticGui.WorkspaceWindow;
-using UnityEngine;
 
 namespace Metamatic
 {

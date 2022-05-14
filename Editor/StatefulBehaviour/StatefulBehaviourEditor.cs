@@ -11,7 +11,7 @@ namespace Metamatic
     public class StatefulBehaviourEditor : Editor
     {
         private Type m_StateMachineType;
-        private PropertyInfo m_StatePropertyInfo;
+        private FieldInfo m_StatePropertyInfo;
         private Type m_StateType;
         private SerializedProperty m_ShowStateKeys;
         private FieldInfo[] m_Fields;
@@ -20,8 +20,8 @@ namespace Metamatic
         private void OnEnable()
         {
             m_StateMachineType = target.GetType();
-            m_StatePropertyInfo = m_StateMachineType.GetProperty("state");
-            m_StateType = m_StatePropertyInfo.PropertyType;
+            m_StatePropertyInfo = m_StateMachineType.GetField("state");
+            m_StateType = m_StatePropertyInfo.FieldType;
             m_ShowStateKeys = serializedObject.FindProperty("statful_EditorShowStateKeys");
             m_Fields = m_StateType.GetFields();
             m_ActiveKeys = new bool[m_Fields.Length];
