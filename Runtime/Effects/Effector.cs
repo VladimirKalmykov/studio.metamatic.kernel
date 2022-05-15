@@ -13,7 +13,8 @@ namespace Metamatic.Effects
 {
     public class Effector : MonoBehaviour
     {
-        public readonly List<EffectOperationContext> effectExecutions = new List<EffectOperationContext>();
+        public event Action OnBeforeDestroy;
+        public readonly List<EffectExecutionContext> effectExecutions = new List<EffectExecutionContext>();
 
         private void Start()
         {
@@ -22,37 +23,38 @@ namespace Metamatic.Effects
         
         private void OnDestroy()
         {
-            foreach (var playback in effectExecutions)
-            {
-                playback.Dispose();
-            }
+            OnBeforeDestroy?.Invoke();
         }
     }
     
     public class Effector<TTarget> : Effector
         where TTarget: MonoBehaviour
     {
+        public readonly List<EffectsChannel<TTarget>> channels = new List<EffectsChannel<TTarget>>();
+        private EffectsChannel<TTarget> m_CommonChannel;
         public TTarget target { get; private set; }
-
-        public EffectCancellableOperationAwaiter ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
-        {
-            return new EffectExecutionContext<TTarget, TEffectProps>(
-                this,
-                effect,
-                ref props
-            ).GetAwaiter();
-        }
-
-        public void ReleaseEffect(IEffect<TTarget> effect)
-        {
-            
-        }
 
         private void Awake()
         {
             target = GetComponent<TTarget>();
+            
+            /* Define common channel */
+            m_CommonChannel = new EffectsChannel<TTarget>(this, this, "Common");
         }
 
-        
+        public EffectsChannel<TTarget> CreateChannel(Behaviour owner, string debugName)
+        {
+            return new EffectsChannel<TTarget>(this, owner, debugName);
+        }
+
+        public EffectCancellableOperationAwaiter ApplyEffect(IEffect<TTarget> effect)
+        {
+            return m_CommonChannel.Add(effect);
+        }
+
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
+        {
+            return m_CommonChannel.Add(effect, props);
+        }
     }
 }

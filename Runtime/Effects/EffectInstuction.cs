@@ -1,0 +1,46 @@
+using System;
+using UnityEngine;
+
+namespace Metamatic.Effects
+{
+    public class EffectInstruction<TTarget>
+        where TTarget: MonoBehaviour
+    {
+        public readonly IEffect<TTarget> effect;
+
+        public EffectInstruction(IEffect<TTarget> effect)
+        {
+            if (effect == null)
+            {
+                throw new ArgumentException("Effect can not be null");
+            }
+            this.effect = effect;
+        }
+
+        public EffectCancellableOperationAwaiter Run(EffectsChannel<TTarget> channel)
+        {
+            return OnRun(channel);
+        }
+
+        public virtual EffectCancellableOperationAwaiter OnRun(EffectsChannel<TTarget> channel)
+        {
+            return channel.Add(effect);
+        }
+    }
+    
+    public class EffectInstruction<TTarget, TProps>: EffectInstruction<TTarget>
+        where TTarget: MonoBehaviour
+    {
+        public readonly  TProps props;
+
+        public EffectInstruction(IEffect<TTarget> effect, TProps props): base(effect)
+        {
+            this.props = props;
+        }
+        
+        public override EffectCancellableOperationAwaiter OnRun(EffectsChannel<TTarget> channel)
+        {
+            return channel.Add(effect as IEffectWithProps<TTarget, TProps>, props);
+        }
+    }
+}

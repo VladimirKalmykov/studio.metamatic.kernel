@@ -5,40 +5,43 @@ using UnityEngine;
 
 namespace Metamatic.Effects
 {
-    public readonly struct EffectCancellableOperationAwaiter: ICriticalNotifyCompletion, IDisposable
+    public struct EffectCancellableOperationAwaiter: ICriticalNotifyCompletion, IDisposable
     {
-        public readonly EffectOperationContext context;
-        public EffectCancellableOperationAwaiter(EffectOperationContext context)
+        public readonly EffectExecutionContext context;
+        public EffectCancellableOperationAwaiter(EffectExecutionContext context)
         {
             this.context = context;
         }
         
         #region Notify completion
         
-        public bool IsCompleted => context.task.Status != UniTaskStatus.Pending;
+        // ReSharper disable once MergeIntoNegatedPattern
+        public bool IsCompleted => (context == null || context.status != EffectExecutionContext.Status.Pending);
 
         public void GetResult() { }
 
         public void OnCompleted(Action continuation)
         {
-            if (context.task.Status != UniTaskStatus.Pending)
+            // ReSharper disable once MergeIntoNegatedPattern
+            if (context == null || context.status != EffectExecutionContext.Status.Pending)
             {
                 continuation();
                 return;
             }
 
-            AsyncUtils.AwaitCallback(context.task, continuation);
+            context.OnRelease += continuation;
         }
 
         public void UnsafeOnCompleted(Action continuation)
         {
-            if (context.task.Status != UniTaskStatus.Pending)
+            // ReSharper disable once MergeIntoNegatedPattern
+            if (context == null || context.status != EffectExecutionContext.Status.Pending)
             {
                 continuation();
                 return;
             }
 
-            AsyncUtils.AwaitCallback(context.task, continuation);
+            context.OnRelease += continuation;
         }
             
         public EffectCancellableOperationAwaiter GetAwaiter()

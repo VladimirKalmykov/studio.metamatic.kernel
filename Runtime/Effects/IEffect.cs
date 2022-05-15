@@ -8,9 +8,10 @@ namespace Metamatic.Effects
     {
         
     }
-    public interface IEffect<TContext>: IEffect
-        where TContext: MonoBehaviour
+    public interface IEffect<TTarget>: IEffect
+        where TTarget: MonoBehaviour
     {
+        public UniTask RunEffect(EffectExecutionContext<TTarget> executionContext, CancellationToken cancellationToken);
     }
 
     public interface IEffectWithProps<TTarget, TProps> : IEffect<TTarget>

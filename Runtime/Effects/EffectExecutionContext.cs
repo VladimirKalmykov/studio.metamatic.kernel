@@ -6,12 +6,19 @@ using UnityEngine;
 
 namespace Metamatic.Effects
 {
-    public class EffectOperationContext: IDisposable
+    public class EffectExecutionContext: IDisposable
     {
+        public enum Status
+        {
+            Pending,
+            Completed
+        }
         public readonly CancellationTokenSource cancellationTokenSource;
+        public Status status { get; protected set; } = Status.Pending;
+        public event Action OnRelease;
         public UniTask task;
 
-        public EffectOperationContext()
+        public EffectExecutionContext()
         {
             this.cancellationTokenSource = new CancellationTokenSource();
         }
@@ -19,30 +26,52 @@ namespace Metamatic.Effects
         public void Dispose()
         {
             cancellationTokenSource?.Cancel();
-            cancellationTokenSource?.Dispose();
         }
-    }
-    public class EffectOperationContext<TTarget>: EffectOperationContext
-        where TTarget: MonoBehaviour
-    {
-        public readonly Effector<TTarget> effector;
 
-        public EffectOperationContext(Effector<TTarget> effector): base()
+        public void Release()
         {
-            this.effector = effector;
+            status = Status.Completed;
+            OnRelease?.Invoke();
+        }
+        
+        public EffectCancellableOperationAwaiter GetAwaiter()
+        {
+            return new EffectCancellableOperationAwaiter(this);
         }
     }
-    public class EffectExecutionContext<TTarget, TEffectProps>: EffectOperationContext<TTarget>
+    public class EffectExecutionContext<TTarget>: EffectExecutionContext
         where TTarget: MonoBehaviour
     {
-        public readonly IEffectWithProps<TTarget, TEffectProps> effect;
+        public readonly EffectsChannel<TTarget> channel;
+
+        public TTarget target
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => channel.target;
+        }
+
+        public EffectExecutionContext(EffectsChannel<TTarget> channel): base()
+        {
+            this.channel = channel;
+        }
+        
+        public new void Release()
+        {
+            channel.executions.Remove(this);
+            base.Release();
+        }
+    }
+    public class EffectExecutionContext<TTarget, TEffectProps>: EffectExecutionContext<TTarget>
+        where TTarget: MonoBehaviour
+    {
+        public readonly IEffect effect;
         public TEffectProps props;
 
-        public EffectExecutionContext(Effector<TTarget> effector, IEffectWithProps<TTarget, TEffectProps> effect, ref TEffectProps props): base(effector)
+        public EffectExecutionContext(EffectsChannel<TTarget> channel, IEffectWithProps<TTarget, TEffectProps> effect, ref TEffectProps props): base(channel)
         {
             this.effect = effect;
             this.props = props;
-            effector.effectExecutions.Add(this);
+            channel.executions.Add(this);
             task = effect.RunEffect(this, this.cancellationTokenSource.Token);
             
             if (task.Status != UniTaskStatus.Pending)
@@ -53,20 +82,21 @@ namespace Metamatic.Effects
 
             AsyncUtils.AwaitCallback(task, Release);
         }
-
-        public void Release()
-        {
-            effector.effectExecutions.Remove(this);
-        }
-
-        public void Dispose()
-        {
-            this.cancellationTokenSource.Cancel();
-        }
         
-        public EffectCancellableOperationAwaiter GetAwaiter()
+        public EffectExecutionContext(EffectsChannel<TTarget> channel, IEffect<TTarget> effect): base(channel)
         {
-            return new EffectCancellableOperationAwaiter(this);
+            this.effect = effect;
+            channel.executions.Add(this);
+            Debug.Log($"Run effect: {effect}");
+            task = effect.RunEffect(this, this.cancellationTokenSource.Token);
+            
+            if (task.Status != UniTaskStatus.Pending)
+            {
+                Release();
+                return;
+            }
+
+            AsyncUtils.AwaitCallback(task, Release);
         }
     }
 }
