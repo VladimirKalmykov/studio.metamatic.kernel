@@ -7,17 +7,6 @@ using UnityEngine;
 
 namespace Metamatic.Effects
 {
-    public interface IEffect<TContext>
-        where TContext: MonoBehaviour
-    {
-    }
-
-    public interface IEffectWithProps<TTarget, TProps> : IEffect<TTarget>
-        where TTarget: MonoBehaviour
-    {
-        public void RunEffect(Effector<TTarget> effector, TProps props, CancellationTokenSource tokenSource);
-    }
-    
     public abstract class ScriptableEffect<TContext>: ScriptableObject
         where TContext: MonoBehaviour
     {

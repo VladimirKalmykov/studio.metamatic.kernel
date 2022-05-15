@@ -11,83 +11,18 @@ using Metamatic.DevTools;
 
 namespace Metamatic.Effects
 {
-    public class EffectPlayback: ICriticalNotifyCompletion, IDisposable
-    {
-        public readonly Effector effector;
-        public readonly CancellationTokenSource cancellationTokenSource;
-
-        public EffectPlayback(Effector effector, CancellationTokenSource cancellationTokenSource)
-        {
-            this.effector = effector;
-            this.cancellationTokenSource = cancellationTokenSource;
-            effector.playbacks.Add(this);
-            OnCompleted(Release);
-        }
-
-        public void Release()
-        {
-            effector.playbacks.Remove(this);
-        }
-
-        public void Dispose()
-        {
-            this.cancellationTokenSource.Cancel();
-        }
-        
-        #region Notify completion
-        
-        public bool IsCompleted => this.cancellationTokenSource.IsCancellationRequested;
-
-        public void GetResult() { }
-
-        public void OnCompleted(Action continuation)
-        {
-            if (this.cancellationTokenSource.IsCancellationRequested)
-            {
-                continuation();
-                return;
-            }
-
-            cancellationTokenSource.Token.Register(continuation);
-        }
-
-        public void UnsafeOnCompleted(Action continuation)
-        {
-            if (this.cancellationTokenSource.IsCancellationRequested)
-            {
-                continuation();
-                return;
-            }
-
-            cancellationTokenSource.Token.Register(continuation);
-        }
-            
-        public EffectPlayback GetAwaiter()
-        {
-            return this;
-        }
-
-        #endregion
-    }
-
     public class Effector : MonoBehaviour
     {
-        public readonly List<EffectPlayback> playbacks = new List<EffectPlayback>();
-
-        private void Awake()
-        {
-            playbacks.Capacity = 10000;
-            
-        }
+        public readonly List<EffectOperationContext> effectExecutions = new List<EffectOperationContext>();
 
         private void Start()
         {
-            UILog.Add("Effector", "playbacks.Count", () => playbacks.Count);
+            UILog.Add("Effector", "playbacks.Count", () => effectExecutions.Count);
         }
         
         private void OnDestroy()
         {
-            foreach (var playback in playbacks)
+            foreach (var playback in effectExecutions)
             {
                 playback.Dispose();
             }
@@ -98,21 +33,14 @@ namespace Metamatic.Effects
         where TTarget: MonoBehaviour
     {
         public TTarget target { get; private set; }
-        
-        public EffectPlayback ApplyEffect(IEffect<TTarget> effect)
-        {
-            return ApplyEffect(effect as IEffectWithProps<TTarget, object>);
-        }
 
-        public EffectPlayback ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, ref TEffectProps props)
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
         {
-            // var playback = new EffectPlaybackContext<TTarget>(this, effect);
-            // playbacks.Add(playback);
-            var cancellationTokenSource = new CancellationTokenSource();
-            effect.RunEffect(this, props, cancellationTokenSource);
-            return new EffectPlayback(this, cancellationTokenSource);
-
-            // return playback;
+            return new EffectExecutionContext<TTarget, TEffectProps>(
+                this,
+                effect,
+                ref props
+            ).GetAwaiter();
         }
 
         public void ReleaseEffect(IEffect<TTarget> effect)
