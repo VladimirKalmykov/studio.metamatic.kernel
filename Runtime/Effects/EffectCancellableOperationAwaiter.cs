@@ -12,11 +12,38 @@ namespace Metamatic.Effects
         {
             this.context = context;
         }
+
+        public EffectExecutionContext.Status status
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return context == null ? EffectExecutionContext.Status.Idle : context.status;
+            }
+        }
         
         #region Notify completion
         
         // ReSharper disable once MergeIntoNegatedPattern
-        public bool IsCompleted => (context == null || context.status != EffectExecutionContext.Status.Pending);
+        public bool IsCompleted
+        {
+            get
+            {
+                if (context == null)
+                {
+                    Debug.Log($"Context is null. Why???");
+                }
+                var result = (context == null || context.status != EffectExecutionContext.Status.Pending);
+
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Replay()
+        {
+            context.Replay();
+        }
 
         public void GetResult() { }
 
@@ -50,7 +77,7 @@ namespace Metamatic.Effects
         }
 
         #endregion
-
+        
         public void Dispose()
         {
             context?.Dispose();

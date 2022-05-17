@@ -16,9 +16,9 @@ namespace Metamatic.Effects.Graph
             Errored
         }
         public EffectsGraph<TTarget> graph;
+        private IEffect currentEffect;
         protected readonly List<Node<TTarget>> children = new List<Node<TTarget>>();
         public Node<TTarget> parent { get; private set; }= null;
-        public EffectInstruction<TTarget> effectInstruction { get; private set; }
         private EffectCancellableOperationAwaiter activeEffectExecution;
         public ExecutionStatus status { get; private set; } = ExecutionStatus.None;
 
@@ -43,45 +43,45 @@ namespace Metamatic.Effects.Graph
             parent = node;
             graph = parent.graph;
         }
-
-        public void SetEffect(IEffect<TTarget> effect)
-        {
-            effectInstruction = new EffectInstruction<TTarget>(effect);
-        }
         
         public async UniTask ApplyEffect(IEffect<TTarget> effect)
         {
-            effectInstruction = new EffectInstruction<TTarget>(effect);
-            await graph.Execute();
-        }
-
-        public void SetEffect<TProps>(IEffectWithProps<TTarget, TProps> effect, TProps props = default)
-        {
-            effectInstruction = new EffectInstruction<TTarget, TProps>(effect, props);
+            try
+            {
+                TryCancel();
+                currentEffect = effect;
+                activeEffectExecution = this.graph.channel.Add(effect);
+                HandleEffectExecution().Forget();
+                await this.graph.Execute();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
         }
         
         public async UniTask ApplyEffect<TProps>(IEffectWithProps<TTarget, TProps> effect, TProps props = default)
         {
-            effectInstruction = new EffectInstruction<TTarget, TProps>(effect, props);
-            await graph.Execute();
+            TryCancel();
+            currentEffect = effect;
+            activeEffectExecution = this.graph.channel.Add(effect, props);
+            HandleEffectExecution().Forget();
+            await this.graph.Execute();
         }
 
-        public void SetEffect(EffectInstruction<TTarget> instruction)
+        public void TryCancel()
         {
-            effectInstruction = instruction;
-        }
-        
-        public async UniTask ApplyEffect(EffectInstruction<TTarget> instruction)
-        {
-            effectInstruction = instruction;
-            await graph.Execute();
+            if (!activeEffectExecution.IsCompleted)
+            {
+                activeEffectExecution.Dispose();
+            }
         }
 
         public void RemoveEffect(IEffect<TTarget> effect)
         {
-            if (effectInstruction.effect == effect)
+            if (currentEffect == effect)
             {
-                effectInstruction = null;
+                TryCancel();
             }
         }
 
@@ -93,25 +93,27 @@ namespace Metamatic.Effects.Graph
 
         public async UniTask Execute()
         {
-            activeEffectExecution.Dispose();
-            if (effectInstruction != null)
+            if (activeEffectExecution.status == EffectExecutionContext.Status.Pending)
             {
-                activeEffectExecution = effectInstruction.Run(graph.channel);
+                activeEffectExecution.Replay();
             }
-            
+            await UniTask.WhenAll(children.Select(node => node.Execute()));
+        }
+
+        private async UniTaskVoid HandleEffectExecution()
+        {
             try
             {
-                await UniTask.WhenAll(children.Select(node => node.Execute()));
                 status = ExecutionStatus.Pending;
                 await activeEffectExecution;
-            }
-            catch (OperationCanceledException)
+            } catch (OperationCanceledException)
             {
                 // Skip
             }
             catch (Exception e)
             {
                 status = ExecutionStatus.Errored;
+                Debug.LogError(e);
                 throw;
             }
             finally

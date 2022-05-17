@@ -6,7 +6,7 @@ namespace Metamatic.Effects
 {
     public interface IEffect
     {
-        
+        public string GetEffectName();
     }
     public interface IEffect<TTarget>: IEffect
         where TTarget: MonoBehaviour

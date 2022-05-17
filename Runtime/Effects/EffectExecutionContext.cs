@@ -10,25 +10,37 @@ namespace Metamatic.Effects
     {
         public enum Status
         {
+            Idle,
             Pending,
             Completed
         }
+
+        public string debugName = "Unnamed";
         public readonly CancellationTokenSource cancellationTokenSource;
         public Status status { get; protected set; } = Status.Pending;
         public event Action OnRelease;
         public UniTask task;
+        public PluralAwaitable<bool> cycle = new PluralAwaitable<bool>(true);
 
         public EffectExecutionContext()
         {
             this.cancellationTokenSource = new CancellationTokenSource();
+            cycle.context = this;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Replay()
+        {
+            cycle.SetResult(true);
         }
 
         public void Dispose()
         {
+            cycle.SetResult(false);
             cancellationTokenSource?.Cancel();
         }
 
-        public void Release()
+        protected void Release()
         {
             status = Status.Completed;
             OnRelease?.Invoke();
@@ -43,6 +55,9 @@ namespace Metamatic.Effects
         where TTarget: MonoBehaviour
     {
         public readonly EffectsChannel<TTarget> channel;
+        public UniTask<bool> replayUniTask { get; protected set; }
+
+        
 
         public TTarget target
         {
@@ -53,6 +68,7 @@ namespace Metamatic.Effects
         public EffectExecutionContext(EffectsChannel<TTarget> channel): base()
         {
             this.channel = channel;
+            
         }
         
         public new void Release()
@@ -87,7 +103,6 @@ namespace Metamatic.Effects
         {
             this.effect = effect;
             channel.executions.Add(this);
-            Debug.Log($"Run effect: {effect}");
             task = effect.RunEffect(this, this.cancellationTokenSource.Token);
             
             if (task.Status != UniTaskStatus.Pending)
