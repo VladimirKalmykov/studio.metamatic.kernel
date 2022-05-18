@@ -23,9 +23,10 @@ namespace Metamatic {
                 this.extension = extension;
             }
         }
-        public override VisualElement CreateInspectorGUI()
+
+        public InspectorPictureEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
         {
-            var root = new VisualElement();
+            var root = this;
             root.style.paddingBottom = 10;
             root.style.paddingRight = 2;
 
@@ -68,8 +69,6 @@ namespace Metamatic {
                     }
                 }
             }
-            
-            return root;
         }
     }
 }

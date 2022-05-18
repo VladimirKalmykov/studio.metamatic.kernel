@@ -1,0 +1,47 @@
+.HeaderPicture {
+    height: 15px;
+    width: 140px;
+    margin-bottom: 6px;
+    background-image: url("assets/Effector.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.ChannelsList {
+    display: flex;
+    flex-direction: column;
+}
+
+.ChannelItem {
+    background-color: #2f2f31;
+    border-radius: 3px;
+    padding: 4px;
+    margin-bottom: 4px;
+    display: flex;
+    flex-direction: column;
+}
+
+.ChannelItem > .Label {
+    margin-bottom: 6px;
+    color: #4A797E;
+    -unity-font-style: bold;
+}
+
+.ChannelItem > .Items {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.ChannelItem > .Items > .Execution {
+    margin-bottom: 2px;
+    margin-right: 2px;
+    background-color: #6851FF;
+    border-radius: 3px;
+    color: #AECAFF;
+    padding: 1px 8px;
+}
+
+.ChannelItem > .Items > .Execution.Released {
+    background-color: #252525;
+    color: #494949;
+}

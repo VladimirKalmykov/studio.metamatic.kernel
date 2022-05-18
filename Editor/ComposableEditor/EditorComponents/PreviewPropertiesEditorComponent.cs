@@ -67,5 +67,9 @@ namespace Metamatic {
 
             return root;
         }
+
+        public PreviewPropertiesEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
+        {
+        }
     }
 }

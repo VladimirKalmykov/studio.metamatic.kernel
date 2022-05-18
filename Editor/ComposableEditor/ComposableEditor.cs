@@ -6,12 +6,14 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using Metamatic;
 using Sirenix.OdinInspector.Editor;
+using Random = UnityEngine.Random;
 
 
 namespace Metamatic {
     public class ComposableEditor: OdinEditor {
         private Dictionary<RequireEditorComponentAttribute, EditorComponent> components = new Dictionary<RequireEditorComponentAttribute, EditorComponent>();
         private List<KeyValuePair<RequireEditorComponentAttribute, EditorComponent>>[] executeOrderList = new List<KeyValuePair<RequireEditorComponentAttribute, EditorComponent>>[0];
+        private bool m_Enabled = false;
         public override VisualElement CreateInspectorGUI()
         {
             Initialize();
@@ -27,13 +29,34 @@ namespace Metamatic {
                 }
                 Editor.DestroyImmediate(editor);
             }//end foreach
+
+            if (!m_Enabled)
+            {
+                m_Enabled = true;
+                foreach (var pair in components)
+                {
+                    pair.Value.OnEnable();
+                }
+            }
         }
 
-        void Initialize() {
+        protected override void OnDisable()
+        {
+            if (m_Enabled)
+            {
+                m_Enabled = false;
+                foreach (var pair in components)
+                {
+                    pair.Value.OnDisable();
+                }
+            }
+        }
+
+        private void Initialize() {
             /* Connect components */
             ConnectEditorComponents(this);
             ConnectEditorComponents(this.target);
-
+            
             foreach (var item in components) {
                 if (item.Key.order >= executeOrderList.Length) {
                     Array.Resize(ref executeOrderList, item.Key.order + 1);
@@ -47,32 +70,36 @@ namespace Metamatic {
             }
         }
 
-        VisualElement BuildInspectorGUI() {
-            VisualElement root = new VisualElement();
+        private VisualElement BuildInspectorGUI() {
+            var root = new VisualElement();
 
-            foreach(List<KeyValuePair<RequireEditorComponentAttribute, EditorComponent>> listItem in executeOrderList) {
+            foreach(var listItem in executeOrderList) {
                 if (listItem != null) {
-                    foreach(var item in listItem) {
-                        root.Add(item.Value.CreateInspectorGUI());
+                    foreach(var item in listItem)
+                    {
+                        var component = item.Value;
+                        root.Add(component);
                     }
                 }
             }
             return root;
         }
 
-        void ConnectEditorComponents(object target) {
+        private void ConnectEditorComponents(object target) {
             var attributes = target.GetType().GetCustomAttributes(true);
-            foreach (object attribute in attributes)
+            foreach (var attribute in attributes)
             {
-                RequireEditorComponentAttribute editorComponentAttribute = attribute as RequireEditorComponentAttribute;
+                var editorComponentAttribute = attribute as RequireEditorComponentAttribute;
                 if (editorComponentAttribute != null) {
                     if (!components.ContainsKey(editorComponentAttribute)) {
                         if (editorComponentAttribute.componentType != null) {
                             /* Instantiate editor component */
-                            EditorComponent newEditorComponent = Activator.CreateInstance(editorComponentAttribute.componentType) as EditorComponent;
-                            newEditorComponent.editor = this;
-                            newEditorComponent.target = this.target;
+                            var ctor = editorComponentAttribute.componentType.GetConstructor(new[]
+                                {typeof(ComposableEditor)});
+                            var newEditorComponent = ctor.Invoke(new object[]{this}) as EditorComponent;
+                            // EditorComponent newEditorComponent = Activator.CreateInstance(editorComponentAttribute.componentType, this) as EditorComponent;
                             components.Add(editorComponentAttribute, newEditorComponent);
+                            newEditorComponent.OnEnable();
                         }
                     }
                 }

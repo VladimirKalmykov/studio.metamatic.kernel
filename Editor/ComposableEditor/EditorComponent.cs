@@ -3,15 +3,38 @@ using UnityEditor;
 using UnityEngine.UIElements;
 
 namespace Metamatic {
-    public abstract class EditorComponent {
-        public UnityEngine.Object target {
-            get; set;
+    public abstract class EditorComponent: VisualElement
+    {
+        public readonly UnityEngine.Object target;
+        public readonly ComposableEditor composableEditor;
+        public readonly Editor editor;
+
+        public virtual VisualElement CreateInspectorGUI()
+        {
+            return null;
         }
-        public Editor editor {
-            get; set;
+
+        public EditorComponent(ComposableEditor composableEditor)
+        {
+            this.composableEditor = composableEditor;
+            editor = (Editor)composableEditor;
+            target = composableEditor.target;
+            
+            var el = CreateInspectorGUI();
+            if (el != null)
+            {
+                Add(el);
+            }
         }
-        public virtual VisualElement CreateInspectorGUI() {
-            return new VisualElement();
+
+        public virtual void OnEnable()
+        {
+            
+        }
+
+        public virtual void OnDisable()
+        {
+            
         }
     }
 }

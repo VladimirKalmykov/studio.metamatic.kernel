@@ -15,6 +15,27 @@ namespace Metamatic.Effects
     {
         public event Action OnBeforeDestroy;
         public readonly List<EffectExecutionContext> effectExecutions = new List<EffectExecutionContext>();
+        public readonly List<EffectsChannel> channels = new List<EffectsChannel>();
+        
+        
+        #if UNITY_EDITOR
+        public event Action<EffectsChannel[]> editor_OnChannelsChange;
+        public void editor_SubscribeChannels(Action<EffectsChannel[]> handler)
+        {
+            handler(channels.ToArray());
+            editor_OnChannelsChange += handler;
+        }
+        
+        public void editor_UnsubscribeChannels(Action<EffectsChannel[]> handler)
+        {
+            editor_OnChannelsChange -= handler;
+        }
+
+        protected void editor_EmitChannelsChange()
+        {
+            editor_OnChannelsChange?.Invoke(channels.ToArray());
+        }
+        #endif
 
         private void Start()
         {
@@ -30,9 +51,11 @@ namespace Metamatic.Effects
     public class Effector<TTarget> : Effector
         where TTarget: MonoBehaviour
     {
-        public readonly List<EffectsChannel<TTarget>> channels = new List<EffectsChannel<TTarget>>();
+        
         private EffectsChannel<TTarget> m_CommonChannel;
         public TTarget target { get; private set; }
+        
+        
 
         private void Awake()
         {
@@ -44,7 +67,12 @@ namespace Metamatic.Effects
 
         public EffectsChannel<TTarget> CreateChannel(Behaviour owner, string debugName)
         {
-            return new EffectsChannel<TTarget>(this, owner, debugName);
+            var channel = new EffectsChannel<TTarget>(this, owner, debugName);
+            channels.Add(channel);
+            #if UNITY_EDITOR
+            editor_EmitChannelsChange();
+            #endif
+            return channel;
         }
 
         public EffectCancellableOperationAwaiter ApplyEffect(IEffect<TTarget> effect)

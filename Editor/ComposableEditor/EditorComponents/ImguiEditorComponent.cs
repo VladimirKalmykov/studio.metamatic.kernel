@@ -13,6 +13,10 @@ namespace Metamatic {
             });
             return root;
         }
+
+        public ImguiEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
+        {
+        }
     }
 }
 

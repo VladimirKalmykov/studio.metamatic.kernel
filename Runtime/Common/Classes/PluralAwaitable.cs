@@ -28,7 +28,7 @@ namespace Metamatic
 
         public PluralAwaitable(T initialValue)
         {
-            this.value = initialValue;
+            value = initialValue;
             m_IsCompleted = true;
         }
 

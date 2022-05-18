@@ -13,6 +13,10 @@ namespace Metamatic {
         public string data;
     }
     public class SaveComponentToAssetsEditorComponent: EditorComponent {
+        public SaveComponentToAssetsEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
+        {
+            
+        }
         public override VisualElement CreateInspectorGUI() {
             VisualElement root = new VisualElement();
             SerializedObject serializedObject = new SerializedObject(this.target);
@@ -42,6 +46,8 @@ namespace Metamatic {
                 AssetDatabase.SaveAssets();
             }
         }
+
+        
     }
 }
 

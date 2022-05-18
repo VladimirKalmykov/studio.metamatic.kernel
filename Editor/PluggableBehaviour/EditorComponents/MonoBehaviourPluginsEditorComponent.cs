@@ -316,5 +316,9 @@ namespace Metamatic {
                 panelContent.Clear();
             }
         }
+
+        public MonoBehaviourPluginsEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
+        {
+        }
     }
 }

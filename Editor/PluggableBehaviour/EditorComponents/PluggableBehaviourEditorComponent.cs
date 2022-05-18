@@ -285,5 +285,9 @@ namespace Metamatic {
                 } while (prop.NextVisible(false));
             }
         }
+
+        public PluggableBehaviourEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
+        {
+        }
     }
 }

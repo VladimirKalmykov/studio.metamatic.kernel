@@ -40,5 +40,9 @@ namespace Metamatic {
             
             return root;
         }
+
+        public InspectorDescriptionEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
+        {
+        }
     }
 }

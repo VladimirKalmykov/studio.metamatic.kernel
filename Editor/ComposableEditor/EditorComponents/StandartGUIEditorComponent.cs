@@ -5,6 +5,9 @@ using UnityEditor.UIElements;
 
 namespace Metamatic {
     public class StandartGUIEditorComponent: EditorComponent {
+        public StandartGUIEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
+        {
+        }
         public override VisualElement CreateInspectorGUI() {
             VisualElement root = new VisualElement();
             SerializedObject serializedObject = new SerializedObject(this.target);

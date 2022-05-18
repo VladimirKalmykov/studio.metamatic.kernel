@@ -13,14 +13,44 @@ namespace Metamatic.Effects
         /// Effects execution context queue
         /// </summary>
         public readonly List<EffectExecutionContext> executions = new List<EffectExecutionContext>();
+        public readonly Behaviour owner;
+        public readonly string debugName;
+        
+        #if UNITY_EDITOR
+        public event Action<EffectExecutionContext[]> editor_OnExecutionsChange;
+        public void editor_SubscribeEffectExecutionsChange(Action<EffectExecutionContext[]> handler)
+        {
+            handler(executions.ToArray());
+            editor_OnExecutionsChange += handler;
+        }
+        
+        public void editor_UnsubscribeEffectExecutionsChange(Action<EffectExecutionContext[]> handler)
+        {
+            editor_OnExecutionsChange -= handler;  
+        }
+
+        public void editor_EmitExecutionsChange()
+        {
+            editor_OnExecutionsChange?.Invoke(executions.ToArray());
+        }
+        #endif
+
+        public EffectsChannel(Behaviour owner, string debugName)
+        {
+            this.owner = owner;
+            this.debugName = debugName;
+        }
+
+        public override string ToString()
+        {
+            return $"{owner.name}: {debugName}";
+        }
     }
     public sealed class EffectsChannel<TTarget>: EffectsChannel, IDisposable
         where TTarget: MonoBehaviour
     {
         public readonly EffectsGraph<TTarget> graph; 
         public readonly Effector<TTarget> effector;
-        public readonly Behaviour owner;
-        public readonly string debugName;
 
         public TTarget target
         {
@@ -30,12 +60,10 @@ namespace Metamatic.Effects
                 return effector.target;
             }
         }
-        public EffectsChannel(Effector<TTarget> effector, Behaviour owner, string debugName)
+        public EffectsChannel(Effector<TTarget> effector, Behaviour owner, string debugName): base(owner, debugName)
         {
             this.graph = new EffectsGraph<TTarget>(this);
             this.effector = effector;
-            this.owner = owner;
-            this.debugName = debugName;
             effector.OnBeforeDestroy += OnDestroy;
         }
         
