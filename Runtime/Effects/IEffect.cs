@@ -9,13 +9,13 @@ namespace Metamatic.Effects
         public string GetEffectName();
     }
     public interface IEffect<TTarget>: IEffect
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public UniTask RunEffect(EffectExecutionContext<TTarget> executionContext, CancellationToken cancellationToken);
     }
 
     public interface IEffectWithProps<TTarget, TProps> : IEffect<TTarget>
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public UniTask RunEffect(EffectExecutionContext<TTarget, TProps> executionContext, CancellationToken cancellationToken);
     }

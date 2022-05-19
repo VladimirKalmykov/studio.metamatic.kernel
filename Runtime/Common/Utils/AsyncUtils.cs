@@ -88,6 +88,21 @@ namespace Metamatic
         }
         
         /// <summary>
+        /// Accept cancellationTokenSource and immediatelly cancel it in order to create new one.
+        /// </summary>
+        /// <param name="tokenSource"></param>
+        /// <returns></returns>
+        public static CancellationTokenSource Singular(ref CancellationTokenSource tokenSource)
+        {
+            if (tokenSource != null && !tokenSource.IsCancellationRequested)
+            {
+                tokenSource.Cancel();
+            }
+
+            return new CancellationTokenSource();
+        }
+        
+        /// <summary>
         /// Accept cancellationTokenSource and immediatelly cancel it in order to create new one. New token will be passed to callback function.
         /// </summary>
         /// <param name="tokenSource"></param>
@@ -127,7 +142,7 @@ namespace Metamatic
         /// Forget about task except non-cancellation exceptions
         /// </summary>
         /// <param name="task"></param>
-        public static async void ForgetCancellation(this Task task)
+        public static async UniTask ForgetCancellation(this Task task)
         {
             try
             {

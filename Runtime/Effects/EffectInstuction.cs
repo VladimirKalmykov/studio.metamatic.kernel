@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Metamatic.Effects
 {
     public class EffectInstruction<TTarget>
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public readonly IEffect<TTarget> effect;
 
@@ -29,7 +29,7 @@ namespace Metamatic.Effects
     }
     
     public class EffectInstruction<TTarget, TProps>: EffectInstruction<TTarget>
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public readonly  TProps props;
 

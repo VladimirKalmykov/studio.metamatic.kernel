@@ -8,12 +8,12 @@ using UnityEngine;
 namespace Metamatic.Effects
 {
     public abstract class ScriptableEffect<TContext>: ScriptableObject
-        where TContext: MonoBehaviour
+        where TContext: Behaviour
     {
     }
     
     public abstract class ScriptableEffectWithProps<TTarget, TProps> : ScriptableEffect<TTarget>
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public abstract Task RunEffect(Effector<TTarget> effector, TProps props, CancellationToken token);
     }

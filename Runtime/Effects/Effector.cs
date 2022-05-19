@@ -49,7 +49,7 @@ namespace Metamatic.Effects
     }
     
     public class Effector<TTarget> : Effector
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         
         private EffectsChannel<TTarget> m_CommonChannel;

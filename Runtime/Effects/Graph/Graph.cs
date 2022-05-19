@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Metamatic.Effects.Graph
 {
     public class EffectsGraph<TTarget>
-    where TTarget: MonoBehaviour
+    where TTarget: Behaviour
     {
         public readonly EffectsChannel<TTarget> channel;
         public Node<TTarget> entryNode { get; private set; }

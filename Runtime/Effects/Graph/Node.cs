@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Metamatic.Effects.Graph
 {
     public class Node<TTarget>
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public enum ExecutionStatus
         {

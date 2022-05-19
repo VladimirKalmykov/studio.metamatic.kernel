@@ -59,7 +59,7 @@ namespace Metamatic.Effects
         }
     }
     public class EffectExecutionContext<TTarget>: EffectExecutionContext
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public readonly EffectsChannel<TTarget> channel;
         public UniTask<bool> replayUniTask { get; protected set; }
@@ -90,7 +90,7 @@ namespace Metamatic.Effects
         }
     }
     public class EffectExecutionContext<TTarget, TEffectProps>: EffectExecutionContext<TTarget>
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public TEffectProps props;
 

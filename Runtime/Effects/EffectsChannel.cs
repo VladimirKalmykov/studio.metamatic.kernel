@@ -47,7 +47,7 @@ namespace Metamatic.Effects
         }
     }
     public sealed class EffectsChannel<TTarget>: EffectsChannel, IDisposable
-        where TTarget: MonoBehaviour
+        where TTarget: Behaviour
     {
         public readonly EffectsGraph<TTarget> graph; 
         public readonly Effector<TTarget> effector;
