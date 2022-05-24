@@ -1,3 +1,6 @@
+using System;
+using UnityEditor;
+
 namespace Metamatic {
     using UnityEngine;
     using Sirenix.OdinInspector;
@@ -45,5 +48,23 @@ namespace Metamatic {
             parentElement = transform.parent != null ? transform.parent.GetComponentInParent<Element>() : null;
             configurator = transform.parent != null ? transform.parent.GetComponentInParent<Configurator>() : null;
         }
+        
+        #if UNITY_EDITOR
+        private static Mesh arrowMesh;
+        private void OnDrawGizmosSelected()
+        {
+            if (arrowMesh == null)
+            {
+                arrowMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Packages/studio.metamatic.kernel/Editor/DevTools/Assets/Meshes/directionalArrow.asset");
+            }
+            var rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);
+            Gizmos.matrix = rotationMatrix;
+            Gizmos.color = new Color(1f, 0.88f, 0f);
+            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.Euler(0f, 0f, -90f), Vector3.one * 5f);
+            
+            Gizmos.color = new Color(1f, 0f, 0.06f);
+            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.identity, Vector3.one * 5f);
+        }
+#endif
     }
 }

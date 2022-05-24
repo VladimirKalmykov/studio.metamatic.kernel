@@ -1,4 +1,4 @@
-namespace Metamatic
+namespace Metamatic.DevTools
 {
     using UnityEngine;
     #if ENABLE_INPUT_SYSTEM
