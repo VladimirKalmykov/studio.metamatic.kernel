@@ -116,10 +116,12 @@ namespace Metamatic {
 
                     /* Exit function */
                     return;
-                } else {
-                    CancellationTokenRegistration cancellationTokenRegistration;
+                } else
+                {
+                    CancellationTokenRegistration cancellationTokenRegistration = default;
                     cancellationTokenRegistration = outerCancellationToken.Register(() => {
                         cancellationTokenSource.Cancel();
+                        /* TODO Do not need to dispose it? */
                         cancellationTokenRegistration.Dispose();
                     });
                 }

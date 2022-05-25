@@ -94,10 +94,11 @@ namespace Metamatic
         public Task<Payload> AsyncEvent<T>(CancellationToken cancellationToken = default)
         {
             var taskCompletionSource = new TaskCompletionSource<Payload>();
-            CancellationTokenRegistration registration;
+            CancellationTokenRegistration registration = default;
             Action<T> handler = null;
             handler = (T data) =>
             {
+                /* TODO Need to dispose? */
                 // ReSharper disable once AccessToModifiedClosure
                 registration.Dispose();
                 RemoveListener(handler);

@@ -90,7 +90,7 @@ namespace Metamatic {
 
             /* Create local cancellaton token (it will be used to immediate cancel task if runtime will be blocked by overlap mode) */
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-            CancellationTokenRegistration cancellationTokenRegistration;
+            CancellationTokenRegistration cancellationTokenRegistration = default;
 
             /* Check for already running tasks */
             if (runtimes.Count > 0) {
@@ -113,6 +113,7 @@ namespace Metamatic {
             if (cancellationToken != default) {
                 cancellationTokenRegistration = cancellationToken.Register(() => {
                     cancellationTokenSource.Cancel();
+                    /* TODO Need to dispose? */
                     cancellationTokenRegistration.Dispose();
                 });
             }

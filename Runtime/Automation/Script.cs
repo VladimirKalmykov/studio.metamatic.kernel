@@ -92,12 +92,13 @@ namespace Metamatic{
 
                 /* Create local cancellaton token (it will be used to immediate cancel task if runtime will be blocked by overlap mode) */
                 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-                CancellationTokenRegistration cancellationTokenRegistration;
+                CancellationTokenRegistration cancellationTokenRegistration = default;
                 
                 /* Subscribe to user cancellation token */
                 if (cancellationToken != default) {
                     cancellationTokenRegistration = cancellationToken.Register(() => {
                         cancellationTokenSource.Cancel();
+                        /* TODO Do not need to dispose it? */
                         cancellationTokenRegistration.Dispose();
                     });
                 }

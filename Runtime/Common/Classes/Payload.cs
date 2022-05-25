@@ -60,10 +60,11 @@ namespace Metamatic
         {
             var taskSource = new TaskCompletionSource<T>();
             Action<T> handler = null;
-            CancellationTokenRegistration registration;
+            CancellationTokenRegistration registration = default;
             handler = (value) =>
             {
                 if (!condition(value)) return;
+                /* TODO Do not need to dispose it? */
                 registration.Dispose();
                 OnMutate -= handler;
                 taskSource.SetResult(value);
