@@ -521,5 +521,28 @@ namespace Metamatic {
             return target * -1 * (distanceToProjection / distanceToTarget);
         }
         
+        /// <summary>
+        /// Flip rotation euler z angle horizontal
+        /// </summary>
+        /// <param name="q"></param>
+        /// <returns></returns>
+        public static Quaternion FlipRotationEulerZVertical(Quaternion q)
+        {
+            var euler = q.eulerAngles;
+            euler.z = euler.z >= 0 ? 180 - euler.z : -180 - euler.z;
+            return Quaternion.Euler(euler);
+        }
+        
+        /// <summary>
+        /// Flip rotation euler z angle vertical
+        /// </summary>
+        /// <param name="q"></param>
+        /// <returns></returns>
+        public static Quaternion FlipRotationEulerZHorizontal(Quaternion q)
+        {
+            var euler = q.eulerAngles;
+            euler.z *= -1;
+            return Quaternion.Euler(euler);
+        }
     }
 }
