@@ -7,7 +7,7 @@ namespace Metamatic
         
     }
 
-    public class StateMechine<State> : StateMachine
+    public class StateMachine<State> : StateMachine
     {
         public delegate void StateChangeHandler(ref State state, ref State prevState);
 
@@ -43,7 +43,7 @@ namespace Metamatic
             return ref m_NextState;
         }
 
-        public StateMechine(): base()
+        public StateMachine(): base()
         {
             OnInitState();
         }
