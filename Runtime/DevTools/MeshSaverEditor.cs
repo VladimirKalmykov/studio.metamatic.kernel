@@ -7,6 +7,7 @@ namespace Metamatic
     using System.Collections.Generic;
 
     public static class MeshSaverEditor {
+        #if UNITY_EDITOR
 
         [MenuItem("CONTEXT/MeshFilter/Save Mesh...")]
         public static void SaveMeshInPlace (MenuCommand menuCommand) {
@@ -36,6 +37,6 @@ namespace Metamatic
             AssetDatabase.CreateAsset(meshToSave, path);
             AssetDatabase.SaveAssets();
         }
-	
+	    #endif
     }
 }

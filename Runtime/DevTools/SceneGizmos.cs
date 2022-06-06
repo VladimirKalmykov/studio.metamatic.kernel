@@ -47,10 +47,12 @@ namespace Metamatic.DevTools
 
             public void Draw()
             {
+                #if UNITY_EDITOR
                 Handles.color = color;
                 elapsed = Time.time - startTime;
                 ratio = Mathf.Clamp(elapsed / duration, 0f, 1f);
                 this.drawer(this);
+                #endif
             }
         }
 
@@ -58,23 +60,28 @@ namespace Metamatic.DevTools
 
         public static void AddLines(Vector3[] lines, Color color = default, float duration = 1f)
         {
+            #if UNITY_EDITOR
             instance.gizmos.Add(new Gizmo(gizmo =>
             {
                 Handles.DrawLines(lines);
             }, color, duration));
+            #endif
         }
 
         public static void AddRay(Vector3 position, Vector3 direction, float distance, Color color = default, float duration = 1f)
         {
+            #if UNITY_EDITOR
             var endPosition = position + (direction.normalized * distance);
             instance.gizmos.Add(new Gizmo(gizmo =>
             {
                 Handles.DrawLine(position, endPosition);
             }, color, duration));
+            #endif
         }
 
         public static void AddWireDisk(Vector3 position, float radius, Vector3 normal = default, Color color = default, float duration = 1f)
         {
+            #if UNITY_EDITOR
             if (normal.magnitude == 0)
             {
                 normal = Vector3.forward;
@@ -83,6 +90,7 @@ namespace Metamatic.DevTools
             {
                 Handles.DrawWireDisc(position, normal, radius);
             }, color, duration));
+            #endif
         }
         
         public static void AddDropDisk(Vector3 position, float maxRadius, Vector3 normal = default, Color color = default, float duration = 1f)
@@ -93,15 +101,18 @@ namespace Metamatic.DevTools
             }
             instance.gizmos.Add(new Gizmo(gizmo =>
             {
+                #if UNITY_EDITOR
                 var dropRatio = Mathf.Clamp01(gizmo.elapsed / 0.65f);
                 Handles.DrawSolidDisc(position, normal, Mathf.Lerp(0f, maxRadius, gizmo.ratio < 0.5f ? Easing.OutCirc(gizmo.ratio * 2f) : Easing.InCirc(1f - ((gizmo.ratio - 0.5f) * 2f))));
                 Handles.color = new Color(gizmo.color.r, gizmo.color.g, gizmo.color.b, 1f - dropRatio);
                 Handles.DrawWireDisc(position, normal, Mathf.Lerp(0f, maxRadius * 5f, Easing.InSine(dropRatio)));
                 Handles.DrawWireDisc(position, normal, Mathf.Lerp(0f, maxRadius * 7f, Easing.InSine(dropRatio)));
                 Handles.DrawWireDisc(position, normal, Mathf.Lerp(0f, maxRadius * 9f, Easing.InSine(dropRatio)));
+                #endif
             }, color, duration));
         }
-
+        
+        #if UNITY_EDITOR
         private void FixedUpdate()
         {
             foreach (var gizmo in gizmos.ToArray())
@@ -112,8 +123,9 @@ namespace Metamatic.DevTools
                 }
             }
         }
+        #endif
 
-#if UNITY_EDITOR
+        #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             foreach (var gizmo in gizmos.ToArray())
