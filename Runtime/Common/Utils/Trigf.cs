@@ -544,5 +544,28 @@ namespace Metamatic {
             euler.z *= -1;
             return Quaternion.Euler(euler);
         }
+        
+        /// <summary>
+        /// Cast angle with range 0 360
+        /// </summary>
+        /// <param name="a"></param>
+        /// <returns>Angle with range 0 360</returns>
+        public static float OptimizeAngle(float a)
+        {
+            var normalizeAngle = a % 360;
+            return normalizeAngle < 0f ? 360f + normalizeAngle : normalizeAngle;
+        }
+
+        public static float ClampAngle(float current, float min, float max)
+        {
+            var dtAngle = Mathf.Abs(((min - max) + 180) % 360 - 180);
+            var hdtAngle = dtAngle * 0.5f;
+            var midAngle = min + hdtAngle;
+ 
+            var offset = Mathf.Abs(Mathf.DeltaAngle(current, midAngle)) - hdtAngle;
+            if (offset > 0)
+                current = Mathf.MoveTowardsAngle(current, midAngle, offset);
+            return current;
+        }
     }
 }
