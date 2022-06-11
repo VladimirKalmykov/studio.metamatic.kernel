@@ -555,7 +555,14 @@ namespace Metamatic {
             var normalizeAngle = a % 360;
             return normalizeAngle < 0f ? 360f + normalizeAngle : normalizeAngle;
         }
-
+        
+        /// <summary>
+        /// Clamp angle 
+        /// </summary>
+        /// <param name="current"></param>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <returns></returns>
         public static float ClampAngle(float current, float min, float max)
         {
             var dtAngle = Mathf.Abs(((min - max) + 180) % 360 - 180);
@@ -566,6 +573,48 @@ namespace Metamatic {
             if (offset > 0)
                 current = Mathf.MoveTowardsAngle(current, midAngle, offset);
             return current;
+        }
+        
+        /// <summary>
+        /// Find effector position by joints and its angles with forward kinematics
+        /// </summary>
+        /// <param name="joints"></param>
+        /// <param name="angles"></param>
+        /// <returns></returns>
+        public static Vector3 GetForwardKinematics2dEffector (Transform[] joints, float[] angles)
+        {
+            var prevPoint = joints[0].position;
+            var rotation = Quaternion.identity;
+            for (var i = 1; i < joints.Length; i++)
+            {
+                // Выполняет поворот вокруг новой оси
+                rotation *= Quaternion.AngleAxis(angles[i - 1], Vector3.forward);
+                var nextPoint = prevPoint + rotation * joints[i].localPosition;
+    
+                prevPoint = nextPoint;
+            }
+            return prevPoint;
+        }
+        
+        /// <summary>
+        /// Find effector position by joints and its angles with forward kinematics
+        /// </summary>
+        /// <param name="joints"></param>
+        /// <param name="angles"></param>
+        /// <returns></returns>
+        public static Vector2 GetForwardKinematics2dEffector (Vector3[] joints, float[] angles)
+        {
+            var prevPoint = joints[0];
+            var rotation = Quaternion.identity;
+            for (var i = 1; i < joints.Length; i++)
+            {
+                // Выполняет поворот вокруг новой оси
+                rotation *= Quaternion.AngleAxis(angles[i - 1], Vector3.forward);
+                var nextPoint = prevPoint + rotation * joints[i];
+    
+                prevPoint = nextPoint;
+            }
+            return prevPoint;
         }
     }
 }
