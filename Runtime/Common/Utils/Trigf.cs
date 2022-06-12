@@ -576,6 +576,22 @@ namespace Metamatic {
         }
         
         /// <summary>
+        /// Get angle progress between min and max
+        /// </summary>
+        /// <todo>What if angle is out of min max range?</todo>
+        /// <param name="current"></param>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <returns></returns>
+        public static float UnlerpAngle(float current, float min, float max)
+        {
+            var distance = Mathf.DeltaAngle(min, max);
+            var minDistance = Mathf.DeltaAngle(current, min);
+
+            return Mathf.Abs(minDistance / distance);
+        }
+        
+        /// <summary>
         /// Find effector position by joints and its angles with forward kinematics
         /// </summary>
         /// <param name="joints"></param>
