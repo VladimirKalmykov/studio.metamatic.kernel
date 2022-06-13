@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEngine;
 
 namespace Metamatic {
@@ -631,6 +632,29 @@ namespace Metamatic {
                 prevPoint = nextPoint;
             }
             return prevPoint;
+        }
+        
+        /// <summary>
+        /// Get medium point between multiple points relative their weight
+        /// </summary>
+        /// <param name="points"></param>
+        /// <param name="weights"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static Vector3 LerpArray(Vector3[] points, float[] weights)
+        {
+            if (weights.Length != points.Length)
+            {
+                throw new Exception("Mismatch points and weights count");
+            }
+            var sum = weights.Sum();
+            var result = Vector3.zero;
+
+            for (var i = 0; i < points.Length; i++)
+            {
+                result += points[i] * (weights[i] / sum);
+            }
+            return result;
         }
     }
 }
