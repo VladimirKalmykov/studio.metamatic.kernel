@@ -656,5 +656,17 @@ namespace Metamatic {
             }
             return result;
         }
+        
+        /// <summary>
+        /// Get the value of b or c, which is farthest to a
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public static float FarthestFrom(float a, float b, float c)
+        {
+            return Mathf.Abs(a - b) > Mathf.Abs(a - c) ? b : c;
+        }
     }
 }
