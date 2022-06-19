@@ -722,26 +722,39 @@ namespace Metamatic {
         {
             return (UnityEngine.Random.Range(0, count + 1) == count) != negative;
         }
-        
-        public static T CopyComponent<T>(T original, GameObject destination) where T : Component
+
+        public enum CopyComponentType
+        {
+            Fields,
+            Properties,
+            All
+        }
+        public static T CopyComponent<T>(T original, GameObject destination, CopyComponentType copyType = CopyComponentType.All, string[] excludePropertyNames = default) where T : Component
         {
             System.Type type = original.GetType();
 
             var dst = destination.GetComponent(type) as T;
             if (!dst) dst = destination.AddComponent(type) as T;
 
-            var fields = GetAllFields(type);
-            foreach (var field in fields)
+            if (copyType is CopyComponentType.All or CopyComponentType.Fields)
             {
-                if (field.IsStatic) continue;
-                field.SetValue(dst, field.GetValue(original));
+                var fields = GetAllFields(type);
+                foreach (var field in fields)
+                {
+                    if (field.IsStatic) continue;
+                    field.SetValue(dst, field.GetValue(original));
+                }
             }
 
-            var props = type.GetProperties();
-            foreach (var prop in props)
+            if (copyType is CopyComponentType.All or CopyComponentType.Properties)
             {
-                if (!prop.CanWrite || !prop.CanWrite || prop.Name == "name") continue;
-                prop.SetValue(dst, prop.GetValue(original, null), null);
+                var props = type.GetProperties();
+                foreach (var prop in props)
+                {
+                    if (!prop.CanWrite || !prop.CanWrite || prop.Name == "name" ||
+                        (excludePropertyNames?.Contains(prop.Name) ?? false)) continue;
+                    prop.SetValue(dst, prop.GetValue(original, null), null);
+                }
             }
 
             return dst as T;
