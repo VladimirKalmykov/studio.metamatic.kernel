@@ -60,10 +60,10 @@ namespace Metamatic {
             var rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);
             Gizmos.matrix = rotationMatrix;
             Gizmos.color = new Color(1f, 0.88f, 0f);
-            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.Euler(0f, 0f, -90f), Vector3.one * 5f);
+            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.Euler(0f, 0f, -90f), Vector3.one * HandleUtility.GetHandleSize(transform.position));
             
             Gizmos.color = new Color(1f, 0f, 0.06f);
-            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.identity, Vector3.one * 5f);
+            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.identity, Vector3.one * HandleUtility.GetHandleSize(transform.position));
         }
 #endif
     }
