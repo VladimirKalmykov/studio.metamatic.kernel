@@ -668,5 +668,10 @@ namespace Metamatic {
         {
             return Mathf.Abs(a - b) > Mathf.Abs(a - c) ? b : c;
         }
+
+        public static Vector3 Divide(Vector3 x, Vector3 divider)
+        {
+            return new Vector3(x.x / divider.x, x.y / divider.y, x.z / divider.z);
+        }
     }
 }

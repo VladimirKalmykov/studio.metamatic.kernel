@@ -86,7 +86,7 @@ namespace Metamatic
 
             for (var i = 0; i < m_Points.Count; i++)
             {
-                m_VirtualPosition += m_Points[i].transform.position * (m_Points[i].weight / sum);
+                m_VirtualPosition += transform.InverseTransformPoint(m_Points[i].transform.position) * (m_Points[i].weight / sum);
             }
 
             if (m_Points.Count != 1) return;
@@ -96,7 +96,7 @@ namespace Metamatic
 
         protected override Vector3 GetPosition()
         {
-            return enabled ? m_VirtualPosition : m_SinglePoint.position;
+            return enabled ? transform.TransformPoint(m_VirtualPosition) : m_SinglePoint.position;
         }
 
         protected override void SetTarget(Transform target)
