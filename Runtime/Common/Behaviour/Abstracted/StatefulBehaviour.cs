@@ -12,6 +12,7 @@ namespace Metamatic {
         protected event Action OnStatePreLateUpdate;
         #if DEBUG
         [SerializeField, HideInInspector] protected string[] statful_EditorShowStateKeys;
+        public bool debugStatefulBehaviour = false;
         #endif
         public class Debouncer
         {
@@ -181,7 +182,7 @@ namespace Metamatic {
         }
         #endif
 
-        private void LateUpdate()
+        protected virtual void LateUpdate()
         {
             StatePreLateUpdate();
             if (!stateful_ShouldUpdate) return;
