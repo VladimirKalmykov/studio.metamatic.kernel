@@ -11,9 +11,11 @@ namespace Metamatic.DevTools
         [LabelText("Title")]
         public string defaultTitle = "";
         
-        public Color color = Color.magenta;
+        public Color color = new Color(0f, 1f, 0.01f);
         public Color rightColor = new Color(1f, 0f, 0.06f);
-        public Vector3 arrowSize = Vector3.one;
+        public float arrowSize = 1f;
+
+        protected bool gizmo_DrawCoords = true;
 
         public string title
         {
@@ -23,12 +25,11 @@ namespace Metamatic.DevTools
             }
         }
 
-        private static Mesh arrowMesh;
+        protected static Mesh arrowMesh;
         #endif
 
         private void Start()
         {
-            Debug.Log("Start!");
             #if !UNITY_EDITOR
             enabled = false;
             #endif
@@ -41,13 +42,19 @@ namespace Metamatic.DevTools
             {
                 arrowMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Packages/studio.metamatic.kernel/Editor/DevTools/Assets/Meshes/arrow.asset");
             }
-            var rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);
-            Gizmos.matrix = rotationMatrix;
-            Gizmos.color = color;
-            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.Euler(0f, 0f, 90f), arrowSize);
-            
-            Gizmos.color = rightColor;
-            Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.identity, arrowSize);
+
+            if (gizmo_DrawCoords)
+            {
+                var rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);
+                Gizmos.matrix = rotationMatrix;
+                Gizmos.color = color;
+                Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.Euler(0f, 0f, 90f),
+                    Vector3.one * 0.333f * arrowSize * HandleUtility.GetHandleSize(transform.position));
+
+                Gizmos.color = rightColor;
+                Gizmos.DrawMesh(arrowMesh, Vector3.zero, Quaternion.identity,
+                    Vector3.one * 0.333f * arrowSize * HandleUtility.GetHandleSize(transform.position));
+            }
         }
 #endif
     }

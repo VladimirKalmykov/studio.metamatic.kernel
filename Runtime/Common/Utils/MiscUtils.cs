@@ -772,5 +772,27 @@ namespace Metamatic {
                         BindingFlags.DeclaredOnly;
             return t.GetFields(flags).Concat(GetAllFields(t.BaseType));
         }
+
+        public static void BubbleSort<T>(int[] indexes, T[] values, int start, int length, Func<T, T, int> compare)
+        {
+            var pass = true;
+            while (pass)
+            {
+                pass = false;
+                for (var i = start; i < Mathf.Min(indexes.Length - 1, length); i++)
+                {
+                    var index = indexes[i];
+                    var nextIndex = indexes[i + 1];
+                    var diff = compare(values[index], values[nextIndex]);
+                    if (diff > 0)
+                    {
+                        /* Swap */
+                        indexes[i] = nextIndex;
+                        indexes[i + 1] = index;
+                        pass = true;
+                    }
+                }
+            }
+        }
     }
 }
