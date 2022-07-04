@@ -676,7 +676,7 @@ namespace Metamatic {
         }
         
         /// <summary>
-        /// Get the value of b or c, which is farthest to a
+        /// Get the value of b or c, which is farthest from a
         /// </summary>
         /// <param name="value"></param>
         /// <param name="a"></param>
@@ -710,7 +710,12 @@ namespace Metamatic {
             return Vector3.Dot(vector.normalized, direction.normalized) * vector.magnitude;
         }
         
-        public static int[] FindJarvisHull(Vector3[] points)
+        /// <summary>
+        /// Find 
+        /// </summary>
+        /// <param name="points"></param>
+        /// <returns></returns>
+        public static int[] FindJarvisConvexHull(Vector3[] points)
         {
             /* Form indexes */
             var indexes = points.Select((p, index) => index).ToArray();
@@ -719,58 +724,34 @@ namespace Metamatic {
             for (var i = 1; i < indexes.Length; i++)
             {
                 var cachedIndex = indexes[i];
-                if (points[indexes[0]].x > points[cachedIndex].x)
-                {
-                    indexes[i] = indexes[0];
-                    indexes[0] = cachedIndex;
-                }
+                if (!(points[indexes[0]].x > points[cachedIndex].x)) continue;
+                indexes[i] = indexes[0];
+                indexes[0] = cachedIndex;
             }
-            
-            /* Get points angle to first point */
-           //  var angles = new float[indexes.Length];
-           //  var zeroPoint = points[indexes[0]];
-           //  for (var i = 1; i < indexes.Length; i++)
-           //  {
-           //      var index = indexes[i];
-           //      angles[index] = Vector3.SignedAngle(Vector3.down, points[index] - zeroPoint, Vector3.forward);
-           //  }
-           //  
-           //  /* Sort by angles */
-           // MiscUtils.BubbleSort<float>(indexes, angles, 1, indexes.Length - 1, (a, b) =>
-           // {
-           //     if (a == b) return 0;
-           //     return a < b ? -1 : 1;
-           // });
-           
            
            /* Find nearest up point */
-           var (maxAngle, upIndex) = FindJarvisHullMaxAnglePointIndex(Vector3.down, 0, points, indexes);
+           var upIndex = FindJarvisHullMaxAnglePointIndex(Vector3.down, 0, points, indexes);
            var upPointIndex = indexes[upIndex];
-           Debug.Log($"upPointIndex: {upPointIndex}");
 
            var hullLength = 0;
            var vector = Vector3.down;
            var index = 0;
            do
            {
-               var (minAngle, minAngleIndex) = FindJarvisHullMinAnglePointIndex(vector, index, points, indexes);
+               var minAngleIndex = FindJarvisHullMinAnglePointIndex(vector, index, points, indexes);
 
                var pointIndex = indexes[minAngleIndex];
                var tempIndex = indexes[index + 1];
                indexes[index + 1] = pointIndex;
                indexes[minAngleIndex] = tempIndex;
                
-               Debug.Log($"point index: {pointIndex}");
-               
                index++;
-               
-               Debug.Log($"index: {index}");
                
                if (pointIndex == upPointIndex)
                {
                    break;
                }
-               vector = points[indexes[index + 1]] - points[indexes[index]];
+               vector = points[indexes[index]] - points[indexes[index - 1]];
                
            } while (index < indexes.Length - 1);
 
@@ -779,8 +760,133 @@ namespace Metamatic {
            Array.Resize(ref indexes, hullLength);
            return indexes;
         }
+
+        public struct GreedyHullCandidiate
+        {
+            public readonly float angle;
+            public readonly float distance;
+
+            public GreedyHullCandidiate(float angle, float distance)
+            {
+                this.angle = angle;
+                this.distance = distance;
+            }
+        }
         
-        private static (float, int) FindJarvisHullMinAnglePointIndex(Vector3 vector, int startIndex, Vector3[] points, int[] indexes)
+        /// <summary>
+        /// Find 
+        /// </summary>
+        /// <param name="points"></param>
+        /// <returns></returns>
+        public static int[] FindJarvisGreedyHull(Vector3[] points)
+        {
+            /* Form indexes */
+            var indexes = points.Select((p, index) => index).ToArray();
+            
+            /* Find most left point */
+            var maxX = float.MinValue;
+            for (var i = 1; i < indexes.Length; i++)
+            {
+                var cachedIndex = indexes[i];
+                if (points[cachedIndex].x > maxX)
+                {
+                    maxX = points[cachedIndex].x;
+                }
+                if (points[indexes[0]].x > points[cachedIndex].x)
+                {
+                    indexes[i] = indexes[0];
+                    indexes[0] = cachedIndex;
+                }
+            }
+           
+            /* Find nearest up point */
+            var upIndex = FindJarvisHullMaxAnglePointIndex(Vector3.down, 0, points, indexes);
+            var upPointIndex = indexes[upIndex];
+
+            var hullLength = 0;
+            var vector = Vector3.down;
+            var index = 0;
+            do
+            {
+                var bestAngle = 360f;
+                var bestIndex = 0;
+                var bestDistance = float.MaxValue;
+
+                var worstAngle = float.MinValue;
+                var worstDistance = 0f;
+                var candidates = new GreedyHullCandidiate[indexes.Length];
+                for (var y = index + 1; y < indexes.Length; y++)
+                {
+                    var angle = Vector3.SignedAngle(vector, points[indexes[y]] - points[indexes[index]], Vector3.forward);
+                    var distance = Vector3.Distance(points[indexes[index]], points[indexes[y]]);
+
+                    candidates[y] = new GreedyHullCandidiate(angle, distance);
+
+                    if (angle > worstAngle)
+                    {
+                        worstAngle = angle;
+                    }
+
+                    if (distance > worstDistance)
+                    {
+                        worstDistance = distance;
+                    }
+                    
+                    if (angle < bestAngle && distance < bestDistance)
+                    {
+                        bestAngle = angle;
+                        bestDistance = distance;
+                        bestIndex = y;
+                    }
+                }
+
+                
+
+                var maxDistance = worstDistance - bestDistance;
+                var maxAngle = (worstAngle - bestAngle);
+                
+                Debug.Log($"{index} worst angle: {worstAngle}, best angle: {bestAngle} ({maxAngle})");
+                Debug.Log($"{index} worst disatnce: {worstDistance}, best distance: {bestDistance} ({maxDistance})");
+
+                var bestDistanceWeight = float.MinValue;
+                var bestAngleWeight = float.MinValue;
+                var bestTotalWeight = float.MinValue;
+                for (var y = index + 1; y < candidates.Length; y++)
+                {
+                    var distanceWeight = 1f - ((candidates[y].distance - bestDistance) / maxDistance);
+                    var angleWeight = 1f - ((candidates[y].angle - bestDistance) / maxAngle);
+                    var totalWeight = distanceWeight + angleWeight;
+                    if (totalWeight > bestTotalWeight)
+                    {
+                        bestTotalWeight = totalWeight;
+                        bestIndex = y;
+                    }
+                    Debug.Log($"{index}:{y} ({candidates[y].angle}, {candidates[y].distance}) distance weight: {distanceWeight}, angle weight: {angleWeight}");
+                }
+
+
+                var pointIndex = indexes[bestIndex];
+                var tempIndex = indexes[index + 1];
+                indexes[index + 1] = pointIndex;
+                indexes[bestIndex] = tempIndex;
+               
+                index++;
+               
+                if (pointIndex == upPointIndex)
+                {
+                    break;
+                }
+                vector = points[indexes[index]] - points[indexes[index - 1]];
+               
+            } while (index < indexes.Length - 1);
+
+            hullLength = index + 1;
+
+            Array.Resize(ref indexes, hullLength);
+            return indexes;
+        }
+        
+        private static int FindJarvisHullMinAnglePointIndex(Vector3 vector, int startIndex, Vector3[] points, int[] indexes)
         {
             var bestAngle = 360f;
             var bestIndex = 0;
@@ -795,10 +901,10 @@ namespace Metamatic {
                 }
             }
 
-            return (bestAngle, bestIndex);
+            return bestIndex;
         }
         
-        private static (float, int) FindJarvisHullMaxAnglePointIndex(Vector3 vector, int startIndex, Vector3[] points, int[] indexes)
+        private static int FindJarvisHullMaxAnglePointIndex(Vector3 vector, int startIndex, Vector3[] points, int[] indexes)
         {
             var bestAngle = -360f;
             var bestIndex = 0;
@@ -813,7 +919,7 @@ namespace Metamatic {
                 }
             }
 
-            return (bestAngle, bestIndex);
+            return bestIndex;
         }
     }
 }
