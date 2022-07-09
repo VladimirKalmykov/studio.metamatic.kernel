@@ -738,7 +738,7 @@ namespace Metamatic {
            var index = 0;
            do
            {
-               var minAngleIndex = FindJarvisHullMinAnglePointIndex(vector, index, points, indexes);
+               var minAngleIndex = FindJarvisHullMinAnglePointIndex(vector, index, index + 1, points, indexes);
 
                var pointIndex = indexes[minAngleIndex];
                var tempIndex = indexes[index + 1];
@@ -777,30 +777,54 @@ namespace Metamatic {
         /// Find 
         /// </summary>
         /// <param name="points"></param>
+        /// <param name="greed"></param>
+        /// <param name="steps"></param>
         /// <returns></returns>
-        public static int[] FindJarvisGreedyHull(Vector3[] points)
+        public static int[] FindJarvisGreedyHull(Vector3[] points, float greed = 0.5f, int steps = 1)
         {
             /* Form indexes */
             var indexes = points.Select((p, index) => index).ToArray();
-            
-            /* Find most left point */
+            var minX = float.MaxValue;
             var maxX = float.MinValue;
+            var minY = float.MaxValue;
+            var maxY = float.MinValue;
+            /* Find most left point  */
             for (var i = 1; i < indexes.Length; i++)
             {
                 var cachedIndex = indexes[i];
-                if (points[cachedIndex].x > maxX)
+                
+                /* Most right point */
+                var currentPoint = points[cachedIndex];
+                if (maxX < currentPoint.x)
                 {
-                    maxX = points[cachedIndex].x;
+                    maxX = currentPoint.x;
                 }
-                if (points[indexes[0]].x > points[cachedIndex].x)
+                
+                /* Most right point */
+                if (minY > currentPoint.y)
                 {
+                    minY = currentPoint.y;
+                }
+                
+                /* Most right point */
+                if (maxY < currentPoint.y)
+                {
+                    maxY = currentPoint.y;
+                }
+                
+                /* Most left point */
+                if (minX > currentPoint.x)
+                {
+                    minX = currentPoint.x;
                     indexes[i] = indexes[0];
                     indexes[0] = cachedIndex;
                 }
             }
+
+            var diagonal = Vector2.Distance(new Vector2(minX, minY), new Vector2(maxX, maxY));
            
             /* Find nearest up point */
-            var upIndex = FindJarvisHullMaxAnglePointIndex(Vector3.down, 0, points, indexes);
+            var upIndex = FindJarvisHullMaxAnglePointIndex(Vector3.down, 0, 1, points, indexes);
             var upPointIndex = indexes[upIndex];
 
             var hullLength = 0;
@@ -808,67 +832,13 @@ namespace Metamatic {
             var index = 0;
             do
             {
-                var bestAngle = 360f;
-                var bestIndex = 0;
-                var bestDistance = float.MaxValue;
+                var minAngleIndex = FindJarvisHullMinAnglePointIndex(vector, index, index + 1, points, indexes);
+                if (minAngleIndex < 0) break;
 
-                var worstAngle = float.MinValue;
-                var worstDistance = 0f;
-                var candidates = new GreedyHullCandidiate[indexes.Length];
-                for (var y = index + 1; y < indexes.Length; y++)
-                {
-                    var angle = Vector3.SignedAngle(vector, points[indexes[y]] - points[indexes[index]], Vector3.forward);
-                    var distance = Vector3.Distance(points[indexes[index]], points[indexes[y]]);
-
-                    candidates[y] = new GreedyHullCandidiate(angle, distance);
-
-                    if (angle > worstAngle)
-                    {
-                        worstAngle = angle;
-                    }
-
-                    if (distance > worstDistance)
-                    {
-                        worstDistance = distance;
-                    }
-                    
-                    if (angle < bestAngle && distance < bestDistance)
-                    {
-                        bestAngle = angle;
-                        bestDistance = distance;
-                        bestIndex = y;
-                    }
-                }
-
-                
-
-                var maxDistance = worstDistance - bestDistance;
-                var maxAngle = (worstAngle - bestAngle);
-                
-                Debug.Log($"{index} worst angle: {worstAngle}, best angle: {bestAngle} ({maxAngle})");
-                Debug.Log($"{index} worst disatnce: {worstDistance}, best distance: {bestDistance} ({maxDistance})");
-
-                var bestDistanceWeight = float.MinValue;
-                var bestAngleWeight = float.MinValue;
-                var bestTotalWeight = float.MinValue;
-                for (var y = index + 1; y < candidates.Length; y++)
-                {
-                    var distanceWeight = 1f - ((candidates[y].distance - bestDistance) / maxDistance);
-                    var angleWeight = 1f - ((candidates[y].angle - bestDistance) / maxAngle);
-                    var totalWeight = distanceWeight + angleWeight;
-                    if (totalWeight > bestTotalWeight)
-                    {
-                        bestTotalWeight = totalWeight;
-                        bestIndex = y;
-                    }
-                    Debug.Log($"{index}:{y} ({candidates[y].angle}, {candidates[y].distance}) distance weight: {distanceWeight}, angle weight: {angleWeight}");
-                }
-
-
-                var pointIndex = indexes[bestIndex];
+                var pointIndex = indexes[minAngleIndex];
                 var tempIndex = indexes[index + 1];
                 indexes[index + 1] = pointIndex;
-                indexes[bestIndex] = tempIndex;
+                indexes[minAngleIndex] = tempIndex;
                
                 index++;
                
@@ -881,24 +851,105 @@ namespace Metamatic {
             } while (index < indexes.Length - 1);
 
             hullLength = index + 1;
+            
+            /* Handle each long secion */
+            for (var step = 0; step < steps; step++)
+            {
+                index = 1;
+                do
+                {
+                    var currentEdgeStartIndex = index;
+                    var currentEdgeEndIndex = index == hullLength - 1 ? 0 : index + 1;
+                    var previousEdgeStartIndex = index - 1;
+                    var previousEdgeEndIndex = index;
+                    var pointA = points[indexes[currentEdgeStartIndex]];
+                    var pointB = points[indexes[currentEdgeEndIndex]];
+                    var distance = Vector3.Distance(pointA, pointB);
+                    vector = points[indexes[currentEdgeEndIndex]] - points[indexes[currentEdgeStartIndex]];
+                
+                    var minAngleIndex = FindJarvisHullMinAnglePointIndex(vector, currentEdgeStartIndex, hullLength, points, indexes, distance, 0f, 90f, true);
 
+                    if (minAngleIndex >= 0)
+                    {
+                        var bestIndex = indexes[minAngleIndex];
+                        if (minAngleIndex > index + 1)
+                        {
+                            /* Shift array */
+                            for (var s = minAngleIndex; s > index + 1; s--)
+                            {
+                                indexes[s] = indexes[s - 1];
+                            }
+                            indexes[index + 1] = bestIndex;
+                            index++;
+                        }
+                        hullLength++;
+                    }
+                
+                    index++;
+                } while (index < hullLength);
+            }
+                
             Array.Resize(ref indexes, hullLength);
             return indexes;
         }
         
-        private static int FindJarvisHullMinAnglePointIndex(Vector3 vector, int startIndex, Vector3[] points, int[] indexes)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="vector">Vector of previously edge</param>
+        /// <param name="currentIndex">Last index of edge</param>
+        /// <param name="startIndex">Index we can start iterate</param>
+        /// <param name="points">Array of points</param>
+        /// <param name="indexes">Array of points indexes sorted as consistent vertexes</param>
+        /// <param name="maxMagnitude">Max magnitude of test vector</param>
+        /// <returns></returns>
+        private static int FindJarvisHullMinAnglePointIndex(Vector3 vector, int currentIndex, int startIndex, Vector3[] points, int[] indexes, float maxMagnitude = float.MaxValue, float minAngle = -180f, float maxAngle = 180f, bool debug = false)
         {
             var bestAngle = 360f;
-            var bestIndex = 0;
+            var bestIndex = -1;
                
-            for (var y = startIndex + 1; y < indexes.Length; y++)
+            for (var y = startIndex; y < indexes.Length; y++)
             {
-                var angle = Vector3.SignedAngle(vector, points[indexes[y]] - points[indexes[startIndex]], Vector3.forward);
-                if (angle < bestAngle)
+                var testVector = points[indexes[y]] - points[indexes[currentIndex]];
+                if (testVector.magnitude > maxMagnitude) continue;
+                
+                var angle = Vector3.SignedAngle(vector, testVector, Vector3.forward);
+                if (angle > minAngle && angle < maxAngle && angle < bestAngle)
                 {
                     bestAngle = angle;
                     bestIndex = y;
                 }
+            }
+
+            if (debug && bestIndex >= 0)
+            {
+                Debug.Log($"bestAngle: {bestAngle} for point #{indexes[currentIndex]} (index: {indexes[bestIndex]})");
+            }
+
+            return bestIndex;
+        }
+        
+        private static int FindJarvisHullMaxAnglePointIndex(Vector3 vector, int currentIndex, int startIndex, Vector3[] points, int[] indexes, float maxMagnitude = float.MaxValue, float minAngle = -180f, float maxAngle = 180f, bool debug = false)
+        {
+            var bestAngle = -360f;
+            var bestIndex = -1;
+               
+            for (var y = startIndex; y < indexes.Length; y++)
+            {
+                var testVector = points[indexes[y]] - points[indexes[currentIndex]];
+                if (testVector.magnitude > maxMagnitude) continue;
+                
+                var angle = Vector3.SignedAngle(vector, testVector, Vector3.forward);
+                if (angle > minAngle && angle < maxAngle && angle > bestAngle)
+                {
+                    bestAngle = angle;
+                    bestIndex = y;
+                }
+            }
+
+            if (debug && bestIndex >= 0)
+            {
+                Debug.Log($"bestAngle: {bestAngle} for point #{indexes[currentIndex]} (index: {indexes[bestIndex]})");
             }
 
             return bestIndex;
