@@ -771,7 +771,7 @@ namespace Metamatic {
         /// <param name="maxAngle">Max angle when find next hull vertex relative previous edge</param>
         /// <param name="minReflexiveAngle">Min reflexive angle (when we go inside hull and the returns back)</param>
         /// <returns></returns>
-        public static int[] FindJarvisGreedyHull(Vector3[] points, int steps = 1, float minAngle = -123f, float maxAngle = 88f, float minReflexiveAngle = -57f)
+        public static int[] FindJarvisGreedyHull(Vector2[] points, int steps = 1, float minAngle = -123f, float maxAngle = 88f, float minReflexiveAngle = 57f)
         {
             /* Form indexes */
             var indexes = points.Select((p, index) => index).ToArray();
@@ -819,7 +819,7 @@ namespace Metamatic {
             // var upPointIndex = indexes[upIndex];
 
             var hullLength = 0;
-            var vector = Vector3.down;
+            var vector = Vector2.down;
             var index = 0;
             do
             {
@@ -844,40 +844,45 @@ namespace Metamatic {
 
             hullLength = index + 1;
 
-            var reverseVector = Vector3.up;
+            var reverseVector = Vector2.up;
+            var currentEdgeStartIndex = 0;
+            var currentEdgeEndIndex = 0;
+            var pointA = Vector2.zero;
+            var pointB = Vector2.zero;
+            var distance = 0f;
             /* Handle each long section */
             for (var step = 0; step < steps; step++)
             {
-                index = 1;
+                index = 0;
                 do
                 {
-                    var currentEdgeStartIndex = index;
-                    var currentEdgeEndIndex = index == hullLength - 1 ? 0 : index + 1;
+                    currentEdgeStartIndex = index;
+                    currentEdgeEndIndex = index == hullLength - 1 ? 0 : index + 1;
                     // var previousEdgeStartIndex = index - 1;
                     // var previousEdgeEndIndex = index;
-                    var pointA = points[indexes[currentEdgeStartIndex]];
-                    var pointB = points[indexes[currentEdgeEndIndex]];
-                    var distance = Vector3.Distance(pointA, pointB);
+                    pointA = points[indexes[currentEdgeStartIndex]];
+                    pointB = points[indexes[currentEdgeEndIndex]];
+                    distance = Vector2.Distance(pointA, pointB);
                     vector = points[indexes[currentEdgeEndIndex]] - points[indexes[currentEdgeStartIndex]];
-                    reverseVector = points[indexes[currentEdgeStartIndex]] - points[indexes[currentEdgeEndIndex]];
+                    
                     // var prevVector = points[indexes[previousEdgeEndIndex]] - points[indexes[previousEdgeStartIndex]];
                     
                     /* Find new vertex between current edge for forth direction */
                     var minAngleIndex = FindJarvisHullAnglePointIndex(false, vector, currentEdgeStartIndex, hullLength, points, indexes, distance, minAngle, maxAngle);
                     
                     /* Find new vertex between current edge for back direction */
-                    var minBackAndleIndex = FindJarvisHullAnglePointIndex(true, reverseVector, currentEdgeEndIndex, hullLength, points, indexes, distance, minAngle, maxAngle);
-
+                    // 
+                    var firstFoundedVertexWasInserted = false;
                     if (minAngleIndex >= 0)
                     {
                         var bestIndex = indexes[minAngleIndex];
                         
                         /* Compare new vector between new point and next point to current vector */
-                        var newInVector = points[bestIndex] - points[indexes[currentEdgeStartIndex]];
+                        var newInVector = points[indexes[currentEdgeStartIndex]] - points[bestIndex];
                         var newOutVector = points[indexes[currentEdgeEndIndex]] - points[bestIndex];
 
-                        var reflexiveAngle = Vector3.SignedAngle(newInVector, newOutVector, Vector3.forward);
-                        if (reflexiveAngle < minReflexiveAngle)
+                        var reflexiveAngle = Vector2.SignedAngle(newInVector, newOutVector);
+                        if (Mathf.Abs(reflexiveAngle) < minReflexiveAngle)
                         {
                             // Debug.Log($"InOut Angle of {indexes[minAngleIndex]} is out of limit: {reflexiveAngle}");
                             index++;
@@ -894,9 +899,55 @@ namespace Metamatic {
                             }
                             indexes[index + 1] = bestIndex;
                             index++;
+                            firstFoundedVertexWasInserted = true;
+                        }
+
+                        hullLength++;
+                    }
+
+                    if (hullLength >= indexes.Length)
+                    {
+                        break;
+                    }
+                    /* Find vertex from right to left */
+                    var secondStepIndex = firstFoundedVertexWasInserted ? index - 1 : index;
+                    currentEdgeStartIndex = secondStepIndex;
+                    currentEdgeEndIndex = secondStepIndex == hullLength - 1 ? 0 : secondStepIndex + 1;
+                    pointA = points[indexes[currentEdgeStartIndex]];
+                    pointB = points[indexes[currentEdgeEndIndex]];
+                    distance = Vector2.Distance(pointA, pointB);
+                    reverseVector = points[indexes[currentEdgeStartIndex]] - points[indexes[currentEdgeEndIndex]];
+                    var minBackAndleIndex = FindJarvisHullAnglePointIndex(true, reverseVector, currentEdgeEndIndex, hullLength, points, indexes, distance, minAngle, maxAngle, false);
+                    
+                    if (minBackAndleIndex >= 0)
+                    {
+                        var bestIndex = indexes[minBackAndleIndex];
+                        
+                        /* Compare new vector between new point and next point to current vector */
+                        var newInVector = points[indexes[currentEdgeEndIndex]] - points[bestIndex];
+                        var newOutVector = points[indexes[currentEdgeStartIndex]] - points[bestIndex];
+                    
+                        var reflexiveAngle = Vector2.SignedAngle(newInVector, newOutVector);
+                        if (Mathf.Abs(reflexiveAngle) < minReflexiveAngle)
+                        {
+                            index++;
+                            continue;
+                        }
+                        
+                        if (minBackAndleIndex > index)
+                        {
+                            
+                            /* Shift array */
+                            for (var s = minBackAndleIndex; s > currentEdgeStartIndex; s--)
+                            {
+                                indexes[s] = indexes[s - 1];
+                            }
+                            indexes[currentEdgeStartIndex + 1] = bestIndex;
+                            index++;
                         }
                         hullLength++;
                     }
+                    
                 
                     index++;
                 } while (index < hullLength);
@@ -910,28 +961,32 @@ namespace Metamatic {
         /// 
         /// </summary>
         /// <param name="vector">Vector of previously edge</param>
-        /// <param name="currentIndex">Last index of edge</param>
+        /// <param name="edgeStartIndex">Last index of edge</param>
         /// <param name="startIndex">Index we can start iterate</param>
         /// <param name="points">Array of points</param>
         /// <param name="indexes">Array of points indexes sorted as consistent vertexes</param>
         /// <param name="maxMagnitude">Max magnitude of test vector</param>
         /// <returns></returns>
-        private static int FindJarvisHullAnglePointIndex(bool findMaxAngle, Vector3 vector, int currentIndex, int startIndex, Vector3[] points, int[] indexes, float maxMagnitude = float.MaxValue, float minAngle = -180f, float maxAngle = 180f, bool closing = false, bool debug = false)
+        private static int FindJarvisHullAnglePointIndex(bool findMaxAngle, Vector2 vector, int edgeStartIndex, int startIndex, Vector2[] points, int[] indexes, float maxMagnitude = float.MaxValue, float minAngle = -180f, float maxAngle = 180f, bool closing = false, bool debug = false)
         {
             var bestAngle = findMaxAngle ? -360f : 360f;
             var bestIndex = -1;
             
             /* Compare with zero point first, then others aster startIndex */
-            var y = !closing || currentIndex == 0 ? startIndex : 0;
+            var y = !closing || edgeStartIndex == 0 ? startIndex : 0;
+            if (y >= indexes.Length)
+            {
+                return -1;
+            }
             do
             {
-                var testVector = points[indexes[y]] - points[indexes[currentIndex]];
+                var testVector = points[indexes[y]] - points[indexes[edgeStartIndex]];
                 if (testVector.magnitude > maxMagnitude)
                 {
                     goto Next;
                 }
 
-                var angle = Vector3.SignedAngle(vector, testVector, Vector3.forward);
+                var angle = Vector2.SignedAngle(vector, testVector);
 
                 if (angle > minAngle && angle < maxAngle && (findMaxAngle ? angle > bestAngle : angle < bestAngle))
                 {
@@ -944,51 +999,7 @@ namespace Metamatic {
 
             if (debug && bestIndex >= 0)
             {
-                Debug.Log($"bestAngle: {bestAngle} for point #{indexes[currentIndex]} (index: {indexes[bestIndex]})");
-            }
-
-            return bestIndex;
-        }
-        
-        private static int FindJarvisHullMaxAnglePointIndex(Vector3 vector, int currentIndex, int startIndex, Vector3[] points, int[] indexes, float maxMagnitude = float.MaxValue, float minAngle = -180f, float maxAngle = 180f, bool debug = false)
-        {
-            var bestAngle = -360f;
-            var bestIndex = -1;
-               
-            for (var y = startIndex; y < indexes.Length; y++)
-            {
-                var testVector = points[indexes[y]] - points[indexes[currentIndex]];
-                if (testVector.magnitude > maxMagnitude) continue;
-                
-                var angle = Vector3.SignedAngle(vector, testVector, Vector3.forward);
-                if (angle > minAngle && angle < maxAngle && angle > bestAngle)
-                {
-                    bestAngle = angle;
-                    bestIndex = y;
-                }
-            }
-
-            if (debug && bestIndex >= 0)
-            {
-                Debug.Log($"bestAngle: {bestAngle} for point #{indexes[currentIndex]} (index: {indexes[bestIndex]})");
-            }
-
-            return bestIndex;
-        }
-        
-        private static int FindJarvisHullMaxAnglePointIndex(Vector3 vector, int startIndex, Vector3[] points, int[] indexes)
-        {
-            var bestAngle = -360f;
-            var bestIndex = 0;
-               
-            for (var y = startIndex + 1; y < indexes.Length; y++)
-            {
-                var angle = Vector3.SignedAngle(vector, points[indexes[y]] - points[indexes[startIndex]], Vector3.forward);
-                if (angle > bestAngle)
-                {
-                    bestAngle = angle;
-                    bestIndex = y;
-                }
+                Debug.Log($"bestAngle: {bestAngle} for point #{indexes[edgeStartIndex]} (index: {indexes[bestIndex]})");
             }
 
             return bestIndex;
