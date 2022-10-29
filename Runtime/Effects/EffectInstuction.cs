@@ -43,4 +43,17 @@ namespace Metamatic.Effects
             return channel.Add(effect as IEffectWithProps<TTarget, TProps>, props);
         }
     }
+    
+    [Serializable]
+    public struct EffectRecipe
+    {
+        public ScriptableEffect scriptableEffect;
+    }
+    
+    [Serializable]
+    public struct EffectRecipe<TProps>
+    {
+        public ScriptableEffect scriptableEffect;
+        public TProps props;
+    }
 }

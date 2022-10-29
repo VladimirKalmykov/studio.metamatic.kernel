@@ -51,11 +51,8 @@ namespace Metamatic.Effects
     public class Effector<TTarget> : Effector
         where TTarget: Behaviour
     {
-        
         private EffectsChannel<TTarget> m_CommonChannel;
         public TTarget target { get; private set; }
-        
-        
 
         private void Awake()
         {

@@ -80,6 +80,20 @@ namespace Metamatic {
     public abstract class StatefulBehaviour<State>: StatefulBehaviour, ISerializationCallbackReceiver
         where State : struct
     {
+        private class Branch
+        {
+            public string name;
+            public State state;
+
+            public Branch(string name, State currentState = default)
+            {
+                this.name = name;
+                this.state = currentState;
+            }
+
+        }
+        private Dictionary<string, Branch> stateful_Branches = new Dictionary<string, Branch>();
+        private string stateful_CurrentBranchName = "master";
         public delegate void StateChangeHandler(ref State state, ref State prevState);
 
         public delegate void StateModifier(ref State state);
@@ -158,29 +172,6 @@ namespace Metamatic {
             stateful_ShouldApplyLogging = true;
 #endif
         }
-        
-        #if DEBUG
-        private void ApplyLogging()
-        {
-            var type = this.GetType();
-            var stateType = state.GetType();
-            var sectionName = $"{type.Name} ({name})";
-            if (statful_cached_AddedEditorShowStateKeys != null) foreach (var addedKey in statful_cached_AddedEditorShowStateKeys)
-            {
-                if (!statful_EditorShowStateKeys.Contains(addedKey))
-                {
-                    UILog.Remove(sectionName, addedKey);
-                }
-            }
-            foreach (var fieldName in statful_EditorShowStateKeys)
-            {
-                var field = stateType.GetField(fieldName);
-                UILog.Add(sectionName, fieldName, () => field.GetValue(state));
-            }
-
-            statful_cached_AddedEditorShowStateKeys = statful_EditorShowStateKeys.ToArray();
-        }
-        #endif
 
         protected virtual void LateUpdate()
         {
@@ -203,7 +194,77 @@ namespace Metamatic {
             m_PostUpdateModifiying.Invoke(ref stateful_NextState);
             m_PostUpdateModifiying = delegate { };
             stateful_UpdateInProcess = false;
-
         }
+
+        public void CreateBranch(string branchName, string sourceBranch = "")
+        {
+            if (branchName == stateful_CurrentBranchName || stateful_Branches.ContainsKey(branchName))
+            {
+                throw new Exception($"State branch ${branchName} already exists");
+            }
+            if (!stateful_Branches.ContainsKey(stateful_CurrentBranchName))
+            {
+                stateful_Branches.Add(stateful_CurrentBranchName, new Branch(stateful_CurrentBranchName, this.state));
+            }
+
+            if (sourceBranch == "")
+            {
+                sourceBranch = stateful_CurrentBranchName;
+            }
+
+            var nestState = stateful_Branches[sourceBranch].state;
+            this.state = nestState;
+            stateful_CurrentBranchName = branchName;
+        }
+
+        public void SwitchBranch(string branchName)
+        {
+            if (!stateful_Branches.ContainsKey(branchName))
+            {
+                throw new Exception($"State branch ${branchName} doesn't exist");
+            }
+            var currentBranch = stateful_Branches[stateful_CurrentBranchName];
+            currentBranch.state = this.state;
+            this.state = stateful_Branches[branchName].state;
+            stateful_CurrentBranchName = branchName;
+        }
+
+        public void RemoveBranch(string branchName)
+        {
+            if (!stateful_Branches.ContainsKey(branchName))
+            {
+                throw new Exception($"State branch ${branchName} doesn't exist");
+            }
+
+            if (branchName == stateful_CurrentBranchName)
+            {
+                throw new Exception($"Unable to remove branch ${branchName} beacause it is current branch");
+            }
+
+            stateful_Branches.Remove(branchName);
+        }
+        
+#if DEBUG
+        private void ApplyLogging()
+        {
+            var type = this.GetType();
+            var stateType = state.GetType();
+            var sectionName = $"{type.Name} ({name})";
+            if (statful_cached_AddedEditorShowStateKeys != null) foreach (var addedKey in statful_cached_AddedEditorShowStateKeys)
+            {
+                if (!statful_EditorShowStateKeys.Contains(addedKey))
+                {
+                    UILog.Remove(sectionName, addedKey);
+                }
+            }
+            foreach (var fieldName in statful_EditorShowStateKeys)
+            {
+                var field = stateType.GetField(fieldName);
+                UILog.Add(sectionName, fieldName, () => field.GetValue(state));
+            }
+
+            statful_cached_AddedEditorShowStateKeys = statful_EditorShowStateKeys.ToArray();
+        }
+#endif
     }
 }
