@@ -73,16 +73,56 @@ namespace Metamatic.Effects
             CancelAll();
         }
         
+        /*
+        [Obsolete("Add propsless effect to the channel is deprecated", true)]
         public EffectCancellableOperationAwaiter Add(IEffect<TTarget> effect)
         {
+            switch (effect.effectDuplication)
+            {
+                case EffectDuplicationBehaviour.Overlay:
+                    break;
+                case EffectDuplicationBehaviour.Recreate:
+                case EffectDuplicationBehaviour.Update:
+                    var executingEffectExecutionContext = executions.Find(e => e.effect == effect);
+                    executingEffectExecutionContext?.Dispose();
+
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
             return new EffectExecutionContext<TTarget, object>(
                 this,
                 effect
             ).GetAwaiter();
-        }
+        }*/
 
         public EffectCancellableOperationAwaiter Add<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
         {
+            switch (effect.effectDuplication)
+            {
+                case EffectDuplicationBehaviour.Overlay:
+                    break;
+                case EffectDuplicationBehaviour.Recreate:
+                case EffectDuplicationBehaviour.Update:
+                    var executingEffectExecutionContext = executions.Find(e => e.effect == effect);
+                    if (executingEffectExecutionContext != null)
+                    {
+                        if (effect.effectDuplication == EffectDuplicationBehaviour.Recreate)
+                        {
+                            executingEffectExecutionContext.Dispose();
+                        }
+                        else
+                        {
+                            (executingEffectExecutionContext as EffectExecutionContext<TTarget, TEffectProps>)
+                                ?.UpdateProps(props);
+                            return executingEffectExecutionContext.GetAwaiter();
+                        }
+                    }
+
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
             return new EffectExecutionContext<TTarget, TEffectProps>(
                 this,
                 effect,

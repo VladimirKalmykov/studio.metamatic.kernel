@@ -44,6 +44,7 @@ namespace Metamatic.Effects.Graph
             graph = parent.graph;
         }
         
+        /*[Obsolete("Apply propsless effect is obsolete", true)]
         public async UniTask ApplyEffect(IEffect<TTarget> effect)
         {
             try
@@ -58,7 +59,7 @@ namespace Metamatic.Effects.Graph
             {
                 Debug.LogError(e);
             }
-        }
+        }*/
         
         public async UniTask ApplyEffect<TProps>(IEffectWithProps<TTarget, TProps> effect, TProps props = default)
         {

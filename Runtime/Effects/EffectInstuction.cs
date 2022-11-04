@@ -16,16 +16,18 @@ namespace Metamatic.Effects
             }
             this.effect = effect;
         }
-
+        
+        /*[Obsolete("Run propless effects is obsolete", true)]
         public EffectCancellableOperationAwaiter Run(EffectsChannel<TTarget> channel)
         {
             return OnRun(channel);
-        }
-
+        }*/
+        
+        /*[Obsolete("Run propless effects is obsolete", true)]
         public virtual EffectCancellableOperationAwaiter OnRun(EffectsChannel<TTarget> channel)
         {
             return channel.Add(effect);
-        }
+        }*/
     }
     
     public class EffectInstruction<TTarget, TProps>: EffectInstruction<TTarget>
@@ -38,22 +40,33 @@ namespace Metamatic.Effects
             this.props = props;
         }
         
-        public override EffectCancellableOperationAwaiter OnRun(EffectsChannel<TTarget> channel)
+        /*public override EffectCancellableOperationAwaiter OnRun(EffectsChannel<TTarget> channel)
         {
             return channel.Add(effect as IEffectWithProps<TTarget, TProps>, props);
-        }
+        }*/
     }
     
     [Serializable]
     public struct EffectRecipe
     {
-        public ScriptableEffect scriptableEffect;
+        public ScriptableEffect effect;
+
+        public EffectRecipe(ScriptableEffect effect)
+        {
+            this.effect = effect;
+        }
     }
     
     [Serializable]
     public struct EffectRecipe<TProps>
     {
-        public ScriptableEffect scriptableEffect;
+        public ScriptableEffect effect;
         public TProps props;
+
+        public EffectRecipe(ScriptableEffect effect, TProps props)
+        {
+            this.effect = effect;
+            this.props = props;
+        }
     }
 }

@@ -2,14 +2,13 @@ using UnityEngine;
 
 namespace Metamatic.Actions
 {
-    public abstract class Action
+    public abstract class Action: ActionSource
     {
-        public abstract string type { get; }
-        public readonly Behaviour sourcerer;
+        public readonly float createdTime;
 
-        public Action(Behaviour sourcerer)
+        public Action(ActionSource source) : base(source.GetDebugMessage())
         {
-            this.sourcerer = sourcerer;
+            this.createdTime = Time.time;
         }
     }
 }

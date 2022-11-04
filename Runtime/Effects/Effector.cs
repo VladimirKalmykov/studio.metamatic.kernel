@@ -49,7 +49,7 @@ namespace Metamatic.Effects
     }
     
     public class Effector<TTarget> : Effector
-        where TTarget: Behaviour
+    where TTarget: Behaviour
     {
         private EffectsChannel<TTarget> m_CommonChannel;
         public TTarget target { get; private set; }
@@ -59,7 +59,7 @@ namespace Metamatic.Effects
             target = GetComponent<TTarget>();
             
             /* Define common channel */
-            m_CommonChannel = new EffectsChannel<TTarget>(this, this, "Common");
+            m_CommonChannel = CreateChannel(this, "Default");
         }
 
         public EffectsChannel<TTarget> CreateChannel(Behaviour owner, string debugName)
@@ -71,11 +71,12 @@ namespace Metamatic.Effects
             #endif
             return channel;
         }
-
+        
+        /*[Obsolete("Apply effects without props is obsolete", true)]
         public EffectCancellableOperationAwaiter ApplyEffect(IEffect<TTarget> effect)
         {
             return m_CommonChannel.Add(effect);
-        }
+        }*/
 
         public EffectCancellableOperationAwaiter ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
         {

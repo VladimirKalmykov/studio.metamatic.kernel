@@ -1,9 +1,16 @@
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic.Effects
 {
+    public enum EffectDuplicationBehaviour
+    {
+        Overlay,
+        Recreate,
+        Update
+    }
     public interface IEffect
     {
         public string GetEffectName();
@@ -11,7 +18,7 @@ namespace Metamatic.Effects
     public interface IEffect<TTarget>: IEffect
         where TTarget: Behaviour
     {
-        public UniTask RunEffect(EffectExecutionContext<TTarget> executionContext, CancellationToken cancellationToken);
+        public EffectDuplicationBehaviour effectDuplication { get; } 
     }
 
     public interface IEffectWithProps<TTarget, TProps> : IEffect<TTarget>

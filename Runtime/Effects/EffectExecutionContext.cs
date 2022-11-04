@@ -2,7 +2,9 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Metamatic.Actions;
 using UnityEngine;
+using Action = System.Action;
 
 namespace Metamatic.Effects
 {
@@ -31,7 +33,7 @@ namespace Metamatic.Effects
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Replay()
+        public virtual void Replay()
         {
             cycle.SetResult(true);
         }
@@ -63,9 +65,7 @@ namespace Metamatic.Effects
     {
         public readonly EffectsChannel<TTarget> channel;
         public UniTask<bool> replayUniTask { get; protected set; }
-
         
-
         public TTarget target
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -93,6 +93,25 @@ namespace Metamatic.Effects
         where TTarget: Behaviour
     {
         public TEffectProps props;
+        
+        public bool m_PropsUpdated = false;
+        
+        /// <summary>
+        /// Returns true if props was updated. After getting value it turn back to false immediately.
+        /// </summary>
+        public bool propsUpdated
+        {
+            get
+            {
+                var updated = m_PropsUpdated;
+                m_PropsUpdated = false;
+                return updated;
+            }
+        }
+
+        public delegate void PropsModifier(ref TEffectProps props);
+        
+        
 
         public EffectExecutionContext(EffectsChannel<TTarget> channel, IEffectWithProps<TTarget, TEffectProps> effect, ref TEffectProps props): base(channel, effect)
         {
@@ -114,6 +133,7 @@ namespace Metamatic.Effects
             AsyncUtils.AwaitCallback(task, Release);
         }
         
+        /*[Obsolete("Using effect context with no props is deprecated", true)]
         public EffectExecutionContext(EffectsChannel<TTarget> channel, IEffect<TTarget> effect): base(channel, effect)
         {
             channel.executions.Add(this);
@@ -131,6 +151,40 @@ namespace Metamatic.Effects
             }
 
             AsyncUtils.AwaitCallback(task, Release);
+        }*/
+        
+        /// <summary>
+        /// Eventless modify effect props
+        /// </summary>
+        /// <param name="modifier"></param>
+        public void ModifyProps(PropsModifier modifier)
+        {
+            modifier(ref this.props);
+        }
+        
+        /// <summary>
+        /// Update effect props ant replay effect cycle
+        /// </summary>
+        /// <param name="nextProps"></param>
+        public void UpdateProps(TEffectProps nextProps)
+        {
+            this.props = nextProps;
+            this.m_PropsUpdated = true;
+            this.Replay();
+        }
+        
+        /// <summary>
+        /// Generate an action that applies this effect
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public Metamatic.Actions.Action GenerateAction()
+        {
+            if (effect is not ScriptableEffect)
+            {
+                throw new Exception("Can not generate effect action for non scriptable effect");
+            }
+            return new ApplyEffectAction((ScriptableEffect)effect, props, new ActionSource("GenerateAction"));
         }
     }
 }
