@@ -130,7 +130,14 @@ namespace Metamatic.Effects
                 return;
             }
 
-            AsyncUtils.AwaitCallback(task, Release);
+            AsyncUtils.AwaitCallback(task, () =>
+            {
+                channel
+                    .effector
+                    .dispatcher
+                    .Dispatch(new EffectExitAction((ScriptableEffect)effect, this.props, new ActionSource("Effect Execution Control")));
+                Release();
+            });
         }
         
         /*[Obsolete("Using effect context with no props is deprecated", true)]

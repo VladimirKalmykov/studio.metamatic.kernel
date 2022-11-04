@@ -17,7 +17,7 @@ namespace Metamatic.Actions
 
         public override string GetDebugMessage()
         {
-            return $"fx({effect.GetEffectName()}) {base.GetDebugMessage()}";
+            return $"fx:apply({effect.GetEffectName()}) {base.GetDebugMessage()}";
         }
     }
 }
