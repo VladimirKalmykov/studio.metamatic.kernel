@@ -29,7 +29,7 @@ namespace Metamatic.DevTools
                 (Vector3)(rect.position + new Vector2(-rect.width / 2, -rect.height / 2f)),
                 (Vector3)(rect.position + new Vector2(rect.width / 2, -rect.height / 2f)),
             }, 0.3f);
-            Handles.DrawWireDisc(rect.position, Vector3.forward, 0.3f);
+            /*Handles.DrawWireDisc(rect.position, Vector3.forward, 0.3f);*/
             base.OnDrawGizmos();
         }
 

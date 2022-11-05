@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// Set cancas worldCamera to current camera
+    /// </summary>
     public class CanvasAutoCamera : MonoBehaviour
     {
         private Canvas m_Canvas;

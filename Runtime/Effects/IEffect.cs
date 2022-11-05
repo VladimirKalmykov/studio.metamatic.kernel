@@ -21,9 +21,10 @@ namespace Metamatic.Effects
         public EffectDuplicationBehaviour effectDuplication { get; } 
     }
 
-    public interface IEffectWithProps<TTarget, TProps> : IEffect<TTarget>
-        where TTarget: Behaviour
+    public interface IEffectWithProps<TEffector, TProps> : IEffect<TEffector>
+        where TEffector: Effector
+        where TProps: struct
     {
-        public UniTask RunEffect(EffectExecutionContext<TTarget, TProps> executionContext, CancellationToken cancellationToken);
+        public UniTask RunEffect(EffectExecutionContext<TEffector, TProps> executionContext, CancellationToken cancellationToken);
     }
 }

@@ -5,8 +5,7 @@ using UnityEngine;
 
 namespace Metamatic.Effects.Graph
 {
-    public class Node<TTarget>
-        where TTarget: Behaviour
+    public class Node
     {
         public enum ExecutionStatus
         {
@@ -15,10 +14,10 @@ namespace Metamatic.Effects.Graph
             Completed,
             Errored
         }
-        public EffectsGraph<TTarget> graph;
+        public EffectsGraph graph;
         private IEffect currentEffect;
-        protected readonly List<Node<TTarget>> children = new List<Node<TTarget>>();
-        public Node<TTarget> parent { get; private set; }= null;
+        protected readonly List<Node> children = new List<Node>();
+        public Node parent { get; private set; }= null;
         private EffectCancellableOperationAwaiter activeEffectExecution;
         public ExecutionStatus status { get; private set; } = ExecutionStatus.None;
 
@@ -26,19 +25,19 @@ namespace Metamatic.Effects.Graph
         {
         }
 
-        public Node<TTarget> AddChildrenNode(Node<TTarget> node)
+        public Node AddChildrenNode(Node node)
         {
             children.Add(node);
             node.SetParent(this);
             return node;
         }
         
-        public Node<TTarget> CreateChildrenNode()
+        public Node CreateChildrenNode()
         {
-            return AddChildrenNode(new Node<TTarget>());
+            return AddChildrenNode(new Node());
         }
 
-        public void SetParent(Node<TTarget> node)
+        public void SetParent(Node node)
         {
             parent = node;
             graph = parent.graph;
@@ -61,7 +60,7 @@ namespace Metamatic.Effects.Graph
             }
         }*/
         
-        public async UniTask ApplyEffect<TProps>(IEffectWithProps<TTarget, TProps> effect, TProps props = default)
+        public async UniTask ApplyEffect<TProps>(IEffectWithProps<Effector, TProps> effect, TProps props = default) where TProps: struct
         {
             TryCancel();
             currentEffect = effect;
@@ -78,7 +77,7 @@ namespace Metamatic.Effects.Graph
             }
         }
 
-        public void RemoveEffect(IEffect<TTarget> effect)
+        public void RemoveEffect(IEffect<Effector> effect)
         {
             if (currentEffect == effect)
             {
@@ -86,7 +85,7 @@ namespace Metamatic.Effects.Graph
             }
         }
 
-        public async UniTask ReleaseEffect(IEffect<TTarget> effect)
+        public async UniTask ReleaseEffect(IEffect<Effector> effect)
         {
             RemoveEffect(effect);
             await graph.Execute();

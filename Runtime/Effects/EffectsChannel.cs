@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Metamatic.Effects
 {
-    public class EffectsChannel
+    public class EffectsChannel: IDisposable
     {
         /// <summary>
         /// Effects execution context queue
@@ -35,24 +35,15 @@ namespace Metamatic.Effects
         }
         #endif
 
-        public EffectsChannel(Behaviour owner, string debugName)
-        {
-            this.owner = owner;
-            this.debugName = debugName;
-        }
-
         public override string ToString()
         {
             return $"{owner.name}: {debugName}";
         }
-    }
-    public sealed class EffectsChannel<TTarget>: EffectsChannel, IDisposable
-        where TTarget: Behaviour
-    {
-        public readonly EffectsGraph<TTarget> graph; 
-        public readonly Effector<TTarget> effector;
+        
+        public readonly EffectsGraph graph; 
+        public readonly Effector effector;
 
-        public TTarget target
+        public Effector target
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
@@ -60,9 +51,11 @@ namespace Metamatic.Effects
                 return effector.target;
             }
         }
-        public EffectsChannel(Effector<TTarget> effector, Behaviour owner, string debugName): base(owner, debugName)
+        public EffectsChannel(Effector effector, Behaviour owner, string debugName)
         {
-            this.graph = new EffectsGraph<TTarget>(this);
+            this.owner = owner;
+            this.debugName = debugName;
+            this.graph = new EffectsGraph(this);
             this.effector = effector;
             effector.OnBeforeDestroy += OnDestroy;
         }
@@ -96,8 +89,14 @@ namespace Metamatic.Effects
             ).GetAwaiter();
         }*/
 
-        public EffectCancellableOperationAwaiter Add<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
+        public EffectCancellableOperationAwaiter Add<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
+            #if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                throw new Exception("You can not run effect in editor mode");
+            }
+            #endif
             switch (effect.effectDuplication)
             {
                 case EffectDuplicationBehaviour.Overlay:
@@ -113,7 +112,7 @@ namespace Metamatic.Effects
                         }
                         else
                         {
-                            (executingEffectExecutionContext as EffectExecutionContext<TTarget, TEffectProps>)
+                            (executingEffectExecutionContext as EffectExecutionContext<TEffector, TEffectProps>)
                                 ?.UpdateProps(props);
                             return executingEffectExecutionContext.GetAwaiter();
                         }
@@ -123,7 +122,7 @@ namespace Metamatic.Effects
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            return new EffectExecutionContext<TTarget, TEffectProps>(
+            return new EffectExecutionContext<TEffector, TEffectProps>(
                 this,
                 effect,
                 ref props

@@ -58,6 +58,42 @@ namespace Metamatic {
         }
         
         /// <summary>
+        /// Get random point on the collider edge
+        /// </summary>
+        /// <param name="collider"></param>
+        /// <returns></returns>
+        public static Vector3 GetRandomPointOnCollider(Collider collider) {
+            var bounds = collider.bounds;
+            var center = bounds.center;
+ 
+            float x = 0;
+            float y = 0;
+            float z = 0;
+            x = UnityEngine.Random.Range(center.x - bounds.extents.x, center.x + bounds.extents.x);
+            y = UnityEngine.Random.Range(center.y - bounds.extents.y, center.y + bounds.extents.y);
+            z = UnityEngine.Random.Range(center.z - bounds.extents.z, center.z + bounds.extents.z);
+            return collider.ClosestPoint(new Vector3(x, y, z));
+        }
+        
+        /// <summary>
+        /// Get random point on the collider edge
+        /// </summary>
+        /// <param name="collider"></param>
+        /// <returns></returns>
+        public static Vector2 GetRandomPointOnCollider(Collider2D collider) {
+            var bounds = collider.bounds;
+            var center = bounds.center;
+ 
+            float x = 0;
+            float y = 0;
+            float z = 0;
+            x = UnityEngine.Random.Range(center.x - bounds.extents.x, center.x + bounds.extents.x);
+            y = UnityEngine.Random.Range(center.y - bounds.extents.y, center.y + bounds.extents.y);
+            z = UnityEngine.Random.Range(center.z - bounds.extents.z, center.z + bounds.extents.z);
+            return collider.ClosestPoint(new Vector3(x, y, z));
+        }
+        
+        /// <summary>
         /// Create Plane by mesh (You should use it with Plane primitive)
         /// </summary>
         /// <param name="gameObject">The object must contains MeshFilter</param>
@@ -793,6 +829,18 @@ namespace Metamatic {
                     }
                 }
             }
+        }
+        
+        /// <summary>
+        /// Is float value near target value with given gap (for example 0.98f will be near 1f when gap 0.002)
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="target"></param>
+        /// <param name="gap"></param>
+        /// <returns></returns>
+        public static bool Near(float value, float target, float gap = 0.01f)
+        {
+            return (target + gap >= value) && (target - gap <= value);
         }
     }
 }

@@ -15,7 +15,7 @@ namespace Metamatic {
             }
         }
         
-        private class PoolInstancesDictionary: Dictionary<int, List<Behaviour>> {}
+        private class PoolInstancesDictionary: Dictionary<int, List<Component>> {}
 
         private static PoolInstancesDictionary instances = new PoolInstancesDictionary();
         
@@ -25,13 +25,13 @@ namespace Metamatic {
         /// <param name="component"></param>
         /// <returns></returns>
         public static T Boil<T>(T component)
-        where T: Behaviour
+        where T: Component
         {
             var id = component.gameObject.GetInstanceID();
-            List<Behaviour> pool;
+            List<Component> pool;
             if (!instances.ContainsKey(id))
             {
-                pool = instances[id] = new List<Behaviour>();
+                pool = instances[id] = new List<Component>();
             }
             else
             {

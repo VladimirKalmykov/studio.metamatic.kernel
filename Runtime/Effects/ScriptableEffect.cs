@@ -30,15 +30,20 @@ namespace Metamatic.Effects
         //     CancellationToken cancellationToken);
     }
     
-    public abstract class ScriptableEffect<TTarget, TProps> : ScriptableEffect<TTarget>, IEffectWithProps<TTarget, TProps>
-        where TTarget: Behaviour
+    public abstract class ScriptableEffect<TEffector, TProps> : ScriptableEffect<TEffector>, IEffectWithProps<TEffector, TProps>
+        where TEffector: Effector
+        where TProps: struct
     {
-        public abstract UniTask RunEffect(EffectExecutionContext<TTarget, TProps> executionContext,
+        public abstract UniTask RunEffect(EffectExecutionContext<TEffector, TProps> executionContext,
             CancellationToken cancellationToken);
         
         public EffectCancellableOperationAwaiter Apply(Behaviour behaviour, TProps props = default)
         {
-            var effector = behaviour.GetComponent<TTarget>() as Effector<TTarget>;
+            var effector = behaviour.GetComponent<TEffector>();
+            if (effector == null)
+            {
+                throw new Exception($"Target has no opporiate effector with type {typeof(TEffector).Name}");
+            }
             return effector.ApplyEffect(this, props);
         }
         /// <summary>

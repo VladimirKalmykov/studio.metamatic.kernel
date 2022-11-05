@@ -25,13 +25,6 @@ namespace Metamatic.Effects
         public UniTask task;
         public PluralAwaitable<bool> cycle = new PluralAwaitable<bool>(true);
 
-        public EffectExecutionContext(IEffect effect)
-        {
-            this.effect = effect;
-            this.cancellationTokenSource = new CancellationTokenSource();
-            cycle.context = this;
-        }
-        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual void Replay()
         {
@@ -43,12 +36,6 @@ namespace Metamatic.Effects
             cycle.SetResult(false);
             cancellationTokenSource?.Cancel();
         }
-
-        protected void Release()
-        {
-            status = Status.Completed;
-            OnRelease?.Invoke();
-        }
         
         public EffectCancellableOperationAwaiter GetAwaiter()
         {
@@ -59,42 +46,46 @@ namespace Metamatic.Effects
         {
             return $"{effect.GetEffectName()}{(debugName?.Length > 0 ? $" ({debugName})" : "")}";
         }
-    }
-    public class EffectExecutionContext<TTarget>: EffectExecutionContext
-        where TTarget: Behaviour
-    {
-        public readonly EffectsChannel<TTarget> channel;
+        
+        public readonly EffectsChannel channel;
         public UniTask<bool> replayUniTask { get; protected set; }
         
-        public TTarget target
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => channel.target;
-        }
+        
 
-        public EffectExecutionContext(EffectsChannel<TTarget> channel, IEffect effect): base(effect)
+        public EffectExecutionContext(EffectsChannel channel, IEffect effect)
         {
+            this.effect = effect;
+            this.cancellationTokenSource = new CancellationTokenSource();
+            cycle.context = this;
             this.channel = channel;
-            
         }
         
         public new void Release()
         {
             channel.executions.Remove(this);
             
-            #if UNITY_EDITOR
+#if UNITY_EDITOR
             channel.editor_EmitExecutionsChange();
-            #endif
+#endif
             
-            base.Release();
+            status = Status.Completed;
+            OnRelease?.Invoke();
         }
     }
-    public class EffectExecutionContext<TTarget, TEffectProps>: EffectExecutionContext<TTarget>
-        where TTarget: Behaviour
+   
+    public class EffectExecutionContext<TEffector, TEffectProps>: EffectExecutionContext
+        where TEffectProps: struct
+        where TEffector: Effector
     {
         public TEffectProps props;
         
         public bool m_PropsUpdated = false;
+        
+        public TEffector target
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (TEffector)channel.target;
+        }
         
         /// <summary>
         /// Returns true if props was updated. After getting value it turn back to false immediately.
@@ -113,7 +104,7 @@ namespace Metamatic.Effects
         
         
 
-        public EffectExecutionContext(EffectsChannel<TTarget> channel, IEffectWithProps<TTarget, TEffectProps> effect, ref TEffectProps props): base(channel, effect)
+        public EffectExecutionContext(EffectsChannel channel, IEffectWithProps<TEffector, TEffectProps> effect, ref TEffectProps props): base(channel, effect)
         {
             this.props = props;
             channel.executions.Add(this);

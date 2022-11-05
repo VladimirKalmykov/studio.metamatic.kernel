@@ -26,8 +26,11 @@ namespace Metamatic.Actions
                 case ApplyEffectAction aea:
                     aea.effect.Apply(this, aea.props);
                     break;
+                case EffectExitAction eea:
+                    // Skip
+                    break;
                 default:
-                    throw new Exception("Action type is out of range");
+                    throw new Exception($"Action type {action.GetType().Name} is out of range for {GetType().Name}");
             }
         }
     }

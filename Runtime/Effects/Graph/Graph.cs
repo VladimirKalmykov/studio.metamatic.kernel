@@ -4,27 +4,26 @@ using UnityEngine;
 
 namespace Metamatic.Effects.Graph
 {
-    public class EffectsGraph<TTarget>
-    where TTarget: Behaviour
+    public class EffectsGraph
     {
-        public readonly EffectsChannel<TTarget> channel;
-        public Node<TTarget> entryNode { get; private set; }
+        public readonly EffectsChannel channel;
+        public Node entryNode { get; private set; }
 
-        public EffectsGraph(EffectsChannel<TTarget> channel)
+        public EffectsGraph(EffectsChannel channel)
         {
             this.channel = channel;
-            entryNode = new Node<TTarget>();
+            entryNode = new Node();
             entryNode.graph = this;
         }
 
-        public Node<TTarget> AddNode(Node<TTarget> node)
+        public Node AddNode(Node node)
         {
             return entryNode.AddChildrenNode(node);
         }
 
-        public Node<TTarget> CreateChildrenNode()
+        public Node CreateChildrenNode()
         {
-            return entryNode.AddChildrenNode(new Node<TTarget>());
+            return entryNode.AddChildrenNode(new Node());
         }
         
         public async UniTask Execute()

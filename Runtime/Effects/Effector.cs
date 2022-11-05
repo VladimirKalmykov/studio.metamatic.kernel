@@ -58,29 +58,25 @@ namespace Metamatic.Effects
         {
             OnBeforeDestroy?.Invoke();
         }
-    }
-    
-    public class Effector<TTarget> : Effector
-    where TTarget: Behaviour
-    {
-        private EffectsChannel<TTarget> m_CommonChannel;
-        public TTarget target { get; private set; }
+        
+        private EffectsChannel m_CommonChannel;
+        public Effector target { get; private set; }
 
         private void Awake()
         {
-            target = GetComponent<TTarget>();
+            target = this;
             
             /* Define common channel */
             m_CommonChannel = CreateChannel(this, "Default");
         }
 
-        public EffectsChannel<TTarget> CreateChannel(Behaviour owner, string debugName)
+        public EffectsChannel CreateChannel(Behaviour owner, string debugName)
         {
-            var channel = new EffectsChannel<TTarget>(this, owner, debugName);
+            var channel = new EffectsChannel(this, owner, debugName);
             channels.Add(channel);
-            #if UNITY_EDITOR
+#if UNITY_EDITOR
             editor_EmitChannelsChange();
-            #endif
+#endif
             return channel;
         }
         
@@ -90,7 +86,7 @@ namespace Metamatic.Effects
             return m_CommonChannel.Add(effect);
         }*/
 
-        public EffectCancellableOperationAwaiter ApplyEffect<TEffectProps>(IEffectWithProps<TTarget, TEffectProps> effect, TEffectProps props = default)
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
             return m_CommonChannel.Add(effect, props);
         }

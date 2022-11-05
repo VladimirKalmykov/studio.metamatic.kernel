@@ -7,15 +7,17 @@ namespace Metamatic
     using UnityEngine;
     using UnityEngine.Events;
     using Sirenix.OdinInspector;
+    
+    public enum TriggerEventsFilteringType
+    {
+        Every,
+        Tagged,
+        Explicit
+    }
 
     public class TriggerEvents : MonoBehaviour
     {
-        public enum FilteringType
-        {
-            Every,
-            Tagged,
-            Explicit
-        }
+        
         /// <summary>
         /// Wlll trigger when at least one collider did enter trigger
         /// </summary>
@@ -29,7 +31,9 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public UnityEvent OnLeave = new UnityEvent();
 
-        public FilteringType filterType = FilteringType.Every;
+        public UnityEvent OnChange = new UnityEvent();
+
+        public TriggerEventsFilteringType filterType = TriggerEventsFilteringType.Every;
         [ShowIf("@this.filterType == FilteringType.Tagged"), Tooltip("Capture trigger events only for objects with these tags")]
         public Tags tags;
 
@@ -58,24 +62,25 @@ namespace Metamatic
             }
             switch (filterType)
             {
-                case FilteringType.Explicit:
+                case TriggerEventsFilteringType.Explicit:
                     if (!targets.Any(go => go != null && collider.transform.IsChildOf(go.transform)))
                     {
                         return;
                     }
                     break;
-                case FilteringType.Tagged:
+                case TriggerEventsFilteringType.Tagged:
                     if (!tags.Contains(collider.transform.gameObject.tag))
                     {
                         return;
                     }
                     break;
-                case FilteringType.Every:
+                case TriggerEventsFilteringType.Every:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
             enteredColliders.Add(collider);
+            OnChange.Invoke();
             if (enteredColliders.Count == 1) {
                 OnEnter.Invoke();
             }
@@ -95,7 +100,8 @@ namespace Metamatic
                 if (enteredCollider.gameObject.activeInHierarchy &&
                     enteredCollider.bounds.Intersects(colliderBounds)) continue;
                 enteredColliders.Remove(enteredCollider);
-
+                
+                OnChange.Invoke();
                 if (enteredColliders.Count == 0) {
                     OnLeave?.Invoke();
                 }
