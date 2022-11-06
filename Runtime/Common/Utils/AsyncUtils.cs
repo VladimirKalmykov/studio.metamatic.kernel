@@ -87,6 +87,26 @@ namespace Metamatic
             }
         }
         
+        public static async void AwaitCallback(UniTask awaitable, Action callback, Action<Exception> errorHandler, bool allowCancellation = false)
+        {
+            try
+            {
+                await awaitable;
+            }
+            catch (Exception ex)
+            {
+                // ReSharper disable once UseNegatedPatternInIsExpression
+                if (!allowCancellation || !(ex is OperationCanceledException))
+                {
+                    errorHandler(ex);
+;                }
+            }
+            finally
+            {
+                callback();
+            }
+        }
+        
         /// <summary>
         /// Accept cancellationTokenSource and immediatelly cancel it in order to create new one.
         /// </summary>

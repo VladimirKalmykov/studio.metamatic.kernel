@@ -8,7 +8,7 @@ using Action = System.Action;
 
 namespace Metamatic.Effects
 {
-    public class EffectExecutionContext: IDisposable
+    public abstract class EffectExecutionContext: IDisposable
     {
         public enum Status
         {
@@ -71,6 +71,13 @@ namespace Metamatic.Effects
             status = Status.Completed;
             OnRelease?.Invoke();
         }
+
+        public ApplyEffectAction GetAsAction()
+        {
+            return GetAsActionWithProps();
+        }
+
+        protected abstract ApplyEffectAction GetAsActionWithProps();
     }
    
     public class EffectExecutionContext<TEffector, TEffectProps>: EffectExecutionContext
@@ -117,16 +124,26 @@ namespace Metamatic.Effects
             
             if (task.Status != UniTaskStatus.Pending)
             {
+                if (task.Status == UniTaskStatus.Faulted)
+                {
+                    AsyncUtils.AwaitCallback(task, () =>
+                    {
+                        // Never
+                    }, (Exception e) =>
+                    {
+                        Debug.LogError(e.Message);
+                    }, true);
+                }
                 Release();
                 return;
             }
 
             AsyncUtils.AwaitCallback(task, () =>
             {
-                channel
+                /*channel
                     .effector
                     .dispatcher
-                    .Dispatch(new EffectExitAction((ScriptableEffect)effect, this.props, new ActionSource("Effect Execution Control")));
+                    .Dispatch(new EffectExitAction((ScriptableEffect)effect, this.props, new ActionSource("Effect Execution Control")));*/
                 Release();
             });
         }
@@ -183,6 +200,15 @@ namespace Metamatic.Effects
                 throw new Exception("Can not generate effect action for non scriptable effect");
             }
             return new ApplyEffectAction((ScriptableEffect)effect, props, new ActionSource("GenerateAction"));
+        }
+
+        protected override ApplyEffectAction GetAsActionWithProps()
+        {
+            if (effect is not ScriptableEffect)
+            {
+                throw new Exception("Can not generate effect action with non scriptable effect");
+            }
+            return new ApplyEffectAction(effect as ScriptableEffect, props, new ActionSource(target, "Recreated from execution"));
         }
     }
 }

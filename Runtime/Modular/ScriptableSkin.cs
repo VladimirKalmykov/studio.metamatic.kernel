@@ -5,7 +5,7 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
     using Metamatic.GameAccessManagment;
 
-    public class ScriptableSkin : ScriptableObject, IAccessable
+    public abstract class ScriptableSkin : ScriptableObject, IAccessable
     {
         [BoxGroup("Metadata")]
         public string title;
@@ -22,7 +22,7 @@ namespace Metamatic {
         }
 
         #if UNITY_EDITOR
-        void OnValidate() {
+        private void OnValidate() {
             OnSerializedFieldsChange?.Invoke();
         }
         #endif

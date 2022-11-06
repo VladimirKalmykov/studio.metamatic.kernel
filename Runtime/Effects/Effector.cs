@@ -9,6 +9,7 @@ using UnityEngine;
 using Metamatic;
 using Metamatic.Actions;
 using Metamatic.DevTools;
+using Mono.Collections.Generic;
 using Action = System.Action;
 
 namespace Metamatic.Effects
@@ -89,6 +90,33 @@ namespace Metamatic.Effects
         public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
             return m_CommonChannel.Add(effect, props);
+        }
+        
+        /// <summary>
+        /// Get all active effects as actions (to be able to restore it later)
+        /// </summary>
+        /// <returns></returns>
+        public Metamatic.Actions.Action[] GetActiveEffectsAsActions()
+        {
+            var actions = new Collection<Metamatic.Actions.Action>();
+            foreach (var execution in channels.SelectMany(channel => channel.executions))
+            {
+                actions.Add(execution.GetAsAction());
+            }
+            
+            return actions.ToArray();
+        }
+        
+        /// <summary>
+        /// Cancel all effects
+        /// </summary>
+        public void CancelAllEffects()
+        {
+            var executions = channels.SelectMany(channel => channel.executions).ToArray();
+            foreach (var execution in executions)
+            {
+                execution.Dispose();
+            }
         }
     }
 }

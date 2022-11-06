@@ -9,10 +9,10 @@
         public UnityEvent OnChange = new UnityEvent();
         // private ScriptableConfiguration cached_ScriptableConfiguration;
         private Configuration m_ExternalConfiguration = new Configuration();
+        /**
+         * You can reference to any external configuration from outside
+         */
         [ShowInInspector, ReadOnly, HideInEditorMode]
-        /// <summary>
-        /// You can reference to any external configuration from outside
-        /// </summary>
         public Configuration externalConfiguration {
             get {
                 return m_ExternalConfiguration;
