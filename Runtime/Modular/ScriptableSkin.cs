@@ -17,9 +17,7 @@ namespace Metamatic {
         GameAccessConfig IAccessable.GetAccessConfig() {
             return access;
         }
-        public virtual void Apply(GameObject target) {
-            
-        }
+        public abstract void Apply(GameObject target);
 
         #if UNITY_EDITOR
         private void OnValidate() {

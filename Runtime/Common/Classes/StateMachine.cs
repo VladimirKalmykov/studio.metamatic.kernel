@@ -2,43 +2,45 @@ using System;
 
 namespace Metamatic
 {
-    public class StateMachine
+    public abstract class StateMachine
     {
-        
+        public abstract void OnFrameEnd();
     }
 
-    public class StateMachine<State> : StateMachine
+    public class StateMachine<TState> : StateMachine
     {
-        public delegate void StateChangeHandler(ref State state, ref State prevState);
+        public delegate void StateChangeHandler(ref TState state, ref TState prevState);
 
-        public delegate void StateModifier(ref State state);
-        private State m_State;
-        private State m_NextState;
+        public delegate void StateModifier(ref TState state);
+        public TState state;
+        private TState m_NextState;
         private bool m_ShouldUpdate = false;
-        public State state {
-            get => m_State;
-            protected set
-            {
-                m_NextState = value;
-                m_ShouldUpdate = true;
-            }
-        }
+        private bool m_UpdateInProcess = false;
+        private event StateModifier m_PostUpdateModifiying = delegate {};
+       
         public event StateChangeHandler stateListeners;
 
-        protected virtual void OnStateChange(ref State state, ref State prevState) {}
+        protected virtual void OnStateChange(ref TState state, ref TState prevState) {}
 
         protected virtual void OnInitState() {}
 
         public void SetState(StateModifier modifier) {
-            modifier(ref m_NextState);
-            ForceUpdateState();
+            if (m_UpdateInProcess)
+            {
+                m_PostUpdateModifiying += modifier;
+            }
+            else
+            {
+                modifier(ref m_NextState);
+                ForceUpdateState();
+            }
         }
         
         /// <summary>
         /// Return by ref next state for direct editing (fastest way to mofidy next state, use it inside cycles and frames)
         /// </summary>
         /// <returns>Next state</returns>
-        public ref State GetNextStateRef()
+        public ref TState GetNextStateRef()
         {
             return ref m_NextState;
         }
@@ -46,6 +48,12 @@ namespace Metamatic
         public StateMachine(): base()
         {
             OnInitState();
+        }
+        
+        public StateMachine(TState defaultState): base()
+        {
+            state = defaultState;
+            m_NextState = defaultState;
         }
         
         /// <summary>
@@ -58,7 +66,7 @@ namespace Metamatic
 
         public Action SubscribeState(StateChangeHandler handler) {
             stateListeners += handler;
-            handler(ref m_State, ref m_State);
+            handler(ref m_NextState, ref state);
             return () => {
                 UnsubscribeState(handler);
             };
@@ -68,13 +76,18 @@ namespace Metamatic
             stateListeners -= handler;
         }
 
-        private void OnFrameEnd()
+        public override void OnFrameEnd()
         {
             if (!m_ShouldUpdate) return;
             m_ShouldUpdate = false;
-            stateListeners?.Invoke(ref m_NextState, ref m_State);
-            OnStateChange(ref m_NextState, ref m_State);
-            m_State = m_NextState;
+            m_UpdateInProcess = true;
+            stateListeners?.Invoke(ref m_NextState, ref state);
+            
+            OnStateChange(ref m_NextState, ref state);
+            state = m_NextState;
+            m_PostUpdateModifiying.Invoke(ref m_NextState);
+            m_PostUpdateModifiying = delegate { };
+            m_UpdateInProcess = false;
         }
     }
 }
