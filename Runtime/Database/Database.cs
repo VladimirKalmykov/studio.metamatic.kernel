@@ -12,12 +12,14 @@ namespace Metamatic
             CREATE,
             REMOVE
         }
-        public delegate void StoreHandler<TState>(DatabaseStore<TState> store);
 
-        public delegate void BranchHandler(string name, DatabaseBranch branch, BranchOperation operation);
+        
+        public delegate void StoreHandler<TState>(DatabaseStore<TState> store);
+        public delegate void BranchHandler(DatabaseBranch branch);
+        public delegate void BranchOperationHandler(string name, DatabaseBranch branch, BranchOperation operation);
         public static readonly string masterBranchName = "master";
-        public static event BranchHandler OnBranchOperation;
-        public readonly Dictionary<string, DatabaseBranch> m_Branches = new Dictionary<string, DatabaseBranch>();
+        public static event BranchOperationHandler OnBranchOperation;
+        public static readonly Dictionary<string, DatabaseBranch> m_Branches = new Dictionary<string, DatabaseBranch>();
         
         /// <summary>
         /// Get store
@@ -91,27 +93,147 @@ namespace Metamatic
             currentBranchSource.SetValue(name);
         }
 
-        public Action SubscribeStore<TState>(string branchName, string entityName, StoreHandler<TState> handler)
+        public static Action SubscribeStore<TState>(string branchName, string entityName, StoreHandler<TState> handler)
         {
-            // DatabaseEntity entity = null;
-            // var currentBranchName = branchName;
-            // var entityFullname = $"{branchName}:${entityName}";
-            // while (m_Entities.TryGetValue(entityFullname, out entity))
-            // {
-            //     
-            // }
-            // var fallbacks = new List<string>();
-            // var fallbackPath = branchName;
-            // fallbacks.Add();
-            // var lastSlash = -1;
-            // while ((lastSlash = fallbackPath.LastIndexOf("/")) > 0)
-            // {
-            //     fallbackPath = fallbackPath.Substring(0, lastSlash);
-            //     fallbacks.Add(fallbackPath);
-            // }
+            Action unsubscribeBranch = null;
+            Action unsubscribeDepth2 = null;
+            Action unsubscribeDepth3 = null;
+            Action unsubscribeDepth4 = null;
+            unsubscribeBranch = SubscribeBranch(branchName, delegate(DatabaseBranch branch)
+            {
+                unsubscribeDepth2?.Invoke();
+                unsubscribeDepth3?.Invoke();
+                unsubscribeDepth4?.Invoke();
+                if (branch == null)
+                {
+                    // TODO: Fallback
+                    // Subscribe to the parent branch if it has it
+                    if (branchName.IndexOf('/') > 0)
+                    {
+                        // Subscribe to the parent branch but the same entity
+                        unsubscribeDepth2 = SubscribeStore<TState>(branchName.Substring(0, branchName.LastIndexOf('/') - 1), entityName, handler);
+                    } else if (branchName != masterBranchName)
+                    {
+                        // Subscribe master
+                        unsubscribeDepth2 = SubscribeStore<TState>(masterBranchName, entityName, handler);
+                    }
+                    else
+                    {
+                        // Store does not exist, fallback null
+                        handler(null);
+                    }
+                }
+                else
+                {
+                    unsubscribeDepth2 = branch.SubscribeEntity(entityName, delegate(DatabaseEntity entity)
+                    {
+                        unsubscribeDepth3?.Invoke();
+                        unsubscribeDepth4?.Invoke();
+                        if (entity == null)
+                        {
+                            // TODO: Fallback
+                            if (entityName.IndexOf('/') > 0)
+                            {
+                                // Subscribe to the same branch but parent entity
+                                unsubscribeDepth3 = SubscribeStore<TState>(branchName, entityName.Substring(0, entityName.LastIndexOf('/') - 1), handler);
+                            }
+                            else
+                            {
+                                // Subscribe to the parent branch if it has it
+                                if (branchName.IndexOf('/') > 0)
+                                {
+                                    // Subscribe to the parent branch but the same entity
+                                    unsubscribeDepth3 = SubscribeStore<TState>(branchName.Substring(0, branchName.LastIndexOf('/') - 1), entityName, handler);
+                                } else if (branchName != masterBranchName)
+                                {
+                                    // Subscribe master
+                                    unsubscribeDepth3 = SubscribeStore<TState>(masterBranchName, entityName, handler);
+                                }
+                                else
+                                {
+                                    // Store does not exist, fallback null
+                                    handler(null);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            unsubscribeDepth3 = entity.SubscribeStore<TState>(delegate(DatabaseStore<TState> store)
+                            {
+                                unsubscribeDepth4?.Invoke();
+                                if (store == null)
+                                {
+                                    // Seatch store in parent entity
+                                    if (entityName.IndexOf('/') > 0)
+                                    {
+                                        // Subscribe to the same branch but parent entity
+                                        unsubscribeDepth4 = SubscribeStore<TState>(branchName, entityName.Substring(0, entityName.LastIndexOf('/') - 1), handler);
+                                    }
+                                    else
+                                    {
+                                        // Subscribe to the parent branch if it has it
+                                        if (branchName.IndexOf('/') > 0)
+                                        {
+                                            // Subscribe to the parent branch but the same entity
+                                            unsubscribeDepth4 = SubscribeStore<TState>(branchName.Substring(0, branchName.LastIndexOf('/') - 1), entityName, handler);
+                                        } else if (branchName != masterBranchName)
+                                        {
+                                            // Subscribe master
+                                            unsubscribeDepth4 = SubscribeStore<TState>(masterBranchName, entityName, handler);
+                                        }
+                                        else
+                                        {
+                                            // Store does not exist, fallback null
+                                            handler(null);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    handler(store);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+
+            return () =>
+            {
+                unsubscribeDepth4?.Invoke();
+                unsubscribeDepth3?.Invoke();
+                unsubscribeDepth2?.Invoke();
+                unsubscribeBranch?.Invoke();
+            };
+        }
+        
+        /// <summary>
+        /// Subscribe branch change
+        /// </summary>
+        /// <param name="branchName"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public static Action SubscribeBranch(string branchName, BranchHandler handler)
+        {
+            DatabaseBranch branch = null;
+            m_Branches.TryGetValue(branchName, out branch);
+            BranchOperationHandler branchOperationHandler = (name, branch, operation) =>
+            {
+                if (name == branchName)
+                {
+                    handler(branch);
+                }
+            };
+            OnBranchOperation += branchOperationHandler;
+            handler(branch);
+
+            return () =>
+            {
+                OnBranchOperation -= branchOperationHandler;
+            };
         }
 
-        public DatabaseBranch TouchBranch(string branchName)
+        public static DatabaseBranch TouchBranch(string branchName)
         {
             DatabaseBranch branch = null;
             if (m_Branches.TryGetValue(branchName, out branch))

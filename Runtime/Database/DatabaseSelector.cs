@@ -124,5 +124,16 @@ namespace Metamatic
         {
             return new DatabaseVirtualStore<TState>(this);
         }
+        
+        /// <summary>
+        /// Get virtual store with specified entity name
+        /// </summary>
+        /// <param name="entityName"></param>
+        /// <typeparam name="TState"></typeparam>
+        /// <returns></returns>
+        public DatabaseVirtualStore<TState> GetStore<TState>(string entityName, TState initialState = default)
+        {
+            return new DatabaseVirtualStore<TState>(new DatabaseSelector(branch, new DatabaseEntitySource(entityName)), initialState);
+        }
     }
 }

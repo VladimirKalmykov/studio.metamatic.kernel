@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,6 +11,8 @@ namespace Metamatic
             CREATE,
             REMOVE
         }
+
+        public delegate void EntityHandler(DatabaseEntity entity);
         public delegate void EntityOperationHandler(string name, DatabaseEntity entity, EntityOperation operation);
         public readonly string name;
         public static Dictionary<string, DatabaseEntity> m_Entities = new Dictionary<string, DatabaseEntity>();
@@ -36,6 +39,32 @@ namespace Metamatic
             m_Entities[name] = entity;
             OnEntityOperation?.Invoke(name, entity, EntityOperation.CREATE);
             return entity;
+        }
+        
+        /// <summary>
+        /// Subscribe to entity by name
+        /// </summary>
+        /// <param name="entityName"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public Action SubscribeEntity(string entityName, EntityHandler handler)
+        {
+            DatabaseEntity entity = null;
+            m_Entities.TryGetValue(entityName, out entity);
+            EntityOperationHandler entityOperationHandler = (name, entity, operation) =>
+            {
+                if (name == entityName)
+                {
+                    handler(entity);
+                }
+            };
+            OnEntityOperation += entityOperationHandler;
+            handler(entity);
+
+            return () =>
+            {
+                OnEntityOperation -= entityOperationHandler;
+            };
         }
     }
 }

@@ -18,11 +18,14 @@ namespace Metamatic
         /// Contains reference to the available store (it can be nell if store does not exist yet)
         /// </summary>
         private DatabaseStore<TState> m_CurrentStoreRef = null;
+
+        private TState initialState;
         
 
-        public DatabaseVirtualStore(DatabaseSelector selector)
+        public DatabaseVirtualStore(DatabaseSelector selector, TState initialState = default)
         {
             this.databaseSelector = selector;
+            this.initialState = initialState;
             selector.Subscribe(ResolveStore);
         }
 
@@ -43,7 +46,6 @@ namespace Metamatic
         public Action Subscribe(DatabaseStore<TState>.StateChangeHandler handler)
         {
             DatabaseStore<TState> cachedStore = null;
-            TState fallbackState = default;
             Action unsubscribeState = null;
             Action unsubscribeStore = m_ObservableStore.Subscribe(store =>
             {
@@ -56,18 +58,18 @@ namespace Metamatic
                     }
                     else
                     {
-                        handler(ref fallbackState, ref cachedStore.state);
+                        handler(ref initialState, ref cachedStore.state);
                     }
                 }
                 else
                 {
                     if (store != null)
                     {
-                        handler(ref store.state, ref fallbackState);
+                        handler(ref store.state, ref initialState);
                     }
                     else
                     {
-                        handler(ref fallbackState, ref fallbackState);
+                        handler(ref initialState, ref initialState);
                     }
                 }
 
