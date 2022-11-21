@@ -35,6 +35,7 @@ namespace Metamatic
             {
                 return entity;
             }
+            Debug.Log($"Create new database entity {name}");
             entity = new DatabaseEntity(name);
             m_Entities[name] = entity;
             OnEntityOperation?.Invoke(name, entity, EntityOperation.CREATE);

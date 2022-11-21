@@ -43,10 +43,9 @@ namespace Metamatic
         /// <param name="value"></param>
         public void SetValue(TValue value)
         {
-            var previousValue = m_Value;
             m_Value = value;
             m_PluginUnsubscribe?.Invoke();
-            onChange.Invoke(value);
+            onChange?.Invoke(value);
         }
         
         /// <summary>
@@ -56,7 +55,11 @@ namespace Metamatic
         public void PlugIn(ObservableValue<TValue> other)
         {
             m_PluginUnsubscribe?.Invoke();
-            m_PluginUnsubscribe = other.Subscribe(SetValue);
+            m_PluginUnsubscribe = other.Subscribe(v =>
+            {
+                m_Value = v;
+                onChange?.Invoke(v);
+            });
         }
 
         public void Unplug()

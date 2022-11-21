@@ -98,8 +98,17 @@ namespace Metamatic
             }
             else
             {
-                Database.TouchBranch(databaseSelector.branch.value).TouchEntity(databaseSelector.entity.value).TouchStore<TState>().SetState(modifier);
+                Database.TouchBranch(databaseSelector.branch.value).TouchEntity(databaseSelector.entity.value).TouchStore<TState>(ref initialState).SetState(modifier);
             }
+        }
+
+        public ref TState GetState()
+        {
+            if (m_ObservableStore.value == null)
+            {
+                return ref initialState;
+            }
+            return ref m_ObservableStore.value.state;
         }
     }
 }

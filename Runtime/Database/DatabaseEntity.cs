@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -22,7 +23,7 @@ namespace Metamatic
             this.name = name;
         }
 
-        public DatabaseStore<TState> TouchStore<TState>()
+        public DatabaseStore<TState> TouchStore<TState>(ref TState initialState)
         {
             var type = typeof(TState);
             DatabaseStore store = null;
@@ -31,7 +32,8 @@ namespace Metamatic
                 return (DatabaseStore<TState>) store;
             }
 
-            store = new DatabaseStore<TState>();
+            Debug.Log($"Create new database store {typeof(TState)}");
+            store = new DatabaseStore<TState>(initialState);
             m_Stores[type] = store;
             OnStoreOperation?.Invoke(type, store, StoreOperation.CREATE);
             return (DatabaseStore<TState>)store;

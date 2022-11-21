@@ -5,14 +5,14 @@ using UnityEngine;
 namespace Metamatic
 {
     
-    public class Database
+    public class Database: MonoBehaviour
     {
+        public static Database instance { get; private set; }
         public enum BranchOperation
         {
             CREATE,
             REMOVE
         }
-
         
         public delegate void StoreHandler<TState>(DatabaseStore<TState> store);
         public delegate void BranchHandler(DatabaseBranch branch);
@@ -21,6 +21,21 @@ namespace Metamatic
         public static event BranchOperationHandler OnBranchOperation;
         public static readonly Dictionary<string, DatabaseBranch> m_Branches = new Dictionary<string, DatabaseBranch>();
         
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Initialize()
+        {
+            if (instance == null)
+            {
+                var go = new GameObject("__DATABASE__");
+                instance = go.AddComponent<Database>();
+            }
+        }
+
+        void OnLateUpdate()
+        {
+            
+        }
+
         /// <summary>
         /// Get store
         /// </summary>
@@ -28,12 +43,12 @@ namespace Metamatic
         /// <param name="entityName"></param>
         /// <typeparam name="TState"></typeparam>
         /// <returns></returns>
-        public static DatabaseVirtualStore<TState> GetStore<TState>(string entityName, string branchName = null)
+        public static DatabaseVirtualStore<TState> GetStore<TState>(string entityName, TState initialState)
         {
-            var branchSource = new DatabaseBranchSource(branchName ?? masterBranchName);
+            var branchSource = new DatabaseBranchSource( masterBranchName);
             var entitySource = new DatabaseEntitySource(entityName);
             var selector = new DatabaseSelector(branchSource, entitySource);
-            return new DatabaseVirtualStore<TState>(selector);
+            return new DatabaseVirtualStore<TState>(selector, initialState);
         }
 
         public static DatabaseBranchSource currentBranchSource = new DatabaseBranchSource(masterBranchName);
@@ -240,6 +255,7 @@ namespace Metamatic
             {
                 return branch;
             }
+            Debug.Log($"Create new database branch {branchName}");
             branch = new DatabaseBranch(branchName);
             m_Branches[branchName] = branch;
             OnBranchOperation?.Invoke(branchName, branch, BranchOperation.CREATE);

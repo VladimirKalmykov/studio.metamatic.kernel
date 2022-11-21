@@ -62,6 +62,7 @@ namespace Metamatic
         public void ForceUpdateState()
         {
             m_ShouldUpdate = true;
+            OnFrameEnd();
         }
 
         public Action SubscribeState(StateChangeHandler handler) {
