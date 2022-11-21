@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class DatabaseEntity
+    public class DatabaseEntity: IDisposable
     {
         public enum StoreOperation
         {
@@ -17,13 +17,34 @@ namespace Metamatic
         public readonly string name;
         public event StoreOperationHandler OnStoreOperation;
         private Dictionary<Type, DatabaseStore> m_Stores = new Dictionary<Type, DatabaseStore>();
-
-        public DatabaseEntity(string name)
+        public readonly DatabaseBranch branch;
+        
+        /// <summary>
+        /// Absolute address of the database entity
+        /// </summary>
+        public string address
         {
-            this.name = name;
+            get
+            {
+                return $"{branch.address}:${this.name}";
+            }
         }
 
-        public DatabaseStore<TState> TouchStore<TState>(ref TState initialState)
+        public DatabaseEntity(DatabaseBranch branch, string name)
+        {
+            this.name = name;
+            this.branch = branch;
+        }
+        
+        public void Dispose()
+        {
+            foreach (var pair in m_Stores)
+            {
+                pair.Value.Dispose();
+            }
+        }
+
+        public DatabaseStore<TState> TouchStore<TState>(ref TState initialState, DatabaseStore<TState>.StateModifier modifier = null)
         {
             var type = typeof(TState);
             DatabaseStore store = null;
@@ -33,7 +54,11 @@ namespace Metamatic
             }
 
             Debug.Log($"Create new database store {typeof(TState)}");
-            store = new DatabaseStore<TState>(initialState);
+            store = new DatabaseStore<TState>(this, initialState);
+            if (modifier != null)
+            {
+                ((DatabaseStore<TState>)store).SetState(modifier, true);
+            }
             m_Stores[type] = store;
             OnStoreOperation?.Invoke(type, store, StoreOperation.CREATE);
             return (DatabaseStore<TState>)store;

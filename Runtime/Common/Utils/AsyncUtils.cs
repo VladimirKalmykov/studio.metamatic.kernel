@@ -162,7 +162,7 @@ namespace Metamatic
         /// Forget about task except non-cancellation exceptions
         /// </summary>
         /// <param name="task"></param>
-        public static async UniTask ForgetCancellation(this Task task)
+        public static async Task ForgetCancellation(this Task task)
         {
             try
             {
@@ -226,6 +226,12 @@ namespace Metamatic
         public static SimpleCancellationTokenAwaiter WhenCancelled(this CancellationToken token)
         {
             return new SimpleCancellationTokenAwaiter(token);
+        }
+        
+        public static IEnumerator EnumeratorAwaitable(Task task)
+        {
+            while (!task.IsCompleted) { yield return null; }
+            if (task.IsFaulted) { throw task.Exception ?? new Exception("Task failed, but has no exception"); }
         }
     }
 }

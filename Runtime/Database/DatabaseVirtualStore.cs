@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -20,6 +21,15 @@ namespace Metamatic
         private DatabaseStore<TState> m_CurrentStoreRef = null;
 
         private TState initialState;
+       
+        /// <summary>
+        /// Determines that current store object is belong to required database entity (without bubbling proxy)
+        /// </summary>
+        public bool isOriginal
+        {
+            get;
+            private set;
+        } = false;
         
 
         public DatabaseVirtualStore(DatabaseSelector selector, TState initialState = default)
@@ -35,6 +45,7 @@ namespace Metamatic
             m_UnsubscribeBranch = Database.SubscribeStore<TState>(branchName, entityName, (DatabaseStore<TState> store) =>
             {
                 if (store == m_ObservableStore.value) return;
+                isOriginal = store != null && (store.entity.address == databaseSelector.address);
                 m_ObservableStore.SetValue(store);
             });
         }
@@ -93,13 +104,13 @@ namespace Metamatic
         /// <param name="modifier"></param>
         public void SetState(DatabaseStore<TState>.StateModifier modifier)
         {
-            if (m_ObservableStore.value != null)
+            if (isOriginal)
             {
                 m_ObservableStore.value.SetState(modifier);
             }
             else
             {
-                Database.TouchBranch(databaseSelector.branch.value).TouchEntity(databaseSelector.entity.value).TouchStore<TState>(ref initialState).SetState(modifier);
+                Database.TouchBranch(databaseSelector.branch.value).TouchEntity(databaseSelector.entity.value).TouchStore<TState>(ref initialState, modifier);
             }
         }
 

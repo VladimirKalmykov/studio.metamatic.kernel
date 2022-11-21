@@ -8,6 +8,17 @@ namespace Metamatic
         public delegate void BranchAndEntityHandler(string branchName, string entityName);
         public readonly DatabaseBranchSource branch;
         public readonly DatabaseEntitySource entity;
+        
+        /// <summary>
+        /// Absolute address of the database entity
+        /// </summary>
+        public string address
+        {
+            get
+            {
+                return $"{branch.value}:${entity.value}";
+            }
+        }
 
         public DatabaseSelector(DatabaseBranchSource branchSource)
         {

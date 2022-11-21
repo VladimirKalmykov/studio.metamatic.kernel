@@ -37,9 +37,19 @@ namespace Metamatic
         public event Action OnFinally;
         public event Action OnCancel;
         private CancellationTokenRegistration cancellationTokenRegistration;
+        private CancellationTokenSource m_InternalExecutionCancellationTokenSource;
+
+        public CancellationToken executionCancellationToken
+        {
+            get
+            {
+                return m_InternalExecutionCancellationTokenSource.Token;
+            }
+        }
         public Promise(InitializeHandler initialize, CancellationToken cancellationToken = default)
         {
             cancellationTokenRegistration = cancellationToken.Register(Cancel);
+            m_InternalExecutionCancellationTokenSource = new CancellationTokenSource();
             
             this.m_TaskCompletionSource = new TaskCompletionSource<T>();
             initialize(Complete, SetError, this);
@@ -69,6 +79,7 @@ namespace Metamatic
 
         private void Finallize()
         {
+            m_InternalExecutionCancellationTokenSource.Cancel();
             cancellationTokenRegistration.Dispose();
             isFinalised = true;
             OnFinally?.Invoke();

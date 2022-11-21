@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class DatabaseBranch
+    public class DatabaseBranch: IDisposable
     {
         public enum EntityOperation
         {
@@ -17,10 +17,29 @@ namespace Metamatic
         public readonly string name;
         public static Dictionary<string, DatabaseEntity> m_Entities = new Dictionary<string, DatabaseEntity>();
         public event EntityOperationHandler OnEntityOperation;
+        
+        /// <summary>
+        /// Absolute address of the database branch
+        /// </summary>
+        public string address
+        {
+            get
+            {
+                return this.name;
+            }
+        }
 
         public DatabaseBranch(string name)
         {
             this.name = name;
+        }
+        
+        public void Dispose()
+        {
+            foreach (var pair in m_Entities)
+            {
+                pair.Value.Dispose();
+            }
         }
         
         /// <summary>
@@ -36,7 +55,7 @@ namespace Metamatic
                 return entity;
             }
             Debug.Log($"Create new database entity {name}");
-            entity = new DatabaseEntity(name);
+            entity = new DatabaseEntity(this, name);
             m_Entities[name] = entity;
             OnEntityOperation?.Invoke(name, entity, EntityOperation.CREATE);
             return entity;

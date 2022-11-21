@@ -8,6 +8,7 @@ namespace Metamatic
     public class Database: MonoBehaviour
     {
         public static Database instance { get; private set; }
+        public static event Action OnLifecycleEndFrame;
         public enum BranchOperation
         {
             CREATE,
@@ -24,6 +25,7 @@ namespace Metamatic
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Initialize()
         {
+            Debug.Log($"Initialize database: {instance}");
             if (instance == null)
             {
                 var go = new GameObject("__DATABASE__");
@@ -31,9 +33,9 @@ namespace Metamatic
             }
         }
 
-        void OnLateUpdate()
+        void LateUpdate()
         {
-            
+            OnLifecycleEndFrame?.Invoke();
         }
 
         /// <summary>
@@ -260,6 +262,25 @@ namespace Metamatic
             m_Branches[branchName] = branch;
             OnBranchOperation?.Invoke(branchName, branch, BranchOperation.CREATE);
             return branch;
+        }
+
+        public static bool BranchExists(string branchName)
+        {
+            return m_Branches.ContainsKey(branchName);
+        }
+
+        public static bool RemoveBranch(string branchName)
+        {
+            DatabaseBranch branch = null;
+            if (m_Branches.TryGetValue(branchName, out branch))
+            {
+                branch.Dispose();
+                m_Branches.Remove(branchName);
+                OnBranchOperation?.Invoke(branchName, null, BranchOperation.REMOVE);
+                return true;
+            }
+
+            return false;
         }
     }
 }
