@@ -65,9 +65,12 @@ namespace Metamatic
             OnFrameEnd();
         }
 
-        public Action SubscribeState(StateChangeHandler handler) {
+        public Action SubscribeState(StateChangeHandler handler, bool skipInitial = false) {
             stateListeners += handler;
-            handler(ref m_NextState, ref state);
+            if (!skipInitial)
+            {
+                handler(ref m_NextState, ref state);
+            }
             return () => {
                 UnsubscribeState(handler);
             };

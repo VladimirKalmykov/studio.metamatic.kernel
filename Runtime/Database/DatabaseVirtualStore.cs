@@ -34,6 +34,7 @@ namespace Metamatic
             m_UnsubscribeBranch?.Invoke();
             m_UnsubscribeBranch = Database.SubscribeStore<TState>(branchName, entityName, (DatabaseStore<TState> store) =>
             {
+                if (store == m_ObservableStore.value) return;
                 m_ObservableStore.SetValue(store);
             });
         }
@@ -75,7 +76,7 @@ namespace Metamatic
 
                 if (store != null)
                 {
-                    unsubscribeState = store.SubscribeState(handler);
+                    unsubscribeState = store.SubscribeState(handler, true);
                 }
             });
 
