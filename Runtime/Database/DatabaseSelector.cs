@@ -23,7 +23,7 @@ namespace Metamatic
         public DatabaseSelector(DatabaseBranchSource branchSource)
         {
             this.branch = new DatabaseBranchSource(branchSource);
-            this.entity = new DatabaseEntitySource("");
+            this.entity = new DatabaseEntitySource(Database.currentBranchSource);
         }
         
         public DatabaseSelector(DatabaseBranchSource branchSource, DatabaseEntitySource entitySource)
@@ -35,7 +35,7 @@ namespace Metamatic
         public DatabaseSelector(DatabaseEntitySource entitySource)
         {
             this.entity = new DatabaseEntitySource(entitySource);
-            this.branch = new DatabaseBranchSource("");
+            this.branch = new DatabaseBranchSource(Database.currentBranchSource);
         }
         
         /// <summary>

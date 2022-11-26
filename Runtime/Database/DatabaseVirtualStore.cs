@@ -14,6 +14,16 @@ namespace Metamatic
         /// </summary>
         private Action m_UnsubscribeBranch;
         private ObservableValue<DatabaseStore<TState>> m_ObservableStore = new ObservableValue<DatabaseStore<TState>>();
+        
+        #if DEBUG
+        public ObservableValue<DatabaseStore<TState>> debugObservableStore
+        {
+            get
+            {
+                return m_ObservableStore;
+            }
+        }
+        #endif
 
         /// <summary>
         /// Contains reference to the available store (it can be nell if store does not exist yet)
@@ -137,7 +147,7 @@ namespace Metamatic
 
         public void Load()
         {
-            Database.TryLoadStore<TState>(this.databaseSelector.address, true);
+            Database.TryLoadStore<TState>(this.databaseSelector.address, true, initialState);
         }
     }
 }

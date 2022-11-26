@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Metamatic
@@ -107,12 +108,12 @@ namespace Metamatic
 
         public static DatabaseSelector Entity(MonoBehaviour behaviour)
         {
-            var gameObjectEntity = behaviour.GetComponentInParent<DatabaseGameObjectEntity>();
+            var gameObjectEntity = behaviour.GetComponentInParent<Entity>();
             if (gameObjectEntity == null)
             {
                 return new DatabaseSelector(new DatabaseEntitySource(behaviour.gameObject.name));
             }
-            return new DatabaseSelector(new DatabaseEntitySource(gameObjectEntity.entitySource));
+            return new DatabaseSelector(new DatabaseEntitySource(gameObjectEntity.observableName));
         }
         
         /// <summary>
@@ -303,19 +304,12 @@ namespace Metamatic
 
         public static void Clear()
         {
-            var itemsToDisponse = new DatabaseBranch[m_Branches.Count];
-            var i = 0;
-            foreach (var pair in m_Branches)
+            foreach (var branchName in m_Branches.Keys.ToArray())
             {
-                itemsToDisponse[i] = pair.Value;
-                i++;
+                RemoveBranch(branchName);
             }
 
             m_Branches.Clear();
-            for (i = 0; i < itemsToDisponse.Length; i++)
-            {
-                itemsToDisponse[i].Dispose();
-            }
         }
         
         /// <summary>
@@ -323,22 +317,13 @@ namespace Metamatic
         /// </summary>
         public static bool Save()
         {
-            try
+            foreach (var branch in m_Branches)
             {
-                foreach (var branch in m_Branches)
+                if (branch.Key == "master")
                 {
-                    if (branch.Key == "master")
-                    {
-                        Database.Log("Autosave master branch");
-                        branch.Value.Save();
-                    }
+                    Database.Log("Autosave master branch");
+                    branch.Value.Save();
                 }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Error saving");
-                Debug.LogError(e);
-                return false;
             }
 
             return true;
@@ -352,7 +337,7 @@ namespace Metamatic
         /// <param name="address">Address of the entity</param>
         /// <param name="force">Ignore previous attempts and load again</param>
         /// <returns></returns>
-        public static void TryLoadStore<TState>(string address, bool force = false)
+        public static void TryLoadStore<TState>(string address, bool force = false, TState defaultState = default)
         {
             var typeFullname = typeof(TState).FullName;
             var fullAddress = $"{address}{ADDRESS_STORE_SEP}{typeFullname}";
@@ -364,10 +349,16 @@ namespace Metamatic
             {
                 Database.Log($"Load {address}");
                 _storeLoadAttempts.Add(fullAddress);
-                var loadedState = ES3.Load<TState>(typeof(TState).FullName, $"database/{address}.es3");
-                var adressConfig = ParseAddress(address);
-                Database.TouchBranch(adressConfig.branch).TouchEntity(adressConfig.entity)
-                    .TouchStore<TState>(ref loadedState);
+                var filepath = $"database/{address}.es3";
+                if (ES3.FileExists(filepath) && ES3.KeyExists(typeof(TState).FullName, filepath))
+                {
+                    var loadedState = ES3.Load<TState>(typeof(TState).FullName, filepath);
+                    var adressConfig = ParseAddress(address);
+                    Database.Log($"Store {address} sucessfully loaded: {JsonUtility.ToJson(loadedState)}");
+                    Database.TouchBranch(adressConfig.branch).TouchEntity(adressConfig.entity)
+                        /* Initialize state without modifier to get every subscriber have only one subscription call */
+                        .TouchStore<TState>(ref loadedState);
+                }
             }
             catch (Exception e)
             {
@@ -391,7 +382,7 @@ namespace Metamatic
         
         void OnApplicationQuit()
         {
-            Save();
+            // Save();
         }
     }
 }

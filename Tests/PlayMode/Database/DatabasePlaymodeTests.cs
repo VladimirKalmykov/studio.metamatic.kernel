@@ -1,4 +1,6 @@
 using System.Threading.Tasks;
+using Tests.EditMode.Database;
+using UnityEditor;
 
 namespace Metamatic
 {
@@ -8,19 +10,19 @@ namespace Metamatic
     using UnityEngine;
     using UnityEngine.TestTools;
     
-    public struct TestState
-    {
-        public int a;
-    }
-    
-    public struct TestState2
-    {
-        public int a;
-    }
 
     public class DatabasePlaymodeTests : MonoBehaviour
     {
-
+        public struct TestState
+        {
+            public int a;
+        }
+    
+        public struct TestState2
+        {
+            public int a;
+        }
+        public const string ENTITY_NAME = "DatabasePlaymodeTestEntity";
         [UnityTest]
         public IEnumerator DatabaseHasInstance()
         {
@@ -120,6 +122,58 @@ namespace Metamatic
             afterSaveStoreB.Load();
             Assert.True(afterSaveStoreA.GetState().a == 2, "Store A property a should be 2 after load");
             Assert.True(afterSaveStoreB.GetState().a == 3, "Store B property a should be 3 after load");
+            yield return null;
+        }
+        
+        public struct UnitTestMyScriptableObject {
+            public DatabaseScriptableObjectForUnitTests myScriptableObject;
+        }
+        [UnityTest]
+        public IEnumerator SaveAndLoadDataWithScriptableObjectAsRef()
+        {
+            string assetPathname = "";
+            string folderPathname = "";
+            try
+            {
+                Database.Clear();
+                var storeA = Database.Branch("master").GetStore(ENTITY_NAME, new UnitTestMyScriptableObject { });
+                Assert.IsNull(storeA.GetState().myScriptableObject, "Should be null at initial moment");
+            
+                /* Create asset */
+                string guid = AssetDatabase.CreateFolder("Assets", "UnitTest_Temportaty_Files");
+                folderPathname = AssetDatabase.GUIDToAssetPath(guid);
+                Assert.True(AssetDatabase.IsValidFolder(folderPathname), "Temportaty folder should be valid");
+                Debug.Log($"Temporary folder just created at {folderPathname}");
+
+                // Create testing scriptable object
+                DatabaseScriptableObjectForUnitTests asset = ScriptableObject.CreateInstance<DatabaseScriptableObjectForUnitTests>();
+                assetPathname = $"{folderPathname}/SaveAndLoadDataWithScriptableObjectDoodle.asset";
+                AssetDatabase.CreateAsset(asset, assetPathname);
+                AssetDatabase.SaveAssets();
+            
+                storeA.SetState((ref UnitTestMyScriptableObject state) =>
+                {
+                    state.myScriptableObject = asset;
+                });
+                Assert.AreEqual(asset, storeA.GetState().myScriptableObject, "State should has created scriptable object");
+                Database.Save();
+                Database.Clear();
+                Assert.IsNull(storeA.GetState().myScriptableObject, "Should be null after clear");
+                // storeA.Load();
+                // Assert.AreEqual(17, storeA.GetState().a, "Should be 17 after load data");
+            }
+            finally
+            {
+                if (assetPathname.Length > 0)
+                {
+                    AssetDatabase.DeleteAsset(assetPathname);
+                }
+
+                if (folderPathname.Length > 0)
+                {
+                    FileUtil.DeleteFileOrDirectory(folderPathname);
+                }
+            }
             yield return null;
         }
     }

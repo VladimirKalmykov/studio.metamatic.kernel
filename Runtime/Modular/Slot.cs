@@ -1,3 +1,5 @@
+using System;
+
 namespace Metamatic {
     using UnityEngine;
     using Sirenix.OdinInspector;
@@ -64,6 +66,28 @@ namespace Metamatic {
                 useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
             }
         }
+        
+        /// <summary>
+        /// Attach module to the slot
+        /// </summary>
+        /// <param name="module"></param>
+        public ModuleAttachment Attach(Module module)
+        {
+            Module item;
+            bool instantiated = false;
+            if (!module.gameObject.activeInHierarchy)
+            {
+                /* Create game object copy */
+                instantiated = true;
+                item = Instantiate(module);
+            }
+            else
+            {
+                item = module;
+            }
+
+            return new ModuleAttachment(this, item, instantiated);
+        }
 
         public void Clear() {
             this.prefab = null;
@@ -124,45 +148,46 @@ namespace Metamatic {
             m_ActiveModulePreset = modulePreset;
             m_ActiveModulePreset.Subscribe(HandleModulePresetChange);
         }
-
+        
+        [Obsolete("Module preset logic is deprecated", false)]
         private async void HandleModulePresetChange(ModulePreset modulePreset) {
-            #if UNITY_EDITOR
-            var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
-            #else
-            var isPartOfAnyPrefab = false;
-            #endif
-            GameObject prefab = null;
-            prefab = await modulePreset.GetPrefabAsync();
-                if (m_ActiveModulePreset != modulePreset) {
-                    return;
-                }
-
-            if (prefab == null && defaultPrefab != null) {
-                prefab = defaultPrefab;
-            }
-            
-            if (prefab != this.prefab) {
-                ApplyPrefab(prefab, isPartOfAnyPrefab);
-            }
-
-            #if UNITY_EDITOR
-            if (isPartOfAnyPrefab) {
-                return;
-            }
-            #endif
-
-            if (modulePreset != null) {
-                (moduleGameObject.GetComponent<Configurator>() ?? moduleGameObject.AddComponent<Configurator>()).configuration = modulePreset.configuration;
-            }
-
-            if (moduleGameObject == null || modulePreset == null) return;
-            var skin = await modulePreset.GetSkinAsync();
-            /* Do not continue if another modulePreset already was handled */
-            if (m_ActiveModulePreset != modulePreset) {
-                return;
-            }
-            var skinApplier = moduleGameObject.GetComponent<SkinApplier>() ?? moduleGameObject.AddComponent<SkinApplier>();
-            skinApplier.skin = skin != null ? skin : skinApplier.defaultSkin;
+            // #if UNITY_EDITOR
+            // var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
+            // #else
+            // var isPartOfAnyPrefab = false;
+            // #endif
+            // GameObject prefab = null;
+            // prefab = await modulePreset.GetPrefabAsync();
+            //     if (m_ActiveModulePreset != modulePreset) {
+            //         return;
+            //     }
+            //
+            // if (prefab == null && defaultPrefab != null) {
+            //     prefab = defaultPrefab;
+            // }
+            //
+            // if (prefab != this.prefab) {
+            //     ApplyPrefab(prefab, isPartOfAnyPrefab);
+            // }
+            //
+            // #if UNITY_EDITOR
+            // if (isPartOfAnyPrefab) {
+            //     return;
+            // }
+            // #endif
+            //
+            // if (modulePreset != null) {
+            //     (moduleGameObject.GetComponent<Configurator>() ?? moduleGameObject.AddComponent<Configurator>()).configuration = modulePreset.configuration;
+            // }
+            //
+            // if (moduleGameObject == null || modulePreset == null) return;
+            // var skin = await modulePreset.GetSkinAsync();
+            // /* Do not continue if another modulePreset already was handled */
+            // if (m_ActiveModulePreset != modulePreset) {
+            //     return;
+            // }
+            // var skinApplier = moduleGameObject.GetComponent<SkinApplier>() ?? moduleGameObject.AddComponent<SkinApplier>();
+            // skinApplier.skin = skin != null ? skin : skinApplier.defaultSkin;
         }
 
         private void ApplyPrefab(GameObject prefab, bool isPartOfAnyPrefab) {

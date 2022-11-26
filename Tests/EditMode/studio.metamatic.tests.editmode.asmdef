@@ -4,7 +4,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "studio.metamatic.kernel.runtime"
+        "studio.metamatic.kernel.runtime",
+        "com.duckjumper2022.tests"
     ],
     "includePlatforms": [
         "Editor"

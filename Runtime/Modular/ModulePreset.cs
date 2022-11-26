@@ -17,16 +17,16 @@ namespace Metamatic {
             }
         }
 
-        public AssetReferenceScriptableSkin s_Skin = null;
-        public AssetReferenceScriptableSkin skin {
-            get {
-                return s_Skin;
-            }
-            set {
-                s_Skin = value;
-                OnChange?.Invoke(this);
-            }
-        }
+        // public AssetReferenceScriptableSkin s_Skin = null;
+        // public AssetReferenceScriptableSkin skin {
+        //     get {
+        //         return s_Skin;
+        //     }
+        //     set {
+        //         s_Skin = value;
+        //         OnChange?.Invoke(this);
+        //     }
+        // }
 
         public Configuration s_Configuration = new Configuration();
         public Configuration configuration {
@@ -39,18 +39,18 @@ namespace Metamatic {
             }
         }
 
-        public Task<GameObject> GetPrefabAsync() {
-            return Metamatic.AddressableUtils.SafeLoadAssetAsync<GameObject>(moduleDescriptor.addressablePrefab);
-        }
-
-        public Task<ScriptableSkin> GetSkinAsync() {
-            return Metamatic.AddressableUtils.SafeLoadAssetAsync<ScriptableSkin>(skin ?? moduleDescriptor.defaultAddressableSkin);
-        }
+        // public Task<GameObject> GetPrefabAsync() {
+        //     return Metamatic.AddressableUtils.SafeLoadAssetAsync<GameObject>(moduleDescriptor.addressablePrefab);
+        // }
+        //
+        // public Task<ScriptableSkin> GetSkinAsync() {
+        //     return Metamatic.AddressableUtils.SafeLoadAssetAsync<ScriptableSkin>(skin ?? moduleDescriptor.defaultAddressableSkin);
+        // }
 
         public ModulePreset Clone() {
             return new ModulePreset {
                 moduleDescriptor = this.moduleDescriptor,
-                skin = this.skin,
+                // skin = this.skin,
                 configuration = configuration.Clone()
             };
         }

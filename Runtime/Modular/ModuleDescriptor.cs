@@ -11,9 +11,9 @@ namespace Metamatic {
         [BoxGroup("Metadata")]
         public AssetReferenceSprite addressablePreview;
         public AssetReferenceGameObject addressablePrefab;
-        public AssetReferenceScriptableSkin defaultAddressableSkin;
-        public Configuration defaultConfiguration;
-        public AssetReferenceScriptableSkin[] aviableSkins;
+        // public AssetReferenceScriptableSkin defaultAddressableSkin;
+        // public Configuration defaultConfiguration;
+        // public AssetReferenceScriptableSkin[] aviableSkins;
         public GameAccessConfig access = new GameAccessConfig();
         GameAccessConfig IAccessable.GetAccessConfig() {
             return access;

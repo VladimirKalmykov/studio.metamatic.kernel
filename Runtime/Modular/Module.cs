@@ -24,6 +24,17 @@ namespace Metamatic {
             }
         }
 
+        public void PlugIn(Slot slot)
+        {
+            transform.SetParent(slot.transform, false);
+            Stick();
+        }
+
+        public void Unplug()
+        {
+            transform.SetParent(null);
+        }
+
         #if UNITY_EDITOR
         void Update() {
             if (sticky && editorLiveUpdate && !Application.isPlaying) {

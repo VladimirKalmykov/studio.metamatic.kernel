@@ -1,3 +1,5 @@
+using Metamatic.Effects;
+
 namespace Metamatic {
     using System;
     using UnityEngine;
@@ -5,7 +7,9 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
     using Metamatic.GameAccessManagment;
 
-    public abstract class ScriptableSkin : ScriptableObject, IAccessable
+    public abstract class ScriptableSkin<TEffector, TProps> : ScriptableEffect<TEffector, TProps>, IAccessable
+    where TEffector: Effector
+    where TProps : struct
     {
         [BoxGroup("Metadata")]
         public string title;
@@ -17,7 +21,11 @@ namespace Metamatic {
         GameAccessConfig IAccessable.GetAccessConfig() {
             return access;
         }
-        public abstract void Apply(GameObject target);
+        
+        public override string GetEffectName()
+        {
+            return $"Skin: {title}";
+        }
 
         #if UNITY_EDITOR
         private void OnValidate() {

@@ -9,7 +9,7 @@ namespace Metamatic
             
         }
         
-        public DatabaseEntitySource(DatabaseEntitySource other) : base(other)
+        public DatabaseEntitySource(ObservableValue<string> source) : base(source)
         {
             
         }
