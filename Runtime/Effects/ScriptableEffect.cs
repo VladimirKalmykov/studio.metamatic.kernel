@@ -44,6 +44,18 @@ namespace Metamatic.Effects
             {
                 throw new Exception($"Target has no opporiate effector with type {typeof(TEffector).Name}");
             }
+
+            return Apply(effector, ref props);
+        }
+        
+        /// <summary>
+        /// Method that apply effect to the effector and it can be customized in the derived class
+        /// </summary>
+        /// <param name="effector"></param>
+        /// <param name="props"></param>
+        /// <returns></returns>
+        protected virtual EffectCancellableOperationAwaiter Apply(TEffector effector, ref TProps props)
+        {
             return effector.ApplyEffect(this, props);
         }
         /// <summary>

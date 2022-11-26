@@ -30,10 +30,13 @@ namespace Metamatic
             get;
             private set;
         } = false;
+
+        public readonly int id;
         
 
         public DatabaseVirtualStore(DatabaseSelector selector, TState initialState = default)
         {
+            this.id = UnityEngine.Random.Range(0, 99999999);
             this.databaseSelector = selector;
             this.initialState = initialState;
             selector.Subscribe(ResolveStore);
@@ -44,9 +47,17 @@ namespace Metamatic
             m_UnsubscribeBranch?.Invoke();
             m_UnsubscribeBranch = Database.SubscribeStore<TState>(branchName, entityName, (DatabaseStore<TState> store) =>
             {
-                if (store == m_ObservableStore.value) return;
                 isOriginal = store != null && (store.entity.address == databaseSelector.address);
-                m_ObservableStore.SetValue(store);
+
+                if (store != m_ObservableStore.value)
+                {
+                    m_ObservableStore.SetValue(store);
+                }
+                
+                if (!isOriginal)
+                {
+                    Database.TryLoadStore<TState>(databaseSelector.address);
+                }
             });
         }
         
@@ -110,7 +121,8 @@ namespace Metamatic
             }
             else
             {
-                Database.TouchBranch(databaseSelector.branch.value).TouchEntity(databaseSelector.entity.value).TouchStore<TState>(ref initialState, modifier);
+                var tocuhedBranch = Database.TouchBranch(databaseSelector.branch.value);
+                tocuhedBranch.TouchEntity(databaseSelector.entity.value).TouchStore<TState>(ref initialState, modifier);
             }
         }
 
@@ -121,6 +133,11 @@ namespace Metamatic
                 return ref initialState;
             }
             return ref m_ObservableStore.value.state;
+        }
+
+        public void Load()
+        {
+            Database.TryLoadStore<TState>(this.databaseSelector.address, true);
         }
     }
 }

@@ -16,6 +16,16 @@ namespace Metamatic.Effects
         public readonly Behaviour owner;
         public readonly string debugName;
         
+        // private EffectsGraph m_DefaultGraph;
+        //
+        // public EffectsGraph graph
+        // {
+        //     get
+        //     {
+        //         return m_DefaultGraph == null ? (m_DefaultGraph = new EffectsGraph(this.m_CommonChannel)) : m_DefaultGraph;
+        //     }
+        // }
+        
         #if UNITY_EDITOR
         public event Action<EffectExecutionContext[]> editor_OnExecutionsChange;
         public void editor_SubscribeEffectExecutionsChange(Action<EffectExecutionContext[]> handler)

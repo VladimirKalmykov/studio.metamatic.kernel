@@ -69,4 +69,30 @@ public class DatabaseCommonTests
         Assert.True(subscribtionHandleCount == 2, "Subscribtion handle count should be 2");
         yield return null;
     }
+
+    [UnityTest]
+    public IEnumerator SubscribeProxyBranch()
+    {
+        Database.Clear();
+        var storeA = Database.Branch("master").GetStore("Player", new TestState { a = 7 });
+        var storeB = Database.Branch("Round1").GetStore("Player", new TestState { a = 8 });
+        Assert.True(storeA.GetState().a == 7, "Store A property a should be 7");
+        Assert.True(storeB.GetState().a == 8, "Store B property a should be 8");
+        storeA.SetState((ref TestState state) =>
+        {
+            state.a = 2;
+        });
+        Assert.True(storeA.GetState().a == 2, "Store A property a should be 2");
+        Assert.True(storeB.GetState().a == 2, "Store B property a should be 2");
+        Assert.True(storeB.isOriginal == false, "Store B should not be original");
+        storeB.SetState((ref TestState state) =>
+        {
+            state.a = 3;
+        });
+        Assert.True(storeB.isOriginal == true, "Store B should be original");
+        Assert.True(storeA.GetState().a == 2, "Store A property a should be 2");
+        Assert.True(storeB.GetState().a == 3, $"Store B property a should be 3, but got {storeB.GetState().a}");
+        Database.Clear();
+        yield return null;
+    }
 }

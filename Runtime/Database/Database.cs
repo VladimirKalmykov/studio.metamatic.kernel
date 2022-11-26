@@ -7,6 +7,13 @@ namespace Metamatic
     
     public class Database: MonoBehaviour
     {
+        public struct Address
+        {
+            public string branch;
+            public string entity;
+        }
+        public const string ADDRESS_ENTITY_SEP = "/_E/";
+        public const string ADDRESS_STORE_SEP = "/_S/";
         public static Database instance { get; private set; }
         public static event Action OnLifecycleEndFrame;
         public enum BranchOperation
@@ -21,11 +28,13 @@ namespace Metamatic
         public static readonly string masterBranchName = "master";
         public static event BranchOperationHandler OnBranchOperation;
         public static readonly Dictionary<string, DatabaseBranch> m_Branches = new Dictionary<string, DatabaseBranch>();
+        public static event Action OnInitialize;
         
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Initialize()
         {
-            Debug.Log($"Initialize database: {instance}");
+            OnInitialize?.Invoke();
+            Database.Log($"Initialize");
             if (instance == null)
             {
                 var go = new GameObject("__DATABASE__");
@@ -51,6 +60,11 @@ namespace Metamatic
             var entitySource = new DatabaseEntitySource(entityName);
             var selector = new DatabaseSelector(branchSource, entitySource);
             return new DatabaseVirtualStore<TState>(selector, initialState);
+        }
+
+        public static void Log(string message)
+        {
+            Debug.Log($"<color=red>DATABASE</color>: {message}");
         }
 
         public static DatabaseBranchSource currentBranchSource = new DatabaseBranchSource(masterBranchName);
@@ -118,6 +132,7 @@ namespace Metamatic
             Action unsubscribeDepth4 = null;
             unsubscribeBranch = SubscribeBranch(branchName, delegate(DatabaseBranch branch)
             {
+                var xkey = UnityEngine.Random.Range(1, 10000);
                 unsubscribeDepth2?.Invoke();
                 unsubscribeDepth3?.Invoke();
                 unsubscribeDepth4?.Invoke();
@@ -136,6 +151,7 @@ namespace Metamatic
                     }
                     else
                     {
+                        Debug.Log($"Send null branch (xkey: {xkey})");
                         // Store does not exist, fallback null
                         handler(null);
                     }
@@ -232,6 +248,7 @@ namespace Metamatic
         /// <returns></returns>
         public static Action SubscribeBranch(string branchName, BranchHandler handler)
         {
+            Debug.Log("Subscrive to branch " + branchName);
             DatabaseBranch branch = null;
             m_Branches.TryGetValue(branchName, out branch);
             BranchOperationHandler branchOperationHandler = (name, branch, operation) =>
@@ -242,6 +259,7 @@ namespace Metamatic
                 }
             };
             OnBranchOperation += branchOperationHandler;
+            Debug.Log("Send nullified branch here");
             handler(branch);
 
             return () =>
@@ -281,6 +299,99 @@ namespace Metamatic
             }
 
             return false;
+        }
+
+        public static void Clear()
+        {
+            var itemsToDisponse = new DatabaseBranch[m_Branches.Count];
+            var i = 0;
+            foreach (var pair in m_Branches)
+            {
+                itemsToDisponse[i] = pair.Value;
+                i++;
+            }
+
+            m_Branches.Clear();
+            for (i = 0; i < itemsToDisponse.Length; i++)
+            {
+                itemsToDisponse[i].Dispose();
+            }
+        }
+        
+        /// <summary>
+        /// Save database to the filesystem (by the default only master branch will be saved)
+        /// </summary>
+        public static bool Save()
+        {
+            try
+            {
+                foreach (var branch in m_Branches)
+                {
+                    if (branch.Key == "master")
+                    {
+                        Database.Log("Autosave master branch");
+                        branch.Value.Save();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error saving");
+                Debug.LogError(e);
+                return false;
+            }
+
+            return true;
+        }
+
+        private static List<string> _storeLoadAttempts = new List<string>();
+        
+        /// <summary>
+        /// Load story state from the filesystem
+        /// </summary>
+        /// <param name="address">Address of the entity</param>
+        /// <param name="force">Ignore previous attempts and load again</param>
+        /// <returns></returns>
+        public static void TryLoadStore<TState>(string address, bool force = false)
+        {
+            var typeFullname = typeof(TState).FullName;
+            var fullAddress = $"{address}{ADDRESS_STORE_SEP}{typeFullname}";
+            if (!force && _storeLoadAttempts.Contains(fullAddress))
+            {
+                return;
+            }
+            try
+            {
+                Database.Log($"Load {address}");
+                _storeLoadAttempts.Add(fullAddress);
+                var loadedState = ES3.Load<TState>(typeof(TState).FullName, $"database/{address}.es3");
+                var adressConfig = ParseAddress(address);
+                Database.TouchBranch(adressConfig.branch).TouchEntity(adressConfig.entity)
+                    .TouchStore<TState>(ref loadedState);
+            }
+            catch (Exception e)
+            {
+                
+                
+                Debug.LogError("Error loading state");
+                Debug.LogError(e);
+            }
+        }
+        
+        
+        public static Address ParseAddress(string address)
+        {
+            var parts = address.Split(ADDRESS_ENTITY_SEP, StringSplitOptions.None);
+            return new Address
+            {
+                branch = parts[0],
+                entity = parts[1]
+            };
+        }
+        
+        void OnApplicationQuit()
+        {
+            Save();
         }
     }
 }

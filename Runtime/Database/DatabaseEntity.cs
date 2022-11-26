@@ -26,7 +26,7 @@ namespace Metamatic
         {
             get
             {
-                return $"{branch.address}:${this.name}";
+                return $"{branch.address}{Database.ADDRESS_ENTITY_SEP}{this.name}";
             }
         }
 
@@ -50,10 +50,19 @@ namespace Metamatic
             DatabaseStore store = null;
             if (m_Stores.TryGetValue(type, out store))
             {
-                return (DatabaseStore<TState>) store;
+                var typedStore = (DatabaseStore<TState>) store;
+                if (modifier != null)
+                {
+                    typedStore.SetState(modifier);
+                }
+                else
+                {
+                    typedStore.SetState(initialState);
+                }
+                return typedStore;
             }
 
-            Debug.Log($"Create new database store {typeof(TState)}");
+            
             store = new DatabaseStore<TState>(this, initialState);
             if (modifier != null)
             {
@@ -89,6 +98,17 @@ namespace Metamatic
             {
                 OnStoreOperation -= entityOperationHandler;
             };
+        }
+        
+        /// <summary>
+        /// Save entity to the filesystem
+        /// </summary>
+        public void Save()
+        {
+            foreach (var store in m_Stores)
+            {
+                store.Value.Save();
+            }
         }
     }
 }

@@ -16,7 +16,7 @@ namespace Metamatic
         {
             get
             {
-                return $"{branch.value}:${entity.value}";
+                return $"{branch.value}{Database.ADDRESS_ENTITY_SEP}{entity.value}";
             }
         }
 

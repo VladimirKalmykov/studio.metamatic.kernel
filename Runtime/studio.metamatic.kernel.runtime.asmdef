@@ -6,7 +6,8 @@
         "Unity.Addressables",
         "Unity.ResourceManager",
         "Unity.InputSystem",
-        "UniTask"
+        "UniTask",
+        "com.es3.runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

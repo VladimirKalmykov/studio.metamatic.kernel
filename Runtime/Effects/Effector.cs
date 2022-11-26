@@ -9,6 +9,7 @@ using UnityEngine;
 using Metamatic;
 using Metamatic.Actions;
 using Metamatic.DevTools;
+using Metamatic.Effects.Graph;
 using Mono.Collections.Generic;
 using Action = System.Action;
 
@@ -19,7 +20,7 @@ namespace Metamatic.Effects
     {
         public event Action OnBeforeDestroy;
         public readonly List<EffectExecutionContext> effectExecutions = new List<EffectExecutionContext>();
-        public readonly List<EffectsChannel> channels = new List<EffectsChannel>();
+        public readonly Dictionary<string, EffectsChannel> channels = new Dictionary<string, EffectsChannel>();
         private Dispatcher m_Dispatcher;
 
         public Dispatcher dispatcher
@@ -35,7 +36,7 @@ namespace Metamatic.Effects
         public event Action<EffectsChannel[]> editor_OnChannelsChange;
         public void editor_SubscribeChannels(Action<EffectsChannel[]> handler)
         {
-            handler(channels.ToArray());
+            handler(channels.Values.ToArray());
             editor_OnChannelsChange += handler;
         }
         
@@ -46,7 +47,7 @@ namespace Metamatic.Effects
 
         protected void editor_EmitChannelsChange()
         {
-            editor_OnChannelsChange?.Invoke(channels.ToArray());
+            editor_OnChannelsChange?.Invoke(channels.Values.ToArray());
         }
         #endif
         
@@ -71,13 +72,24 @@ namespace Metamatic.Effects
             m_CommonChannel = CreateChannel(this, "Default");
         }
 
-        public EffectsChannel CreateChannel(Behaviour owner, string debugName)
+        private EffectsChannel CreateChannel(Behaviour owner, string debugName)
         {
             var channel = new EffectsChannel(this, owner, debugName);
-            channels.Add(channel);
+            channels.Add(debugName, channel);
 #if UNITY_EDITOR
             editor_EmitChannelsChange();
 #endif
+            return channel;
+        }
+
+        public EffectsChannel TouchChannel(string channelName)
+        {
+            EffectsChannel channel = null;
+            if (!channels.TryGetValue(channelName, out channel))
+            {
+                return CreateChannel(this, channelName);
+            }
+
             return channel;
         }
         
@@ -99,7 +111,7 @@ namespace Metamatic.Effects
         public Metamatic.Actions.Action[] GetActiveEffectsAsActions()
         {
             var actions = new Collection<Metamatic.Actions.Action>();
-            foreach (var execution in channels.SelectMany(channel => channel.executions))
+            foreach (var execution in channels.Values.SelectMany(channel => channel.executions))
             {
                 actions.Add(execution.GetAsAction());
             }
@@ -112,7 +124,7 @@ namespace Metamatic.Effects
         /// </summary>
         public void CancelAllEffects()
         {
-            var executions = channels.SelectMany(channel => channel.executions).ToArray();
+            var executions = channels.Values.SelectMany(channel => channel.executions).ToArray();
             foreach (var execution in executions)
             {
                 execution.Dispose();

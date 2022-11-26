@@ -119,8 +119,9 @@ Database.Branch("master").GetStore<WalletState>("Player")
 Database.Branch(this).GetStore<WalletState>("Player")
 // Где this: MonoBehaviour
 ```
-
 Указывая вместо имени ветки игровой объект, внутрення логика сама определить принадлежность объекта к ветке. Для этого у объекта (или его родителя) должен быть вспомогательный компонент `DatabaseContext` или `DatabaseEntity` (который наследует DatabaseContext).
+
+_Branch_ возвращает объект DatabaseSelector, который помимо содержания информации о источнике ветки, содержит API для подписки, записи и чтения из Store.
 
 В случае наличия DatabaseEntity мы можем начать работу с него, при этом указывать имя сущности нам уже не нужно, так как она уже будет содержаться в компоненте DatabaseEntity.
 

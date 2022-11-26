@@ -60,13 +60,13 @@ namespace Metamatic.Effects.Graph
             }
         }*/
         
-        public async UniTask ApplyEffect<TProps>(IEffectWithProps<Effector, TProps> effect, TProps props = default) where TProps: struct
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
             TryCancel();
             currentEffect = effect;
             activeEffectExecution = this.graph.channel.Add(effect, props);
-            HandleEffectExecution().Forget();
-            await this.graph.Execute();
+            this.graph.Execute().Forget();
+            return activeEffectExecution;
         }
 
         public void TryCancel()

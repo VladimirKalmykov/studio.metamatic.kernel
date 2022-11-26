@@ -7,9 +7,16 @@ namespace Metamatic
     {
         public readonly DatabaseEntity entity;
         public abstract void OnFrameEnd();
+        public readonly Type type;
 
-        public DatabaseStore(DatabaseEntity entity)
+        public string address
         {
+            get => $"{entity.address}${Database.ADDRESS_STORE_SEP}{this.type.FullName}";
+        }
+
+        public DatabaseStore(DatabaseEntity entity, Type type)
+        {
+            this.type = type;
             this.entity = entity;
             Database.OnLifecycleEndFrame += OnFrameEnd;
         }
@@ -18,12 +25,20 @@ namespace Metamatic
         {
             Database.OnLifecycleEndFrame -= OnFrameEnd;
         }
+
+        public void Save()
+        {
+            SaveTyped();
+        }
+
+        protected abstract void SaveTyped();
     }
 
     public class DatabaseStore<TState> : DatabaseStore, IDisposable
     {
         public delegate void StateChangeHandler(ref TState state, ref TState prevState);
 
+        
         public delegate void StateModifier(ref TState state);
         public TState state;
         private TState m_NextState;
@@ -54,9 +69,22 @@ namespace Metamatic
                     ForceUpdateState();
                 }
                 #endif
+                m_ShouldUpdate = true;
             }
         }
-        
+
+        public void SetState(TState nextState)
+        {
+            state = nextState;
+            #if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                ForceUpdateState();
+            }
+            #endif
+            m_ShouldUpdate = true;
+        }
+
         /// <summary>
         /// Set state and immediately update
         /// </summary>
@@ -77,7 +105,7 @@ namespace Metamatic
             return ref m_NextState;
         }
         
-        public DatabaseStore(DatabaseEntity entity, TState defaultState): base(entity)
+        public DatabaseStore(DatabaseEntity entity, TState defaultState): base(entity, typeof(TState))
         {
             state = defaultState;
             m_NextState = defaultState;
@@ -120,6 +148,13 @@ namespace Metamatic
             m_PostUpdateModifiying.Invoke(ref m_NextState);
             m_PostUpdateModifiying = delegate { };
             m_UpdateInProcess = false;
+        }
+
+        protected override void SaveTyped()
+        {
+            Database.Log($"Save {address}");
+            var savePath = $"database/{this.entity.address}.es3";
+            ES3.Save(typeof(TState).FullName, this.state, savePath);
         }
     }
 }

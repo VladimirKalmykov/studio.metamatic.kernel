@@ -15,7 +15,7 @@ namespace Metamatic
         public delegate void EntityHandler(DatabaseEntity entity);
         public delegate void EntityOperationHandler(string name, DatabaseEntity entity, EntityOperation operation);
         public readonly string name;
-        public static Dictionary<string, DatabaseEntity> m_Entities = new Dictionary<string, DatabaseEntity>();
+        public Dictionary<string, DatabaseEntity> m_Entities = new Dictionary<string, DatabaseEntity>();
         public event EntityOperationHandler OnEntityOperation;
         
         /// <summary>
@@ -54,7 +54,6 @@ namespace Metamatic
             {
                 return entity;
             }
-            Debug.Log($"Create new database entity {name}");
             entity = new DatabaseEntity(this, name);
             m_Entities[name] = entity;
             OnEntityOperation?.Invoke(name, entity, EntityOperation.CREATE);
@@ -85,6 +84,17 @@ namespace Metamatic
             {
                 OnEntityOperation -= entityOperationHandler;
             };
+        }
+        
+        /// <summary>
+        /// Save entity to the file system
+        /// </summary>
+        public void Save()
+        {
+            foreach (var entity in m_Entities)
+            {
+                entity.Value.Save();
+            }
         }
     }
 }

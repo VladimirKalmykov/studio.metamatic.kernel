@@ -33,14 +33,19 @@ namespace Metamatic.Actions
                     break;
                 default:
                     // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+                    var actionHandled = false;
                     foreach (var ah in actionHandlers)
                     {
                         if (ah(action))
                         {
-                            break;
+                            actionHandled = true;
                         }
                     }
-                    throw new Exception($"Action type {action.GetType().Name} is out of range for {GetType().Name}");
+
+                    if (!actionHandled)
+                    {
+                        throw new Exception($"Action type {action.GetType().Name} is out of range for {GetType().Name}");
+                    }
                     break;
             }
         }
