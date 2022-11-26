@@ -842,5 +842,30 @@ namespace Metamatic {
         {
             return (target + gap >= value) && (target - gap <= value);
         }
+        
+        /// <summary>
+        /// Find in parent components siblings with given name
+        /// </summary>
+        /// <param name="start"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static Transform FindParentSiblingsWithName(Transform start, string name)
+        {
+            var parent = start.parent;
+            if (parent == null)
+            {
+                return null;
+            }
+
+            foreach (Transform child in parent)
+            {
+                if (child.gameObject.name == name)
+                {
+                    return child;
+                }
+            }
+
+            return FindParentSiblingsWithName(parent, name);
+        }
     }
 }

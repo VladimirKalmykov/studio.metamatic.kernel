@@ -79,7 +79,7 @@ namespace Metamatic {
             {
                 /* Create game object copy */
                 instantiated = true;
-                item = Instantiate(module);
+                item = Instantiate(module, transform);
             }
             else
             {
