@@ -152,9 +152,7 @@ namespace Metamatic
 
         protected override void SaveTyped()
         {
-            Database.Log($"Save to {address} data: {JsonUtility.ToJson(this.state)}");
-            var savePath = $"database/{this.entity.address}.es3";
-            ES3.Save(typeof(TState).FullName, this.state, savePath);
+            Database.SaveStore<TState>(this);
         }
     }
 }

@@ -152,7 +152,6 @@ namespace Metamatic
                     }
                     else
                     {
-                        Debug.Log($"Send null branch (xkey: {xkey})");
                         // Store does not exist, fallback null
                         handler(null);
                     }
@@ -329,6 +328,12 @@ namespace Metamatic
             return true;
         }
 
+        public static void SaveStore<TState>(DatabaseStore<TState> store)
+        {
+            Database.Log($"Save to {store.address} data: {JsonUtility.ToJson(store.state)}");
+            Repository.Save<TState>(store.address, store.state);
+        }
+
         private static List<string> _storeLoadAttempts = new List<string>();
         
         /// <summary>
@@ -347,12 +352,11 @@ namespace Metamatic
             }
             try
             {
-                Database.Log($"Load {address}");
+                Database.Log($"Load {fullAddress}");
                 _storeLoadAttempts.Add(fullAddress);
-                var filepath = $"database/{address}.es3";
-                if (ES3.FileExists(filepath) && ES3.KeyExists(typeof(TState).FullName, filepath))
+                if (Repository.Exists<TState>(fullAddress))
                 {
-                    var loadedState = ES3.Load<TState>(typeof(TState).FullName, filepath);
+                    var loadedState = Repository.Load<TState>(fullAddress);
                     var adressConfig = ParseAddress(address);
                     Database.Log($"Store {address} sucessfully loaded: {JsonUtility.ToJson(loadedState)}");
                     Database.TouchBranch(adressConfig.branch).TouchEntity(adressConfig.entity)

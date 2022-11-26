@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Metamatic.Effects
 {
@@ -68,5 +69,35 @@ namespace Metamatic.Effects
         {
             return Apply(behaviour, (TProps)props);
         }
+    }
+    
+    
+
+    /// <summary>
+    /// GameObject only asset reference.
+    /// </summary>
+    [System.Serializable]
+    public class AssetReferenceScriptableEffect : AssetReferenceT<ScriptableEffect>
+    {
+        /// <summary>
+        /// Constructs a new reference to a GameObject.
+        /// </summary>
+        /// <param name="guid">The object guid.</param>
+        public AssetReferenceScriptableEffect(string guid) : base(guid) {}
+    }
+    
+    /// <summary>
+    /// GameObject only asset reference.
+    /// </summary>
+    [System.Serializable]
+    public class AssetReferenceScriptableEffect<TEffector, TState> : AssetReferenceT<ScriptableEffect<TEffector, TState>>
+    where TEffector : Effector
+    where TState : struct
+    {
+        /// <summary>
+        /// Constructs a new reference to a GameObject.
+        /// </summary>
+        /// <param name="guid">The object guid.</param>
+        public AssetReferenceScriptableEffect(string guid) : base(guid) {}
     }
 }

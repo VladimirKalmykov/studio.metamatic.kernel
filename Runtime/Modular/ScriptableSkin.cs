@@ -7,6 +7,7 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
     using Metamatic.GameAccessManagment;
 
+    
     public abstract class ScriptableSkin<TEffector, TProps> : ScriptableEffect<TEffector, TProps>, IAccessable
     where TEffector: Effector
     where TProps : struct
