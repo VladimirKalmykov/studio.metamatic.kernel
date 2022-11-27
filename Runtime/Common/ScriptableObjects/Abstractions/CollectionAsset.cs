@@ -3,8 +3,12 @@ namespace Metamatic {
     using System.Collections.Generic;
     
     public abstract class CollectionAsset<T>: ScriptableObject
-        where T: UnityEngine.Object
-     {
-        public List<T> items = new List<T>();
+    {
+        [SerializeField] private List<T> items = new List<T>();
+
+        public T[] GetItems()
+        {
+            return items.ToArray();
+        }
     }
 }
