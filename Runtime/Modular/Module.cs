@@ -32,6 +32,7 @@ namespace Metamatic {
 
         public void Unplug()
         {
+            if (this == null) return;
             transform.SetParent(null);
         }
 
