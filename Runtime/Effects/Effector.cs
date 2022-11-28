@@ -62,14 +62,13 @@ namespace Metamatic.Effects
         }
         
         private EffectsChannel m_CommonChannel;
+
+        public EffectsChannel commonChannel => m_CommonChannel ??= CreateChannel(this, "Default");
         public Effector target { get; private set; }
 
         private void Awake()
         {
             target = this;
-            
-            /* Define common channel */
-            m_CommonChannel = CreateChannel(this, "Default");
         }
 
         private EffectsChannel CreateChannel(Behaviour owner, string debugName)
@@ -101,7 +100,7 @@ namespace Metamatic.Effects
 
         public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
-            return m_CommonChannel.Add(effect, props);
+            return commonChannel.Add(effect, props);
         }
         
         /// <summary>

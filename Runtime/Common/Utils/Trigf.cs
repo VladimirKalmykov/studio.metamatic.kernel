@@ -287,6 +287,21 @@ namespace Metamatic {
 
             return intersection;
         }
+        
+        /// <summary>
+        /// Normalize angle with transform can be inverted horizontally by scale
+        /// </summary>
+        /// <param name="angle"></param>
+        /// <param name="horizontalScaleSign"></param>
+        /// <returns></returns>
+        public static float NormalizeAngleRelativeScaleInvertion(float angle, int horizontalScaleSign) {
+            if (horizontalScaleSign > 0) {
+                return angle;
+            } else if (horizontalScaleSign < 0) {
+                return 180 - angle;
+            }
+            return 180 - angle;
+        }
 
         /// <summary>
         /// 

@@ -567,6 +567,22 @@ namespace Metamatic {
             
             return bounds;
         }
+        
+        /// <summary>
+        /// Get combinig renderers bounding rect (renderers can be collected by method GetComponontsInChildren)
+        /// </summary>
+        /// <param name="renderers"></param>
+        /// <param name="camera"></param>
+        /// <returns></returns>
+        public static Bounds GetColiidersBounds(Collider2D[] colliders) {
+            var bounds = colliders[0].bounds;
+            for (var i = 1; i < colliders.Length; i++)
+            {
+                bounds.Encapsulate(colliders[i].bounds);
+            }
+            
+            return bounds;
+        }
 
         /// <summary>
         /// Get combinig renderers bounding rect (renderers can be collected by method GetComponontsInChildren)

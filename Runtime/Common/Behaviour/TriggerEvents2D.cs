@@ -8,19 +8,20 @@ namespace Metamatic
     using UnityEngine.Events;
     using Sirenix.OdinInspector;
 
-    public abstract class TriggerEvents2D<TNormalized> : MonoBehaviour
+    public abstract class TriggerEvents2D<TTarget> : MonoBehaviour
+    where TTarget : Behaviour
     {
         public class TriggeringInfo
         {
             public readonly Collider2D collider;
             public readonly float enterTime;
-            public readonly TNormalized normalized;
+            public readonly TTarget target;
 
-            public TriggeringInfo(Collider2D collider, TNormalized normalized)
+            public TriggeringInfo(Collider2D collider, TTarget target)
             {
                 this.collider = collider;
                 enterTime = Time.time;
-                this.normalized = normalized;
+                this.target = target;
             }
         }
 
@@ -86,7 +87,7 @@ namespace Metamatic
             return true;
         }
 
-        protected abstract bool Validate(Collider2D collider, out TNormalized normalized);
+        protected abstract bool Validate(Collider2D collider, out TTarget normalized);
         protected virtual void OnStay(TriggeringInfo info, float stepDuration)
         {
     
@@ -103,9 +104,9 @@ namespace Metamatic
             //     return;
             // }
 
-            var normalized = default(TNormalized);
-            if (!(InternalValidateCollider(collider) && Validate(collider, out normalized))) return;
-            visitors[collider] = new TriggeringInfo(collider, normalized);
+            var target = default(TTarget);
+            if (!(InternalValidateCollider(collider) && Validate(collider, out target))) return;
+            visitors[collider] = new TriggeringInfo(collider, target);
             // enteredColliders.Add(collider);
             OnChange.Invoke();
             if (visitors.Count == 1) {
@@ -127,11 +128,13 @@ namespace Metamatic
                 {
                     var stepDuration = Mathf.Min(Time.time - value.enterTime, frequency);
                     OnStay(value, stepDuration);
-                    if (value.collider.bounds.Intersects(colliderBounds))
+                    var intersect = value.collider.bounds.Intersects(colliderBounds);
+                    if (intersect)
                     {
                         continue;
                     }
                 }
+            
                 visitors.Remove(value.collider);
                 
                 OnChange.Invoke();
