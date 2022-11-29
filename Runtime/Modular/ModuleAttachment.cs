@@ -16,8 +16,6 @@ namespace Metamatic
             this.module = module;
             this.instantianted = instantianted;
             this.slot = slot;
-            
-            module.PlugIn(slot);
         }
         
         /// <summary>
@@ -25,7 +23,7 @@ namespace Metamatic
         /// </summary>
         public void Release()
         {
-            module.Unplug();
+            module.Unplug(slot);
             if (instantianted)
             {
                 Object.Destroy(module.gameObject);
