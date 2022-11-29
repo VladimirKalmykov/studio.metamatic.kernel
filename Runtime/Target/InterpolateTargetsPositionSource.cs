@@ -112,7 +112,7 @@ namespace Metamatic
             }
         }
 
-        protected override Transform GetTarget()
+        public override Transform GetTarget()
         {
             return m_Points.Count > 0 ? m_Points[m_Points.Count - 1].transform : null;
         }

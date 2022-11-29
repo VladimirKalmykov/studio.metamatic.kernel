@@ -19,7 +19,7 @@ namespace Metamatic
             m_Target = target;
         }
 
-        protected override Transform GetTarget()
+        public override Transform GetTarget()
         {
             return m_Target;
         }

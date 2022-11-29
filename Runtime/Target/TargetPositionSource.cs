@@ -11,6 +11,6 @@ namespace Metamatic
         }
         
         protected abstract void SetTarget(Transform target);
-        protected abstract Transform GetTarget();
+        public abstract Transform GetTarget();
     }
 }
