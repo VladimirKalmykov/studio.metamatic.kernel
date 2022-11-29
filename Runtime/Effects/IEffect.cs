@@ -26,5 +26,8 @@ namespace Metamatic.Effects
         where TProps: struct
     {
         public UniTask RunEffect(EffectExecutionContext<TEffector, TProps> executionContext, CancellationToken cancellationToken);
+
+        public UniTask InternalRunEffect(EffectExecutionContext<TEffector, TProps> executionContext,
+            CancellationToken cancellationToken);
     }
 }

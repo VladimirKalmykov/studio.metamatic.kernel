@@ -35,8 +35,24 @@ namespace Metamatic.Effects
         where TEffector: Effector
         where TProps: struct
     {
+        public UniTask InternalRunEffect(EffectExecutionContext<TEffector, TProps> executionContext,
+            CancellationToken cancellationToken)
+        {
+            return WrapEffectTask(RunEffect(executionContext, cancellationToken), executionContext, cancellationToken);
+        }
         public abstract UniTask RunEffect(EffectExecutionContext<TEffector, TProps> executionContext,
             CancellationToken cancellationToken);
+        
+        /// <summary>
+        /// Allows to wrap effect task to do smth before after effect execution
+        /// </summary>
+        /// <param name="effectTask"></param>
+        /// <returns></returns>
+        public virtual UniTask WrapEffectTask(UniTask effectTask, EffectExecutionContext<TEffector, TProps> executionContext,
+            CancellationToken cancellationToken)
+        {
+            return effectTask;
+        }
         
         public EffectCancellableOperationAwaiter Apply(Behaviour behaviour, TProps props = default)
         {
@@ -67,11 +83,9 @@ namespace Metamatic.Effects
         /// <returns></returns>
         internal sealed override EffectCancellableOperationAwaiter ApplyWithProps(Behaviour behaviour, object props = default)
         {
-            return Apply(behaviour, (TProps)props);
+            return Apply(behaviour, props == null ? default(TProps) : (TProps)props);
         }
     }
-    
-    
 
     /// <summary>
     /// GameObject only asset reference.

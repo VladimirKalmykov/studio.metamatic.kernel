@@ -120,7 +120,7 @@ namespace Metamatic.Effects
             channel.editor_EmitExecutionsChange();
             #endif
             
-            task = effect.RunEffect(this, this.cancellationTokenSource.Token);
+            task = effect.InternalRunEffect(this, this.cancellationTokenSource.Token);
             
             if (task.Status != UniTaskStatus.Pending)
             {
@@ -131,7 +131,7 @@ namespace Metamatic.Effects
                         // Never
                     }, (Exception e) =>
                     {
-                        Debug.LogError(e.Message);
+                        throw e;
                     }, true);
                 }
                 Release();

@@ -8,7 +8,7 @@ namespace Metamatic {
     using Metamatic.GameAccessManagment;
 
     
-    public abstract class ScriptableSkin<TEffector, TProps> : ScriptableEffect<TEffector, TProps>, IAccessable
+    public abstract class ScriptableSkin<TEffector, TProps> : ScriptableEffectWithSubEffects<TEffector, TProps>, IAccessable
     where TEffector: Effector
     where TProps : struct
     {
