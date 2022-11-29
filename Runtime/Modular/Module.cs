@@ -80,7 +80,7 @@ namespace Metamatic {
 
         public void Unplug(Slot slot = null, ModuleAttachment attachment = null)
         {
-            if (slot == this.slot)
+            if (slot != this.slot)
             {
                 throw new Exception("Module you are trying to unplug does not match the slot plugged to this module");
             }
@@ -92,8 +92,12 @@ namespace Metamatic {
             OnUnplugSlot(this.slot);
             
             this.slot = null;
-            if (this == null) return;
+            gameObject.SetActive(false);
             transform.SetParent(null);
+            if (attachment is {instantianted: true})
+            {
+                UnityEngine.Object.Destroy(gameObject);
+            }
         }
 
         protected virtual void OnPlugInSlot(Slot slot)

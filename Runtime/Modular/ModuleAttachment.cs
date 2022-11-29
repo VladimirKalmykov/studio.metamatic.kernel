@@ -24,10 +24,6 @@ namespace Metamatic
         public void Release()
         {
             module.Unplug(slot);
-            if (instantianted)
-            {
-                Object.Destroy(module.gameObject);
-            }
         }
     }
 }

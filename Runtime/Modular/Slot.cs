@@ -36,6 +36,12 @@ namespace Metamatic {
 
         private void Start()
         {
+            #if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+            #endif
             if (m_Attachments.Count == 0)
             {
                 Fallback();
