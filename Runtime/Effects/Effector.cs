@@ -57,13 +57,20 @@ namespace Metamatic.Effects
         
         private EffectsChannel m_CommonChannel;
 
-        public EffectsChannel commonChannel => m_CommonChannel ??= CreateChannel(this, "Default");
-        public Effector target { get; private set; }
-
-        private void Awake()
+        public EffectsChannel commonChannel
         {
-            target = this;
+            get
+            {
+                if (m_CommonChannel == null)
+                {
+                    m_CommonChannel = CreateChannel(this, "Default");
+                }
+
+                return m_CommonChannel;
+            }
         }
+
+        public Effector target => this;
 
         private EffectsChannel CreateChannel(Behaviour owner, string debugName)
         {
