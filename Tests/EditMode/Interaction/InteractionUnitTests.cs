@@ -64,9 +64,7 @@ namespace Metamatic
             Assert.AreEqual(1, handshaked);
             handshake.Dispose();
             Assert.AreEqual(1, dismissed);
-            Assert.That(() => handshake.Dispose(), 
-                Throws.TypeOf<Exception>());
-            
+            handshake.Dispose();
             Assert.AreEqual(1, dismissed);
         }
         

@@ -1,8 +1,9 @@
 using System;
+using UnityEngine;
 
 namespace Metamatic
 {
-    public class DatabaseVirtualStore<TState>
+    public class DatabaseVirtualStore<TState>: IDisposable
     {
         public readonly DatabaseSelector databaseSelector;
         public delegate void StateChangeHandler(ref TState state, ref TState oldState);
@@ -40,6 +41,8 @@ namespace Metamatic
         } = false;
 
         public readonly int id;
+        private bool m_Disposed = false;
+        private event Action OnDispose;
         
 
         public DatabaseVirtualStore(DatabaseSelector selector, TState initialState = default)
@@ -47,7 +50,20 @@ namespace Metamatic
             this.id = UnityEngine.Random.Range(0, 99999999);
             this.databaseSelector = selector;
             this.initialState = initialState;
-            selector.Subscribe(ResolveStore);
+            OnDispose += selector.Subscribe(ResolveStore);
+        }
+
+        ~DatabaseVirtualStore()
+        {
+            Debug.Log("Destruct Virtual Store");
+            Dispose();
+        }
+
+        public void Dispose()
+        {
+            if (m_Disposed) return;
+            m_Disposed = true;
+            m_UnsubscribeBranch?.Invoke();
         }
 
         private void ResolveStore(string branchName, string entityName)

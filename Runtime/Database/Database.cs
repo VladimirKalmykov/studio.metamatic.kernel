@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 
 namespace Metamatic
@@ -249,16 +250,17 @@ namespace Metamatic
         public static Action SubscribeBranch(string branchName, BranchHandler handler)
         {
             DatabaseBranch branch = null;
+            var id = UnityEngine.Random.Range(0, 222222222);
             m_Branches.TryGetValue(branchName, out branch);
             BranchOperationHandler branchOperationHandler = (name, branch, operation) =>
             {
+                Debug.Log($"BranchOperationHandler (${id}): {name}, {operation}");
                 if (name == branchName)
                 {
                     handler(branch);
                 }
             };
             OnBranchOperation += branchOperationHandler;
-            Debug.Log("Send nullified branch here");
             handler(branch);
 
             return () =>
@@ -349,26 +351,16 @@ namespace Metamatic
             {
                 return;
             }
-            try
+            Database.Log($"Load {fullAddress}");
+            _storeLoadAttempts.Add(fullAddress);
+            if (Repository.Exists<TState>(fullAddress))
             {
-                Database.Log($"Load {fullAddress}");
-                _storeLoadAttempts.Add(fullAddress);
-                if (Repository.Exists<TState>(fullAddress))
-                {
-                    var loadedState = Repository.Load<TState>(fullAddress);
-                    var adressConfig = ParseAddress(address);
-                    Database.Log($"Store {address} sucessfully loaded: {JsonUtility.ToJson(loadedState)}");
-                    Database.TouchBranch(adressConfig.branch).TouchEntity(adressConfig.entity)
-                        /* Initialize state without modifier to get every subscriber have only one subscription call */
-                        .TouchStore<TState>(ref loadedState);
-                }
-            }
-            catch (Exception e)
-            {
-                
-                
-                Debug.LogError("Error loading state");
-                Debug.LogError(e);
+                var loadedState = Repository.Load<TState>(fullAddress);
+                var adressConfig = ParseAddress(address);
+                Database.Log($"Store {address} sucessfully loaded: {JsonUtility.ToJson(loadedState)}");
+                Database.TouchBranch(adressConfig.branch).TouchEntity(adressConfig.entity)
+                    /* Initialize state without modifier to get every subscriber have only one subscription call */
+                    .TouchStore<TState>(ref loadedState);
             }
         }
         
@@ -382,6 +374,19 @@ namespace Metamatic
                 entity = parts[1]
             };
         }
+        
+        #if UNITY_EDITOR
+        [MenuItem("Database/Open files location")]
+        public static void MenuOpenDatabaseFolder()
+        {
+            var location = Application.persistentDataPath.Replace("/", "\\");
+            Debug.Log($"Open: {location}");
+            System.Diagnostics.Process p = new System.Diagnostics.Process();
+            p.StartInfo = new System.Diagnostics.ProcessStartInfo("explorer.exe");
+            p.StartInfo.Arguments = location;
+            p.Start();
+        }
+        #endif
         
         void OnApplicationQuit()
         {

@@ -11,7 +11,7 @@ namespace Metamatic
 
         public string address
         {
-            get => $"{entity.address}${Database.ADDRESS_STORE_SEP}{this.type.FullName}";
+            get => $"{entity.address}{Database.ADDRESS_STORE_SEP}{this.type.FullName}";
         }
 
         public DatabaseStore(DatabaseEntity entity, Type type)
