@@ -1,5 +1,3 @@
-using System;
-
 namespace Metamatic
 {
     public class DatabaseEntitySource: ObservableValue<string>

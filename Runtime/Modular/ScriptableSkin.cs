@@ -2,7 +2,6 @@ using Metamatic.Effects;
 
 namespace Metamatic {
     using System;
-    using UnityEngine;
     using UnityEngine.AddressableAssets;
     using Sirenix.OdinInspector;
     using Metamatic.GameAccessManagment;

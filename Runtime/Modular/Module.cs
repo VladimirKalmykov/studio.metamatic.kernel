@@ -16,7 +16,7 @@ namespace Metamatic {
         [Tooltip("Update position in editor every frame. Otherwise, update only on validate")]
         public bool editorLiveUpdate = true;
 
-        public Slot slot { get; protected set; }
+        public Slot slot { get; private set; }
 
         void Start() {
             var parent = transform.parent;
@@ -60,44 +60,42 @@ namespace Metamatic {
             }
         }
 
-        public ModuleAttachment PlugIn(Slot slot, ModuleAttachment attachment = null)
+        public ModuleAttachment PlugIn(Slot slot)
         {
-            if (gameObject.scene.name == null || gameObject.scene.name == gameObject.name)
-            {
-                throw new Exception("Module you trying to attach is a prefab");
-            }
+            return slot.PlugIn(this, InternalPlugIn);
+        }
+        
+        /// <summary>
+        /// For internal use only
+        /// </summary>
+        /// <param name="slot"></param>
+        /// <param name="attachment"></param>
+        private void InternalPlugIn(Slot slot)
+        {
             this.slot = slot;
+            this.enabled = true;
             OnPlugInSlot(slot);
-            transform.SetParent(slot.transform, false);
             Stick();
-            if (attachment == null)
-            {
-                return slot.PlugIn(this, true);
-            }
-
-            return attachment;
         }
 
-        public void Unplug(Slot slot = null, ModuleAttachment attachment = null)
+        public void Unplug(Slot slot = null)
+        {
+            if (slot != null) slot.Unplug(this, InternalUnplug);
+        }
+
+        public void InternalUnplug(Slot slot)
         {
             if (slot != this.slot)
             {
                 throw new Exception("Module you are trying to unplug does not match the slot plugged to this module");
             }
-
-            if (slot != null && attachment == null)
-            {
-                slot.Unplug(this, true);
-            }
+            
             OnUnplugSlot(this.slot);
             
             this.slot = null;
             gameObject.SetActive(false);
             transform.SetParent(null);
-            if (attachment is {instantianted: true})
-            {
-                UnityEngine.Object.Destroy(gameObject);
-            }
+            InstanceOrigin.Release(this);
         }
 
         protected virtual void OnPlugInSlot(Slot slot)

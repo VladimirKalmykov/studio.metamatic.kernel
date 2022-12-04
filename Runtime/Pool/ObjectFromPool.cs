@@ -1,6 +1,4 @@
-﻿using UnityEngine;
-
-namespace Metamatic
+﻿namespace Metamatic
 {
     public class ObjectFromPool : Releasable
     {

@@ -1,10 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
-#if UNITY_EDITOR
-using UnityEditor;
 using UnityEngine.AddressableAssets;
-#endif
 
 namespace DarkMatter.GameAccessManagment {
     [CreateAssetMenu(fileName = "Certificate", menuName = "Dark Matter/Game Access Managment/Certificate", order = 0)]

@@ -1,7 +1,5 @@
 namespace Metamatic {
     using System;
-    using UnityEngine;
-    using System.Threading.Tasks;
 
     [System.Serializable]
     public class ModulePreset {

@@ -2,7 +2,6 @@ using System;
 
 namespace Metamatic {
     using System.Collections.Generic;
-    using Metamatic;
     using UnityEngine;
 
     public class Character: Entity, ISerializationCallbackReceiver {

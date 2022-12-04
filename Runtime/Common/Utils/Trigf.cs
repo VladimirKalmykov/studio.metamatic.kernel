@@ -1,7 +1,5 @@
 using System;
 using System.Linq;
-using Metamatic.DevTools;
-using UnityEditor;
 using UnityEngine;
 
 namespace Metamatic {

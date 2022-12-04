@@ -1,7 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
 using Metamatic.Effects;
-using UnityEngine;
 
 namespace Metamatic
 {

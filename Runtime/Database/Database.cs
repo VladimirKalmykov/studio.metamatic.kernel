@@ -248,7 +248,6 @@ namespace Metamatic
         /// <returns></returns>
         public static Action SubscribeBranch(string branchName, BranchHandler handler)
         {
-            Debug.Log("Subscrive to branch " + branchName);
             DatabaseBranch branch = null;
             m_Branches.TryGetValue(branchName, out branch);
             BranchOperationHandler branchOperationHandler = (name, branch, operation) =>

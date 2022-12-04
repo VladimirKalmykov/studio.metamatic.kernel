@@ -1,6 +1,3 @@
-using DarkMatter;
-using System.Collections.Generic;
-
 namespace DarkMatter.GameAccessManagment {
     public class GameAccessUtils {
         public static AccessDetails GetAccess(IAccessable accessable, Pass[] passes) {

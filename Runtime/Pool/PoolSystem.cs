@@ -57,7 +57,7 @@ namespace Metamatic {
                 return (T)item;
             }
             
-            var newBehaviour = (T) Instantiate(component.gameObject).GetComponent(component.GetType());
+            var newBehaviour = InstanceOrigin.Clone(component);
             newBehaviour.gameObject.AddComponent<ObjectFromPool>();
             pool.Add(newBehaviour);
             return newBehaviour;

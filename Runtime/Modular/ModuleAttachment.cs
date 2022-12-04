@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Metamatic
 {
     /// <summary>
@@ -8,13 +6,11 @@ namespace Metamatic
     public class ModuleAttachment
     {
         public readonly Module module;
-        public readonly bool instantianted;
         public readonly Slot slot;
 
-        public ModuleAttachment(Slot slot, Module module, bool instantianted)
+        public ModuleAttachment(Slot slot, Module module)
         {
             this.module = module;
-            this.instantianted = instantianted;
             this.slot = slot;
         }
         

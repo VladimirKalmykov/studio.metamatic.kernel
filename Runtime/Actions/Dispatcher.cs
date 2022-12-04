@@ -2,7 +2,6 @@ using System;
 
 namespace Metamatic.Actions
 {
-    using System.Collections;
     using System.Collections.Generic;
     using UnityEngine;
 

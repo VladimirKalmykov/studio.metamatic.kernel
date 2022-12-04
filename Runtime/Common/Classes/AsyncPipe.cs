@@ -4,7 +4,6 @@ namespace Metamatic
     using System.Threading;
     using System.Threading.Tasks;
     using System.Collections.Generic;
-    using Metamatic;
 
     public class AsyncPipe
     {

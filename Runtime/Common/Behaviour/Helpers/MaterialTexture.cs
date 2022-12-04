@@ -1,11 +1,6 @@
-using UnityEngine;
-
 namespace Metamatic
 {
-    using System.Collections;
-    using System.Collections.Generic;
     using UnityEngine;
-    using UnityEngine.Events;
 
     [RequireComponent(typeof(MaterialInstance))]
     public class MaterialTexture : MonoBehaviour

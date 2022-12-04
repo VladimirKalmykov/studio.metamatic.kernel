@@ -80,34 +80,32 @@ namespace Metamatic {
         //         useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
         //     }
         // }
-        
+
+        public ModuleAttachment PlugIn(Module module)
+        {
+            return module.PlugIn(this);
+        }
+
         /// <summary>
         /// Attach module to the slot
         /// </summary>
         /// <param name="module"></param>
         /// <param name="internallyModuleCall">Set true if method called from module itself</param>
+        /// <param name="internalPlugIn"></param>
         /// <returns></returns>
-        public ModuleAttachment PlugIn(Module module, bool internallyModuleCall = false)
+        public ModuleAttachment PlugIn(Module module, Action<Slot> internalPlugIn)
         {
             Module item = null;
-            bool instantiated = false;
-            if (internallyModuleCall)
+            if (module.gameObject.scene.name == null || module.gameObject.scene.name == gameObject.name)
             {
-                item = module;
+                /* Plugin prefab */
+                item = InstanceOrigin.Clone(module);
             }
             else
             {
-                if (!module.gameObject.activeInHierarchy)
-                {
-                    /* Create game object copy */
-                    instantiated = true;
-                    item = Instantiate(module, transform);
-                }
-                else
-                {
-                    item = module;
-                }
+                item = module;
             }
+            item.transform.SetParent(transform, false);
             
             /* Unplug fallback before go on */
             if (m_FallbackAttached)
@@ -117,18 +115,20 @@ namespace Metamatic {
                 m_FallbackAttached = false;
             }
 
-            var attachement = new ModuleAttachment(this, item, instantiated);
-            
-            if (!internallyModuleCall)
-            {
-                item.PlugIn(this, attachement);
-            }
-            
+            var attachement = new ModuleAttachment(this, item);
+
+            internalPlugIn(this);
+            item.gameObject.SetActive(true);
             m_Attachments.Add(attachement);
             return attachement;
         }
 
-        public void Unplug(Module module, bool internallyModuleCall = false)
+        public void Unplug(Module module)
+        {
+            module.Unplug(this);
+        }
+
+        public void Unplug(Module module, Action<Slot> internalUnplug)
         {
             var attachementIndex = m_Attachments.FindIndex(a => a.module == module);
             if (attachementIndex < 0)
@@ -137,10 +137,8 @@ namespace Metamatic {
             }
             var attachement = m_Attachments[attachementIndex];
             m_Attachments.RemoveAt(attachementIndex);
-            if (!internallyModuleCall)
-            {
-                module.Unplug(this, attachement);
-            }
+
+            internalUnplug(this);
 
             if (!m_FallbackAttached && m_Attachments.Count == 0)
             {

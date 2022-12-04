@@ -574,7 +574,9 @@ namespace Metamatic {
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
         /// <returns></returns>
-        public static Bounds GetColiidersBounds(Collider2D[] colliders) {
+        public static Bounds GetColiidersBounds(Collider2D[] colliders)
+        {
+            if (colliders.Length == 0) return default;
             var bounds = colliders[0].bounds;
             for (var i = 1; i < colliders.Length; i++)
             {

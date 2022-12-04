@@ -1,29 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
 
 namespace Metamatic
 {
     public class Payload
     {
         public readonly Type type;
-
+    
         public Payload(Type type)
         {
             this.type = type;
         }
     }
 
-    public class Payload<T> : Payload
+    public class Payload<T>: Payload
     where T : notnull
     {
-        public readonly T data;
+        public readonly T value;
 
-        public Payload(in T data = default): base(typeof(T))
+        public Payload(in T value = default): base(typeof(T))
         {
-            this.data = data;
+            this.value = value;
         }
     }
 
@@ -38,12 +36,12 @@ namespace Metamatic
             this.value = value;
             this.locked = locked;
         }
-
+    
         /*~MutablePayload()
         {
             Debug.Log("Mutable payload have released");
         }*/
-
+    
         public void SetValue(in T value)
         {
             if (locked) return;
@@ -55,7 +53,7 @@ namespace Metamatic
         {
             SetValue(mutator(this.value));
         }
-
+    
         public Task<T> WhenCondition(Func<T, bool> condition, CancellationToken cancellationToken)
         {
             var taskSource = new TaskCompletionSource<T>();
