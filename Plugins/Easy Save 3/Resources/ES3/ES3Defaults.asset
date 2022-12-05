@@ -30,23 +30,20 @@ MonoBehaviour:
     referenceMode: 2
     serializationDepthLimit: 64
     assemblyNames:
-    - Animancer
-    - Animancer.Examples
-    - Animancer.FSM
     - Assembly-CSharp
-    - com.duckjumper2022.tests
+    - Cinemachine
     - com.es3.editor
     - com.es3.runtime
+    - MPUIKit
+    - MPUIKit.Editor
     - PlayModeTests
     - PPv2URPConverters
-    - PsdPlugin
+    - Sirenix.OdinInspector.CompatibilityLayer
+    - Sirenix.OdinInspector.CompatibilityLayer.Editor
     - Sirenix.OdinInspector.Modules.UnityMathematics
+    - studio.metamatic.experimental.runtime
     - studio.metamatic.kernel.editor
     - studio.metamatic.kernel.runtime
-    - studio.metamatic.nature.modules.runtime
-    - studio.metamatic.nature.runtime
-    - studio.metamatic.nature2d.editor
-    - studio.metamatic.nature2d.runtime
     - Tests
     - UniTask
     - UniTask.Addressables

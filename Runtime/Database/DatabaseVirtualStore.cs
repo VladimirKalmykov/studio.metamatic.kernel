@@ -150,6 +150,15 @@ namespace Metamatic
             }
         }
 
+        public ref TState GetPrevState()
+        {
+            if (m_ObservableStore.value == null)
+            {
+                return ref initialState;
+            }
+            return ref m_ObservableStore.value.state;
+        }
+
         public ref TState GetState()
         {
             if (m_ObservableStore.value == null)
