@@ -49,10 +49,10 @@ namespace Metamatic.Actions
                         }
                     }
 
-                    if (!actionHandled)
-                    {
-                        throw new Exception($"Action type {action.GetType().Name} is out of range for {GetType().Name}");
-                    }
+                    // if (!actionHandled)
+                    // {
+                    //     throw new Exception($"Action type {action.GetType().Name} is out of range for {GetType().Name}");
+                    // }
                     break;
             }
         }

@@ -150,6 +150,23 @@ namespace Metamatic
             }
         }
 
+        public void SetState(TState state)
+        {
+            if (isOriginal)
+            {
+                m_ObservableStore.value.SetState(state);
+            }
+            else
+            {
+                var tocuhedBranch = Database.TouchBranch(databaseSelector.branch.value);
+                tocuhedBranch.TouchEntity(databaseSelector.entity.value).TouchStore<TState>(ref initialState,
+                    (ref TState currentState) =>
+                    {
+                        currentState = state;
+                    });
+            }
+        }
+
         public ref TState GetState()
         {
             if (m_ObservableStore.value == null)

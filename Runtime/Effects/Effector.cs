@@ -9,7 +9,6 @@ using Action = System.Action;
 
 namespace Metamatic.Effects
 {   
-    [RequireComponent(typeof(Dispatcher))]
     public class Effector : MonoBehaviour
     {
         public event Action OnBeforeDestroy;
@@ -17,13 +16,18 @@ namespace Metamatic.Effects
         public readonly Dictionary<string, EffectsChannel> channels = new Dictionary<string, EffectsChannel>();
         private Dispatcher m_Dispatcher;
 
-        public Dispatcher dispatcher
-        {
-            get
-            {
-                return m_Dispatcher == null ? (m_Dispatcher = GetComponent<Dispatcher>()) : m_Dispatcher;
-            }
-        }
+        // public Dispatcher dispatcher
+        // {
+        //     get
+        //     {
+        //         return m_Dispatcher == null ? (m_Dispatcher = GetComponent<Dispatcher>()) : m_Dispatcher;
+        //     }
+        // }
+        private static Effector _globalEffector;
+        /// <summary>
+        /// Reference to the global effector
+        /// </summary>
+        public static Effector global => _globalEffector ??= new GameObject("__EFFECTOR__").AddComponent<Effector>();
 
 
 #if UNITY_EDITOR
