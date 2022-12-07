@@ -10,10 +10,8 @@ namespace Metamatic
 
         public TValue value
         {
-            get
-            {
-                return m_Value;
-            }
+            get => m_Value;
+            set => SetValue(value);
         }
 
         public ObservableValue(TValue initialValue = default)
