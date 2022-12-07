@@ -364,7 +364,11 @@ namespace Metamatic
             }
         }
         
-        
+        /// <summary>
+        /// Parse address and get branch and entity of it
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
         public static Address ParseAddress(string address)
         {
             var parts = address.Split(ADDRESS_ENTITY_SEP, StringSplitOptions.None);

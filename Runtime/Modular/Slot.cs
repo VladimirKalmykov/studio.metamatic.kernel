@@ -6,7 +6,7 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
 
     [ExecuteAlways]
-    public class Slot: Element
+    public class Slot: MonoBehaviour
     {
         public Module fallbackModule;
         private UseConfigurator useConfigurator;

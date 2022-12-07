@@ -6,7 +6,8 @@ namespace Metamatic.Actions
 {
     using System.Collections.Generic;
     using UnityEngine;
-
+    
+    [DisallowMultipleComponent]
     public class Dispatcher : MonoBehaviour
     {
         public delegate bool ActionHandler(Action action);
