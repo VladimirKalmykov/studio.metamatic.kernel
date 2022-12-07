@@ -1,49 +1,119 @@
 using System;
+using Metamatic;
 
 namespace Metamatic
 {
-    public class ObservableValue<TValue>
+    interface IObservableValue<TValue>
     {
-        private TValue m_Value;
-        public event Action<TValue> onChange;
-        private Action m_PluginUnsubscribe;
+        public TValue value { get; }
+        public Action Subscribe(Action<TValue> handler);
+    }
+    public abstract class ObservableValue<TValue>: IObservableValue<TValue>
+    {
+        private event Action<TValue> OnChange;
 
         public TValue value
         {
-            get => m_Value;
+            get => GetValue();
             set => SetValue(value);
         }
 
-        public ObservableValue(TValue initialValue = default)
+        public ObservableValue()
         {
-            m_Value = initialValue;
-        }
-        
-        public ObservableValue(ObservableValue<TValue> other)
-        {
-            m_Value = default;
-            PlugIn(other);
+            
         }
 
         public Action Subscribe(Action<TValue> handler)
         {
-            handler(m_Value);
-            onChange += handler;
+            handler(GetValue());
+            OnChange += handler;
             return () =>
             {
-                onChange -= handler;
+                OnChange -= handler;
             };
         }
+
+        protected void EmitValue(TValue v)
+        {
+            OnChange?.Invoke(v);
+        }
+
         
+
+        public abstract TValue GetValue();
+
+        public abstract void SetValue(TValue value);
+    }
+
+    public class ObservableWritableValue<TValue> : ObservableValue<TValue>
+    {
+        private TValue m_Value;
+        
+        public ObservableWritableValue(TValue initialValue = default)
+        {
+            m_Value = initialValue;
+        }
+
+        public override TValue GetValue()
+        {
+            return m_Value;
+        }
+
         /// <summary>
         /// Set value. This action will automatically unsubscribe plugin
         /// </summary>
         /// <param name="value"></param>
-        public void SetValue(TValue value)
+        public override void SetValue(TValue value)
         {
             m_Value = value;
-            m_PluginUnsubscribe?.Invoke();
-            onChange?.Invoke(value);
+            EmitValue(value);
+        }
+    }
+
+    public class ObservableGettableValue<TValue> : ObservableValue<TValue>
+    {
+        private Func<TValue> m_Getter;
+        public ObservableGettableValue(Func<TValue> getter) : base()
+        {
+            m_Getter = getter;
+        }
+        public override TValue GetValue()
+        {
+            return m_Getter != null ? m_Getter.Invoke() : default;
+        }
+
+        public override void SetValue(TValue value)
+        {
+            throw new Exception("Set value of ObservableGettableValue is out of concept");
+        }
+
+        public void EmitUpdate()
+        {
+            EmitValue(value);
+        }
+    }
+
+    public class ObservableProxyValue<TValue> : ObservableValue<TValue>
+    {
+        protected Action pluginUnsubscribe;
+        protected ObservableValue<TValue> pluggedIn;
+        public ObservableProxyValue(): base()
+        {
+            
+        }
+        public ObservableProxyValue(ObservableValue<TValue> other): base()
+        {
+            PlugIn(other);
+        }
+        
+        public override TValue GetValue()
+        {
+            return pluggedIn.value;
+        }
+
+        public override void SetValue(TValue value)
+        {
+            throw new Exception("Unable to set value of proxy value");
         }
         
         /// <summary>
@@ -52,17 +122,22 @@ namespace Metamatic
         /// <param name="other"></param>
         public void PlugIn(ObservableValue<TValue> other)
         {
-            m_PluginUnsubscribe?.Invoke();
-            m_PluginUnsubscribe = other.Subscribe(v =>
+            pluginUnsubscribe?.Invoke();
+            pluggedIn = other;
+            pluginUnsubscribe = other.Subscribe(v =>
             {
-                m_Value = v;
-                onChange?.Invoke(v);
+                EmitValue(v);
             });
+            EmitValue(other.value);
         }
-
+        
         public void Unplug()
         {
-            m_PluginUnsubscribe?.Invoke();
+            if (pluggedIn != null)
+            {
+                pluggedIn = null;
+                pluginUnsubscribe?.Invoke();
+            }
         }
     }
 }

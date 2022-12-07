@@ -15,31 +15,36 @@ namespace Metamatic {
             public readonly CancellationToken cancellationToken;
             public readonly AssetReference assetReference;
             private  CancellationTokenRegistration cancellationTokenRegistration;
+            private  CancellationTokenRegistration userCancellationTokenRegistration;
             public readonly Task<T> Task;
-            public AssetReferenceLoadBehaviourWrapper(Component component, AssetReferenceT<T> assetReference)
+            public AssetReferenceLoadBehaviourWrapper(Component component, AssetReferenceT<T> assetReference, CancellationToken userCancellationToken = default)
             {
                 this.assetReference = assetReference;
                 this.cancellationToken = component.GetAsyncDestroyTrigger().CancellationToken;
                 cancellationTokenRegistration = cancellationToken.Register(HandleCancellationFired);
+                userCancellationTokenRegistration = userCancellationToken.Register(HandleCancellationFired);
                 this.Task = SafeLoadAssetAsync<T>(assetReference);
             }
             
             void HandleCancellationFired()
             {
-                if (assetReference.IsValid())
-                {
-                    assetReference.ReleaseAsset();
-                }
+                Dispose();
             }
 
             public void Dispose()
             {
                 cancellationTokenRegistration.Dispose();
+                userCancellationTokenRegistration.Dispose();
+                if (assetReference.IsValid())
+                {
+                    assetReference.ReleaseAsset();
+                }
             }
         }
         public static Task<TObject> SafeLoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference) where TObject : UnityEngine.Object {
             if (!assetReference.IsValid()) {
-                return assetReference.LoadAssetAsync<TObject>().Task;
+                var aoh = assetReference.LoadAssetAsync<TObject>();
+                return aoh.Task;
             }
             var tsc = new TaskCompletionSource<TObject>();
             var operationHandler = assetReference.OperationHandle;
@@ -47,9 +52,9 @@ namespace Metamatic {
             return tsc.Task;
         }
         
-        public static AssetReferenceLoadBehaviourWrapper<T> LoadAssetReferenceWithinBehaviour<T>(this Component component, AssetReferenceT<T> assetReference) where T: UnityEngine.Object
+        public static AssetReferenceLoadBehaviourWrapper<T> LoadAssetReferenceWithinBehaviour<T>(this Component component, AssetReferenceT<T> assetReference, CancellationToken cancellationToken = default) where T: UnityEngine.Object
         {
-            return new AssetReferenceLoadBehaviourWrapper<T>(component, assetReference);
+            return new AssetReferenceLoadBehaviourWrapper<T>(component, assetReference, cancellationToken);
         }
     }
 }

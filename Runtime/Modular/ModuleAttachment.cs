@@ -1,3 +1,5 @@
+using System;
+
 namespace Metamatic
 {
     /// <summary>
@@ -7,6 +9,8 @@ namespace Metamatic
     {
         public readonly Module module;
         public readonly Slot slot;
+        public bool released = false;
+        public event Action OnRelease;
 
         public ModuleAttachment(Slot slot, Module module)
         {
@@ -19,6 +23,8 @@ namespace Metamatic
         /// </summary>
         public void Release()
         {
+            this.released = true;
+            OnRelease?.Invoke();
             module.Unplug(slot);
         }
     }

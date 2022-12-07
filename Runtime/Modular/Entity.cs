@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class Entity : Element, ISerializationCallbackReceiver
+    public class Entity : Element
     {
         [ShowInInspector, BoxGroup("Entity"), PropertyOrder(0)]
         public string fullname {
@@ -28,17 +28,7 @@ namespace Metamatic
         [BoxGroup("Entity")]
         [SerializeField, PropertyOrder(3)] private EntityClass entityClass;
 
-        public readonly ObservableValue<string> observableName = new ObservableValue<string>();
-
-
-        public void OnBeforeSerialize()
-        {
-            //
-        }
-
-        public void OnAfterDeserialize()
-        {
-            observableName.SetValue(fullname);
-        }
+        private ObservableValue<string> n_ObservableValue = null;
+        public ObservableValue<string> observableName => n_ObservableValue ??= new ObservableGettableValue<string>(() => this.fullname);
     }
 }

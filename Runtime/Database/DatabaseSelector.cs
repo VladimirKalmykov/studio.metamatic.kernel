@@ -83,7 +83,7 @@ namespace Metamatic
         /// <returns></returns>
         public DatabaseSelector Entity(MonoBehaviour behaviour)
         {
-            var gameObjectEntity = behaviour.GetComponentInParent<DatabaseGameObjectEntity>();
+            var gameObjectEntity = behaviour.GetComponentInParent<DatabaseContextBehaviour>();
             if (gameObjectEntity == null)
             {
                 return Entity(behaviour.gameObject.name);
@@ -137,9 +137,20 @@ namespace Metamatic
         }
         
         /// <summary>
+        /// Get store attached to the database selection
+        /// </summary>
+        /// <typeparam name="TState"></typeparam> 
+        /// <returns></returns>
+        public DatabaseVirtualStore<TState> GetStore<TState>(TState initialState)
+        {
+            return new DatabaseVirtualStore<TState>(this, initialState);
+        }
+
+        /// <summary>
         /// Get virtual store with specified entity name
         /// </summary>
-        /// <param name="entityName"></param>
+        /// <param name="entityName">Name of the entity</param>
+        /// <param name="initialState">Initial (Fallback) state</param>
         /// <typeparam name="TState"></typeparam>
         /// <returns></returns>
         public DatabaseVirtualStore<TState> GetStore<TState>(string entityName, TState initialState = default)

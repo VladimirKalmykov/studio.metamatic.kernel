@@ -1,13 +1,13 @@
 namespace Metamatic
 {
-    public class DatabaseBranchSource: ObservableValue<string>
+    public class DatabaseBranchSource: ObservableProxyValue<string>
     {
-        public DatabaseBranchSource(string initialName) : base(initialName)
+        public DatabaseBranchSource(string initialName) : base(new ObservableWritableValue<string>(initialName))
         {
             
         }
-
-        public DatabaseBranchSource(DatabaseBranchSource other) : base(other)
+        
+        public DatabaseBranchSource(ObservableValue<string> other) : base(other)
         {
             
         }

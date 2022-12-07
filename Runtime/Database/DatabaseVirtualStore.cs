@@ -12,7 +12,7 @@ namespace Metamatic
         /// Used for unsubscribe branch
         /// </summary>
         private Action m_UnsubscribeBranch;
-        private ObservableValue<DatabaseStore<TState>> m_ObservableStore = new ObservableValue<DatabaseStore<TState>>();
+        private ObservableValue<DatabaseStore<TState>> m_ObservableStore = new ObservableWritableValue<DatabaseStore<TState>>();
         
         #if DEBUG
         public ObservableValue<DatabaseStore<TState>> debugObservableStore
@@ -42,7 +42,7 @@ namespace Metamatic
 
         public readonly int id;
         private bool m_Disposed = false;
-        private event Action OnDispose;
+        public event Action OnDispose;
         
 
         public DatabaseVirtualStore(DatabaseSelector selector, TState initialState = default)
@@ -62,6 +62,7 @@ namespace Metamatic
         public void Dispose()
         {
             if (m_Disposed) return;
+            OnDispose?.Invoke();
             m_Disposed = true;
             m_UnsubscribeBranch?.Invoke();
         }

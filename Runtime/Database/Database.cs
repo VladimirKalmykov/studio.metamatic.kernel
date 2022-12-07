@@ -31,6 +31,7 @@ namespace Metamatic
         public static event BranchOperationHandler OnBranchOperation;
         public static readonly Dictionary<string, DatabaseBranch> m_Branches = new Dictionary<string, DatabaseBranch>();
         public static event Action OnInitialize;
+        public static DatabaseBranchSource currentBranchSource = new DatabaseBranchSource(masterBranchName);
         
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Initialize()
@@ -58,7 +59,7 @@ namespace Metamatic
         /// <returns></returns>
         public static DatabaseVirtualStore<TState> GetStore<TState>(string entityName, TState initialState)
         {
-            var branchSource = new DatabaseBranchSource( masterBranchName);
+            var branchSource = new DatabaseBranchSource( currentBranchSource);
             var entitySource = new DatabaseEntitySource(entityName);
             var selector = new DatabaseSelector(branchSource, entitySource);
             return new DatabaseVirtualStore<TState>(selector, initialState);
@@ -69,7 +70,7 @@ namespace Metamatic
             Debug.Log($"<color=red>DATABASE</color>: {message}");
         }
 
-        public static DatabaseBranchSource currentBranchSource = new DatabaseBranchSource(masterBranchName);
+        
         
         /// <summary>
         /// Get branch selector by name
@@ -79,6 +80,20 @@ namespace Metamatic
         public static DatabaseSelector Branch(string branchName)
         {
             return new DatabaseSelector(new DatabaseBranchSource(branchName));
+        }
+
+        public static DatabaseSelector Use(Behaviour behaviour)
+        {
+            if (behaviour is DatabaseContextBehaviour cb)
+            {
+                
+            } 
+            var gameObjectEntity = behaviour.GetComponentInParent<Entity>();
+            if (gameObjectEntity == null)
+            {
+                return new DatabaseSelector(new DatabaseEntitySource(behaviour.gameObject.name));
+            }
+            return new DatabaseSelector(new DatabaseEntitySource(gameObjectEntity.observableName));
         }
         
         /// <summary>

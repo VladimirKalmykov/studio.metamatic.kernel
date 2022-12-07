@@ -5,7 +5,7 @@ namespace Metamatic {
     using UnityEngine;
 
     [ExecuteAlways]
-    public class Module: Element {
+    public class Module: MonoBehaviour {
         [BoxGroup("Module")]
         public bool sticky = true;
         [BoxGroup("Module"), ShowIf("sticky")]

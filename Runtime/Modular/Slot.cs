@@ -8,31 +8,19 @@ namespace Metamatic {
     [ExecuteAlways]
     public class Slot: MonoBehaviour
     {
+        [Tooltip("Can have only one module")]
+        public bool single = false;
         public Module fallbackModule;
-        private UseConfigurator useConfigurator;
-        // public Stock stock; 
-        // [BoxGroup("Configurable")]
-        // [Tooltip("Children module can be attached by the confugurator")]
-        // public bool configurable = false;
-        // [BoxGroup("Configurable")]
-        // [ShowIf("configurable")]
-        // public GameObject defaultPrefab;
-        // [BoxGroup("Configurable")]
-        // [ShowIf("configurable")]
-        // public bool runInEditor = false;
-        // [BoxGroup("Configurable")]
-        // [ShowIf("configurable")]
-        // [Tooltip("Use only local name to get prefab from configuration instead of absolute")]
-        // public bool useLocalName = false;
-        [BoxGroup("Design")]
+        public bool designMode = false;
+        [ShowIf("designMode"), BoxGroup("Design")]
         public Color gizmosColor = Color.cyan;
-        [BoxGroup("Design")]
+        [ShowIf("designMode"), BoxGroup("Design")]
         public Color gizmosColorTop = Color.red;
-        [BoxGroup("Design")]
+        [ShowIf("designMode"), BoxGroup("Design")]
         public float gizmosLineLength = 8f;
         
         private List<ModuleAttachment> m_Attachments = new List<ModuleAttachment>();
-        private bool m_FallbackAttached = false;
+        private ModuleAttachment m_FallbackAttachement = null;
 
         private void Start()
         {
@@ -46,40 +34,7 @@ namespace Metamatic {
             {
                 Fallback();
             }
-            // m_CachedRunInEditor = runInEditor;
-            // m_CachedConfigurable = configurable;
-            // if (configurable) {
-            //     GetConfigurator();
-            // }
         }
-        
-        // [Obsolete("", true)]
-        // private void GetConfigurator() {
-        //     if (useConfigurator != null) {
-        //         useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
-        //     }
-        //     useConfigurator = GetComponent<UseConfigurator>() ?? gameObject.AddComponent<UseConfigurator>();
-        //     useConfigurator.SubscribeConfigurationChange(HandleConfigurationChange);
-        //     if (Application.isPlaying || (runInEditor && !useConfigurator.runInEditor)) {
-        //         useConfigurator.ForceRefresh();
-        //     }
-        // }
-
-        // private void ReleaseConfigurator() {
-        //     if (useConfigurator != null) {
-        //         useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
-        //         useConfigurator = null;
-        //     }
-        //     if (this.prefab != null) {
-        //         Clear();
-        //     }
-        // }
-        //
-        // private void OnDestroy() {
-        //     if (useConfigurator != null) {
-        //         useConfigurator.UnsubscribeConfigurationChange(HandleConfigurationChange);
-        //     }
-        // }
 
         public ModuleAttachment PlugIn(Module module)
         {
@@ -106,16 +61,28 @@ namespace Metamatic {
                 item = module;
             }
             item.transform.SetParent(transform, false);
+
+            if (single)
+            {
+                /* Remove all attached modules */
+                foreach (var attachment in m_Attachments)
+                {
+                    attachment.Release();
+                }
+            }
             
             /* Unplug fallback before go on */
-            if (m_FallbackAttached)
+            if (m_FallbackAttachement != null)
             {
-                var fallbackAttachement = m_Attachments[0];
-                fallbackAttachement.Release();
-                m_FallbackAttached = false;
+                m_FallbackAttachement.Release();
+                m_FallbackAttachement = null;
             }
 
             var attachement = new ModuleAttachment(this, item);
+            attachement.OnRelease += () =>
+            {
+                m_Attachments.Remove(attachement);
+            };
 
             internalPlugIn(this);
             item.gameObject.SetActive(true);
@@ -140,7 +107,7 @@ namespace Metamatic {
 
             internalUnplug(this);
 
-            if (!m_FallbackAttached && m_Attachments.Count == 0)
+            if (m_FallbackAttachement == null && m_Attachments.Count == 0)
             {
                 Fallback();
             }
@@ -150,8 +117,7 @@ namespace Metamatic {
         {
             if (fallbackModule)
             {
-                PlugIn(fallbackModule);
-                m_FallbackAttached = true;
+                m_FallbackAttachement = PlugIn(fallbackModule);
             }
         }
         
@@ -341,7 +307,9 @@ namespace Metamatic {
         #endif
 
         #if (UNITY_EDITOR)
-        public void OnDrawGizmosSelected() {
+        public void OnDrawGizmos()
+        {
+            if (!designMode) return;
             Gizmos.color = gizmosColor;
             var rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);
             Gizmos.matrix = rotationMatrix;

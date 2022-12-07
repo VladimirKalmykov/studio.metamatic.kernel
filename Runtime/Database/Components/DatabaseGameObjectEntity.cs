@@ -1,8 +1,10 @@
+using System;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Use Entity instead", true)]
     public class DatabaseGameObjectEntity : DatabaseGameObjectContext, ISerializationCallbackReceiver
     {
         [LabelText("Name")]
