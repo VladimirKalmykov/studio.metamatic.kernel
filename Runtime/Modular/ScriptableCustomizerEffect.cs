@@ -7,7 +7,7 @@ namespace Metamatic {
     using Metamatic.GameAccessManagment;
 
     
-    public abstract class ScriptableSkin<TEffector, TProps> : ScriptableEffectWithSubEffects<TEffector, TProps>, IAccessable
+    public abstract class ScriptableCustomizerEffect<TEffector, TProps> : ScriptableEffectWithSubEffects<TEffector, TProps>
     where TEffector: Effector
     where TProps : struct
     {
@@ -16,11 +16,6 @@ namespace Metamatic {
         [BoxGroup("Metadata")]
         public AssetReferenceSprite addressablePreview;
         public event Action OnSerializedFieldsChange;
-        [BoxGroup("Access Control")]
-        public GameAccessConfig access = new GameAccessConfig();
-        GameAccessConfig IAccessable.GetAccessConfig() {
-            return access;
-        }
         
         public override string GetEffectName()
         {

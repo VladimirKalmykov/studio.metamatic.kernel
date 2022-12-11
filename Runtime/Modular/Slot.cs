@@ -48,8 +48,9 @@ namespace Metamatic {
         /// <param name="internallyModuleCall">Set true if method called from module itself</param>
         /// <param name="internalPlugIn"></param>
         /// <returns></returns>
-        public ModuleAttachment PlugIn(Module module, Action<Slot> internalPlugIn)
+        public ModuleAttachment PlugIn(Module module, Action<Slot, ModuleAttachment> internalPlugIn)
         {
+            if (module.slot == this) return module.attachment;
             Module item = null;
             if (module.gameObject.scene.name == null || module.gameObject.scene.name == gameObject.name)
             {
@@ -61,32 +62,35 @@ namespace Metamatic {
                 item = module;
             }
             item.transform.SetParent(transform, false);
+            
+            /* Unplug fallback before go on */
+            if (m_FallbackAttachement != null)
+            {
+                Debug.Log($"Release fallback: {m_FallbackAttachement.module}");
+                m_FallbackAttachement.Release();
+                m_FallbackAttachement = null;
+            }
 
+            var modulesToUnattach = m_Attachments.ToArray();
+            
+
+            var attachement = new ModuleAttachment(this, item);
+
+            internalPlugIn(this, attachement);
+            item.gameObject.SetActive(true);
+            m_Attachments.Add(attachement);
+            
             if (single)
             {
                 /* Remove all attached modules */
-                foreach (var attachment in m_Attachments)
+                foreach (var attachment in modulesToUnattach)
                 {
                     attachment.Release();
                 }
             }
             
-            /* Unplug fallback before go on */
-            if (m_FallbackAttachement != null)
-            {
-                m_FallbackAttachement.Release();
-                m_FallbackAttachement = null;
-            }
-
-            var attachement = new ModuleAttachment(this, item);
-            attachement.OnRelease += () =>
-            {
-                m_Attachments.Remove(attachement);
-            };
-
-            internalPlugIn(this);
             item.gameObject.SetActive(true);
-            m_Attachments.Add(attachement);
+            
             return attachement;
         }
 
@@ -100,9 +104,9 @@ namespace Metamatic {
             var attachementIndex = m_Attachments.FindIndex(a => a.module == module);
             if (attachementIndex < 0)
             {
-                throw new Exception("Module you're trying to unplug is not in attached modules list of the slot");
+                throw new Exception($"Module '{module.name}', that you're trying to unplug is not in attached modules list of the slot");
             }
-            var attachement = m_Attachments[attachementIndex];
+            // var attachement = m_Attachments[attachementIndex];
             m_Attachments.RemoveAt(attachementIndex);
 
             internalUnplug(this);
@@ -117,6 +121,7 @@ namespace Metamatic {
         {
             if (fallbackModule)
             {
+                Debug.Log($"Fallback: {fallbackModule.name}");
                 m_FallbackAttachement = PlugIn(fallbackModule);
             }
         }

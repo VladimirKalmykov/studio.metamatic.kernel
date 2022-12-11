@@ -86,7 +86,7 @@ namespace Metamatic
         {
             if (behaviour is DatabaseContextBehaviour cb)
             {
-                
+                return new DatabaseSelector(cb.branchSource, cb.entitySource);
             } 
             var gameObjectEntity = behaviour.GetComponentInParent<Entity>();
             if (gameObjectEntity == null)

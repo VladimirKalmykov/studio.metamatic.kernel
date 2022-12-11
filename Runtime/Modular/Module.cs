@@ -16,6 +16,8 @@ namespace Metamatic {
         [Tooltip("Update position in editor every frame. Otherwise, update only on validate")]
         public bool editorLiveUpdate = true;
 
+        public ModuleAttachment attachment { get; private set; } = null;
+
         public Slot slot { get; private set; }
 
         void Start() {
@@ -70,10 +72,11 @@ namespace Metamatic {
         /// </summary>
         /// <param name="slot"></param>
         /// <param name="attachment"></param>
-        private void InternalPlugIn(Slot slot)
+        private void InternalPlugIn(Slot slot, ModuleAttachment attachment)
         {
             this.slot = slot;
             this.enabled = true;
+            this.attachment = attachment;
             OnPlugInSlot(slot);
             Stick();
         }

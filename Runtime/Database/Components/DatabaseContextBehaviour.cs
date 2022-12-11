@@ -27,12 +27,20 @@ namespace Metamatic
         [ShowIf("@this.branchNameSource == BranchNameSourceType.DatabaseCurrents"), ShowInInspector, LabelText("Current branch"), PropertyOrder(3)]
         // ReSharper disable once InconsistentNaming
         private string editor_databaseCurrentBranchName => Database.currentBranchSource.value;
+        [ShowIf("@this.branchNameSource == BranchNameSourceType.ParentContext"), ShowInInspector, LabelText("Context branch"), PropertyOrder(4)]
+        // ReSharper disable once InconsistentNaming
+        private string editor_parentContexttBranchName => branchSource == null ? "" : branchSource.value;
         #endif
 
         private Entity m_EntityComponent;
         public Entity entityComponent =>
-            m_EntityComponent == null ? (m_EntityComponent = GetComponent<Entity>()) : m_EntityComponent;
-
+            m_EntityComponent == null ? (m_EntityComponent = GetComponentInParent<Entity>(true)) : m_EntityComponent;
+        
+        [ShowIf("@this.branchNameSource == BranchNameSourceType.ParentContext"), ShowInInspector, ReadOnly, LabelText("Context"), PropertyOrder(3)]
+        public DatabaseContextBehaviour parentContext => transform.parent != null
+            ? transform.parent.GetComponentInParent<DatabaseContextBehaviour>()
+            : null;
+        
         private DatabaseBranchSource m_BrancheSource = null;
         private DatabaseEntitySource m_EntitySource = null;
 
@@ -67,9 +75,6 @@ namespace Metamatic
                     return Database.currentBranchSource;
                     break;
                 case BranchNameSourceType.ParentContext:
-                    var parentContext = transform.parent != null
-                        ? transform.parent.GetComponent<DatabaseContextBehaviour>()
-                        : null;
                     if (parentContext)
                     {
                         return parentContext.branchSource;
@@ -87,6 +92,36 @@ namespace Metamatic
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private Transform m_CachedParent;
+        void FixedUpdate()
+        {
+            if ((useEntityAsSource || branchNameSource == BranchNameSourceType.ParentContext) && m_CachedParent != transform.parent)
+            {
+                m_CachedParent = transform.parent;
+                UpdateInheritanceValuesOnParentChanged();
+            }
+        }
+        
+        /// <summary>
+        /// This method should be called each time parent did change
+        /// </summary>
+        private void UpdateInheritanceValuesOnParentChanged()
+        {
+            if (useEntityAsSource && m_EntitySource != null)
+            {
+                var nextEntity = GetComponentInParent<Entity>();
+                if (nextEntity != m_EntityComponent)
+                {
+                    m_EntitySource.PlugIn(GetEntityNameSource());
+                }
+            }
+
+            if (branchNameSource == BranchNameSourceType.ParentContext && m_BrancheSource != null)
+            {
+                m_BrancheSource.PlugIn(GetBranchNameSource());
             }
         }
     }
