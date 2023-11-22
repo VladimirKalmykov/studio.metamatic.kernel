@@ -12,6 +12,6 @@ namespace Metamatic.GameAccessManagment {
         [Tooltip("Can view, interact and use for free")]
         public bool certify = false;
         [ShowIf("certify"), Tooltip("Full access"), GUIColor(0.89f, 0.78f, 0.1f, 1f)]
-        public Certificate certificate;
+        public Certificate[] certificates;
     }
 }
