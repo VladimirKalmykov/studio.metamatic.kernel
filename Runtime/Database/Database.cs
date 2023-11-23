@@ -69,8 +69,6 @@ namespace Metamatic
         {
             Debug.Log($"<color=red>DATABASE</color>: {message}");
         }
-
-        
         
         /// <summary>
         /// Get branch selector by name

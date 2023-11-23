@@ -1,5 +1,5 @@
 {
-    "name": "Tests",
+    "name": "studio.metamatic.tests.editmode",
     "rootNamespace": "",
     "references": [
         "UnityEngine.TestRunner",

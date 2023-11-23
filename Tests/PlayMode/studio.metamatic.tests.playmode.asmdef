@@ -1,5 +1,5 @@
 {
-    "name": "PlayModeTests",
+    "name": "studio.metamatic.tests.playmode",
     "rootNamespace": "",
     "references": [
         "UnityEngine.TestRunner",
