@@ -3,7 +3,7 @@ using System;
 namespace Metamatic {
     using UnityEngine;
 
-    public abstract class Socket : PluggableMonoBehaviour, ISerializationCallbackReceiver
+    public abstract class LegacySocket : PluggableMonoBehaviour, ISerializationCallbackReceiver
     {
         // /// <summary>
         // /// When children connector tries to get parent socket this socket will be skipped and used the same parent instrad
@@ -20,7 +20,7 @@ namespace Metamatic {
         protected virtual void OnAfterSocketDeserialize() {
 
         }
-        protected T GetParentSocket<T>(bool required = false) where T : Socket {
+        protected T GetParentSocket<T>(bool required = false) where T : LegacySocket {
             var parentSocket = transform.parent != null ? transform.parent.GetComponentInParent<T>() : null;
 
             if (required && parentSocket == null) {
