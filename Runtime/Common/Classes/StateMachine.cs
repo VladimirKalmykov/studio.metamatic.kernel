@@ -4,7 +4,7 @@ namespace Metamatic
 {
     public abstract class StateMachine
     {
-        public abstract void OnFrameEnd();
+        public abstract void Apply();
     }
 
     public class StateMachine<TState> : StateMachine
@@ -76,7 +76,7 @@ namespace Metamatic
             stateListeners -= handler;
         }
 
-        public override void OnFrameEnd()
+        public override void Apply()
         {
             if (!m_ShouldUpdate) return;
             m_ShouldUpdate = false;

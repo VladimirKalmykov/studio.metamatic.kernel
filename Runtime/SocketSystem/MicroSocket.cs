@@ -10,15 +10,22 @@ namespace Metamatic
         public delegate ref TState StateFactoryFunc();
         private StateFactoryFunc m_StateFactory;
         private event StateChangeHandler OnChange;
+        public event Action<MicroSocket<TState>> OnRootSourceSocketChange;
         public event Action OnDestroy;
-        private MicroSocket<TState> m_SourceSocket;
-        private TState m_FallbackState;
-        public TState writable = default;
+        private MicroSocket<TState> parentSocket { get; set; }
+        /**
+         * Root source socket is the socket that has no parent socket.
+         */
+        private MicroSocket<TState> rootSourceSocket { get; set; }
+        /*
+         * Fallback state is used when there is no root source socket.
+         */
+        private static TState _fallbackState;
         public TState state
         {
             get
             {
-                return GetStateFromParent();
+                return GetStateFromRootParent();
             }
         }
         public MicroSocket()
@@ -34,7 +41,7 @@ namespace Metamatic
             OnDestroy?.Invoke();
         }
         /**
-         * Connect another socket to this socket. Another socket will write to this socket.
+         * Connect another socket to this socket. Another socket will read from this socket.
          */
         public Action Connect(MicroSocket<TState> childSocket)
         {
@@ -69,7 +76,7 @@ namespace Metamatic
          */
         public Action Subscribe(StateChangeHandler handler)
         {
-            var state = m_StateFactory != null ? m_StateFactory() : GetStateFromParent();
+            var state = m_StateFactory != null ? m_StateFactory() : GetStateFromRootParent();
             handler(ref state);
             OnChange += handler;
             return () =>
@@ -85,7 +92,34 @@ namespace Metamatic
          */
         public void SetParentSocket(MicroSocket<TState> parentSocket)
         {
-            m_SourceSocket = parentSocket;
+            if (this.parentSocket != parentSocket)
+            {
+                /* Unsubscribe from previous parent socket */
+                if (this.parentSocket != null)
+                {
+                    this.parentSocket.OnRootSourceSocketChange -= ApplyRootSourceSocket;
+                }
+            }
+            this.parentSocket = parentSocket;
+            /* Calculate root source socket */
+            var currentRootSourceSocket = rootSourceSocket;
+            rootSourceSocket = this;
+            while (rootSourceSocket.parentSocket != null)
+            {
+                rootSourceSocket = rootSourceSocket.parentSocket;
+            }
+            if (currentRootSourceSocket != rootSourceSocket)
+            {
+                OnRootSourceSocketChange?.Invoke(rootSourceSocket);
+            }
+            /* Subscribe to parent socket root source socket change */
+            parentSocket.OnRootSourceSocketChange += ApplyRootSourceSocket;
+        }
+        
+        void ApplyRootSourceSocket(MicroSocket<TState> rootSourceSocket)
+        {
+            this.rootSourceSocket = rootSourceSocket;
+            OnRootSourceSocketChange?.Invoke(rootSourceSocket);
         }
         
         /**
@@ -95,9 +129,9 @@ namespace Metamatic
          */
         public void UnsetParentSocket(MicroSocket<TState> parentSocket)
         {
-            if (m_SourceSocket == parentSocket)
+            if (this.parentSocket == parentSocket)
             {
-                m_SourceSocket = null;
+                SetParentSocket(null);
             }
             else
             {
@@ -105,19 +139,9 @@ namespace Metamatic
             }
         }
 
-        private ref TState GetStateFromParent()
+        private ref TState GetStateFromRootParent()
         {
-            var source = this.m_SourceSocket;
-            while (source != null)
-            {
-                if (source.m_StateFactory != null)
-                {
-                    return ref source.m_StateFactory();
-                }
-                source = source.m_SourceSocket;
-            }
-
-            return ref m_FallbackState;
+            return ref _fallbackState;
         }
     }
 }

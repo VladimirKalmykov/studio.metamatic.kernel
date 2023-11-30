@@ -199,6 +199,7 @@ namespace Metamatic {
             var allComponents = ((MonoBehaviour)this.target).gameObject.GetComponents<MonoBehaviour>();
             List<Type> plugins = new List<Type>();
             foreach(var component in allComponents) {
+                if (component == null) continue;
                 var pluginForAttributes = component.GetType().GetCustomAttributes(typeof(PluginFor), true);
 
                 foreach(var pluginForAttribute in pluginForAttributes) {
