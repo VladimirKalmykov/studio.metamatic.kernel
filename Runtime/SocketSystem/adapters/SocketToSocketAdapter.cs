@@ -3,20 +3,20 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class SocketToSocketAdapter<TState, TTarget>: Socket<TState>
+    public abstract class SocketToSocketAdapter<TState, TEventType, TSourceState, TSourceEventTypes>: Socket<TState, TEventType>
         where TState : struct
-        where TTarget: Socket<TState>
+        where TSourceState: struct
     {
         [SuffixLabel("@GetTargetSuffixLabel(target)", Overlay = false)]
         [GUIColor("GetTargetConnectionColor")]
         [ShowInInspector]
         [SerializeField]
         [PropertyOrder(1)]
-        protected TTarget target;
+        public Socket<TSourceState, TSourceEventTypes> target;
 
         protected sealed override void OnSocketEnabled()
         {
-            target = target != null ? target : GetParentComponent<TTarget>();
+            target = target != null ? target : GetComponentInParent<Socket<TSourceState, TSourceEventTypes>>();
 
             if (target == null) {
                 enabled = false;
@@ -31,19 +31,58 @@ namespace Metamatic
             OnAdapterDisabled();
         }
 
-        protected virtual void OnAdapterEnabled()
-        {
-        }
-        protected virtual void OnAdapterDisabled()
-        {
-        }
+        protected abstract void OnAdapterEnabled();
+        protected abstract void OnAdapterDisabled();
 
 #if UNITY_EDITOR
         private Color GetTargetConnectionColor() {
             return target != null ? new Color(0.18f, 0.58f, 0.47f) : Color.gray;
         }
         
-        private string GetTargetSuffixLabel(TTarget target)
+        private string GetTargetSuffixLabel(Socket<TSourceState, TSourceEventTypes> target)
+        {
+            return target != null ? target.name : string.Empty;
+        }
+#endif
+    }
+    
+    public abstract class SocketToSocketAdapter<TState, TSourceState, TSourceEventTypes>: Socket<TState>
+        where TState : struct
+        where TSourceState: struct
+    {
+        [SuffixLabel("@GetTargetSuffixLabel(target)", Overlay = false)]
+        [GUIColor("GetTargetConnectionColor")]
+        [ShowInInspector]
+        [SerializeField]
+        [PropertyOrder(1)]
+        protected Socket<TSourceState, TSourceEventTypes> target;
+
+        protected sealed override void OnSocketEnabled()
+        {
+            target = target != null ? target : GetComponentInParent<Socket<TSourceState, TSourceEventTypes>>();
+
+            if (target == null) {
+                enabled = false;
+                return;
+            }
+
+            OnAdapterEnabled();
+        }
+        
+        protected sealed override void OnSocketDisabled()
+        {
+            OnAdapterDisabled();
+        }
+
+        protected abstract void OnAdapterEnabled();
+        protected abstract void OnAdapterDisabled();
+
+#if UNITY_EDITOR
+        private Color GetTargetConnectionColor() {
+            return target != null ? new Color(0.18f, 0.58f, 0.47f) : Color.gray;
+        }
+        
+        private string GetTargetSuffixLabel(Socket<TSourceState, TSourceEventTypes> target)
         {
             return target != null ? target.name : string.Empty;
         }

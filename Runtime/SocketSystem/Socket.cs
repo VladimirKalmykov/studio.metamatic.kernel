@@ -27,11 +27,17 @@ namespace Metamatic {
         protected EventMachine<TEventType> eventMachine = new EventMachine<TEventType>();
         [GUIColor("GetProxyConnectionColor")]
         [ShowInInspector, ReadOnly, LabelText("Proxy")]
+        [ShowIf("GetProxyVisible")]
         private Socket<TState, TEventType> m_ParentSocket;
         
 #if UNITY_EDITOR
         private Color GetProxyConnectionColor() {
             return m_ParentSocket != null ? new Color(0.18f, 0.58f, 0.47f) : Color.gray;
+        }
+
+        private bool GetProxyVisible()
+        {
+            return m_ParentSocket != null;
         }
         
 #endif
@@ -131,7 +137,7 @@ namespace Metamatic {
                 socket.OnReattach -= ReattachToParent;
                 socket.OnUnavailable -= UnattachFromParent;
                 /* Reset state machine to parent state machine and detach from parent */
-                var lastParentState = stateMachine.state;
+                var lastParentState = stateMachine.prevState;
                 stateMachine = new StateMachine<TState>(lastParentState);
                 eventMachine = new EventMachine<TEventType>();
                 m_ParentSocket = null;
@@ -155,7 +161,7 @@ namespace Metamatic {
             var unsubscribe = currentStateMachine.SubscribeState(handler);
             Action reattachHandler = () => {
                 unsubscribe();
-                unsubscribe = stateMachine.SubscribeState(handler);
+                unsubscribe = this.stateMachine.SubscribeState(handler);
             };
             OnReattach += reattachHandler;
             return () =>
