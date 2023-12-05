@@ -11,4 +11,14 @@ namespace Metamatic.Actions
             this.createdTime = Time.time;
         }
     }
+    
+    public abstract class BehaviourAction<T>: Action
+    where T: Behaviour
+    {
+        public readonly Behaviour behaviour;
+        public BehaviourAction(T behaviour) : base(new ActionSource(behaviour))
+        {
+            this.behaviour = behaviour;
+        }
+    }
 }
