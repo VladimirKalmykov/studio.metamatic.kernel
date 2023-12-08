@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Is obsolete, don't use it anymore", false)]
     public class DatabaseStoreConnector : DatabaseContextBehaviour
     {
         private List<IDisposable> m_VirtualStores = new List<IDisposable>();

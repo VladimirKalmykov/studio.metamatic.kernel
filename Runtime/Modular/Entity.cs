@@ -1,8 +1,10 @@
+using System;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Entity is obsolete, don't use it anymore", false)]
     public class Entity : Element
     {
         [ShowInInspector, BoxGroup("Entity"), PropertyOrder(0)]

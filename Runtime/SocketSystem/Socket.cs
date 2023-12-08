@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 
 namespace Metamatic {
@@ -17,7 +18,25 @@ namespace Metamatic {
         public Action SubscribeState(StateMachine<TState>.StateChangeHandler handler);
     }
 
-    public abstract class Socket<TState, TEventType> : PluggableMonoBehaviour, ISerializationCallbackReceiver, ISocket<TState>
+    public abstract class Socket : PluggableMonoBehaviour
+    {
+        [BoxGroup("Socket"), LabelText("Name")]
+        public string socketName;
+        /// <summary>
+        /// Auto search and connect current socket to the socket with the same type in game object
+        /// </summary>
+        /// <param name="gameObject"></param>
+        /// <param name="asSource">If true then found socket will be attached to this socket, if false then this socket will be attached to found socket</param>
+        public abstract void AutoAttach(GameObject gameObject, bool asSource = false);
+
+        /// <summary>
+        /// Detach socket from any attached sockets from game object
+        /// </summary>
+        /// <param name="gameObject"></param>
+        public abstract void DetachFrom(GameObject gameObject);
+    }
+
+    public abstract class Socket<TState, TEventType> : Socket, ISerializationCallbackReceiver, ISocket<TState>
     where TState: struct
     {
         private event Action OnReattach;
@@ -25,10 +44,12 @@ namespace Metamatic {
         private event Action<SocketUnavailableReason> OnUnavailable;
         protected StateMachine<TState> stateMachine = new StateMachine<TState>();
         protected EventMachine<TEventType> eventMachine = new EventMachine<TEventType>();
-        [GUIColor("GetProxyConnectionColor")]
-        [ShowInInspector, ReadOnly, LabelText("Proxy")]
+        [BoxGroup("Socket"), GUIColor("GetProxyConnectionColor")]
+        [ShowInInspector, ReadOnly, LabelText("Input")]
         [ShowIf("GetProxyVisible")]
         private Socket<TState, TEventType> m_ParentSocket;
+        [BoxGroup("Socket"), ShowInInspector, LabelText("Output"), ReadOnly]
+        private List<Socket<TState, TEventType>> m_ChildSockets = new List<Socket<TState, TEventType>>();
         
 #if UNITY_EDITOR
         private Color GetProxyConnectionColor() {
@@ -103,28 +124,67 @@ namespace Metamatic {
             if (socket == null) {
                 throw new System.Exception("Socket is required");
             }
+            if (m_ParentSocket != null) {
+                throw new System.Exception("Socket is already attached");
+            }
             m_ParentSocket = socket;
             stateMachine = socket.stateMachine;
             eventMachine = socket.eventMachine;
+            socket.m_ChildSockets.Add(this);
             OnReattach?.Invoke();
             /* Subscribe to parent socket reattach event */
             socket.OnReattach += ReattachToParent;
-            socket.OnUnavailable += UnattachFromParent;
+            socket.OnUnavailable += DetachFromParent;
             return () => {
                 DetachSocket(socket);
             };
+        }
+        
+        public override void AutoAttach(GameObject gameObject, bool asSource = false)
+        {
+            Type currentType = this.GetType();
+            var foundSocket = gameObject.GetComponent(currentType) as Socket<TState, TEventType>;
+            if (foundSocket == null)
+            {
+                Debug.LogWarning("Socket not found");
+                return;
+            }
+            if (asSource)
+            {
+                foundSocket.AttachSocket(this);
+            }
+            else
+            {
+                AttachSocket(foundSocket);
+            }
+        }
+
+        public override void DetachFrom(GameObject gameObject)
+        {
+            if (m_ParentSocket != null && m_ParentSocket.gameObject == gameObject)
+            {
+                DetachSocket(m_ParentSocket);
+            }
+            if (m_ChildSockets.Count > 0)
+            {
+                foreach (var childSocket in m_ChildSockets)
+                {
+                    childSocket.DetachFrom(this.gameObject);
+                }
+            }
         }
         
         public void ReattachToParent()
         {
             if (m_ParentSocket != null)
             {
+                var cachedParentSocket = m_ParentSocket;
                 DetachSocket(m_ParentSocket);
-                AttachSocket(m_ParentSocket);
+                AttachSocket(cachedParentSocket);
             }
         }
         
-        public void UnattachFromParent(SocketUnavailableReason reason)
+        public void DetachFromParent(SocketUnavailableReason reason)
         {
             DetachSocket(m_ParentSocket);
         }
@@ -133,9 +193,10 @@ namespace Metamatic {
         {
             if (m_ParentSocket == socket)
             {
+                m_ParentSocket.m_ChildSockets.Remove(this);
                 /* Unsubscribe from parent socket reattach and unavailable events */
                 socket.OnReattach -= ReattachToParent;
-                socket.OnUnavailable -= UnattachFromParent;
+                socket.OnUnavailable -= DetachFromParent;
                 /* Reset state machine to parent state machine and detach from parent */
                 var lastParentState = stateMachine.prevState;
                 stateMachine = new StateMachine<TState>(lastParentState);
@@ -184,6 +245,11 @@ namespace Metamatic {
                 OnReattach -= reattachHandler;
                 unsubscribe();
             };
+        }
+
+        public void ApplyChanges()
+        {
+            stateMachine.Apply();
         }
         
         public void Emit(TEventType args)

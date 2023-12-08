@@ -3,8 +3,8 @@ using System;
 namespace Metamatic {
     using System.Collections.Generic;
     using UnityEngine;
-
-    public class Character: Entity, ISerializationCallbackReceiver {
+    [Obsolete("Is obsolete, don't use it anymore", false)]
+    public class Character: MonoBehaviour, ISerializationCallbackReceiver {
         public static List<Character> all = new List<Character>();
         
         public CharacterType characterType;

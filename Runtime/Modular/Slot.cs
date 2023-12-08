@@ -10,6 +10,8 @@ namespace Metamatic {
     {
         [Tooltip("Can have only one module")]
         public bool single = false;
+        [Tooltip("Attached modules will be attached to the slot without changing their parent"), LabelText("Virtual")]
+        public bool virtualSlot = false;
         public Module fallbackModule;
         public bool designMode = false;
         [ShowIf("designMode"), BoxGroup("Design")]
@@ -45,40 +47,41 @@ namespace Metamatic {
         /// Attach module to the slot
         /// </summary>
         /// <param name="module"></param>
-        /// <param name="internallyModuleCall">Set true if method called from module itself</param>
         /// <param name="internalPlugIn"></param>
         /// <returns></returns>
         public ModuleAttachment PlugIn(Module module, Action<Slot, ModuleAttachment> internalPlugIn)
         {
-            if (module.slot == this) return module.attachment;
-            Module item = null;
+            
+            Module moduleInstance = null;
             if (module.gameObject.scene.name == null || module.gameObject.scene.name == gameObject.name)
             {
-                /* Plugin prefab */
-                item = InstanceOrigin.Clone(module);
+                /* Instantiate and connect prefab */
+                moduleInstance = InstanceOrigin.Clone(module);
             }
             else
             {
-                item = module;
+                if (module.slot == this) return module.attachment;
+                moduleInstance = module;
             }
-            item.transform.SetParent(transform, false);
+
+            if (!virtualSlot)
+            {
+                moduleInstance.transform.SetParent(transform, false);
+            }
             
             /* Unplug fallback before go on */
             if (m_FallbackAttachement != null)
             {
-                Debug.Log($"Release fallback: {m_FallbackAttachement.module}");
                 m_FallbackAttachement.Release();
                 m_FallbackAttachement = null;
             }
 
             var modulesToUnattach = m_Attachments.ToArray();
-            
 
-            var attachement = new ModuleAttachment(this, item);
+            var attachement = new ModuleAttachment(this, moduleInstance);
 
             internalPlugIn(this, attachement);
-            item.gameObject.SetActive(true);
-            m_Attachments.Add(attachement);
+            moduleInstance.gameObject.SetActive(true);
             
             if (single)
             {
@@ -88,8 +91,9 @@ namespace Metamatic {
                     attachment.Release();
                 }
             }
+            m_Attachments.Add(attachement);
             
-            item.gameObject.SetActive(true);
+            moduleInstance.gameObject.SetActive(true);
             
             return attachement;
         }
@@ -124,135 +128,6 @@ namespace Metamatic {
                 Debug.Log($"Fallback: {fallbackModule.name}");
                 m_FallbackAttachement = PlugIn(fallbackModule);
             }
-        }
-        
-        [Obsolete("", true)]
-        public void Clear() {
-            // #if UNITY_EDITOR
-            // var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
-            // #endif
-            //
-            // /* Clear all */
-            // #if UNITY_EDITOR
-            // if (Application.isPlaying || !isPartOfAnyPrefab) {
-            // #endif
-            //     foreach(Transform child in transform) {
-            //         #if UNITY_EDITOR
-            //         if (Application.isPlaying) {
-            //         #endif
-            //             child.SetParent(null);
-            //             GameObject.Destroy(child.gameObject);
-            //         #if UNITY_EDITOR
-            //         } else {
-            //             GameObject.DestroyImmediate(child.gameObject);
-            //         }
-            //         #endif
-            //     }
-            // #if UNITY_EDITOR
-            // }
-            // #endif
-        }
-        
-        // [Obsolete("", true)]
-        // private void HandleConfigurationChange(Configuration config) {
-        //     #if UNITY_EDITOR
-        //     var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
-        //     if (isPartOfAnyPrefab) {
-        //         return;
-        //     }
-        //     #endif
-        //
-        //     if (config == null) {
-        //         if (defaultPrefab != null && defaultPrefab != this.prefab) {
-        //             ApplyPrefab(
-        //                 defaultPrefab,
-        //                 #if UNITY_EDITOR
-        //                 isPartOfAnyPrefab
-        //                 #else
-        //                 false
-        //                 #endif
-        //             );
-        //         }
-        //         return;
-        //     }
-        //     
-        //     var modulePreset = config.GetModulePreset(useLocalName ? name : relativeName);
-        //
-        //     if (m_ActiveModulePreset != null && m_ActiveModulePreset != modulePreset) {
-        //         m_ActiveModulePreset.Unsubscribe(HandleModulePresetChange);
-        //     }
-        //
-        //     if (modulePreset == null) return;
-        //     m_ActiveModulePreset = modulePreset;
-        //     m_ActiveModulePreset.Subscribe(HandleModulePresetChange);
-        // }
-        
-        [Obsolete("Module preset logic is deprecated", false)]
-        private async void HandleModulePresetChange(ModulePreset modulePreset) {
-            // #if UNITY_EDITOR
-            // var isPartOfAnyPrefab = UnityEditor.PrefabUtility.IsPartOfAnyPrefab(this);
-            // #else
-            // var isPartOfAnyPrefab = false;
-            // #endif
-            // GameObject prefab = null;
-            // prefab = await modulePreset.GetPrefabAsync();
-            //     if (m_ActiveModulePreset != modulePreset) {
-            //         return;
-            //     }
-            //
-            // if (prefab == null && defaultPrefab != null) {
-            //     prefab = defaultPrefab;
-            // }
-            //
-            // if (prefab != this.prefab) {
-            //     ApplyPrefab(prefab, isPartOfAnyPrefab);
-            // }
-            //
-            // #if UNITY_EDITOR
-            // if (isPartOfAnyPrefab) {
-            //     return;
-            // }
-            // #endif
-            //
-            // if (modulePreset != null) {
-            //     (moduleGameObject.GetComponent<Configurator>() ?? moduleGameObject.AddComponent<Configurator>()).configuration = modulePreset.configuration;
-            // }
-            //
-            // if (moduleGameObject == null || modulePreset == null) return;
-            // var skin = await modulePreset.GetSkinAsync();
-            // /* Do not continue if another modulePreset already was handled */
-            // if (m_ActiveModulePreset != modulePreset) {
-            //     return;
-            // }
-            // var skinApplier = moduleGameObject.GetComponent<SkinApplier>() ?? moduleGameObject.AddComponent<SkinApplier>();
-            // skinApplier.skin = skin != null ? skin : skinApplier.defaultSkin;
-        }
-        
-        [Obsolete("", true)]
-        private void ApplyPrefab(GameObject prefab, bool isPartOfAnyPrefab) {
-//             this.prefab = prefab;
-//             ClearChildren();
-//
-//             if (prefab == null) return;
-// #if UNITY_EDITOR
-//             if (!Application.isPlaying) {
-//                 if (!isPartOfAnyPrefab) {
-//                     UnityEditor.EditorApplication.delayCall += () => {
-//                         moduleGameObject = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab, transform);
-//                         moduleGameObject.transform.localPosition = Vector3.zero;
-//                         moduleGameObject.transform.localRotation = Quaternion.identity;
-//                     };
-//                 } else {
-//                     return;
-//                 }
-//             } else {
-// #endif
-//                 moduleGameObject = Instantiate(prefab, transform);
-//                 moduleGameObject.transform.localPosition = Vector3.zero;
-//                 moduleGameObject.transform.localRotation = Quaternion.identity;
-// #if UNITY_EDITOR
-//             }
-// #endif
         }
 
         private void ClearChildren() {
@@ -292,9 +167,27 @@ namespace Metamatic {
 #if UNITY_EDITOR
 #endif
         }
+        
+        /**
+         * Get all sockets of the slot
+         */
+        public Socket[] GetSockets()
+        {
+            return GetInternalSockets();
+        }
+        
+        protected virtual Socket[] GetInternalSockets()
+        {
+            return new Socket[0];
+        }
 
-        private bool m_CachedRunInEditor = false;
-        private bool m_CachedConfigurable = false;
+        void OnDestroy()
+        {
+            foreach(var attachment in m_Attachments)
+            {
+                attachment.Release();
+            }
+        }
 
         #if (UNITY_EDITOR)
         private void OnValidate()
@@ -324,5 +217,44 @@ namespace Metamatic {
             Gizmos.DrawLine(Vector3.zero, (Vector3.Cross(Vector3.forward, Vector3.right).normalized * gizmosLineLength));
         }
         #endif
+    }
+
+    public class Slot<TSocket1> : Slot
+    where TSocket1: Socket
+    {
+        [SerializeField, BoxGroup("Sockets")]
+        protected TSocket1 socket1;
+        
+        protected override Socket[] GetInternalSockets()
+        {
+            return new Socket[] {socket1};
+        }
+    }
+    
+    public class Slot<TSocket1, TSocket2> : Slot<TSocket1>
+        where TSocket1: Socket
+        where TSocket2: Socket
+    {
+        [SerializeField, BoxGroup("Sockets")]
+        protected TSocket2 socket2;
+        
+        protected override Socket[] GetInternalSockets()
+        {
+            return new Socket[] {socket1, socket2};
+        }
+    }
+    
+    public class Slot<TSocket1, TSocket2, TSocket3> : Slot<TSocket1, TSocket2>
+        where TSocket1: Socket
+        where TSocket2: Socket
+        where TSocket3: Socket
+    {
+        [SerializeField, BoxGroup("Sockets")]
+        protected TSocket3 socket3;
+        
+        protected override Socket[] GetInternalSockets()
+        {
+            return new Socket[] {socket1, socket2, socket3};
+        }
     }
 }

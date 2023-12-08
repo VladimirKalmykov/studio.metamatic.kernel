@@ -16,6 +16,15 @@ namespace Metamatic
         {
             this.module = module;
             this.slot = slot;
+            
+            /*
+             * Auto connect sockets
+             */
+            var slotSockets = slot.GetSockets();
+            foreach (var slotSocket in slotSockets)
+            {
+                slotSocket.AutoAttach(this.module.gameObject, true);
+            }
         }
         
         /// <summary>
@@ -23,7 +32,15 @@ namespace Metamatic
         /// </summary>
         public void Release()
         {
-            this.released = true;
+            released = true;
+            /*
+             * Auto disconnect sockets
+             */
+            var slotSockets = slot.GetSockets();
+            foreach (var slotSocket in slotSockets)
+            {
+                slotSocket.DetachFrom(module.gameObject);
+            }
             OnRelease?.Invoke();
             module.Unplug(slot);
         }

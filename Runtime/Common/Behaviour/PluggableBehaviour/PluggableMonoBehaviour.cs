@@ -5,7 +5,6 @@ namespace Metamatic {
 
     public class PluggableMonoBehaviour: MonoBehaviour
     {
-        [LabelText("Name")]
-        public string hostName;
+        
     }
 }
