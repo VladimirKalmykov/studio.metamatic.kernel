@@ -1,4 +1,6 @@
 using System;
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using Sirenix.OdinInspector;
 
 namespace Metamatic {
@@ -39,13 +41,13 @@ namespace Metamatic {
             return _PlugInFromBase(slot);
         }
 
-        public void Unplug(Slot slot = null)
+        public void Unplug(Slot slot = null, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
         {
-            _UnplugFromBase(slot);
+            _UnplugFromBase(slot, reason);
         }
 
         protected abstract ModuleAttachment _PlugInFromBase(Slot slot);
-        protected abstract void _UnplugFromBase(Slot slot);
+        protected abstract void _UnplugFromBase(Slot slot, Slot.UnplugReason reason = Slot.UnplugReason.Unknown);
 
         void Start() {
             var parent = transform.parent;
@@ -128,6 +130,7 @@ namespace Metamatic {
     public class Module<TSlot> : Module
     where TSlot: Slot
     {
+        public bool debug;
         [BoxGroup("Module"), ShowInInspector, ReadOnly, GUIColor("GetSlotFieldColor"), PropertyOrder(-1)]
         private TSlot m_Slot;
 
@@ -146,9 +149,9 @@ namespace Metamatic {
             return PlugIn(slot);
         }
         
-        protected override void _UnplugFromBase(Slot slot)
+        protected override void _UnplugFromBase(Slot slot, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
         {
-            Unplug(slot);
+            this.Unplug(slot, reason);
         }
         
         /// <summary>
@@ -165,27 +168,48 @@ namespace Metamatic {
             Stick();
         }
 
-        public void Unplug(Slot slot = null)
+        public new void Unplug(Slot unplugSlot = null, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
         {
-            if (slot != null) slot.Unplug(this, InternalUnplug);
+            if (unplugSlot != null) unplugSlot.Unplug(this, InternalUnplug, reason);
         }
 
-        public void InternalUnplug(Slot slot)
+        public async Task<bool> InternalUnplug(Slot unplugSlot, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
         {
-            if (slot != this.slot)
+            if (unplugSlot == null)
             {
-                throw new Exception("Module you are trying to unplug does not match the slot plugged to this module");
+                throw new Exception("Slot is null");
+            }
+
+            if (this.slot == null)
+            {
+                throw new Exception("This slot is null");
+            }
+            if (unplugSlot != this.slot)
+            {
+                throw new Exception($"Module you are trying to unplug does not match the slot plugged to this module. unplugSlot: ${unplugSlot.gameObject.name}, this.slot: ${this.slot.gameObject.name}");
             }
             
             OnUnplugSlot(this.slot);
             
-            this.m_Slot = null;
-            gameObject.SetActive(false);
-            if (!slot.virtualSlot)
+            m_Slot = null;
+            if (unplugSlot.virtualSlot) return true;
+            switch (reason)
             {
-                transform.SetParent(null);
-                InstanceOrigin.Release(this);
+                case Slot.UnplugReason.ModuleDisable:
+                    // Wait for the end of frame
+                    await UniTask.WaitForEndOfFrame();
+                    if (this == null)
+                    {
+                        /* Object was destroyed */
+                        return true;
+                    }
+                    break;
             }
+            gameObject.SetActive(false);
+            transform.SetParent(null);
+            InstanceOrigin.Release(this);
+
+            return true;
         }
         
         protected override void OnInternalModuleEnable()
@@ -197,7 +221,7 @@ namespace Metamatic {
         {
             if (slot != null)
             {
-                slot.Unplug(this);
+                slot.Unplug(this, Slot.UnplugReason.ModuleDisable);
             }
         }
         
@@ -213,7 +237,7 @@ namespace Metamatic {
 
         private Color GetSlotFieldColor()
         {
-            return slot == null ? Color.red : Color.cyan;
+            return slot == null ? Color.gray : Color.cyan;
         }
     }
 }

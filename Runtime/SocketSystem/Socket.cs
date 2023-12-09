@@ -63,9 +63,18 @@ namespace Metamatic {
         
 #endif
         
-        private void Awake() {
+        protected virtual TState GetDefaultState() {
+            return default;
+        }
+        
+        private void Awake()
+        {
+            var defaultState = GetDefaultState();
+            stateMachine.SetState((ref TState state) =>
+            {
+                state = defaultState;
+            });
             OnSocketAwake();
-            OnSocketAttach();
         }
         
         private void OnEnable() {
@@ -83,7 +92,7 @@ namespace Metamatic {
         }
 
         private void OnTransformParentChanged() {
-            this.OnSocketAttach();
+            
         }
         public void OnAfterDeserialize() {
             this.OnAfterSocketDeserialize();

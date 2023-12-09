@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Metamatic {
     using UnityEngine;
@@ -8,6 +9,10 @@ namespace Metamatic {
     [ExecuteAlways]
     public class Slot: MonoBehaviour
     {
+        public enum UnplugReason {
+            Unknown,
+            ModuleDisable,
+        }
         [Tooltip("Can have only one module")]
         public bool single = false;
         [Tooltip("Attached modules will be attached to the slot without changing their parent"), LabelText("Virtual")]
@@ -40,18 +45,6 @@ namespace Metamatic {
 
         public ModuleAttachment PlugIn(Module module)
         {
-            return module.PlugIn(this);
-        }
-
-        /// <summary>
-        /// Attach module to the slot
-        /// </summary>
-        /// <param name="module"></param>
-        /// <param name="internalPlugIn"></param>
-        /// <returns></returns>
-        public ModuleAttachment PlugIn(Module module, Action<Slot, ModuleAttachment> internalPlugIn)
-        {
-            
             Module moduleInstance = null;
             if (module.gameObject.scene.name == null || module.gameObject.scene.name == gameObject.name)
             {
@@ -63,7 +56,17 @@ namespace Metamatic {
                 if (module.slot == this) return module.attachment;
                 moduleInstance = module;
             }
+            return moduleInstance.PlugIn(this);
+        }
 
+        /// <summary>
+        /// This method is used my internal module call, don't use it as a public API
+        /// </summary>
+        /// <param name="module"></param>
+        /// <param name="internalPlugIn"></param>
+        /// <returns></returns>
+        public ModuleAttachment PlugIn(Module moduleInstance, Action<Slot, ModuleAttachment> internalPlugIn)
+        {
             if (!virtualSlot)
             {
                 moduleInstance.transform.SetParent(transform, false);
@@ -98,12 +101,12 @@ namespace Metamatic {
             return attachement;
         }
 
-        public void Unplug(Module module)
+        public void Unplug(Module module, UnplugReason reason = UnplugReason.Unknown)
         {
-            module.Unplug(this);
+            module.Unplug(this, reason);
         }
 
-        public void Unplug(Module module, Action<Slot> internalUnplug)
+        public async void Unplug(Module module, Func<Slot, UnplugReason, Task> unplugModule, UnplugReason reason = UnplugReason.Unknown)
         {
             var attachementIndex = m_Attachments.FindIndex(a => a.module == module);
             if (attachementIndex < 0)
@@ -113,7 +116,7 @@ namespace Metamatic {
             // var attachement = m_Attachments[attachementIndex];
             m_Attachments.RemoveAt(attachementIndex);
 
-            internalUnplug(this);
+            await unplugModule(this, reason);
 
             if (m_FallbackAttachement == null && m_Attachments.Count == 0)
             {
@@ -183,7 +186,7 @@ namespace Metamatic {
 
         void OnDestroy()
         {
-            foreach(var attachment in m_Attachments)
+            foreach(var attachment in m_Attachments.ToArray())
             {
                 attachment.Release();
             }
