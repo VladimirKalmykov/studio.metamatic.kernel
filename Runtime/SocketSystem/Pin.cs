@@ -5,11 +5,8 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public interface IPin<T>
+    public interface IPin
     {
-        public Wire<T> wire { get; }
-        public Pin<T> inputPin { get; }
-        public Pin<T>[] outputPins { get; }
         /// <summary>
         /// Event triggered when the pin connect to new source pin or disconnect from the source pin
         /// </summary>
@@ -18,6 +15,13 @@ namespace Metamatic
         /// Event triggered when the wire becomes disabled or destroyed
         /// </summary>
         public event Action OnUnavailable;
+    }
+    public interface IPin<T>
+    {
+        public Wire<T> wire { get; }
+        public Pin<T> inputPin { get; }
+        public Pin<T>[] outputPins { get; }
+        
         /// <summary>
         /// Connect another pin to the input of this pin. The data flow will be from the input pin to this pin.
         /// </summary>
@@ -40,10 +44,22 @@ namespace Metamatic
         /// <param name="inputPin"></param>
         /// <param name="silent"></param>
         public void DisconnectInput(Pin<T> inputPin);
+        public bool hasInputPin { get; }
+        public bool hasOutputPins { get; }
+        public int getOutputPinsCount { get; }
     }
-    public abstract class Pin: MonoBehaviour
+    public abstract class Pin: MonoBehaviour, IPin
     {
-        
+        #region debug
+        #if DEBUG
+        public abstract object GetWireObjectData();
+        #endif
+        #endregion
+        public event Action OnReconnect;
+        public event Action OnUnavailable;
+        public abstract bool hasInputPin { get; }
+        public abstract bool hasOutputPins { get; }
+        public abstract int getOutputPinsCount { get; }
     }
     
     public abstract class Pin<T>: Pin, IPin<T>
@@ -76,8 +92,7 @@ namespace Metamatic
         
         #region public
         public Wire<T> wire => m_Wire ??= new Wire<T>();
-        public event Action OnReconnect;
-        public event Action OnUnavailable;
+        
         [Title("Input connected"), ShowIf("@m_InputPin != null"), ShowInInspector, HideLabel, ReadOnly, GUIColor("@m_InputPin != null ? Color.green : Color.red")]
         public Pin<T> inputPin => m_InputPin;
         [Title("Output connected"), ShowIf("@m_OutputPins.Count > 0"),ShowInInspector, HideLabel, ReadOnly, LabelText("Outputs"), GUIColor("@m_OutputPins.Count > 0 ? Color.green : Color.red")]
@@ -135,6 +150,9 @@ namespace Metamatic
             m_InputPin.InternalRemoveOutputPin(this);
             m_InputPin.OnUnavailable -= DisconnectInput;
         }
+        public override bool hasInputPin => m_InputPin != null;
+        public override bool hasOutputPins => m_OutputPins.Count > 0;
+        public override int getOutputPinsCount => m_OutputPins.Count;
         #endregion
         
         #region MonoBehaviour
@@ -146,6 +164,15 @@ namespace Metamatic
         {
             m_Wire.Dispose();
         }
+        #endregion
+        
+        #region debug
+        #if DEBUG
+        public override object GetWireObjectData()
+        {
+            return wire.data;
+        }
+        #endif
         #endregion
     }
 }

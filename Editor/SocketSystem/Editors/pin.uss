@@ -1,0 +1,73 @@
+﻿.StatusBar {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.PinBlockContainer {
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+.PinBlock {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    background-color: #323232;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 3px;
+    align-items: center;
+}
+
+.StatusCircle {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #262626;
+}
+
+.StatusCircle_Enabled {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #09defe;
+    border-color: #262626;
+    border-width: 3px;
+}
+
+.StatusCircle_Disconnected {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #ff0000;
+    border-color: #262626;
+    border-width: 3px;
+}
+
+
+.PinLabel {
+    font-size: 11px;
+    margin-left: 3px;
+}
+
+.PinBlockLine {
+    margin-top: 4px;
+    background-color: #323232;
+    height: 4px;
+    width: 30px;
+}
+
+.PinBlockLineCircle {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+    background-color: #323232;
+    margin-top: 2px;
+}
+
+.PinBlockLineCircle_Enabled {
+    background-color: #09defe;
+    border-color: #323232;
+    border-width: 3px;
+}
