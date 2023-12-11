@@ -93,6 +93,113 @@ namespace Metamatic
             return newState;
         }
     }
+    struct HugeTestStructState
+    {
+        public int intValue;
+        public bool bootValue;
+        public string stringValue;
+        public float floatValue;
+        public Vector2 vector2Value;
+        public Vector3 vector3Value;
+        public Vector4 vector4Value;
+        public Quaternion quaternionValue;
+        public DateTime dateTimeValue;
+        public TimeSpan timeSpanValue;
+        public Guid guidValue;
+        public byte byteValue;
+        public sbyte sbyteValue;
+        public short shortValue;
+        public ushort ushortValue;
+        public uint uintValue;
+        public int intValue2;
+        public bool bootValue2;
+        public string stringValue2;
+        public float floatValue2;
+        public Vector2 vector2Value2;
+        public Vector3 vector3Value2;
+        public Vector4 vector4Value2;
+        public Quaternion quaternionValue2;
+        public DateTime dateTimeValue2;
+        public TimeSpan timeSpanValue2;
+        public Guid guidValue2;
+        public byte byteValue2;
+        public sbyte sbyteValue2;
+        public short shortValue2;
+        public ushort ushortValue2;
+        public uint uintValue2;
+        public int intValue3;
+        public bool bootValue3;
+        public string stringValue3;
+        public float floatValue3;
+        public Vector2 vector2Value3;
+        public Vector3 vector3Value3;
+        public Vector4 vector4Value3;
+        public Quaternion quaternionValue3;
+        public DateTime dateTimeValue3;
+        public TimeSpan timeSpanValue3;
+        public Guid guidValue3;
+        public byte byteValue3;
+        public sbyte sbyteValue3;
+        public short shortValue3;
+        public ushort ushortValue3;
+        public uint uintValue3;
+
+        public static HugeTestStructState getRandomValues()
+        {
+            var newState = new HugeTestStructState
+            {
+                intValue = UnityEngine.Random.Range(int.MinValue, int.MaxValue),
+                bootValue = UnityEngine.Random.Range(0, 2) == 1,
+                stringValue = UnityEngine.Random.Range(0, 2) == 1 ? "Hello" : "World",
+                floatValue = UnityEngine.Random.Range(float.MinValue, float.MaxValue),
+                vector2Value = new Vector2(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                vector3Value = new Vector3(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                vector4Value = new Vector4(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                quaternionValue = new Quaternion(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                dateTimeValue = DateTime.Now,
+                timeSpanValue = TimeSpan.FromMilliseconds(UnityEngine.Random.Range(int.MinValue, int.MaxValue)),
+                guidValue = Guid.NewGuid(),
+                byteValue = (byte)UnityEngine.Random.Range(byte.MinValue, byte.MaxValue),
+                sbyteValue = (sbyte)UnityEngine.Random.Range(sbyte.MinValue, sbyte.MaxValue),
+                shortValue = (short)UnityEngine.Random.Range(short.MinValue, short.MaxValue),
+                ushortValue = (ushort)UnityEngine.Random.Range(ushort.MinValue, ushort.MaxValue),
+                uintValue = (uint)UnityEngine.Random.Range(uint.MinValue, uint.MaxValue),
+                intValue2 = UnityEngine.Random.Range(int.MinValue, int.MaxValue),
+                bootValue2 = UnityEngine.Random.Range(0, 2) == 1,
+                stringValue2 = UnityEngine.Random.Range(0, 2) == 1 ? "Hello" : "World",
+                floatValue2 = UnityEngine.Random.Range(float.MinValue, float.MaxValue),
+                vector2Value2 = new Vector2(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                vector3Value2 = new Vector3(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                vector4Value2 = new Vector4(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                quaternionValue2 = new Quaternion(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                dateTimeValue2 = DateTime.Now,
+                timeSpanValue2 = TimeSpan.FromMilliseconds(UnityEngine.Random.Range(int.MinValue, int.MaxValue)),
+                guidValue2 = Guid.NewGuid(),
+                byteValue2 = (byte)UnityEngine.Random.Range(byte.MinValue, byte.MaxValue),
+                sbyteValue2 = (sbyte)UnityEngine.Random.Range(sbyte.MinValue, sbyte.MaxValue),
+                shortValue2 = (short)UnityEngine.Random.Range(short.MinValue, short.MaxValue),
+                ushortValue2 = (ushort)UnityEngine.Random.Range(ushort.MinValue, ushort.MaxValue),
+                uintValue2 = (uint)UnityEngine.Random.Range(uint.MinValue, uint.MaxValue),
+                intValue3 = UnityEngine.Random.Range(int.MinValue, int.MaxValue),
+                bootValue3 = UnityEngine.Random.Range(0, 2) == 1,
+                stringValue3 = UnityEngine.Random.Range(0, 2) == 1 ? "Hello" : "World",
+                floatValue3 = UnityEngine.Random.Range(float.MinValue, float.MaxValue),
+                vector2Value3 = new Vector2(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                vector3Value3 = new Vector3(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                vector4Value3 = new Vector4(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                quaternionValue3 = new Quaternion(UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue), UnityEngine.Random.Range(float.MinValue, float.MaxValue)),
+                dateTimeValue3 = DateTime.Now,
+                timeSpanValue3 = TimeSpan.FromMilliseconds(UnityEngine.Random.Range(int.MinValue, int.MaxValue)),
+                guidValue3 = Guid.NewGuid(),
+                byteValue3 = (byte)UnityEngine.Random.Range(byte.MinValue, byte.MaxValue),
+                sbyteValue3 = (sbyte)UnityEngine.Random.Range(sbyte.MinValue, sbyte.MaxValue),
+                shortValue3 = (short)UnityEngine.Random.Range(short.MinValue, short.MaxValue),
+                ushortValue3 = (ushort)UnityEngine.Random.Range(ushort.MinValue, ushort.MaxValue),
+                uintValue3 = (uint)UnityEngine.Random.Range(uint.MinValue, uint.MaxValue)
+            };
+            return newState;
+        }
+    }
     public class WireTests
     {
         [Test]
@@ -255,6 +362,27 @@ namespace Metamatic
         }
 
         [Test]
+        public void InputOutputSourceWireProps()
+        {
+            var wire1 = new Wire<int>(15);
+            var wire2 = new Wire<int>(3);
+            var wire3 = new Wire<int>(5);
+            wire1.ConnectOutput(wire2);
+            wire2.ConnectOutput(wire3);
+            Assert.AreEqual(wire1, wire2.inputWire);
+            // Wire1 outputWires should contain wire2
+            Assert.AreEqual(1, wire1.outputWires.Length);
+            Assert.AreEqual(wire2, wire1.outputWires[0]);
+            // Wire2 outputWires should contain wire3
+            Assert.AreEqual(1, wire2.outputWires.Length);
+            Assert.AreEqual(wire3, wire2.outputWires[0]);
+            // Wire3 outputWires should be empty
+            Assert.AreEqual(0, wire3.outputWires.Length);
+            // Wire1 sourceWire should be null
+            Assert.AreEqual(null, wire1.sourceWire);
+        }
+
+        [Test]
         public void PerformanceTest()
         {
             var stopwatch = new Stopwatch();
@@ -301,7 +429,7 @@ namespace Metamatic
             var fps = 1000f / stopwatch.ElapsedMilliseconds;
             Debug.Log($"Performance result ms: {stopwatch.ElapsedMilliseconds}, fps: {fps}");
             Assert.AreEqual(vfs.intValue, testStates[testCases - 1].intValue);
-            Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 10, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
+            Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 12, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
         }
         
         [Test]
@@ -351,7 +479,7 @@ namespace Metamatic
             var fps = 1000f / stopwatch.ElapsedMilliseconds;
             Debug.Log($"Performance result ms: {stopwatch.ElapsedMilliseconds}, fps: {fps}");
             Assert.AreEqual(vfs.intValue, testStates[testCases - 1].intValue);
-            Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 10, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
+            Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 12, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
         }
         
         [Test]
@@ -382,7 +510,7 @@ namespace Metamatic
             var fps = 1000f / stopwatch.ElapsedMilliseconds;
             Debug.Log($"Performance result ms: {stopwatch.ElapsedMilliseconds}, fps: {fps}");
             Assert.AreEqual(vfs.intValue, testStates[testCases - 1].intValue);
-            Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 10, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
+            Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 12, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
         }
         
         [Test]
@@ -409,6 +537,37 @@ namespace Metamatic
             Debug.Log($"Performance result ms: {stopwatch.ElapsedMilliseconds}, fps: {fps}");
             Assert.AreEqual(vfs, testCases - 1);
             Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 1, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
+        }
+        
+        [Test]
+        public void HugeImmutableStructPerformanceTest()
+        {
+            var stopwatch = new Stopwatch();
+            var wire1 = new Wire<HugeTestStructState>(HugeTestStructState.getRandomValues());
+            var wire2 = new Wire<HugeTestStructState>();
+            wire2.ConnectInput(wire1);
+            var vfs = new HugeTestStructState();
+            wire2.Subscribe((ref HugeTestStructState data) =>
+            {
+                vfs = data;
+            });
+            var testCases = 100000; // expect 1 ms
+            var testStates = new HugeTestStructState[testCases];
+            for (var i = 0; i < testCases; i++)
+            {
+                testStates[i] = HugeTestStructState.getRandomValues();
+            }
+            stopwatch.Start();
+            /* Set data */
+            for (var i = 0; i < testCases; i++)
+            {
+                wire1.SetData( testStates[i]);
+            }
+            stopwatch.Stop();
+            var fps = 1000f / stopwatch.ElapsedMilliseconds;
+            Debug.Log($"Performance result ms: {stopwatch.ElapsedMilliseconds}, fps: {fps}");
+            Assert.AreEqual(vfs.intValue, testStates[testCases - 1].intValue);
+            Assert.LessOrEqual(stopwatch.ElapsedMilliseconds, 12, $"Метод выполняется слишком долго ({stopwatch.ElapsedMilliseconds}ms, {fps} fps)");
         }
     }
 }

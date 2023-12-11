@@ -13,6 +13,9 @@ namespace Metamatic
         public delegate void ChangeHandler(ref T data);
         public delegate T Transformer(ref T state);
         public delegate void Modifier(ref T state);
+        public Wire<T> inputWire { get; }
+        public Wire<T>[] outputWires { get; }
+        public Wire<T> sourceWire { get; }
         /// <summary>
         /// Current memoized wire data
         /// </summary>
@@ -77,10 +80,11 @@ namespace Metamatic
         /// Connected wire to the input
         /// </summary>
         private Wire<T> m_InputWire;
+
         /// <summary>
         /// Connected wires to the output
         /// </summary>
-        private List<Wire<T>> m_OutputWires;
+        private List<Wire<T>> m_OutputWires = new List<Wire<T>>();
         private Wire<T> m_SourceWire;
         private T m_Data;
         private bool m_IsDisposed;
@@ -95,9 +99,20 @@ namespace Metamatic
             if (m_InputWire == null) return;
             ConnectInput(m_InputWire);
         }
+        private void InternalSetOutputWire(Wire<T> wire)
+        {
+            m_OutputWires.Add(wire);
+        }
+        private void InternalRemoveOutputWire(Wire<T> wire)
+        {
+            m_OutputWires.Remove(wire);
+        }
         #endregion
         
         #region public
+        public Wire<T> inputWire => m_InputWire;
+        public Wire<T>[] outputWires => m_OutputWires.ToArray();
+        public Wire<T> sourceWire => m_SourceWire;
         /// <summary>
         /// The event is invoked when the input wire is connected or disconnected
         /// </summary>
@@ -140,6 +155,8 @@ namespace Metamatic
             }
             /* Connect input wire */
             m_InputWire = (Wire<T>) wire;
+            /* Connect input wire output */
+            m_InputWire.InternalSetOutputWire(this);
             /* Set source wire */
             m_SourceWire = m_InputWire.m_SourceWire ?? m_InputWire;
             /* Subscribe to input wire reconnect event */
@@ -173,6 +190,7 @@ namespace Metamatic
             /* Unsubscribe from input wire reconnect event */
             m_InputWire.OnReconnect -= ReconnectInput;
             m_InputWire.OnDispose -= DisconnectInput;
+            m_InputWire.InternalRemoveOutputWire(this);
             /* Set input wire to null */
             m_InputWire = null;
             if (!silent)
@@ -188,9 +206,11 @@ namespace Metamatic
 
         public void SetData(T nextData, bool silent = false)
         {
-            #if DEBUG
-            if (m_InputWire != null) Debug.LogWarning("You cannot change wire data which has connected input");
-            #endif
+            if (m_InputWire != null)
+            {
+                Debug.LogWarning("You cannot change wire data which has connected input");
+                return;
+            }
             m_Data = nextData;
             if (silent)
             {
@@ -204,9 +224,11 @@ namespace Metamatic
 
         public void SetData(IWire<T>.Transformer transformer, bool silent = false)
         {
-            #if DEBUG
-                if (m_InputWire != null) Debug.LogWarning("You cannot change wire data which has connected input");
-            #endif
+            if (m_InputWire != null)
+            {
+                Debug.LogWarning("You cannot change wire data which has connected input");
+                return;
+            }
             m_Data = transformer(ref m_Data);
             if (silent)
             {
