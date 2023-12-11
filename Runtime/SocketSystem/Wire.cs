@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -10,7 +11,8 @@ namespace Metamatic
     public interface IWire<T> : IWire
     {
         public delegate void ChangeHandler(ref T data);
-        public delegate T Modifier(ref T state);
+        public delegate T Transformer(ref T state);
+        public delegate void Modifier(ref T state);
         /// <summary>
         /// Current memoized wire data
         /// </summary>
@@ -47,12 +49,14 @@ namespace Metamatic
         /// <param name="data"></param>
         /// <param name="silent">Don't trigger change event (output wires won't know about changes)</param>
         public void SetData(T data, bool silent = false);
+
+        public void SetData(Transformer transformer, bool silent = false);
         /// <summary>
         /// Set data
         /// </summary>
         /// <param name="modifier"></param>
         /// <param name="silent">Don't trigger change event (output wires won't know about changes)</param>
-        public void SetData(Modifier modifier, bool silent = false);
+        public void Mutate(Modifier modifier, bool silent = false);
 
         /// <summary>
         /// Push changes to the output wires if wire is dirty
@@ -60,7 +64,7 @@ namespace Metamatic
         public void PushChanges();
 
         public Action Subscribe(ChangeHandler handler);
-        public void Destroy();
+        public void Dispose();
     }
     public class Wire: IWire
     {
@@ -79,7 +83,8 @@ namespace Metamatic
         private List<Wire<T>> m_OutputWires;
         private Wire<T> m_SourceWire;
         private T m_Data;
-        private event Action OnDestroy;
+        private bool m_IsDisposed;
+        private event Action OnDispose;
         private event IWire<T>.ChangeHandler OnChange;
         /// <summary>
         /// Determines that data was changed, but change event did not be invoked
@@ -104,6 +109,10 @@ namespace Metamatic
         public Wire(T data) : base()
         {
             m_Data = data;
+        }
+        ~Wire()
+        {
+            Dispose();
         }
         public T data
         {
@@ -135,7 +144,7 @@ namespace Metamatic
             m_SourceWire = m_InputWire.m_SourceWire ?? m_InputWire;
             /* Subscribe to input wire reconnect event */
             m_InputWire.OnReconnect += ReconnectInput;
-            m_InputWire.OnDestroy += DisconnectInput;
+            m_InputWire.OnDispose += DisconnectInput;
             /* Call reconnect event */
             OnReconnect?.Invoke();
             /* Call change event (because source changes so data too) */
@@ -163,7 +172,7 @@ namespace Metamatic
             m_SourceWire = null;
             /* Unsubscribe from input wire reconnect event */
             m_InputWire.OnReconnect -= ReconnectInput;
-            m_InputWire.OnDestroy -= DisconnectInput;
+            m_InputWire.OnDispose -= DisconnectInput;
             /* Set input wire to null */
             m_InputWire = null;
             if (!silent)
@@ -180,7 +189,7 @@ namespace Metamatic
         public void SetData(T nextData, bool silent = false)
         {
             #if DEBUG
-            if (m_InputWire != null) throw new Exception("You cannot change wire data which has connected input");
+            if (m_InputWire != null) Debug.LogWarning("You cannot change wire data which has connected input");
             #endif
             m_Data = nextData;
             if (silent)
@@ -193,12 +202,28 @@ namespace Metamatic
             }
         }
 
-        public void SetData(IWire<T>.Modifier modifier, bool silent = false)
+        public void SetData(IWire<T>.Transformer transformer, bool silent = false)
         {
             #if DEBUG
-            if (m_InputWire != null) throw new Exception("You cannot change wire data which has connected input");
+                if (m_InputWire != null) Debug.LogWarning("You cannot change wire data which has connected input");
             #endif
-            m_Data = modifier(ref m_Data);
+            m_Data = transformer(ref m_Data);
+            if (silent)
+            {
+                isDirty = true;
+            }
+            else
+            {
+                OnChange?.Invoke(ref m_Data);
+            }
+        }
+
+        public void Mutate(IWire<T>.Modifier modifier, bool silent = false)
+        {
+            #if DEBUG
+            if (m_InputWire != null) Debug.LogWarning("You cannot change wire data which has connected input");
+            #endif
+            modifier(ref m_Data);
             if (silent)
             {
                 isDirty = true;
@@ -231,21 +256,23 @@ namespace Metamatic
                 Subscribe(handler);
             };
             OnReconnect += reconnect;
-            OnDestroy += unsubscribe;
+            OnDispose += unsubscribe;
             ref var currentData = ref GetDataRef();
             handler(ref currentData);
 
             return () =>
             {
                 OnReconnect -= reconnect;
-                OnDestroy -= unsubscribe;
+                OnDispose -= unsubscribe;
                 unsubscribe();
             };
         }
 
-        public void Destroy()
+        public void Dispose()
         {
-            OnDestroy?.Invoke();
+            if (m_IsDisposed) return;
+            m_IsDisposed = true;
+            OnDispose?.Invoke();
         }
 
         #endregion
