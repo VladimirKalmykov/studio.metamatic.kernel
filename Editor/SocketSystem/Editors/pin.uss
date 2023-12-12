@@ -58,6 +58,10 @@
     width: 30px;
 }
 
+.Hidden {
+    display: none;
+}
+
 .PinBlockLineCircle {
     width: 8px;
     height: 8px;
@@ -67,7 +71,37 @@
 }
 
 .PinBlockLineCircle_Enabled {
-    background-color: #09defe;
+    background-color: #3a3a3a;
     border-color: #323232;
     border-width: 3px;
+}
+
+.PinBlockLineCircle_Active {
+    background-color:#09defe;
+    border-color: #323232;
+    border-width: 3px;
+}
+
+/* Object inputs */
+.ObjectInputsRow {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 2px;
+    flex-wrap: nowrap;
+}
+
+.ObjectInputsRow > * {
+    max-width: 50%;
+}
+
+.OutputPinObjectFieldContainer {
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-start;
+}
+
+.OutputPinObjectFieldContainer > * {
+    margin-top: 2px;
 }

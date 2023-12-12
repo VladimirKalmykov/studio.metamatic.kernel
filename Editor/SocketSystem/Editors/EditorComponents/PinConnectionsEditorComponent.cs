@@ -1,5 +1,7 @@
 ﻿using Metamatic.Extensions;
 using UnityEditor;
+using UnityEditor.Search;
+using UnityEngine.UI;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Effects
@@ -10,10 +12,13 @@ namespace Metamatic.Effects
         private VisualElement m_LeftSmallCircleStatus;
         private VisualElement m_RightBigCircleStatus;
         private VisualElement m_RightSmallCircleStatus;
+        private ObjectField m_InputObjectField;
+        private VisualElement m_OutputPinObjectFieldContainer;
         private Pin m_Pin;
+        private VisualElement m_Root;
         public override VisualElement CreateInspectorGUI()
         {
-            var root = new VisualElement();
+            var root = m_Root = new VisualElement();
         
             // Создаем элементы INPUT и OUTPUT
             var inputBlock = CreateLeftPinBlock("INPUT");
@@ -26,9 +31,35 @@ namespace Metamatic.Effects
             statusBar.Add(inputBlock);
             statusBar.Add(outputBlock);
             
-            root.Add(statusBar);
+            var objectInputsRow = CreateObjectInputRow();
             
+            root.Add(statusBar);
+            root.Add(objectInputsRow);
             root.styleSheets.Add(this.editor.LoadRelativeAsset<StyleSheet>("./pin.uss"));
+            return root;
+        }
+
+        public VisualElement CreateObjectInputRow()
+        {
+            var root = new VisualElement();
+            root.AddToClassList("ObjectInputsRow");
+            
+            /* Create input object field */
+            var inputPinObjectFieldContainer = new VisualElement();
+            var inputPinObjectField = m_InputObjectField = new ObjectField()
+            {
+                objectType = typeof(Pin)
+            };
+            
+            inputPinObjectFieldContainer.Add(inputPinObjectField);
+            root.Add(inputPinObjectFieldContainer);
+            
+            /* Create output object field container */
+            m_OutputPinObjectFieldContainer = new VisualElement();
+            m_OutputPinObjectFieldContainer.AddToClassList("OutputPinObjectFieldContainer");
+
+            root.Add(m_OutputPinObjectFieldContainer);
+            
             return root;
         }
 
@@ -96,43 +127,82 @@ namespace Metamatic.Effects
             return pinBlockContainer;
         }
 
-        private void UpdateData()
+        private void UpdateConnections()
         {
             var pin = m_Pin;
+            m_InputObjectField.objectType = pin.GetType();
             if (pin.hasInputPin)
             {
                 m_LeftBigCircleStatus.AddToClassList("StatusCircle_Enabled");
                 m_LeftSmallCircleStatus.AddToClassList("PinBlockLineCircle_Enabled");
+                m_InputObjectField.value = pin.DebugGetInputPin();
+                m_InputObjectField.RemoveFromClassList("Hidden");
             }
             else
             {
                 m_LeftBigCircleStatus.RemoveFromClassList("StatusCircle_Enabled");
                 m_LeftSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Enabled");
+                m_InputObjectField.AddToClassList("Hidden");
             }
 
             if (pin.hasOutputPins)
             {
                 m_RightBigCircleStatus.AddToClassList("StatusCircle_Enabled");
                 m_RightSmallCircleStatus.AddToClassList("PinBlockLineCircle_Enabled");
+                m_OutputPinObjectFieldContainer.Clear();
+                
+                /* Create output object field for each */
+                foreach (var outputPin in pin.DebugGetOutputPins())
+                {
+                    var outputPinObjectField = new ObjectField()
+                    {
+                        objectType = outputPin.GetType(),
+                        value = outputPin
+                    };
+                    m_OutputPinObjectFieldContainer.Add(outputPinObjectField);
+                }
             }
             else
             {
                 m_RightBigCircleStatus.RemoveFromClassList("StatusCircle_Enabled");
                 m_RightSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Enabled");
+                m_OutputPinObjectFieldContainer.Clear();
             }
+        }
+
+        private void UpdateData()
+        {
+            m_LeftSmallCircleStatus.AddToClassList("PinBlockLineCircle_Active");
+            m_RightSmallCircleStatus.AddToClassList("PinBlockLineCircle_Active");
+            m_Root.schedule.Execute(() =>
+            {
+                m_LeftSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Active");
+                m_RightSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Active");
+            }).StartingIn(250);
+        }
+
+        private void UpdateFrame()
+        {
+            
         }
         
         public override void OnEnable()
         {
             base.OnEnable();
             m_Pin = (Pin)target;
-            EditorApplication.update += UpdateData;
+            /* Set field type */
+            UpdateConnections();
+            m_Pin.OnReconnect += UpdateConnections;
+            m_Pin.OnDebugDataChanged += UpdateData;
+            EditorApplication.update += UpdateFrame;
         }
         
         public override void OnDisable()
         {
             base.OnDisable();
-            EditorApplication.update -= UpdateData;
+            m_Pin.OnReconnect -= UpdateConnections;
+            m_Pin.OnDebugDataChanged -= UpdateData;
+            EditorApplication.update -= UpdateFrame;
         }
     }
 }

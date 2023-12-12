@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -53,6 +54,13 @@ namespace Metamatic
         #region debug
         #if DEBUG
         public abstract object GetWireObjectData();
+        public abstract Pin DebugGetInputPin();
+        public abstract Pin[] DebugGetOutputPins();
+        public event Action OnDebugDataChanged;
+        protected void DebugHandleChangeUntyped()
+        {
+            OnDebugDataChanged?.Invoke();
+        }
         #endif
         #endregion
         public event Action OnReconnect;
@@ -164,6 +172,21 @@ namespace Metamatic
         {
             m_Wire.Dispose();
         }
+        #if DEBUG
+        private Action m_DebugUnsubscribeWire;
+        void OnEnable()
+        {
+            m_DebugUnsubscribeWire = wire.Subscribe(DebugHandleChangeTyped);
+        }
+        void OnDisable()
+        {
+            m_DebugUnsubscribeWire?.Invoke();
+        }
+        private void DebugHandleChangeTyped(ref T data)
+        {
+            DebugHandleChangeUntyped();
+        }
+        #endif
         #endregion
         
         #region debug
@@ -171,6 +194,14 @@ namespace Metamatic
         public override object GetWireObjectData()
         {
             return wire.data;
+        }
+        public override Pin DebugGetInputPin()
+        {
+            return inputPin;
+        }
+        public override Pin[] DebugGetOutputPins()
+        {
+            return outputPins.Cast<Pin>().ToArray();
         }
         #endif
         #endregion
