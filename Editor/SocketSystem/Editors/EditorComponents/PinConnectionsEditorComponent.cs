@@ -1,6 +1,7 @@
 ﻿using Metamatic.Extensions;
 using UnityEditor;
 using UnityEditor.Search;
+using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
 
@@ -129,13 +130,26 @@ namespace Metamatic.Effects
 
         private void UpdateConnections()
         {
+            Debug.Log("UpdateConnections");
             var pin = m_Pin;
             m_InputObjectField.objectType = pin.GetType();
             if (pin.hasInputPin)
             {
                 m_LeftBigCircleStatus.AddToClassList("StatusCircle_Enabled");
+                var inputPin = pin.DebugGetInputPin();
+                var inputComponent = inputPin.GetComponent();
+                var isPinInstance = inputComponent is Pin;
+                if (isPinInstance)
+                {
+                    m_LeftBigCircleStatus.RemoveFromClassList("VirtualPin");
+                }
+                else
+                {
+                    m_LeftBigCircleStatus.AddToClassList("VirtualPin");
+                }
+                
+                m_InputObjectField.value = inputComponent;
                 m_LeftSmallCircleStatus.AddToClassList("PinBlockLineCircle_Enabled");
-                m_InputObjectField.value = pin.DebugGetInputPin();
                 m_InputObjectField.RemoveFromClassList("Hidden");
             }
             else
@@ -143,6 +157,7 @@ namespace Metamatic.Effects
                 m_LeftBigCircleStatus.RemoveFromClassList("StatusCircle_Enabled");
                 m_LeftSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Enabled");
                 m_InputObjectField.AddToClassList("Hidden");
+                m_LeftBigCircleStatus.RemoveFromClassList("VirtualPin");
             }
 
             if (pin.hasOutputPins)
@@ -150,22 +165,40 @@ namespace Metamatic.Effects
                 m_RightBigCircleStatus.AddToClassList("StatusCircle_Enabled");
                 m_RightSmallCircleStatus.AddToClassList("PinBlockLineCircle_Enabled");
                 m_OutputPinObjectFieldContainer.Clear();
-                
+
+                var onlyVirtualPins = true;
                 /* Create output object field for each */
                 foreach (var outputPin in pin.DebugGetOutputPins())
                 {
+                    var outputComponent = outputPin.GetComponent();
+                    var isPinInstance = outputComponent is Pin;
+                    if (isPinInstance)
+                    {
+                        onlyVirtualPins = false;
+                    }
                     var outputPinObjectField = new ObjectField()
                     {
                         objectType = outputPin.GetType(),
-                        value = outputPin
+                        value = outputPin.GetComponent()
                     };
                     m_OutputPinObjectFieldContainer.Add(outputPinObjectField);
                 }
+
+                if (onlyVirtualPins)
+                {
+                    m_RightBigCircleStatus.AddToClassList("VirtualPin");
+                }
+                else
+                {
+                    m_RightBigCircleStatus.RemoveFromClassList("VirtualPin");
+                }
+                
             }
             else
             {
                 m_RightBigCircleStatus.RemoveFromClassList("StatusCircle_Enabled");
                 m_RightSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Enabled");
+                m_RightBigCircleStatus.RemoveFromClassList("VirtualPin");
                 m_OutputPinObjectFieldContainer.Clear();
             }
         }

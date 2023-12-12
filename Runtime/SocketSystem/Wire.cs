@@ -10,7 +10,8 @@ namespace Metamatic
     }
     public interface IWire<T> : IWire
     {
-        public delegate void ChangeHandler(ref T data);
+        public delegate void ChangeHandler(T data);
+        public delegate void ChangeRefHandler(ref T data);
         public delegate T Transformer(ref T state);
         public delegate void Modifier(ref T state);
         public Wire<T> inputWire { get; }
@@ -67,6 +68,7 @@ namespace Metamatic
         public void PushChanges();
 
         public Action Subscribe(ChangeHandler handler);
+        public Action SubscribeRef(ChangeRefHandler handler);
         public void Dispose();
     }
     public class Wire: IWire
@@ -89,7 +91,7 @@ namespace Metamatic
         private T m_Data;
         private bool m_IsDisposed;
         private event Action OnDispose;
-        private event IWire<T>.ChangeHandler OnChange;
+        private event IWire<T>.ChangeRefHandler OnChange;
         /// <summary>
         /// Determines that data was changed, but change event did not be invoked
         /// </summary>
@@ -267,15 +269,51 @@ namespace Metamatic
         public Action Subscribe(IWire<T>.ChangeHandler handler)
         {
             var sourceWire = m_SourceWire ?? this;
-            sourceWire.OnChange += handler;
-            Action unsubscribe = () =>
+            IWire<T>.ChangeRefHandler handlerRef = (ref T data) =>
             {
-                sourceWire.OnChange -= handler;
+                handler(data);
             };
+            sourceWire.OnChange += handlerRef;
+            Action unsubscribe = null;
             Action reconnect = () =>
             {
                 unsubscribe();
                 Subscribe(handler);
+            };
+            unsubscribe = () =>
+            {
+                sourceWire.OnChange -= handlerRef;
+                OnReconnect -= reconnect;
+                OnDispose -= unsubscribe;
+                unsubscribe = () => { };
+            };
+            OnReconnect += reconnect;
+            OnDispose += unsubscribe;
+            ref var currentData = ref GetDataRef();
+            handler(currentData);
+
+            return () =>
+            {
+                unsubscribe();
+            };
+        }
+        
+        public Action SubscribeRef(IWire<T>.ChangeRefHandler handler)
+        {
+            var sourceWire = m_SourceWire ?? this;
+            sourceWire.OnChange += handler;
+            Action unsubscribe = null;
+            Action reconnect = () =>
+            {
+                unsubscribe();
+                SubscribeRef(handler);
+            };
+            unsubscribe = () =>
+            {
+                sourceWire.OnChange -= handler;
+                OnReconnect -= reconnect;
+                OnDispose -= unsubscribe;
+                unsubscribe = () => { };
             };
             OnReconnect += reconnect;
             OnDispose += unsubscribe;
@@ -284,8 +322,6 @@ namespace Metamatic
 
             return () =>
             {
-                OnReconnect -= reconnect;
-                OnDispose -= unsubscribe;
                 unsubscribe();
             };
         }

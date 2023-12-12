@@ -76,6 +76,10 @@
     border-width: 3px;
 }
 
+.VirtualPin {
+    background-color: #fffb00;
+}
+
 .PinBlockLineCircle_Active {
     background-color:#09defe;
     border-color: #323232;

@@ -16,46 +16,33 @@ namespace Metamatic
         /// Event triggered when the wire becomes disabled or destroyed
         /// </summary>
         public event Action OnUnavailable;
+        /// <summary>
+        /// Get component that contains this pin (it can be Pin itself or some wrapper component like VirtualPinInput/Output)
+        /// </summary>
+        /// <returns></returns>
+        public Component GetComponent();
     }
-    public interface IPin<T>
+    
+    public interface IPin<T>: IPin
     {
-        public Wire<T> wire { get; }
-        public Pin<T> inputPin { get; }
-        public Pin<T>[] outputPins { get; }
-        
         /// <summary>
         /// Connect another pin to the input of this pin. The data flow will be from the input pin to this pin.
         /// </summary>
         /// <param name="inputPin"></param>
         /// <returns></returns>
-        public Action ConnectInput(Pin<T> inputPin);
-        /// <summary>
-        /// Connect another pin to the output of this pin. The data flow will be from this pin to the output pin.
-        /// </summary>
-        /// <param name="outputPin"></param>
-        /// <returns></returns>
-        public Action ConnectOutput(Pin<T> outputPin);
-        /// <summary>
-        /// Disconnect any input pin
-        /// </summary>
-        public void DisconnectInput();
-        /// <summary>
-        /// Disconnect input pin if it is connected to the specified pin
-        /// </summary>
-        /// <param name="inputPin"></param>
-        /// <param name="silent"></param>
-        public void DisconnectInput(Pin<T> inputPin);
-        public bool hasInputPin { get; }
-        public bool hasOutputPins { get; }
-        public int getOutputPinsCount { get; }
+        public Action ConnectInput(IPin<T> inputPin);
+        public void InternalAddOutputPin(IPin<T> pin);
+        public void InternalRemoveOutputPin(IPin<T> pin);
+        public Wire<T> InternalGetWire();
+        public Wire<T> wire { get; }
     }
     public abstract class Pin: MonoBehaviour, IPin
     {
         #region debug
         #if DEBUG
         public abstract object GetWireObjectData();
-        public abstract Pin DebugGetInputPin();
-        public abstract Pin[] DebugGetOutputPins();
+        public abstract IPin DebugGetInputPin();
+        public abstract IPin[] DebugGetOutputPins();
         public event Action OnDebugDataChanged;
         protected void DebugHandleChangeUntyped()
         {
@@ -65,18 +52,26 @@ namespace Metamatic
         #endregion
         public event Action OnReconnect;
         public event Action OnUnavailable;
+        public Component GetComponent()
+        {
+            return this;
+        }
+
         public abstract bool hasInputPin { get; }
         public abstract bool hasOutputPins { get; }
-        public abstract int getOutputPinsCount { get; }
+        protected void Reconnect()
+        {
+            OnReconnect?.Invoke();
+        }
     }
     
     public abstract class Pin<T>: Pin, IPin<T>
     {
         #region private
         private Wire<T> m_Wire;
-        private Pin<T> m_InputPin;
-        private List<Pin<T>> m_OutputPins = new List<Pin<T>>();
-        private void InternalAddOutputPin(Pin<T> outputPin)
+        private IPin<T> m_InputPin;
+        private List<IPin<T>> m_OutputPins = new List<IPin<T>>();
+        public void InternalAddOutputPin(IPin<T> outputPin)
         {
            if (outputPin == null) {
                 throw new ArgumentNullException(nameof(outputPin));
@@ -85,8 +80,14 @@ namespace Metamatic
                throw new InvalidOperationException("This output pin already added");
            }
            m_OutputPins.Add(outputPin);
+           Reconnect();
         }
-        private void InternalRemoveOutputPin(Pin<T> outputPin)
+
+        public Wire<T> InternalGetWire()
+        {
+            return wire;
+        }
+        public void InternalRemoveOutputPin(IPin<T> outputPin)
         {
             if (outputPin == null) {
                 throw new ArgumentNullException(nameof(outputPin));
@@ -95,6 +96,7 @@ namespace Metamatic
                 throw new InvalidOperationException("This output pin is not added");
             }
             m_OutputPins.Remove(outputPin);
+            Reconnect();
         }
         #endregion
         
@@ -102,11 +104,11 @@ namespace Metamatic
         public Wire<T> wire => m_Wire ??= new Wire<T>();
         
         [Title("Input connected"), ShowIf("@m_InputPin != null"), ShowInInspector, HideLabel, ReadOnly, GUIColor("@m_InputPin != null ? Color.green : Color.red")]
-        public Pin<T> inputPin => m_InputPin;
+        public IPin<T> inputPin => m_InputPin;
         [Title("Output connected"), ShowIf("@m_OutputPins.Count > 0"),ShowInInspector, HideLabel, ReadOnly, LabelText("Outputs"), GUIColor("@m_OutputPins.Count > 0 ? Color.green : Color.red")]
         [ListDrawerSettings(IsReadOnly = true, NumberOfItemsPerPage = 5, ShowFoldout = true)]
-        public Pin<T>[] outputPins => m_OutputPins.ToArray();
-        public Action ConnectInput(Pin<T> inputPin)
+        public IPin<T>[] outputPins => m_OutputPins.ToArray();
+        public Action ConnectInput(IPin<T> inputPin)
         {
             if (inputPin == null)
             {
@@ -121,8 +123,10 @@ namespace Metamatic
             /* Add this pin to output pins of the input pin */
             m_InputPin.InternalAddOutputPin(this);
             /* Connect wires */
-            m_Wire.ConnectInput(m_InputPin.wire);
+            var anotherWire = m_InputPin.InternalGetWire();
+            wire.ConnectInput(anotherWire);
             m_InputPin.OnUnavailable += DisconnectInput;
+            Reconnect();
 
             return () =>
             {
@@ -130,7 +134,7 @@ namespace Metamatic
             };
         }
 
-        public Action ConnectOutput(Pin<T> outputPin)
+        public Action ConnectOutput(IPin<T> outputPin)
         {
             return outputPin.ConnectInput(this);
         }
@@ -144,7 +148,7 @@ namespace Metamatic
             DisconnectInput(m_InputPin);
         }
 
-        public void DisconnectInput(Pin<T> inputPin)
+        public void DisconnectInput(IPin<T> inputPin)
         {
             if (inputPin == null)
             {
@@ -154,29 +158,45 @@ namespace Metamatic
             {
                 return;
             }
-            m_Wire.DisconnectInput(inputPin.wire);
+            wire.DisconnectInput(inputPin.InternalGetWire());
             m_InputPin.InternalRemoveOutputPin(this);
             m_InputPin.OnUnavailable -= DisconnectInput;
+            m_InputPin = null;
+            Reconnect();
         }
         public override bool hasInputPin => m_InputPin != null;
         public override bool hasOutputPins => m_OutputPins.Count > 0;
-        public override int getOutputPinsCount => m_OutputPins.Count;
+        
+        /// <summary>
+        /// Create virtual input already connected to this pin
+        /// </summary>
+        /// <param name="component"></param>
+        /// <returns></returns>
+        public VirtualPinInput<T> CreateVirtualInput(Component component)
+        {
+            return new VirtualPinInput<T>(component, this);
+        }
+        /// <summary>
+        /// Create virtual output already connected to this pin
+        /// </summary>
+        /// <param name="component"></param>
+        /// <returns></returns>
+        public VirtualPinOutput<T> CreateVirtualOutput(Component component)
+        {
+            return new VirtualPinOutput<T>(component, this);
+        }
         #endregion
         
         #region MonoBehaviour
-        void Awake()
-        {
-            m_Wire = new Wire<T>();
-        }
         void OnDestroy()
         {
-            m_Wire.Dispose();
+            wire.Dispose();
         }
         #if DEBUG
         private Action m_DebugUnsubscribeWire;
         void OnEnable()
         {
-            m_DebugUnsubscribeWire = wire.Subscribe(DebugHandleChangeTyped);
+            m_DebugUnsubscribeWire = wire.SubscribeRef(DebugHandleChangeTyped);
         }
         void OnDisable()
         {
@@ -195,13 +215,13 @@ namespace Metamatic
         {
             return wire.data;
         }
-        public override Pin DebugGetInputPin()
+        public override IPin DebugGetInputPin()
         {
-            return inputPin;
+            return inputPin as IPin;
         }
-        public override Pin[] DebugGetOutputPins()
+        public override IPin[] DebugGetOutputPins()
         {
-            return outputPins.Cast<Pin>().ToArray();
+            return outputPins.Cast<IPin>().ToArray();
         }
         #endif
         #endregion

@@ -207,7 +207,7 @@ namespace Metamatic
         {
             var wire = new Wire<int>(0);
             var vfs = 0;
-            wire.Subscribe((ref int value) =>
+            wire.SubscribeRef((ref int value) =>
             {
                 vfs = value;
             });
@@ -252,7 +252,7 @@ namespace Metamatic
             wire9.ConnectOutput(wire10);
             Assert.AreEqual(15, wire10.data);
             var vfs = 0;
-            wire10.Subscribe((ref int data) =>
+            wire10.SubscribeRef((ref int data) =>
             {
                 vfs = data;
             });
@@ -311,7 +311,7 @@ namespace Metamatic
             var wire2 = new Wire<int>(33);
             var wire3 = new Wire<int>();
             var vfs = 0;
-            wire3.Subscribe((ref int data) =>
+            wire3.SubscribeRef((ref int data) =>
             {
                 vfs = data;
             });
@@ -390,7 +390,7 @@ namespace Metamatic
             var wire2 = new Wire<TestState>();
             wire2.ConnectInput(wire1);
             var vfs = new TestState();
-            wire2.Subscribe((ref TestState data) =>
+            wire2.SubscribeRef((ref TestState data) =>
             {
                 vfs = data;
             });
@@ -440,7 +440,7 @@ namespace Metamatic
             var wire2 = new Wire<TestStructState>();
             wire2.ConnectInput(wire1);
             var vfs = new TestStructState();
-            wire2.Subscribe((ref TestStructState data) =>
+            wire2.SubscribeRef((ref TestStructState data) =>
             {
                 vfs = data;
             });
@@ -490,7 +490,7 @@ namespace Metamatic
             var wire2 = new Wire<TestStructState>();
             wire2.ConnectInput(wire1);
             var vfs = new TestStructState();
-            wire2.Subscribe((ref TestStructState data) =>
+            wire2.SubscribeRef((ref TestStructState data) =>
             {
                 vfs = data;
             });
@@ -521,7 +521,7 @@ namespace Metamatic
             var wire2 = new Wire<int>();
             wire2.ConnectInput(wire1);
             var vfs = 0;
-            wire2.Subscribe((ref int data) =>
+            wire2.SubscribeRef((ref int data) =>
             {
                 vfs = data;
             });
@@ -547,7 +547,7 @@ namespace Metamatic
             var wire2 = new Wire<HugeTestStructState>();
             wire2.ConnectInput(wire1);
             var vfs = new HugeTestStructState();
-            wire2.Subscribe((ref HugeTestStructState data) =>
+            wire2.SubscribeRef((ref HugeTestStructState data) =>
             {
                 vfs = data;
             });
