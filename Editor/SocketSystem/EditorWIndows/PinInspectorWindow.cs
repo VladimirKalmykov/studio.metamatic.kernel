@@ -8,6 +8,14 @@ using UnityEditor.UIElements;
 
 public class PinInspectorWindow : EditorWindow
 {
+    public static void OpenIfNotOpened()
+    {
+        var window = GetWindow<PinInspectorWindow>();
+        if (window == null)
+        {
+            ShowWindow();
+        }
+    }
     private Pin m_CurrentComponent;
     private VisualElement m_RootElement;
     private VisualElement m_ValueContainer;
@@ -24,6 +32,8 @@ public class PinInspectorWindow : EditorWindow
 
     public void OnEnable()
     {
+        Debug.Log("Enable");
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         m_RootElement = rootVisualElement;
         
         m_ComponentSelector = new ObjectField("Pin");
@@ -42,30 +52,29 @@ public class PinInspectorWindow : EditorWindow
             }
             SetCurrentComponent(m_CurrentComponent);
         });
-        m_ComponentSelector.value = m_CurrentComponent;
+        m_ComponentSelector.value = null;
         
         m_RootElement.Add(m_ComponentSelector);
 
         m_ValueContainer = new VisualElement();
         m_RootElement.Add(m_ValueContainer);
         
-        Debug.Log($"Initial m_CurrentComponent: {m_CurrentComponent}");
         /* Get component type */
-        if (m_CurrentComponent != null)
-        {
-            HandleComponentChange(m_CurrentComponent);
-        }
+        HandleComponentChange(m_CurrentComponent);
     }
 
     private void HandleComponentChange(Pin component)
     {
-        Debug.Log($"Handle component change: {component}");
         if (m_CurrentComponent != null)
         {
             m_CurrentComponent.OnDebugDataChanged -= UpdateData;
         }
 
-        if (component == null) return;
+        if (component == null)
+        {
+            ClearDataInView();
+            return;
+        }
         component.OnDebugDataChanged += UpdateData;
         m_CurrentComponent = component;
         Type componentType = component.GetType();
@@ -91,10 +100,33 @@ public class PinInspectorWindow : EditorWindow
         }
     }
 
+    private void ClearDataInView()
+    {
+        m_ValueContainer.Clear();
+    }
+
+    private Pin m_BackUpComponent;
+    private void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        Debug.Log($"state: {state}");
+        if (state == PlayModeStateChange.ExitingPlayMode)
+        {
+            m_BackUpComponent = m_CurrentComponent;
+            m_ComponentSelector.value = null;
+            SetCurrentComponent(null);
+            ClearDataInView();
+        } else if (state == PlayModeStateChange.EnteredPlayMode)
+        {
+            SetCurrentComponent(m_BackUpComponent);
+            m_ComponentSelector.value = m_BackUpComponent;
+        }
+    }
     public void OnDisable()
     {
+        EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
         if (m_CurrentComponent != null)
         {
+            Debug.Log("Unsubscribe OnDebugDataChanged");
             m_CurrentComponent.OnDebugDataChanged -= UpdateData;
             m_CurrentComponent = null;
         }
@@ -102,11 +134,8 @@ public class PinInspectorWindow : EditorWindow
 
     public void SetCurrentComponent(Pin component)
     {
-        if (component != m_CurrentComponent)
-        {
-            HandleComponentChange(component);
-            RefreshDataInView();
-        }
+        HandleComponentChange(component);
+        RefreshDataInView();
     }
     
     #region internal

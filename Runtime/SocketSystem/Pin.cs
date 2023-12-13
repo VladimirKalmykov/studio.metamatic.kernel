@@ -40,6 +40,31 @@ namespace Metamatic
     {
         #region debug
         #if DEBUG
+        public static List<Pin> s_Inspect = new List<Pin>();
+        public static event Action<Pin> OnAddToInspect;
+        public static event Action<Pin> OnRemoveFromInspect;
+        public static void AddToInspect(Pin pin)
+        {
+            s_Inspect.Add(pin);
+            OnAddToInspect?.Invoke(pin);
+        }
+
+        public static void RemoveFromInspect(Pin pin)
+        {
+            s_Inspect.Remove(pin);
+            OnRemoveFromInspect?.Invoke(pin);
+        }
+        public static void ToogleInspect(Pin pin)
+        {
+            if (s_Inspect.Contains(pin))
+            {
+                RemoveFromInspect(pin);
+            }
+            else
+            {
+                AddToInspect(pin);
+            }
+        }
         public abstract object GetWireObjectData();
         public abstract IPin DebugGetInputPin();
         public abstract IPin[] DebugGetOutputPins();

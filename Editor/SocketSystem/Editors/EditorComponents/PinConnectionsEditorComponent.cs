@@ -4,6 +4,7 @@ using UnityEditor.Search;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
+using Button = UnityEngine.UIElements.Button;
 
 namespace Metamatic.Effects
 {
@@ -17,12 +18,15 @@ namespace Metamatic.Effects
         private VisualElement m_OutputPinObjectFieldContainer;
         private Pin m_Pin;
         private VisualElement m_Root;
+        private Button m_InspectButton;
+        private bool m_IsInspecting;
         public override VisualElement CreateInspectorGUI()
         {
             var root = m_Root = new VisualElement();
         
             // Создаем элементы INPUT и OUTPUT
             var inputBlock = CreateLeftPinBlock("INPUT");
+            var centerFunctions = CreateCenterFunctions();
             var outputBlock = CreateRightPinBlock("OUTPUT");
             
             var statusBar = new VisualElement();
@@ -30,6 +34,7 @@ namespace Metamatic.Effects
             
             // Добавляем их к корневому элементу
             statusBar.Add(inputBlock);
+            statusBar.Add(centerFunctions);
             statusBar.Add(outputBlock);
             
             var objectInputsRow = CreateObjectInputRow();
@@ -128,6 +133,26 @@ namespace Metamatic.Effects
             return pinBlockContainer;
         }
 
+        private VisualElement CreateCenterFunctions()
+        {
+            var root = new VisualElement();
+            root.AddToClassList("CenterFunctions");
+            m_InspectButton = new Button(() =>
+            {
+                if (Application.isPlaying)
+                {
+                    Pin.ToogleInspect(m_Pin);
+                    PinInspectorWindow.OpenIfNotOpened();
+                }
+            })
+            {
+                text = "INSPECT"
+            };
+            m_InspectButton.AddToClassList("CustomButton");
+            root.Add(m_InspectButton);
+            return root;
+        }
+
         private void UpdateConnections()
         {
             var pin = m_Pin;
@@ -212,21 +237,50 @@ namespace Metamatic.Effects
                 m_RightSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Active");
             }).StartingIn(250);
         }
-
-        private void UpdateFrame()
+    
+        private void OnAddToInspect(Pin pin)
         {
-            
+            if (pin == m_Pin)
+            {
+                m_IsInspecting = true;
+                UpdateInspectButton();
+            }            
+        }
+        
+        private void OnRemoveFromInspect(Pin pin)
+        {
+            if (pin == m_Pin)
+            {
+                m_IsInspecting = false;
+                UpdateInspectButton();
+            }    
+        }
+
+        private void UpdateInspectButton()
+        {
+            if (m_IsInspecting)
+            {
+                m_InspectButton.AddToClassList("Active");
+            }
+            else
+            {
+                m_InspectButton.RemoveFromClassList("Active");
+            }
         }
         
         public override void OnEnable()
         {
             base.OnEnable();
             m_Pin = (Pin)target;
+            m_IsInspecting = Pin.s_Inspect.Contains(m_Pin);
+            UpdateInspectButton();
             /* Set field type */
             UpdateConnections();
             m_Pin.OnReconnect += UpdateConnections;
             m_Pin.OnDebugDataChanged += UpdateData;
-            EditorApplication.update += UpdateFrame;
+            Pin.OnAddToInspect += OnAddToInspect;
+            Pin.OnRemoveFromInspect += OnRemoveFromInspect;
+            // EditorApplication.update += UpdateFrame;
         }
         
         public override void OnDisable()
@@ -234,7 +288,7 @@ namespace Metamatic.Effects
             base.OnDisable();
             m_Pin.OnReconnect -= UpdateConnections;
             m_Pin.OnDebugDataChanged -= UpdateData;
-            EditorApplication.update -= UpdateFrame;
+            // EditorApplication.update -= UpdateFrame;
         }
     }
 }

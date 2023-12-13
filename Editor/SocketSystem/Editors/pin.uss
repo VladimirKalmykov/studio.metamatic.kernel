@@ -109,3 +109,37 @@
 .OutputPinObjectFieldContainer > * {
     margin-top: 2px;
 }
+
+.CenterFunctions {
+    flex-direction: row;
+    align-items: stretch;
+    height: 22px;
+}
+
+.CenterFunctions > * {
+    margin-left: 1px;
+    margin-right: 1px;
+}
+
+.CustomButton {
+    background-color: #323232;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 3px;
+    border-width: 0px;
+    color: #8d8d8d;
+    font-size: 9px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.CustomButton:hover {
+    background-color: #3a3a3a;
+}
+
+.CustomButton.Active {
+    background-color: #09defe;
+    color: #323232;
+}

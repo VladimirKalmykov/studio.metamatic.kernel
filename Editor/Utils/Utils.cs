@@ -19,7 +19,6 @@ namespace Metamatic
             var table = new VisualElement();
             table.style.flexDirection = FlexDirection.Column;
             var props = dataType.GetFields();
-            Debug.Log($"props: {JsonUtility.ToJson(props)}");
             foreach (var prop in props)
             {
                 var row = new VisualElement();
