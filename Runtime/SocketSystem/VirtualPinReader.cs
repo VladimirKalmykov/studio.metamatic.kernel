@@ -18,12 +18,12 @@ namespace Metamatic
         public Action Subscribe(IWire<T>.ChangeHandler handler);
         public Action SubscribeRef(IWire<T>.ChangeRefHandler handler);
     }
-    public class VirtualPinOutput<T>: VirtualPin, IVirtualPinOutput<T>, IPin<T>
+    public class VirtualPinReader<T>: VirtualPin, IVirtualPinOutput<T>, IPin<T>
     {
         private Component m_Component;
         private IPin<T> m_InputPin;
         private Wire<T> m_Wire;
-        public VirtualPinOutput(Component component, IPin<T> pin)
+        public VirtualPinReader(Component component, IPin<T> pin)
         {
             m_Component = component;
             m_Wire = new Wire<T>();

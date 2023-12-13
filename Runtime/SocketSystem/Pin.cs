@@ -181,18 +181,18 @@ namespace Metamatic
         /// </summary>
         /// <param name="component"></param>
         /// <returns></returns>
-        public VirtualPinInput<T> CreateVirtualInput(Component component)
+        public VirtualPinWriter<T> CreateVirtualInput(Component component)
         {
-            return new VirtualPinInput<T>(component, this);
+            return new VirtualPinWriter<T>(component, this);
         }
         /// <summary>
         /// Create virtual output already connected to this pin
         /// </summary>
         /// <param name="component"></param>
         /// <returns></returns>
-        public VirtualPinOutput<T> CreateVirtualOutput(Component component)
+        public VirtualPinReader<T> CreateVirtualOutput(Component component)
         {
-            return new VirtualPinOutput<T>(component, this);
+            return new VirtualPinReader<T>(component, this);
         }
         #endregion
         

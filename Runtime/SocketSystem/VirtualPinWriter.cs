@@ -14,12 +14,12 @@ namespace Metamatic
         public void Mutate(IWire<T>.Modifier modifier);
     }
 
-    public class VirtualPinInput<T>: VirtualPin, IVirtualPinInput<T>, IPin<T>
+    public class VirtualPinWriter<T>: VirtualPin, IVirtualPinInput<T>, IPin<T>
     {
         private Component m_Component;
         private IPin<T> m_OutputPin;
         private Wire<T> m_Wire;
-        public VirtualPinInput(Component component, IPin<T> pin)
+        public VirtualPinWriter(Component component, IPin<T> pin)
         {
             m_Component = component;
             m_Wire = new Wire<T>();
