@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class BehaviourToSocketAdapter<TState, TTarget>: Socket<TState>
+    public class BehaviourToSocketLegacyAdapter<TState, TTarget>: SocketLegacy<TState>
         where TState : struct
         where TTarget: MonoBehaviour
     {

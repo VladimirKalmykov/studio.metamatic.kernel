@@ -174,14 +174,14 @@ namespace Metamatic {
         /**
          * Get all sockets of the slot
          */
-        public Socket[] GetSockets()
+        public SocketLegacy[] GetSockets()
         {
             return GetInternalSockets();
         }
         
-        protected virtual Socket[] GetInternalSockets()
+        protected virtual SocketLegacy[] GetInternalSockets()
         {
-            return new Socket[0];
+            return new SocketLegacy[0];
         }
 
         void OnDestroy()
@@ -223,41 +223,41 @@ namespace Metamatic {
     }
 
     public class Slot<TSocket1> : Slot
-    where TSocket1: Socket
+    where TSocket1: SocketLegacy
     {
         [SerializeField, BoxGroup("Sockets")]
         protected TSocket1 socket1;
         
-        protected override Socket[] GetInternalSockets()
+        protected override SocketLegacy[] GetInternalSockets()
         {
-            return new Socket[] {socket1};
+            return new SocketLegacy[] {socket1};
         }
     }
     
     public class Slot<TSocket1, TSocket2> : Slot<TSocket1>
-        where TSocket1: Socket
-        where TSocket2: Socket
+        where TSocket1: SocketLegacy
+        where TSocket2: SocketLegacy
     {
         [SerializeField, BoxGroup("Sockets")]
         protected TSocket2 socket2;
         
-        protected override Socket[] GetInternalSockets()
+        protected override SocketLegacy[] GetInternalSockets()
         {
-            return new Socket[] {socket1, socket2};
+            return new SocketLegacy[] {socket1, socket2};
         }
     }
     
     public class Slot<TSocket1, TSocket2, TSocket3> : Slot<TSocket1, TSocket2>
-        where TSocket1: Socket
-        where TSocket2: Socket
-        where TSocket3: Socket
+        where TSocket1: SocketLegacy
+        where TSocket2: SocketLegacy
+        where TSocket3: SocketLegacy
     {
         [SerializeField, BoxGroup("Sockets")]
         protected TSocket3 socket3;
         
-        protected override Socket[] GetInternalSockets()
+        protected override SocketLegacy[] GetInternalSockets()
         {
-            return new Socket[] {socket1, socket2, socket3};
+            return new SocketLegacy[] {socket1, socket2, socket3};
         }
     }
 }

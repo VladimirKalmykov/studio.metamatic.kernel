@@ -63,6 +63,10 @@ namespace Metamatic
         {
             OnReconnect?.Invoke();
         }
+        protected void Unavailable()
+        {
+            OnUnavailable?.Invoke();
+        }
     }
     
     public abstract class Pin<T>: Pin, IPin<T>
@@ -113,6 +117,11 @@ namespace Metamatic
             if (inputPin == null)
             {
                 throw new ArgumentNullException(nameof(inputPin));
+            }
+
+            if (inputPin == (IPin<T>)this)
+            {
+                throw new InvalidOperationException("Can't connect pin to itself");
             }
             if (m_InputPin != null)
             {
@@ -190,6 +199,8 @@ namespace Metamatic
         #region MonoBehaviour
         void OnDestroy()
         {
+            Unavailable();
+            DisconnectInput();
             wire.Dispose();
         }
         #if DEBUG

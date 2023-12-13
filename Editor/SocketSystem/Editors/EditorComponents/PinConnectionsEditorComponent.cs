@@ -130,7 +130,6 @@ namespace Metamatic.Effects
 
         private void UpdateConnections()
         {
-            Debug.Log("UpdateConnections");
             var pin = m_Pin;
             m_InputObjectField.objectType = pin.GetType();
             if (pin.hasInputPin)

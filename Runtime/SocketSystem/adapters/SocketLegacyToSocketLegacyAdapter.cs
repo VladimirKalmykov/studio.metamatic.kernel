@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class SocketToSocketAdapter<TState, TEventType, TSourceState, TSourceEventTypes>: Socket<TState, TEventType>
+    public abstract class SocketLegacyToSocketLegacyAdapter<TState, TEventType, TSourceState, TSourceEventTypes>: SocketLegacy<TState, TEventType>
         where TState : struct
         where TSourceState: struct
     {
@@ -12,11 +12,11 @@ namespace Metamatic
         [ShowInInspector]
         [SerializeField]
         [PropertyOrder(1)]
-        public Socket<TSourceState, TSourceEventTypes> target;
+        public SocketLegacy<TSourceState, TSourceEventTypes> target;
 
         protected sealed override void OnSocketEnabled()
         {
-            target = target != null ? target : GetComponentInParent<Socket<TSourceState, TSourceEventTypes>>();
+            target = target != null ? target : GetComponentInParent<SocketLegacy<TSourceState, TSourceEventTypes>>();
 
             if (target == null) {
                 enabled = false;
@@ -39,14 +39,14 @@ namespace Metamatic
             return target != null ? new Color(0.18f, 0.58f, 0.47f) : Color.gray;
         }
         
-        private string GetTargetSuffixLabel(Socket<TSourceState, TSourceEventTypes> target)
+        private string GetTargetSuffixLabel(SocketLegacy<TSourceState, TSourceEventTypes> target)
         {
             return target != null ? target.name : string.Empty;
         }
 #endif
     }
     
-    public abstract class SocketToSocketAdapter<TState, TSourceState, TSourceEventTypes>: Socket<TState>
+    public abstract class SocketLegacyToSocketLegacyAdapter<TState, TSourceState, TSourceEventTypes>: SocketLegacy<TState>
         where TState : struct
         where TSourceState: struct
     {
@@ -55,11 +55,11 @@ namespace Metamatic
         [ShowInInspector]
         [SerializeField]
         [PropertyOrder(1)]
-        protected Socket<TSourceState, TSourceEventTypes> target;
+        protected SocketLegacy<TSourceState, TSourceEventTypes> target;
 
         protected sealed override void OnSocketEnabled()
         {
-            target = target != null ? target : GetComponentInParent<Socket<TSourceState, TSourceEventTypes>>();
+            target = target != null ? target : GetComponentInParent<SocketLegacy<TSourceState, TSourceEventTypes>>();
 
             if (target == null) {
                 enabled = false;
@@ -82,7 +82,7 @@ namespace Metamatic
             return target != null ? new Color(0.18f, 0.58f, 0.47f) : Color.gray;
         }
         
-        private string GetTargetSuffixLabel(Socket<TSourceState, TSourceEventTypes> target)
+        private string GetTargetSuffixLabel(SocketLegacy<TSourceState, TSourceEventTypes> target)
         {
             return target != null ? target.name : string.Empty;
         }

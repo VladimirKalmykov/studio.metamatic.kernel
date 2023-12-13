@@ -18,7 +18,7 @@ namespace Metamatic {
         public Action SubscribeState(StateMachine<TState>.StateChangeHandler handler);
     }
 
-    public abstract class Socket : PluggableMonoBehaviour
+    public abstract class SocketLegacy : PluggableMonoBehaviour
     {
         [BoxGroup("Socket"), LabelText("Name")]
         public string socketName;
@@ -36,7 +36,7 @@ namespace Metamatic {
         public abstract void DetachFrom(GameObject gameObject);
     }
 
-    public abstract class Socket<TState, TEventType> : Socket, ISerializationCallbackReceiver, ISocket<TState>
+    public abstract class SocketLegacy<TState, TEventType> : SocketLegacy, ISerializationCallbackReceiver, ISocket<TState>
     where TState: struct
     {
         private event Action OnReattach;
@@ -47,18 +47,18 @@ namespace Metamatic {
         [BoxGroup("Socket"), GUIColor("GetProxyConnectionColor")]
         [ShowInInspector, ReadOnly, LabelText("Input")]
         [ShowIf("GetProxyVisible")]
-        private Socket<TState, TEventType> m_ParentSocket;
+        private SocketLegacy<TState, TEventType> m_ParentSocketLegacy;
         [BoxGroup("Socket"), ShowInInspector, LabelText("Output"), ReadOnly]
-        private List<Socket<TState, TEventType>> m_ChildSockets = new List<Socket<TState, TEventType>>();
+        private List<SocketLegacy<TState, TEventType>> m_ChildSockets = new List<SocketLegacy<TState, TEventType>>();
         
 #if UNITY_EDITOR
         private Color GetProxyConnectionColor() {
-            return m_ParentSocket != null ? new Color(0.18f, 0.58f, 0.47f) : Color.gray;
+            return m_ParentSocketLegacy != null ? new Color(0.18f, 0.58f, 0.47f) : Color.gray;
         }
 
         private bool GetProxyVisible()
         {
-            return m_ParentSocket != null;
+            return m_ParentSocketLegacy != null;
         }
         
 #endif
@@ -128,31 +128,31 @@ namespace Metamatic {
         /**
          * Attach socket to parent socket
          */
-        public Action AttachSocket(Socket<TState, TEventType> socket)
+        public Action AttachSocket(SocketLegacy<TState, TEventType> socketLegacy)
         {
-            if (socket == null) {
+            if (socketLegacy == null) {
                 throw new System.Exception("Socket is required");
             }
-            if (m_ParentSocket != null) {
+            if (m_ParentSocketLegacy != null) {
                 throw new System.Exception("Socket is already attached");
             }
-            m_ParentSocket = socket;
-            stateMachine = socket.stateMachine;
-            eventMachine = socket.eventMachine;
-            socket.m_ChildSockets.Add(this);
+            m_ParentSocketLegacy = socketLegacy;
+            stateMachine = socketLegacy.stateMachine;
+            eventMachine = socketLegacy.eventMachine;
+            socketLegacy.m_ChildSockets.Add(this);
             OnReattach?.Invoke();
             /* Subscribe to parent socket reattach event */
-            socket.OnReattach += ReattachToParent;
-            socket.OnUnavailable += DetachFromParent;
+            socketLegacy.OnReattach += ReattachToParent;
+            socketLegacy.OnUnavailable += DetachFromParent;
             return () => {
-                DetachSocket(socket);
+                DetachSocket(socketLegacy);
             };
         }
         
         public override void AutoAttach(GameObject gameObject, bool asSource = false)
         {
             Type currentType = this.GetType();
-            var foundSocket = gameObject.GetComponent(currentType) as Socket<TState, TEventType>;
+            var foundSocket = gameObject.GetComponent(currentType) as SocketLegacy<TState, TEventType>;
             if (foundSocket == null)
             {
                 Debug.LogWarning("Socket not found");
@@ -170,9 +170,9 @@ namespace Metamatic {
 
         public override void DetachFrom(GameObject gameObject)
         {
-            if (m_ParentSocket != null && m_ParentSocket.gameObject == gameObject)
+            if (m_ParentSocketLegacy != null && m_ParentSocketLegacy.gameObject == gameObject)
             {
-                DetachSocket(m_ParentSocket);
+                DetachSocket(m_ParentSocketLegacy);
             }
             if (m_ChildSockets.Count > 0)
             {
@@ -185,32 +185,32 @@ namespace Metamatic {
         
         public void ReattachToParent()
         {
-            if (m_ParentSocket != null)
+            if (m_ParentSocketLegacy != null)
             {
-                var cachedParentSocket = m_ParentSocket;
-                DetachSocket(m_ParentSocket);
+                var cachedParentSocket = m_ParentSocketLegacy;
+                DetachSocket(m_ParentSocketLegacy);
                 AttachSocket(cachedParentSocket);
             }
         }
         
         public void DetachFromParent(SocketUnavailableReason reason)
         {
-            DetachSocket(m_ParentSocket);
+            DetachSocket(m_ParentSocketLegacy);
         }
         
-        public void DetachSocket(Socket<TState, TEventType> socket)
+        public void DetachSocket(SocketLegacy<TState, TEventType> socketLegacy)
         {
-            if (m_ParentSocket == socket)
+            if (m_ParentSocketLegacy == socketLegacy)
             {
-                m_ParentSocket.m_ChildSockets.Remove(this);
+                m_ParentSocketLegacy.m_ChildSockets.Remove(this);
                 /* Unsubscribe from parent socket reattach and unavailable events */
-                socket.OnReattach -= ReattachToParent;
-                socket.OnUnavailable -= DetachFromParent;
+                socketLegacy.OnReattach -= ReattachToParent;
+                socketLegacy.OnUnavailable -= DetachFromParent;
                 /* Reset state machine to parent state machine and detach from parent */
                 var lastParentState = stateMachine.prevState;
                 stateMachine = new StateMachine<TState>(lastParentState);
                 eventMachine = new EventMachine<TEventType>();
-                m_ParentSocket = null;
+                m_ParentSocketLegacy = null;
                 OnReattach?.Invoke();
             }
         }
@@ -267,7 +267,7 @@ namespace Metamatic {
         }
     }
     
-    public class Socket<TState> : Socket<TState, bool>
+    public class SocketLegacy<TState> : SocketLegacy<TState, bool>
     where TState: struct
     {
         
