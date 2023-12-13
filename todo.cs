@@ -1,5 +1,5 @@
-﻿// TODO: Pin Drawer indicator should be in a form of cyan dot if it is connected to a non-virtual pin
-// TODO: Pin Inspector window
+﻿// TODO: Pin Inspector window don't react to change event after game stop/start
+// TODO: Clock at small symbol near to pin drawer should highlight pin component
 // TODO: Pin Inspector should have a button to open a window associated with the pin
 // TODO: PinSet class (PinSet<TPin1, TPin2, TPin3> where TPin1 : Pin) or PinDataSet class (PinDataSet<TData1, TData2, TData3>))
 // TODO: Socket class
