@@ -166,3 +166,17 @@ public class GlobalGameDataProvider : MonoBehaviour
 ---
 
 For more advantages and pin auto-connections, use Pin within [Slot and Modules](/SlotsAndModules).
+
+
+Pins inspector window
+--
+
+Pins inspector window allows you to watch specific pin data in the editor. It is useful for debugging and testing. To start watching, click the `Watch` button in the inspector.
+
+![Pin inspector](assets/PinInspectorWatch.png)
+
+You can watch multiple pins simultaneously. Watch status is persistent, thus you can select pins to watch in edit mode and watch in play mode, vice versa. To stop watching, click the `Watch` button again or click `Unwatch` button in the pin inspector.
+
+![Pin inspector](assets/PinInspectorWindow.png)
+
+Pin inspector window displays serialized data of the selected pin. If pin data is a struct, then it will shoe value for the each key. It is updated according to pin change event. 
