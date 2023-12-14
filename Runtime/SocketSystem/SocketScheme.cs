@@ -1,7 +1,9 @@
 ﻿using System;
+using UnityEngine;
 
 namespace Metamatic
 {
+    [Serializable]
     public class SocketScheme
     {
         
@@ -12,7 +14,9 @@ namespace Metamatic
     where TOutputBundle: PinsBundle
     where TInputBundle: PinsBundle
     {
+        [SerializeField]
         public TOutputBundle outputBundle;
+        [SerializeField]
         public TInputBundle inputBundle;
     }
     
@@ -34,6 +38,12 @@ namespace Metamatic
     [Serializable]
     public class LoopbackSocketScheme<TBundle>: SocketScheme<TBundle, TBundle>
     where TBundle: PinsBundle
+    {
+        
+    }
+    
+    [Serializable]
+    public class FloatSocketScheme: SocketScheme<PinsBundle<IntPin, FloatPin>, PinsBundle<IntPin>>
     {
         
     }
