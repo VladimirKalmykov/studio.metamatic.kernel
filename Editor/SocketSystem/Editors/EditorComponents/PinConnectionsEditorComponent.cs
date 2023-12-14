@@ -139,14 +139,11 @@ namespace Metamatic.Effects
             root.AddToClassList("CenterFunctions");
             m_InspectButton = new Button(() =>
             {
-                if (Application.isPlaying)
-                {
-                    Pin.ToogleInspect(m_Pin);
-                    PinInspectorWindow.OpenIfNotOpened();
-                }
+                Pin.ToogleInspect(m_Pin);
+                PinsInspectorWindow.OpenIfNotOpened();
             })
             {
-                text = "INSPECT"
+                text = "WATCH"
             };
             m_InspectButton.AddToClassList("CustomButton");
             root.Add(m_InspectButton);

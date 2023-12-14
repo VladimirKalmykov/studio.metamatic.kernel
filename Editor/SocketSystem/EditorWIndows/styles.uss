@@ -1,0 +1,66 @@
+﻿.Body {
+    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.IntroMessage {
+    flex-direction: row;
+    padding: 20px 6px ;
+    align-items: center;
+    justify-content: center;
+    align-content: center;
+    font-size: 16px;
+    color: #242424;
+    -unity-text-align: middle-center;
+    flex-wrap: wrap;
+}
+
+.EditModePinContainer {
+    display: flex;
+    flex-direction: row;
+    margin: 0 -5px;
+    background-color: #2E2E2E;
+    border-radius: 2px;
+    margin-bottom: 2px;
+    padding: 6px 4px;
+}
+
+.EditModePinContainer > * {
+    margin: 0 5px;
+}
+
+.EditModePinContainer > ObjectField {
+    flex-grow: 1;
+}
+
+
+.PlayModePinContainer {
+    display: flex;
+    flex-direction: column;
+    background-color: #2E2E2E;
+    border-radius: 2px;
+    margin-bottom: 4px;
+    padding: 4px 4px 0 4px;
+}
+
+.PlayModePinContainer > .Row {
+    display: flex;
+    flex-direction: row;
+    margin: 0 -5px 4px -5px;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+.PlayModePinContainer > .Row > * {
+    margin: 0 5px;
+}
+
+.PlayModePinContainer > .Row > ObjectField {
+    flex-grow: 1;
+    width: 200px;
+}
+
+.PlayModePinContainer > .Row > .Fullwidth {
+    flex-grow: 1;
+}

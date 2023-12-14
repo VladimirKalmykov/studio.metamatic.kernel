@@ -36,22 +36,27 @@ namespace Metamatic
         public Wire<T> InternalGetWire();
         public Wire<T> wire { get; }
     }
-    public abstract class Pin: MonoBehaviour, IPin
+    public abstract class Pin: MonoBehaviour, IPin, ISerializationCallbackReceiver
     {
         #region debug
         #if DEBUG
+        [HideInInspector]
+        public bool debug_Inspect;
         public static List<Pin> s_Inspect = new List<Pin>();
         public static event Action<Pin> OnAddToInspect;
         public static event Action<Pin> OnRemoveFromInspect;
         public static void AddToInspect(Pin pin)
         {
+            if (pin == null) return;
             s_Inspect.Add(pin);
+            pin.debug_Inspect = true;
             OnAddToInspect?.Invoke(pin);
         }
 
         public static void RemoveFromInspect(Pin pin)
         {
             s_Inspect.Remove(pin);
+            pin.debug_Inspect = false;
             OnRemoveFromInspect?.Invoke(pin);
         }
         public static void ToogleInspect(Pin pin)
@@ -91,6 +96,18 @@ namespace Metamatic
         protected void Unavailable()
         {
             OnUnavailable?.Invoke();
+        }
+
+        public void OnBeforeSerialize()
+        {
+            #if DEBUG
+            debug_Inspect = s_Inspect.Contains(this);
+            #endif
+        }
+
+        public void OnAfterDeserialize()
+        {
+            
         }
     }
     
@@ -233,6 +250,11 @@ namespace Metamatic
         void OnEnable()
         {
             m_DebugUnsubscribeWire = wire.SubscribeRef(DebugHandleChangeTyped);
+            if (debug_Inspect && !s_Inspect.Contains(this))
+            {
+                Debug.Log($"Deserialize pin {this}");
+                AddToInspect(this);
+            }
         }
         void OnDisable()
         {

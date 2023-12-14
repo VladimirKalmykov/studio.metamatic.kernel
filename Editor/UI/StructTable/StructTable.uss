@@ -1,0 +1,34 @@
+﻿.Table {
+    flex-direction: column;
+    border-top-width: 1;
+    border-top-color: #6e6c6a;
+    border-left-width: 1;
+    border-left-color: #6e6c6a;
+    border-right-width: 1;
+    border-right-color: #6e6c6a;
+}
+
+.Row {
+    flex-direction: row;
+    overflow: hidden;
+}
+
+.Key {
+    background-color: #3D4442;
+    width: 150px;
+    flex-basis: 150px;
+    border-bottom-width: 1;
+    border-bottom-color: #6e6c6a;
+    border-right-width: 1;
+    border-right-color: #6e6c6a;
+    padding: 1px 4px;
+}
+
+.Value {
+    background-color: #484646;
+    flex-grow: 1;
+    border-bottom-width: 1;
+    border-bottom-color: #6e6c6a;
+    padding: 1px 4px;
+    overflow: hidden;
+}
