@@ -252,7 +252,6 @@ namespace Metamatic
             m_DebugUnsubscribeWire = wire.SubscribeRef(DebugHandleChangeTyped);
             if (debug_Inspect && !s_Inspect.Contains(this))
             {
-                Debug.Log($"Deserialize pin {this}");
                 AddToInspect(this);
             }
         }

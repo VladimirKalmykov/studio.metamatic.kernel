@@ -11,11 +11,7 @@ public class PinsInspectorWindow : EditorWindow
 {
     public static void OpenIfNotOpened()
     {
-        var window = GetWindow<PinsInspectorWindow>();
-        if (window == null)
-        {
-            ShowWindow();
-        }
+        ShowWindow();
     }
     
     private VisualElement m_RootElement;
@@ -34,17 +30,16 @@ public class PinsInspectorWindow : EditorWindow
     public static void ShowWindow()
     {
         var window = GetWindow<PinsInspectorWindow>();
-        window.titleContent = new GUIContent("Pin inspector");
+        window.titleContent = new GUIContent("Pins inspector");
     }
 
-    public void OnEnable()
+    private void CreateGUI()
     {
         m_RootElement = rootVisualElement;
         m_RootElement.AddToClassList("Body");
         m_RootElement.styleSheets.Add(AssetDatabase.LoadAssetAtPath<StyleSheet>(
             "Packages/studio.metamatic.kernel/Editor/SocketSystem/EditorWIndows/styles.uss"));
-        Pin.OnAddToInspect += OnAddToInspect;
-        Pin.OnRemoveFromInspect += OnRemoveFromInspect;
+       
         
         /* Create container for edit mode pins */
         m_EditModePinsContainer = new VisualElement();
@@ -61,8 +56,23 @@ public class PinsInspectorWindow : EditorWindow
         m_EnterPlayModeMessage.AddToClassList("IntroMessage");
         m_RootElement.Add(m_EnterPlayModeMessage);
         
+        if (Application.isPlaying)
+        {
+            RenderPlayModeUI();
+        }
+        else
+        {
+            RenderEditModeUI();
+        }
+    }
+
+    public void OnEnable()
+    {
+        
         /* Get pins for inspecting */
         // Pin.s_Inspect.ForEach(OnAddToInspect);
+        Pin.OnAddToInspect += OnAddToInspect;
+        Pin.OnRemoveFromInspect += OnRemoveFromInspect;
         EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
     }
 
@@ -71,12 +81,24 @@ public class PinsInspectorWindow : EditorWindow
         /*
          * Render selected pins navigator
          */
+        ReleaseEditModePinInspectors();
         Pin.s_Inspect.ForEach(AddEditModePinElement);
+        UpdateEmptyMessage();
+    }
+    
+    private void RenderPlayModeUI()
+    {
+        /*
+         * Render selected pins navigator
+         */
+        ReleasePlayModePinInspectors();
+        Pin.s_Inspect.ForEach(AddPlayModePinElement);
         UpdateEmptyMessage();
     }
 
     private void UpdateEmptyMessage()
     {
+        if (m_RootElement == null) return;
         m_EnterPlayModeMessage.style.display = (Application.isPlaying ? m_PlayModePinsContainer : m_EditModePinsContainer).Children().Count() == 0 ? DisplayStyle.Flex : DisplayStyle.None;
     }
     
@@ -86,8 +108,7 @@ public class PinsInspectorWindow : EditorWindow
         {
             /* Recreate pin inspectors */
             ReleasePlayModePinInspectors();
-            
-            Pin.s_Inspect.ForEach(OnAddToInspect);
+            RenderPlayModeUI();
         } else if (state == PlayModeStateChange.ExitingPlayMode)
         {
             ReleasePlayModePinInspectors();
@@ -118,6 +139,7 @@ public class PinsInspectorWindow : EditorWindow
     
     private void AddPlayModePinElement(Pin pin)
     {
+        if (m_RootElement == null) return;
         var pinInspector = new PinInspector(m_PlayModePinsContainer, pin);
         m_PinInspectors.Add(pinInspector);
         UpdateEmptyMessage();
@@ -137,6 +159,7 @@ public class PinsInspectorWindow : EditorWindow
 
     private void OnAddToInspect(Pin pin)
     {
+        if (m_RootElement == null) return;
         if (!Application.isPlaying)
         {
             AddEditModePinElement(pin);
@@ -149,6 +172,7 @@ public class PinsInspectorWindow : EditorWindow
 
     private void OnRemoveFromInspect(Pin pin)
     {
+        if (m_RootElement == null) return;
         if (!Application.isPlaying)
         {
             RemoveEditModePinElement(pin);
@@ -161,14 +185,23 @@ public class PinsInspectorWindow : EditorWindow
 
     public void OnDisable()
     {
+        Pin.OnAddToInspect -= OnAddToInspect;
+        Pin.OnRemoveFromInspect -= OnRemoveFromInspect;
         EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
         ReleasePlayModePinInspectors();
+        ReleaseEditModePinInspectors();
     }
 
     public void ReleasePlayModePinInspectors()
     {
+        if (m_RootElement == null) return;
         m_PinInspectors.ForEach(inspector => inspector.Dispose());
         m_PinInspectors.Clear();
         m_PlayModePinsContainer.Clear();
+    }
+    
+    public void ReleaseEditModePinInspectors()
+    {
+        m_EditModePinsContainer.Clear();
     }
 }
