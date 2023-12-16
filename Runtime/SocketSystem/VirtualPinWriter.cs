@@ -14,81 +14,31 @@ namespace Metamatic
         public void Mutate(IWire<T>.Modifier modifier);
     }
 
-    public class VirtualPinWriter<T>: VirtualPin, IVirtualPinInput<T>, IPin<T>
+    public class VirtualPinWriter<T>: VirtualPin<T>, IVirtualPinInput<T>, IPin<T>
     {
         private Component m_Component;
-        private IPin<T> m_OutputPin;
-        private Wire<T> m_Wire;
-        public VirtualPinWriter(Component component, IPin<T> pin)
+
+        public VirtualPinWriter(UnityEngine.Object component) : base(component)
         {
-            m_Component = component;
-            m_Wire = new Wire<T>();
+            
+        }
+        public VirtualPinWriter(UnityEngine.Object component, IPin<T> pin): base(component)
+        {
             pin.ConnectInput(this);
         }
         public void SetData(T data)
         {
-            m_Wire.SetData(data);
+            wire.SetData(data);
         }
 
         public void SetData(IWire<T>.Transformer transformer)
         {
-            m_Wire.SetData(transformer);
+            wire.SetData(transformer);
         }
 
         public void Mutate(IWire<T>.Modifier modifier)
         {
-            m_Wire.Mutate(modifier);
+            wire.Mutate(modifier);
         }
-
-        public event Action OnReconnect;
-        public event Action OnUnavailable;
-        public Component GetComponent()
-        {
-            return m_Component;
-        }
-
-        public Action ConnectInput(IPin<T> inputPin)
-        {
-            // Do nothing, because this kind of pin can't have input pin
-            throw new InvalidOperationException("Virtual pin input can't have input pin");
-            return () => { };
-        }
-
-        public void InternalAddOutputPin(IPin<T> pin)
-        {
-            if (m_OutputPin != null)
-            {
-                throw new InvalidOperationException("Virtual pin input already has output pin");
-            }
-            m_OutputPin = pin;
-        }
-
-        public void InternalRemoveOutputPin(IPin<T> pin)
-        {
-            if (pin != m_OutputPin)
-            {
-                throw new InvalidOperationException("This virtual pin is not output pin of this virtual pin");
-            }
-            m_OutputPin = null;
-        }
-
-        public Wire<T> InternalGetWire()
-        {
-            return m_Wire;
-        }
-
-        public Wire<T> wire => m_Wire;
-
-        public void Dispose()
-        {
-            OnUnavailable?.Invoke();
-        }
-        
-        #if DEBUG
-        public Component GetRelatedComponent()
-        {
-            return m_Component;
-        }
-        #endif
     }
 }

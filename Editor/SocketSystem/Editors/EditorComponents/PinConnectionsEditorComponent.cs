@@ -162,14 +162,18 @@ namespace Metamatic.Effects
                 var isPinInstance = inputComponent is Pin;
                 if (isPinInstance)
                 {
+                    m_InputObjectField.value = inputComponent;
+                    m_InputObjectField.objectType = pin.GetType();
                     m_LeftBigCircleStatus.RemoveFromClassList("VirtualPin");
                 }
                 else
                 {
+                    m_InputObjectField.value = inputComponent;
+                    m_InputObjectField.objectType = inputComponent.GetType();
                     m_LeftBigCircleStatus.AddToClassList("VirtualPin");
                 }
                 
-                m_InputObjectField.value = inputComponent;
+                
                 m_LeftSmallCircleStatus.AddToClassList("PinBlockLineCircle_Enabled");
                 m_InputObjectField.RemoveFromClassList("Hidden");
             }
@@ -199,7 +203,7 @@ namespace Metamatic.Effects
                     }
                     var outputPinObjectField = new ObjectField()
                     {
-                        objectType = outputPin.GetType(),
+                        objectType = outputComponent.GetType(),
                         value = outputPin.GetComponent()
                     };
                     m_OutputPinObjectFieldContainer.Add(outputPinObjectField);

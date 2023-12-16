@@ -20,7 +20,11 @@ namespace Metamatic
         /// Get component that contains this pin (it can be Pin itself or some wrapper component like VirtualPinInput/Output)
         /// </summary>
         /// <returns></returns>
-        public Component GetComponent();
+        public UnityEngine.Object GetComponent();
+
+        public Action ConnectInput(IPin pin);
+        public void DisconnectOutput();
+        public void DisconnectInput();
     }
     
     public interface IPin<T>: IPin
@@ -31,6 +35,8 @@ namespace Metamatic
         /// <param name="inputPin"></param>
         /// <returns></returns>
         public Action ConnectInput(IPin<T> inputPin);
+        public Action ConnectOutput(IPin<T> outputPin);
+        public void DisconnectInput(IPin<T> inputPin);
         public void InternalAddOutputPin(IPin<T> pin);
         public void InternalRemoveOutputPin(IPin<T> pin);
         public Wire<T> InternalGetWire();
@@ -82,10 +88,26 @@ namespace Metamatic
         #endregion
         public event Action OnReconnect;
         public event Action OnUnavailable;
-        public Component GetComponent()
+        public UnityEngine.Object GetComponent()
         {
             return this;
         }
+
+        public Action ConnectInput(IPin pin)
+        {
+            if (pin.GetType() != GetType())
+            {
+                throw new InvalidOperationException("Can't connect pins of different types");
+            }
+
+            return InternalConnectInputWithSameType(pin);
+        }
+
+        public abstract void DisconnectOutput();
+
+        public abstract void DisconnectInput();
+
+        protected abstract Action InternalConnectInputWithSameType(IPin pin);
 
         public abstract bool hasInputPin { get; }
         public abstract bool hasOutputPins { get; }
@@ -128,7 +150,9 @@ namespace Metamatic
            m_OutputPins.Add(outputPin);
            Reconnect();
         }
-
+        #endregion
+        
+        #region public
         public Wire<T> InternalGetWire()
         {
             return wire;
@@ -144,9 +168,6 @@ namespace Metamatic
             m_OutputPins.Remove(outputPin);
             Reconnect();
         }
-        #endregion
-        
-        #region public
         public Wire<T> wire => m_Wire ??= new Wire<T>();
         
         [Title("Input connected"), ShowIf("@m_InputPin != null"), ShowInInspector, HideLabel, ReadOnly, GUIColor("@m_InputPin != null ? Color.green : Color.red")]
@@ -190,7 +211,15 @@ namespace Metamatic
             return outputPin.ConnectInput(this);
         }
 
-        public void DisconnectInput()
+        public sealed override void DisconnectOutput()
+        {
+            foreach (var outputPin in outputPins)
+            {
+                outputPin.DisconnectInput(this);
+            }
+        }
+
+        public sealed override void DisconnectInput()
         {
             if (m_InputPin == null)
             {
@@ -235,6 +264,12 @@ namespace Metamatic
         public VirtualPinReader<T> CreateVirtualOutput(Component component)
         {
             return new VirtualPinReader<T>(component, this);
+        }
+        #endregion
+        #region protected
+        protected sealed override Action InternalConnectInputWithSameType(IPin pin)
+        {
+            return ConnectInput((IPin<T>)pin);
         }
         #endregion
         

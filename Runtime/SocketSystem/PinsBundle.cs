@@ -3,107 +3,38 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    [Serializable]
-    public class PinsBundle
+    interface IPinsBundle
     {
-        public virtual Pin[] GetPins()
+        public IPin[] GetPins();
+    }
+    [Serializable]
+    public class PinsBundle: IPinsBundle
+    {
+        public virtual IPin[] GetPins()
         {
-            return new Pin[] { };
+            return new IPin[] { };
         }
     }
     
     [Serializable]
-    public class PinsBundle<TPin1>: PinsBundle
-    where TPin1: Pin
+    public class PinsBundle<T1>: PinsBundle, IPinsBundle
     {
         [SerializeField]
-        public TPin1 pin1;
+        public Pin<T1> pin1;
         
-        public override Pin[] GetPins()
+        public override IPin[] GetPins()
         {
-            return new Pin[] { pin1 };
+            return new IPin[] { pin1 };
         }
     }
     
-    [Serializable]
-    public class PinsBundle<TPin1, TPin2>: PinsBundle
-    where TPin1: Pin
-    where TPin2: Pin
+    public class VirtualPinsBundle<T1>: PinsBundle<T1>
     {
-        [SerializeField]
-        public TPin1 pin1;
-        [SerializeField]
-        public TPin2 pin2;
+        public IPin<T1> virtualPin1;
         
-        public override Pin[] GetPins()
+        public override IPin[] GetPins()
         {
-            return new Pin[] { pin1, pin2 };
-        }
-    }
-    
-    [Serializable]
-    public class PinsBundle<TPin1, TPin2, TPin3>: PinsBundle
-    where TPin1: Pin
-    where TPin2: Pin
-    where TPin3: Pin
-    {
-        [SerializeField]
-        public TPin1 pin1;
-        [SerializeField]
-        public TPin2 pin2;
-        [SerializeField]
-        public TPin3 pin3;
-        
-        public override Pin[] GetPins()
-        {
-            return new Pin[] { pin1, pin2, pin3 };
-        }
-    }
-    
-    [Serializable]
-    public class PinsBundle<TPin1, TPin2, TPin3, TPin4>: PinsBundle
-    where TPin1: Pin
-    where TPin2: Pin
-    where TPin3: Pin
-    where TPin4: Pin
-    {
-        [SerializeField]
-        public TPin1 pin1;
-        [SerializeField]
-        public TPin2 pin2;
-        [SerializeField]
-        public TPin3 pin3;
-        [SerializeField]
-        public TPin4 pin4;
-        
-        public override Pin[] GetPins()
-        {
-            return new Pin[] { pin1, pin2, pin3, pin4 };
-        }
-    }
-    
-    [Serializable]
-    public class PinsBundle<TPin1, TPin2, TPin3, TPin4, TPin5>: PinsBundle
-    where TPin1: Pin
-    where TPin2: Pin
-    where TPin3: Pin
-    where TPin4: Pin
-    where TPin5: Pin
-    {
-        [SerializeField]
-        public TPin1 pin1;
-        [SerializeField]
-        public TPin2 pin2;
-        [SerializeField]
-        public TPin3 pin3;
-        [SerializeField]
-        public TPin4 pin4;
-        [SerializeField]
-        public TPin5 pin5;
-        
-        public override Pin[] GetPins()
-        {
-            return new Pin[] { pin1, pin2, pin3, pin4, pin5 };
+            return new IPin[] { virtualPin1 };
         }
     }
 }
