@@ -3,7 +3,7 @@ using Metamatic.Effects;
 using UnityEditor;
 using UnityEngine;
 
-namespace Metamatic.Effects
+namespace Metamatic
 {
     [CustomEditor(typeof(Pin), true)]
     [RequireEditorComponent(typeof(PinConnectionsEditorComponent))]

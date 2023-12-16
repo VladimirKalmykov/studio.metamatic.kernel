@@ -1,14 +1,70 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
 
 namespace Metamatic
 {
-    [Serializable]
-    public class SocketScheme
+    public enum ConnectionType
     {
+        None,
+        /// <summary>
+        /// One to one
+        /// </summary>
+        Directional,
+        /// <summary>
+        /// A plug is not connected, socket output is connected to socket input
+        /// </summary>
+        Loopback,
+        /// <summary>
+        /// Multiple plugs are connected to the socket. Socket output is connected to the first plug input. Last plug output is connected to the socket input. All other plugs are connected to each other.
+        /// </summary>
+        LoopChain
+    }
+    [Serializable]
+    public abstract class SocketScheme
+    {
+        public abstract Type[] outputTypes { get; }
+        public abstract Type[] inputTypes { get; }
+        public abstract Type[] outputPinTypes { get; }
+        public abstract Type[] inputPinTypes { get; }
+        public abstract void Initialize(IPin[] outputPins, IPin[] inputPins, bool loopbackMode = false);
+        public abstract void Dispose();
+        public event Action OnReconnect;
+        public ConnectionType connectionType { get; protected set; }
+#if DEBUG
+        public List<string> debug_Error = new List<string>();
+        public event Action OnErrorChanged;
+        public UnityEngine.Object debug_RelatedObject;
+        /// <summary>
+        /// For development purposes. Set related object to this socket scheme. It will be shown in the inspector.
+        /// </summary>
+        /// <param name="relatedObject"></param>
+        public void debug_SetRelatedObject(UnityEngine.Object relatedObject)
+        {
+            debug_RelatedObject = relatedObject;
+        }
+
+        public abstract SocketScheme[] debug_GetConnectedSchemes();
+        protected void AddError(string error)
+        {
+            debug_Error.Add(error);
+            OnErrorChanged?.Invoke();
+        }
         
+        
+        protected void ClearError()
+        {
+            debug_Error.Clear();
+            OnErrorChanged?.Invoke();
+        }
+#endif
+        protected void Reconnect(ConnectionType connectionType)
+        {
+            this.connectionType = connectionType;
+            OnReconnect?.Invoke();
+        }
     }
     
     [Serializable]
@@ -22,19 +78,26 @@ namespace Metamatic
         public IPin[] outputPins;
         public IPin[] inputPins;
         private bool loopbackMode { get; set; }
-        
-        private List<SocketScheme<TOutputBundle, TInputBundle>> m_Plugs = new List<SocketScheme<TOutputBundle, TInputBundle>>();
+        private List<SocketScheme<TOutputBundle, TInputBundle>> m_ConnectedSchemes = new List<SocketScheme<TOutputBundle, TInputBundle>>();
         
         #if DEBUG
-        private List<string> debug_Error = new List<string>();
-        #endif
+        public override SocketScheme[] debug_GetConnectedSchemes()
+        {
+            return m_ConnectedSchemes.Cast<SocketScheme>().ToArray();
+        }
+#endif
         
         /// <summary>
         /// This schema is monotype. It means that output type is the same as input type. And there is only one type at all. Monotype schemas can be connected to each other in loopback mode and can be connected to other schemas in loop chain mode.
         /// </summary>
         public bool isMonoType => inputBundle.GetTypes().Length == 1 && outputBundle.GetTypes().Length == 1 && inputBundle.GetTypes()[0] == outputBundle.GetTypes()[0];
 
-        public void Initialize(IPin[] outputPins, IPin[] inputPins, bool loopbackMode = false)
+        public override Type[] outputTypes => outputBundle.GetTypes();
+        public override Type[] inputTypes => inputBundle.GetTypes();
+        public override Type[] outputPinTypes => outputBundle.GetPinTypes();
+        public override Type[] inputPinTypes => inputBundle.GetPinTypes();
+
+        public sealed override void Initialize(IPin[] outputPins, IPin[] inputPins, bool loopbackMode = false)
         {
             this.loopbackMode = loopbackMode;
             this.outputPins = outputPins;
@@ -52,11 +115,11 @@ namespace Metamatic
         /// <param name="socketScheme"></param>
         public void ConnectPlug(SocketScheme<TOutputBundle, TInputBundle> socketScheme)
         {
-            if (m_Plugs.Contains(socketScheme))
+            if (m_ConnectedSchemes.Contains(socketScheme))
             {
                 throw new InvalidOperationException("Can't connect the same plug twice");
             }
-            if (m_Plugs.Count > 0)
+            if (m_ConnectedSchemes.Count > 0)
             {
                 if (inputBundle.GetTypes().Length == 0)
                 {
@@ -73,13 +136,13 @@ namespace Metamatic
                         throw new InvalidOperationException("Can't connect more than one plug when input bundle has more than one type");
                     }
                     /* Make chain connection */
-                    m_Plugs.Add(socketScheme);
+                    m_ConnectedSchemes.Add(socketScheme);
                     MakeLoopChain();
                 }
             }
             else
             {
-                m_Plugs.Add(socketScheme);
+                m_ConnectedSchemes.Add(socketScheme);
                 MakeDirectConnection(socketScheme);
             }
         }
@@ -92,7 +155,7 @@ namespace Metamatic
         /// <exception cref="InvalidOperationException"></exception>
         public void DisconnectPlug(SocketScheme<TOutputBundle, TInputBundle> socketScheme, bool doNotReconnectedOthers = false)
         {
-            if (!m_Plugs.Contains(socketScheme))
+            if (!m_ConnectedSchemes.Contains(socketScheme))
             {
                 throw new InvalidOperationException("Can't disconnect plug that is not connected");
             }
@@ -110,7 +173,7 @@ namespace Metamatic
                 thatOutput.DisconnectOutput();
             }
 
-            m_Plugs.Remove(socketScheme);
+            m_ConnectedSchemes.Remove(socketScheme);
 
             if (doNotReconnectedOthers)
             {
@@ -122,7 +185,7 @@ namespace Metamatic
         
         public void DisconnectAllPlugs(bool doNotRebuild = false)
         {
-            foreach (var plug in m_Plugs)
+            foreach (var plug in m_ConnectedSchemes)
             {
                 DisconnectPlug(plug, true);
             }
@@ -134,37 +197,41 @@ namespace Metamatic
             Rebuild();
         }
 
-        public void Dispose()
+        public sealed override void Dispose()
         {
             DisconnectAllPlugs(true);
             if (isMonoType)
             {
                 DisconnectLoopbackConnection();
             }
+            Reconnect(ConnectionType.None);
         }
 
         private void Rebuild()
         {
-            if (m_Plugs.Count > 2)
+            if (m_ConnectedSchemes.Count > 2)
             {
                 /* Remake loop chain */
                 MakeLoopChain();
             }
-            else if (m_Plugs.Count > 0)
+            else if (m_ConnectedSchemes.Count > 0)
             {
                 /* Remake direct connection */
-                MakeDirectConnection(m_Plugs[0]);
+                MakeDirectConnection(m_ConnectedSchemes[0]);
             }
             else if (loopbackMode && isMonoType)
             {
                 /* Connector local output pin to local input pin */
                 MakeLoopbackConnection();
             }
+            else
+            {
+                Reconnect(ConnectionType.None);
+            }
         }
         
         private void MakeDirectConnection(SocketScheme<TOutputBundle, TInputBundle> socketScheme)
         {
-
             var thatInputPins = socketScheme.inputPins;
             var thisInputPins = inputPins;
             var inputTypes = inputBundle.GetTypes();
@@ -198,12 +265,13 @@ namespace Metamatic
                 }
                 thatPin.ConnectInput(thisPin);
             }
+            Reconnect(ConnectionType.Directional);
         }
 
         private void MakeLoopChain()
         {
-            for (var q = 0; q < m_Plugs.Count; q++) {
-                var currentPlug = m_Plugs[q];
+            for (var q = 0; q < m_ConnectedSchemes.Count; q++) {
+                var currentPlug = m_ConnectedSchemes[q];
                 if (q == 0)
                 {
                     /* For the first plug connect this output pins output to the other output pins input */
@@ -227,7 +295,7 @@ namespace Metamatic
                 else
                 {
                     /* For the rest connect that input pins output of previous plug to that output pins input */
-                    var previousPlug = m_Plugs[q - 1];
+                    var previousPlug = m_ConnectedSchemes[q - 1];
                     var currentOutputPins = currentPlug.outputPins;
                     var previousInputPins = previousPlug.inputPins;
                     var outputTypes = outputBundle.GetTypes();
@@ -245,7 +313,7 @@ namespace Metamatic
                         currentPin.ConnectInput(previousPin);
                     }
                     
-                    if (q == m_Plugs.Count - 1)
+                    if (q == m_ConnectedSchemes.Count - 1)
                     {
                         /* For the last connect that input pins output to this input pins input */
                         var thatInputPins = currentPlug.inputPins;
@@ -267,6 +335,7 @@ namespace Metamatic
                     }
                 }
             }
+            Reconnect(ConnectionType.LoopChain);
         }
 
         private void MakeLoopbackConnection()
@@ -275,6 +344,7 @@ namespace Metamatic
             var thisInputPins = inputPins;
             
             thisInputPins[0].ConnectInput(thisOutputPins[0]);
+            Reconnect(ConnectionType.Loopback);
         }
 
         private void DisconnectLoopbackConnection()
@@ -284,19 +354,6 @@ namespace Metamatic
             thisInputPins[0].DisconnectInput();
             thisOutputPins[0].DisconnectOutput();
         }
-        
-        #if DEBUG
-        private void AddError(string error)
-        {
-            debug_Error.Add(error);
-        }
-        
-        
-        private void ClearError()
-        {
-            debug_Error.Clear();
-        }
-        #endif
     }
 
     public class SocketScheme<TOutputBundle> : SocketScheme<TOutputBundle, TypeBundle>

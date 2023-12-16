@@ -21,7 +21,7 @@ namespace Metamatic
     }
     
     public abstract class Plug<TScheme>: MonoBehaviour
-    where TScheme: SocketScheme
+    where TScheme: SocketScheme, new()
     {
         [ShowInInspector, ReadOnly]
         private Socket<TScheme> m_Socket;

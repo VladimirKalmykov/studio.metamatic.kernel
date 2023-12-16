@@ -1,0 +1,65 @@
+﻿.SocketGUIContainer {
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.SocketGUIHeader {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.SocketGUIHeader > Label {
+    font-size: 16px;
+}
+
+.Section  {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+}
+
+.Section .Header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.Section .Header Label {
+    background-color: #323232;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 2px 4px 2px 8px;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.Section .Content {
+    display: flex;
+    flex-direction: column;
+    background-color: #323232;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 4px 8px 4px 4px;
+}
+
+.Message {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    padding: 6px;
+    border-radius: 3px;
+}
+
+.Message.Error {
+    background-color: #624040;
+    color: #F79E9E;
+}
