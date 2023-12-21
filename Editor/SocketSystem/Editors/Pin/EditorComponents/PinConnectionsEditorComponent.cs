@@ -16,6 +16,7 @@ namespace Metamatic.Effects
         private VisualElement m_RightSmallCircleStatus;
         private ObjectField m_InputObjectField;
         private VisualElement m_OutputPinObjectFieldContainer;
+        private VisualElement m_TopLine;
         private Pin m_Pin;
         private VisualElement m_Root;
         private Button m_InspectButton;
@@ -23,7 +24,12 @@ namespace Metamatic.Effects
         public override VisualElement CreateInspectorGUI()
         {
             var root = m_Root = new VisualElement();
-        
+            
+            // Create top line
+            m_TopLine = new VisualElement();
+            m_TopLine.AddToClassList("TopLine");
+            root.Add(m_TopLine);
+            
             // Создаем элементы INPUT и OUTPUT
             var inputBlock = CreateLeftPinBlock("INPUT");
             var centerFunctions = CreateCenterFunctions();
@@ -273,6 +279,8 @@ namespace Metamatic.Effects
         {
             base.OnEnable();
             m_Pin = (Pin)target;
+            /* Set personal color */
+            m_TopLine.style.backgroundColor = m_Pin.debugColor;
             m_IsInspecting = Pin.s_Inspect.Contains(m_Pin);
             UpdateInspectButton();
             /* Set field type */

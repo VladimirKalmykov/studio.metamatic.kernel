@@ -1,6 +1,7 @@
 ﻿using Metamatic.Extensions;
 using UnityEditor;
 using UnityEditor.UIElements;
+using UnityEngine.Device;
 using UnityEngine.UIElements;
 
 namespace Metamatic
@@ -10,6 +11,8 @@ namespace Metamatic
         private VisualElement m_ErrorContainer;
         private Label m_ErrorLabel;
         private VisualElement m_PlugContainer;
+        private VisualElement m_PlugIndicatorDot;
+        private VisualElement m_Plugs;
         private SocketScheme m_SocketScheme;
         public SocketGUIEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
         {
@@ -17,6 +20,7 @@ namespace Metamatic
 
         public override void OnEnable()
         {
+            m_Plugs.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
             var socket = (Socket) target;
             m_SocketScheme = socket.socketScheme;
             m_SocketScheme.OnReconnect += HandleReconnect;
@@ -27,6 +31,7 @@ namespace Metamatic
         
         public override void OnDisable()
         {
+            m_Plugs.style.display = DisplayStyle.None;
             m_SocketScheme.OnReconnect -= HandleReconnect;
             m_SocketScheme.OnErrorChanged -= HandleErrorChanged;
         }
@@ -55,9 +60,34 @@ namespace Metamatic
         {
             var schemes = m_SocketScheme.debug_GetConnectedSchemes();
             m_PlugContainer.Clear();
-            foreach (var scheme in schemes)
+
+            if (!Application.isPlaying)
             {
-                // TODO: Create plug
+                m_PlugIndicatorDot.RemoveFromClassList("Disconnected");
+                m_PlugIndicatorDot.RemoveFromClassList("Connected");
+                return;
+            }
+            
+            if (schemes.Length > 0)
+            {
+                m_PlugIndicatorDot.RemoveFromClassList("Disconnected");
+                m_PlugIndicatorDot.AddToClassList("Connected");
+                
+                foreach (var scheme in schemes)
+                {
+                    var relatedObjectField = new ObjectField()
+                    {
+                        value = scheme.debug_RelatedObject,
+                        objectType = scheme.debug_RelatedObject.GetType()
+                    };
+                    m_PlugContainer.Add(relatedObjectField);
+                }
+            }
+            else
+            {
+                m_PlugContainer.Add(new Label("No plugs connected."));
+                m_PlugIndicatorDot.RemoveFromClassList("Connected");
+                m_PlugIndicatorDot.AddToClassList("Disconnected");
             }
         }
 
@@ -86,8 +116,9 @@ namespace Metamatic
             }
             
             /* Create plugs */
-            var plugs = CreatePlugs();
-            root.Add(plugs);
+            m_Plugs = CreatePlugs();
+            m_Plugs.style.display = DisplayStyle.None;
+            root.Add(m_Plugs);
             
             /* Create error message */
             var errorMessage = CreateErrorMessage();
@@ -104,8 +135,17 @@ namespace Metamatic
             /* Create header */
             var header = new VisualElement();
             header.AddToClassList("Header");
+            var labelContainer = new VisualElement();
+            labelContainer.AddToClassList("LabelContainer");
+            header.Add(labelContainer);
+            var indicator = new VisualElement();
+            indicator.AddToClassList("Indicator");
+            var indicatorDot = m_PlugIndicatorDot = new VisualElement();
+            indicatorDot.AddToClassList("Dot");
+            indicator.Add(indicatorDot);
+            labelContainer.Add(indicator);
             var label = new Label("Plugs");
-            header.Add(label);
+            labelContainer.Add(label);
             root.Add(header);
             
             /* Create content */
@@ -155,6 +195,23 @@ namespace Metamatic
 
             for (int i = 0; i < pinTypes.Length; i++)
             {
+                /* Create pin view */
+                var pinView = new VisualElement();
+                pinView.AddToClassList("Pin");
+                
+                /* Create pin color */
+                var pinColorContainer = new VisualElement();
+                pinColorContainer.AddToClassList("PinColorContainer");
+                var pinColor = new VisualElement();
+                pinColor.AddToClassList("PinColor");
+                pinColor.style.backgroundColor = socket.outputPins[i].debugColor;
+                pinColorContainer.Add(pinColor);
+                pinView.Add(pinColorContainer);
+                
+                /* Object field container */
+                var objectFieldContainer = new VisualElement();
+                objectFieldContainer.AddToClassList("ObjectFieldContainer");
+                
                 var objectField = new ObjectField()
                 {
                     objectType = pinTypes[i],
@@ -167,8 +224,10 @@ namespace Metamatic
                     socket.outputPins[index] = evt.newValue as Pin;
                     EditorUtility.SetDirty(target);
                 });
-
-                content.Add(objectField);
+                objectFieldContainer.Add(objectField);
+                pinView.Add(objectFieldContainer);
+                
+                content.Add(pinView);
             }
 
             return root;

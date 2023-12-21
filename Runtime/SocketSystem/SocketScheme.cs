@@ -33,6 +33,8 @@ namespace Metamatic
         public abstract void Dispose();
         public event Action OnReconnect;
         public ConnectionType connectionType { get; protected set; }
+        public abstract Action ConnectPlug(SocketScheme socketScheme);
+        public abstract void DisconnectPlug(SocketScheme socketScheme);
 #if DEBUG
         public List<string> debug_Error = new List<string>();
         public event Action OnErrorChanged;
@@ -113,7 +115,7 @@ namespace Metamatic
         /// Connect plug to this socket. Inputs of this input pins to the outputs of the other input pins. Outputs of this output pins to the inputs of the other output pins.
         /// </summary>
         /// <param name="socketScheme"></param>
-        public void ConnectPlug(SocketScheme<TOutputBundle, TInputBundle> socketScheme)
+        public Action ConnectPlug(SocketScheme<TOutputBundle, TInputBundle> socketScheme)
         {
             if (m_ConnectedSchemes.Contains(socketScheme))
             {
@@ -145,6 +147,29 @@ namespace Metamatic
                 m_ConnectedSchemes.Add(socketScheme);
                 MakeDirectConnection(socketScheme);
             }
+
+            return () =>
+            {
+                DisconnectPlug(socketScheme);
+            };
+        }
+
+        public override Action ConnectPlug(SocketScheme socketScheme)
+        {
+            if (socketScheme is not SocketScheme<TOutputBundle, TInputBundle>)
+            {
+                throw new InvalidOperationException("Can't connect plug with different bundle types");
+            }
+            return ConnectPlug(socketScheme as SocketScheme<TOutputBundle, TInputBundle>);
+        }
+        
+        public override void DisconnectPlug(SocketScheme socketScheme)
+        {
+            if (socketScheme is not SocketScheme<TOutputBundle, TInputBundle>)
+            {
+                throw new InvalidOperationException("Can't disconnect plug with different bundle types");
+            }
+            DisconnectPlug(socketScheme as SocketScheme<TOutputBundle, TInputBundle>);
         }
         
         /// <summary>

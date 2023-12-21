@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -26,8 +27,11 @@ namespace Metamatic
         
         public bool loopback;
         
+#if DEBUG
         [ShowInInspector, ReadOnly]
-        private List<Plug<TScheme>> plugs;
+        public UnityEngine.Object[] debugConnectedObjects => scheme.debug_GetConnectedSchemes()
+            .Select(sch => sch.debug_RelatedObject).ToArray();
+#endif
         private TScheme m_Scheme;
         public TScheme scheme => m_Scheme ??= new TScheme();
         public override SocketScheme socketScheme => scheme;
@@ -35,7 +39,7 @@ namespace Metamatic
         private void OnEnable()
         {
             scheme.debug_SetRelatedObject(this);
-            scheme.Initialize(outputPins, inputPins, loopback);
+            scheme.Initialize(outputPins.Cast<IPin>().ToArray(), inputPins.Cast<IPin>().ToArray(), loopback);
         }
 
         private void OnDisable()
@@ -43,9 +47,14 @@ namespace Metamatic
             scheme.Dispose();
         }
 
-        public Action ConnectPlug(Plug<TScheme> plug)
+        public Action ConnectPlug(IPlug<TScheme> plug)
         {
-            return () => { };
+            return scheme.ConnectPlug(plug.scheme);
+        }
+        
+        public void DisconnectPlug(IPlug<TScheme> plug)
+        {
+            scheme.DisconnectPlug(plug.scheme);
         }
 
         public void OnBeforeSerialize()
