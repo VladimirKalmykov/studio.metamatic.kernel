@@ -7,6 +7,10 @@ namespace Metamatic
     public abstract class VirtualPin: IPin
     {
         protected UnityEngine.Object component;
+        #if DEBUG
+        private Color m_DebugColor;
+        public Color debugColor => m_DebugColor == default(Color) ? (m_DebugColor = DebugOnly.Utils.DebugGetRandomSaturatedColor()) : m_DebugColor;
+        #endif
         public event Action OnReconnect;
         public event Action OnUnavailable;
         public UnityEngine.Object GetComponent()

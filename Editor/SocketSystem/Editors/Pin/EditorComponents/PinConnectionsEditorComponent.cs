@@ -14,8 +14,8 @@ namespace Metamatic.Effects
         private VisualElement m_LeftSmallCircleStatus;
         private VisualElement m_RightBigCircleStatus;
         private VisualElement m_RightSmallCircleStatus;
-        private ObjectField m_InputObjectField;
         private VisualElement m_OutputPinObjectFieldContainer;
+        private VisualElement m_InputPinContainer;
         private VisualElement m_TopLine;
         private Pin m_Pin;
         private VisualElement m_Root;
@@ -57,14 +57,13 @@ namespace Metamatic.Effects
             root.AddToClassList("ObjectInputsRow");
             
             /* Create input object field */
-            var inputPinObjectFieldContainer = new VisualElement();
-            var inputPinObjectField = m_InputObjectField = new ObjectField()
-            {
-                objectType = typeof(Pin)
-            };
-            
-            inputPinObjectFieldContainer.Add(inputPinObjectField);
-            root.Add(inputPinObjectFieldContainer);
+            m_InputPinContainer = new VisualElement();
+            m_InputPinContainer.AddToClassList("InputPinObjectFieldContainer");
+            root.Add(m_InputPinContainer);
+
+            var emptySpace = new VisualElement();
+            emptySpace.AddToClassList("EmptySpace");
+            root.Add(emptySpace);
             
             /* Create output object field container */
             m_OutputPinObjectFieldContainer = new VisualElement();
@@ -159,35 +158,32 @@ namespace Metamatic.Effects
         private void UpdateConnections()
         {
             var pin = m_Pin;
-            m_InputObjectField.objectType = pin.GetType();
+            m_InputPinContainer.Clear();
             if (pin.hasInputPin)
             {
+                var inputPinView = CreatePinView(pin.DebugGetInputPin());
+                m_InputPinContainer.Add(inputPinView);
+                
                 m_LeftBigCircleStatus.AddToClassList("StatusCircle_Enabled");
                 var inputPin = pin.DebugGetInputPin();
                 var inputComponent = inputPin.GetComponent();
                 var isPinInstance = inputComponent is Pin;
                 if (isPinInstance)
                 {
-                    m_InputObjectField.value = inputComponent;
-                    m_InputObjectField.objectType = pin.GetType();
                     m_LeftBigCircleStatus.RemoveFromClassList("VirtualPin");
                 }
                 else
                 {
-                    m_InputObjectField.value = inputComponent;
-                    m_InputObjectField.objectType = inputComponent.GetType();
                     m_LeftBigCircleStatus.AddToClassList("VirtualPin");
                 }
                 
                 
                 m_LeftSmallCircleStatus.AddToClassList("PinBlockLineCircle_Enabled");
-                m_InputObjectField.RemoveFromClassList("Hidden");
             }
             else
             {
                 m_LeftBigCircleStatus.RemoveFromClassList("StatusCircle_Enabled");
                 m_LeftSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Enabled");
-                m_InputObjectField.AddToClassList("Hidden");
                 m_LeftBigCircleStatus.RemoveFromClassList("VirtualPin");
             }
 
@@ -207,12 +203,11 @@ namespace Metamatic.Effects
                     {
                         onlyVirtualPins = false;
                     }
-                    var outputPinObjectField = new ObjectField()
-                    {
-                        objectType = outputComponent.GetType(),
-                        value = outputPin.GetComponent()
-                    };
-                    m_OutputPinObjectFieldContainer.Add(outputPinObjectField);
+                    
+                    /* Create pin view */
+                    var pinView = CreatePinView(outputPin);
+                    
+                    m_OutputPinObjectFieldContainer.Add(pinView);
                 }
 
                 if (onlyVirtualPins)
@@ -232,6 +227,34 @@ namespace Metamatic.Effects
                 m_RightBigCircleStatus.RemoveFromClassList("VirtualPin");
                 m_OutputPinObjectFieldContainer.Clear();
             }
+        }
+
+        private VisualElement CreatePinView(IPin pin)
+        {
+            var outputComponent = pin.GetComponent();
+            var pinView = new VisualElement();
+            pinView.AddToClassList("Pin");
+            var pinColorContainer = new VisualElement();
+            pinColorContainer.AddToClassList("PinColorContainer");
+            var pinColor = new VisualElement();
+            pinColor.AddToClassList("PinColor");
+            pinColor.style.backgroundColor = pin.debugColor;
+            pinColorContainer.Add(pinColor);
+            pinView.Add(pinColorContainer);
+                    
+            /* Object field container */
+            var objectFieldContainer = new VisualElement();
+            objectFieldContainer.AddToClassList("ObjectFieldContainer");
+            var objectField = new ObjectField()
+            {
+                objectType = outputComponent.GetType(),
+                value = pin.GetComponent()
+            };
+            objectFieldContainer.Add(objectField);
+                    
+            pinView.Add(objectFieldContainer);
+
+            return pinView;
         }
 
         private void UpdateData()
@@ -268,10 +291,12 @@ namespace Metamatic.Effects
             if (m_IsInspecting)
             {
                 m_InspectButton.AddToClassList("Active");
+                m_InspectButton.style.backgroundColor = m_Pin.debugColor;
             }
             else
             {
                 m_InspectButton.RemoveFromClassList("Active");
+                m_InspectButton.style.backgroundColor = Color.clear;
             }
         }
         

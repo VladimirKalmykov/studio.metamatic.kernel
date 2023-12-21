@@ -102,8 +102,22 @@
     flex-wrap: nowrap;
 }
 
-.ObjectInputsRow > * {
-    max-width: 50%;
+.EmptySpace {
+    width: 20px;
+    flex-basis: 20px;
+    flex-grow: 0;
+}
+
+.InputPinObjectFieldContainer {
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-grow: 1;
+}
+
+.InputPinObjectFieldContainer > * {
+    margin-top: 2px;
 }
 
 .OutputPinObjectFieldContainer {
@@ -111,6 +125,7 @@
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: flex-start;
+    flex-grow: 1;
 }
 
 .OutputPinObjectFieldContainer > * {
@@ -149,4 +164,40 @@
 .CustomButton.Active {
     background-color: #09defe;
     color: #323232;
+}
+
+.Pin {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 4px;
+    max-width: 100%;
+}
+
+
+.PinColorContainer {
+    flex-basis: 10px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    align-self: stretch;
+}
+
+.PinColor {
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    background-color: black;
+}
+
+.ObjectFieldContainer {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    align-self: stretch;
+}
+
+.ObjectFieldContainer > ObjectField {
+    flex: 1;
 }

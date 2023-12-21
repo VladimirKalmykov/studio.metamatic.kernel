@@ -1,4 +1,5 @@
-﻿using Metamatic.Extensions;
+﻿using System;
+using Metamatic.Extensions;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.Device;
@@ -94,13 +95,6 @@ namespace Metamatic
         public override VisualElement CreateInspectorGUI()
         {
             var root = new VisualElement();
-            
-            /* Create header */
-            var header = new VisualElement();
-            header.AddToClassList("SocketGUIHeader");
-            header.Add(new Label("Socket"));
-            root.Add(header);
-
             /* Create output pins */
             var outputPins = CreateOutputPins();
             if (outputPins != null)
@@ -166,12 +160,11 @@ namespace Metamatic
             return root;
         }
 
-        private VisualElement CreateOutputPins()
+        private VisualElement CreatePins(Type[] types, Pin[] pins, string title)
         {
             var socket = (Socket) target;
-            var pinTypes = socket.outputPinTypes;
             
-            if (pinTypes.Length == 0)
+            if (types.Length == 0)
             {
                 return null;
             }
@@ -182,7 +175,7 @@ namespace Metamatic
             /* Create header */
             var header = new VisualElement();
             header.AddToClassList("Header");
-            var label = new Label("Output Pins");
+            var label = new Label(title);
             header.Add(label);
             root.Add(header);
             
@@ -193,7 +186,7 @@ namespace Metamatic
             
             
 
-            for (int i = 0; i < pinTypes.Length; i++)
+            for (int i = 0; i < types.Length; i++)
             {
                 /* Create pin view */
                 var pinView = new VisualElement();
@@ -204,7 +197,7 @@ namespace Metamatic
                 pinColorContainer.AddToClassList("PinColorContainer");
                 var pinColor = new VisualElement();
                 pinColor.AddToClassList("PinColor");
-                pinColor.style.backgroundColor = socket.outputPins[i].debugColor;
+                pinColor.style.backgroundColor = pins[i].debugColor;
                 pinColorContainer.Add(pinColor);
                 pinView.Add(pinColorContainer);
                 
@@ -214,14 +207,14 @@ namespace Metamatic
                 
                 var objectField = new ObjectField()
                 {
-                    objectType = pinTypes[i],
-                    value = socket.outputPins[i]
+                    objectType = types[i],
+                    value = pins[i]
                 };
 
                 var index = i;
                 objectField.RegisterValueChangedCallback(evt =>
                 {
-                    socket.outputPins[index] = evt.newValue as Pin;
+                    pins[index] = evt.newValue as Pin;
                     EditorUtility.SetDirty(target);
                 });
                 objectFieldContainer.Add(objectField);
@@ -232,53 +225,15 @@ namespace Metamatic
 
             return root;
         }
+
+        private VisualElement CreateOutputPins()
+        {
+            return CreatePins(((Socket) target).outputPinTypes, ((Socket) target).outputPins, "Output Pins");
+        }
         
         private VisualElement CreateInputPins()
         {
-            var socket = (Socket) target;
-            var pinTypes = socket.inputPinTypes;
-            
-            if (pinTypes.Length == 0)
-            {
-                return null;
-            }
-            
-            var root = new VisualElement();
-            root.AddToClassList("Section");
-            
-            /* Create header */
-            var header = new VisualElement();
-            header.AddToClassList("Header");
-            var label = new Label("Input Pins");
-            header.Add(label);
-            root.Add(header);
-            
-            /* Create content */
-            var content = new VisualElement();
-            content.AddToClassList("Content");
-            root.Add(content);
-            
-            
-
-            for (int i = 0; i < pinTypes.Length; i++)
-            {
-                var objectField = new ObjectField()
-                {
-                    objectType = pinTypes[i],
-                    value = socket.inputPins[i]
-                };
-
-                var index = i;
-                objectField.RegisterValueChangedCallback(evt =>
-                {
-                    socket.inputPins[index] = evt.newValue as Pin;
-                    EditorUtility.SetDirty(target);
-                });
-
-                content.Add(objectField);
-            }
-
-            return root;
+            return CreatePins(((Socket) target).inputPinTypes, ((Socket) target).inputPins, "Input Pins");
         }
     }
 }
