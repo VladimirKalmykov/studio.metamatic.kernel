@@ -6,6 +6,7 @@ using UnityEngine;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace Metamatic {
     class DefaultValues {
@@ -884,6 +885,31 @@ namespace Metamatic {
             }
 
             return FindParentSiblingsWithName(parent, name);
+        }
+        
+        public static string GetGenericName(Type t)
+        {
+            if (!t.IsGenericType)
+            {
+                return t.Name;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.Append(t.Name.Substring(0, t.Name.IndexOf('`')));
+            sb.Append('<');
+
+            Type[] genericArguments = t.GetGenericArguments();
+            for (int i = 0; i < genericArguments.Length; i++)
+            {
+                sb.Append(GetGenericName(genericArguments[i]));
+                if (i < genericArguments.Length - 1)
+                {
+                    sb.Append(", ");
+                }
+            }
+
+            sb.Append('>');
+            return sb.ToString();
         }
     }
 }

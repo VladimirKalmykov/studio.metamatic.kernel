@@ -29,6 +29,7 @@ namespace Metamatic
         public Action ConnectInput(IPin pin);
         public void DisconnectOutput();
         public void DisconnectInput();
+        public string ToString();
     }
     
     public interface IPin<T>: IPin
@@ -87,9 +88,16 @@ namespace Metamatic
         public abstract IPin DebugGetInputPin();
         public abstract IPin[] DebugGetOutputPins();
         public event Action OnDebugDataChanged;
+        public event Action OnDebugHighlight;
         protected void DebugHandleChangeUntyped()
         {
             OnDebugDataChanged?.Invoke();
+        }
+        
+        [Button("Highlight")]
+        public void DebugHighlight()
+        {
+            OnDebugHighlight?.Invoke();
         }
         #endif
         #endregion
@@ -166,6 +174,10 @@ namespace Metamatic
         #endregion
         
         #region public
+        public override string ToString()
+        {
+            return $"{gameObject.name} pin.{GetType().Name} <{typeof(T).Name}>";
+        }
         public Wire<T> InternalGetWire()
         {
             return wire;

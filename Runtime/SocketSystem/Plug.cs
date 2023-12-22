@@ -69,20 +69,20 @@ namespace Metamatic
         
         protected override Type[] GetInputTypes()
         {
-            return scheme.inputTypes;
+            return scheme.outputTypes;
         }
 
         protected override Type[] GetOutputTypes()
         {
-            return scheme.outputTypes;
+            return scheme.inputTypes;
         }
         protected override Type[] GetInputPinTypes()
         {
-            return scheme.inputPinTypes;
+            return scheme.outputPinTypes;
         }
         protected override Type[] GetOutputPinTypes()
         {
-            return scheme.outputPinTypes;
+            return scheme.inputPinTypes;
         }
     }
 }

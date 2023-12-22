@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Metamatic.Extensions;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -15,6 +16,7 @@ namespace Metamatic
         private VisualElement m_PlugContainer;
         private VisualElement m_PlugIndicatorDot;
         private VisualElement m_Plugs;
+        private VisualElement m_PinsContainer;
         private SocketScheme m_SocketScheme;
         public SocketGUIEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
         {
@@ -24,6 +26,7 @@ namespace Metamatic
         {
             m_Plugs.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
             var socket = (Socket) target;
+            socket.debug_OnValidate += HandleRevalidate;
             m_SocketScheme = socket.socketScheme;
             m_SocketScheme.OnReconnectOut += HandleReconnectOut;
             m_SocketScheme.OnErrorChanged += HandleErrorChanged;
@@ -33,9 +36,16 @@ namespace Metamatic
         
         public override void OnDisable()
         {
+            var socket = (Socket) target;
+            socket.debug_OnValidate -= HandleRevalidate;
             m_Plugs.style.display = DisplayStyle.None;
             m_SocketScheme.OnReconnectOut -= HandleReconnectOut;
             m_SocketScheme.OnErrorChanged -= HandleErrorChanged;
+        }
+
+        private void HandleRevalidate()
+        {
+            RedrawPinsView();
         }
 
         private void HandleErrorChanged()
@@ -96,19 +106,10 @@ namespace Metamatic
         public override VisualElement CreateInspectorGUI()
         {
             var root = new VisualElement();
-            /* Create output pins */
-            var outputPins = CreateOutputPins();
-            if (outputPins != null)
-            {
-                root.Add(outputPins);
-            }
+            /* Pins container */
+            m_PinsContainer = new VisualElement();
             
-            /* Create input pins */
-            var inputPins = CreateInputPins();
-            if (inputPins != null)
-            {
-                root.Add(inputPins);
-            }
+            root.Add(m_PinsContainer);
             
             /* Create plugs */
             m_Plugs = CreatePlugs();
@@ -118,8 +119,28 @@ namespace Metamatic
             /* Create error message */
             var errorMessage = CreateErrorMessage();
             root.Add(errorMessage);
+
+            RedrawPinsView();
             
             return root;
+        }
+
+        private void RedrawPinsView()
+        {
+            m_PinsContainer.Clear();
+            /* Create output pins */
+            var outputPins = CreateOutputPins();
+            if (outputPins != null)
+            {
+                m_PinsContainer.Add(outputPins);
+            }
+            
+            /* Create input pins */
+            var inputPins = CreateInputPins();
+            if (inputPins != null)
+            {
+                m_PinsContainer.Add(inputPins);
+            }
         }
 
         private VisualElement CreatePlugs()
@@ -161,10 +182,8 @@ namespace Metamatic
             return root;
         }
 
-        private VisualElement CreatePins(Type[] types, Pin[] pins, string title)
+        private VisualElement CreatePins(Type[] types, Pin[] pins, string title, Action<Pin, int> OnChange)
         {
-            var socket = (Socket) target;
-            
             if (types.Length == 0)
             {
                 return null;
@@ -184,16 +203,13 @@ namespace Metamatic
             var content = new VisualElement();
             content.AddToClassList("Content");
             root.Add(content);
-            
-            
 
             for (int i = 0; i < types.Length; i++)
             {
                 var index = i;
                 content.Add(SocketSystemEditorUtils.CreatePinView(types[i], pins[i], pins[i] == null ? Color.black : pins[i].debugColor, evt =>
                 {
-                    pins[index] = evt.newValue as Pin;
-                    EditorUtility.SetDirty(target);
+                    OnChange(evt.newValue as Pin, index);
                 }));
             }
 
@@ -202,12 +218,40 @@ namespace Metamatic
 
         private VisualElement CreateOutputPins()
         {
-            return CreatePins(((Socket) target).outputPinTypes, ((Socket) target).outputPins, "Output Pins");
+            var socket = (Socket) target;
+            return CreatePins(socket.outputPinTypes, socket.outputPins, "Output Pins", (nextValue, index) =>
+            {
+                var nextPins = socket.outputPins.ToArray();
+                nextPins[index] = nextValue;
+                socket.outputPins = nextPins;
+                EditorUtility.SetDirty(socket);
+                EditorApplication.CallbackFunction delayCallHandler = null;
+                delayCallHandler = () =>
+                {
+                    RedrawPinsView();
+                    EditorApplication.delayCall -= delayCallHandler;
+                };
+                EditorApplication.delayCall += delayCallHandler;
+            });
         }
         
         private VisualElement CreateInputPins()
         {
-            return CreatePins(((Socket) target).inputPinTypes, ((Socket) target).inputPins, "Input Pins");
+            var socket = (Socket) target;
+            return CreatePins(socket.inputPinTypes, socket.inputPins, "Input Pins", (nextValue, index) =>
+            {
+                var nextPins = socket.inputPins.ToArray();
+                nextPins[index] = nextValue;
+                socket.inputPins = nextPins;
+                EditorUtility.SetDirty(socket);
+                EditorApplication.CallbackFunction delayCallHandler = null;
+                delayCallHandler = () =>
+                {
+                    RedrawPinsView();
+                    EditorApplication.delayCall -= delayCallHandler;
+                };
+                EditorApplication.delayCall += delayCallHandler;
+            });
         }
     }
 }

@@ -19,6 +19,14 @@ namespace Metamatic
         protected abstract Type[] GetInputPinTypes();
         protected abstract Type[] GetOutputPinTypes();
         public abstract SocketScheme socketScheme { get; }
+        
+        #if DEBUG
+        public event Action debug_OnValidate;
+        private void OnValidate()
+        {
+            debug_OnValidate?.Invoke();
+        }
+#endif
     }
     
     public class Socket<TScheme>: Socket, ISerializationCallbackReceiver

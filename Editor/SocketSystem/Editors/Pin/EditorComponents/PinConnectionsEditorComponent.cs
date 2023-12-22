@@ -17,6 +17,7 @@ namespace Metamatic.Effects
         private VisualElement m_OutputPinObjectFieldContainer;
         private VisualElement m_InputPinContainer;
         private VisualElement m_TopLine;
+        private VisualElementBackgroundHighligher m_Highlighter;
         private Pin m_Pin;
         private VisualElement m_Root;
         private Button m_InspectButton;
@@ -222,7 +223,6 @@ namespace Metamatic.Effects
                 m_RightSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Enabled");
                 m_RightBigCircleStatus.RemoveFromClassList("VirtualPin");
                 m_OutputPinObjectFieldContainer.Clear();
-                m_OutputPinObjectFieldContainer.Add(new Label("No output pins"));
             }
         }
 
@@ -232,11 +232,7 @@ namespace Metamatic.Effects
             var pinView = SocketSystemEditorUtils.CreatePinView(
                 outputComponent != null ? outputComponent.GetType() : typeof(UnityEngine.Object),
                 outputComponent,
-                pin?.debugColor ?? Color.black,
-                (evt) =>
-            {
-                return;
-            });
+                pin?.debugColor ?? Color.black);
             pinView.AddToClassList("PinFix");
 
             return pinView;
@@ -284,6 +280,12 @@ namespace Metamatic.Effects
                 m_InspectButton.style.backgroundColor = Color.clear;
             }
         }
+
+        private void Highlight()
+        {
+            m_Highlighter?.Dispose();
+            m_Highlighter = new VisualElementBackgroundHighligher(m_Root, m_Pin.debugColor);
+        }
         
         public override void OnEnable()
         {
@@ -297,6 +299,7 @@ namespace Metamatic.Effects
             UpdateConnections();
             m_Pin.OnReconnect += UpdateConnections;
             m_Pin.OnDebugDataChanged += UpdateData;
+            m_Pin.OnDebugHighlight += Highlight;
             Pin.OnAddToInspect += OnAddToInspect;
             Pin.OnRemoveFromInspect += OnRemoveFromInspect;
             // EditorApplication.update += UpdateFrame;
@@ -307,6 +310,7 @@ namespace Metamatic.Effects
             base.OnDisable();
             m_Pin.OnReconnect -= UpdateConnections;
             m_Pin.OnDebugDataChanged -= UpdateData;
+            m_Pin.OnDebugHighlight -= Highlight;
             // EditorApplication.update -= UpdateFrame;
         }
     }

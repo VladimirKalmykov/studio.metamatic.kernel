@@ -16,7 +16,7 @@ namespace Metamatic
         /// <param name="color"></param>
         /// <param name="onChange"></param>
         /// <returns></returns>
-        public static VisualElement CreatePinView(Type type, UnityEngine.Object pinObject, Color color, EventCallback<ChangeEvent<UnityEngine.Object>> onChange, VisualElement[] additionalElements = null)
+        public static VisualElement CreatePinView(Type type, UnityEngine.Object pinObject, Color color, EventCallback<ChangeEvent<UnityEngine.Object>> onChange = null, VisualElement[] additionalElements = null)
         {
             /* Create pin view */
             var pinView = new VisualElement();
@@ -36,20 +36,19 @@ namespace Metamatic
             var objectFieldContainer = new VisualElement();
             objectFieldContainer.AddToClassList("ObjectFieldContainer");
                 
-            var objectField = new ObjectField()
+            var objectField = new GenericObjectField<Pin>(type, onChange == null)
             {
-                objectType = type,
                 value = pinObject
             };
 
-            objectField.RegisterValueChangedCallback(onChange);
-            var selector = objectField.Q(className: "unity-object-field__selector");
-            if (selector != null)
-            {
-                selector.style.display = DisplayStyle.None;
-            }
+            
                 
             objectFieldContainer.Add(objectField);
+            if (onChange != null)
+            {
+                objectField.RegisterCallback(onChange);
+            }
+            
             pinView.Add(objectFieldContainer);
             
             /* Add additional elements */
