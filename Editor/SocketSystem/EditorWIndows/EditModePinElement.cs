@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEditor.UIElements;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Metamatic
@@ -16,15 +17,7 @@ namespace Metamatic
             container.AddToClassList("EditModePinContainer");
             Add(container);
             
-            /* Component selector */
-            var componentSelector = new ObjectField();
-            componentSelector.objectType = typeof(Pin);
-            componentSelector.RegisterValueChangedCallback(evt =>
-            {
-                return;
-            });
-            componentSelector.value = pin;
-            
+            /* Create pin view */
             /* Unwatch button */
             var unwatchButton = new Button();
             unwatchButton.text = "Unwatch";
@@ -34,8 +27,12 @@ namespace Metamatic
                 unwatchButton.SetEnabled(false);
             };
             
-            container.Add(componentSelector);
-            container.Add(unwatchButton);
+            var pinView = SocketSystemEditorUtils.CreatePinView(typeof(Pin), pin, pin == null ? Color.black : pin.debugColor, evt => { }, new []
+                {
+                    (VisualElement) unwatchButton
+                });
+            
+            container.Add(pinView);
         }
     }
 }

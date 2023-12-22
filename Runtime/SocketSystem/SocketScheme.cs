@@ -31,8 +31,9 @@ namespace Metamatic
         public abstract Type[] inputPinTypes { get; }
         public abstract void Initialize(IPin[] outputPins, IPin[] inputPins, bool loopbackMode = false);
         public abstract void Dispose();
-        public event Action OnReconnect;
-        public ConnectionType connectionType { get; protected set; }
+        public event Action OnReconnectOut;
+        public event Action OnReconnectIn;
+        public ConnectionType outConnectionType { get; protected set; }
         public abstract Action ConnectPlug(SocketScheme socketScheme);
         public abstract void DisconnectPlug(SocketScheme socketScheme);
 #if DEBUG
@@ -48,7 +49,8 @@ namespace Metamatic
             debug_RelatedObject = relatedObject;
         }
 
-        public abstract SocketScheme[] debug_GetConnectedSchemes();
+        public abstract SocketScheme[] debug_GetConnectedOutSchemes();
+        public abstract SocketScheme debug_GetConnectedInScheme();
         protected void AddError(string error)
         {
             debug_Error.Add(error);
@@ -62,10 +64,15 @@ namespace Metamatic
             OnErrorChanged?.Invoke();
         }
 #endif
-        protected void Reconnect(ConnectionType connectionType)
+        protected void ReconnectOut(ConnectionType connectionType)
         {
-            this.connectionType = connectionType;
-            OnReconnect?.Invoke();
+            outConnectionType = connectionType;
+            OnReconnectOut?.Invoke();
+        }
+
+        protected void ReconnectIn()
+        {
+            OnReconnectIn?.Invoke();
         }
     }
     
@@ -80,14 +87,60 @@ namespace Metamatic
         public IPin[] outputPins;
         public IPin[] inputPins;
         private bool loopbackMode { get; set; }
-        private List<SocketScheme<TOutputBundle, TInputBundle>> m_ConnectedSchemes = new List<SocketScheme<TOutputBundle, TInputBundle>>();
+        private List<SocketScheme<TOutputBundle, TInputBundle>> m_ConnectedOutSchemes = new List<SocketScheme<TOutputBundle, TInputBundle>>();
+        private SocketScheme<TOutputBundle, TInputBundle> m_ConnectedInScheme = null;
         
-        #if DEBUG
-        public override SocketScheme[] debug_GetConnectedSchemes()
+#if DEBUG
+        public override SocketScheme[] debug_GetConnectedOutSchemes()
         {
-            return m_ConnectedSchemes.Cast<SocketScheme>().ToArray();
+            return m_ConnectedOutSchemes.Cast<SocketScheme>().ToArray();
+        }
+
+        public override SocketScheme debug_GetConnectedInScheme()
+        {
+            return m_ConnectedInScheme;
         }
 #endif
+        
+        private void AddConnectedOutScheme(SocketScheme<TOutputBundle, TInputBundle> scheme)
+        {
+            if (m_ConnectedOutSchemes.Contains(scheme))
+            {
+                throw new InvalidOperationException("Can't add the same scheme twice");
+            }
+            m_ConnectedOutSchemes.Add(scheme);
+            scheme.AddConnectedInScheme(this);
+        }
+
+        private void RemoveConnectedOutScheme(SocketScheme<TOutputBundle, TInputBundle> scheme)
+        {
+            if (!m_ConnectedOutSchemes.Contains(scheme))
+            {
+                throw new InvalidOperationException("Can't remove scheme that is not connected");
+            }
+            m_ConnectedOutSchemes.Remove(scheme);
+            scheme.RemoveConnectedInScheme(this);
+        }
+        
+        private void AddConnectedInScheme(SocketScheme<TOutputBundle, TInputBundle> scheme)
+        {
+            if (m_ConnectedInScheme != null)
+            {
+                throw new InvalidOperationException("Can't add more than one connected in scheme");
+            }
+            m_ConnectedInScheme = scheme;
+            ReconnectIn();
+        }
+        
+        private void RemoveConnectedInScheme(SocketScheme<TOutputBundle, TInputBundle> scheme)
+        {
+            if (m_ConnectedInScheme != scheme)
+            {
+                throw new InvalidOperationException("Can't remove scheme that is not connected");
+            }
+            m_ConnectedInScheme = null;
+            ReconnectIn();
+        }
         
         /// <summary>
         /// This schema is monotype. It means that output type is the same as input type. And there is only one type at all. Monotype schemas can be connected to each other in loopback mode and can be connected to other schemas in loop chain mode.
@@ -117,11 +170,11 @@ namespace Metamatic
         /// <param name="socketScheme"></param>
         public Action ConnectPlug(SocketScheme<TOutputBundle, TInputBundle> socketScheme)
         {
-            if (m_ConnectedSchemes.Contains(socketScheme))
+            if (m_ConnectedOutSchemes.Contains(socketScheme))
             {
                 throw new InvalidOperationException("Can't connect the same plug twice");
             }
-            if (m_ConnectedSchemes.Count > 0)
+            if (m_ConnectedOutSchemes.Count > 0)
             {
                 if (inputBundle.GetTypes().Length == 0)
                 {
@@ -138,13 +191,13 @@ namespace Metamatic
                         throw new InvalidOperationException("Can't connect more than one plug when input bundle has more than one type");
                     }
                     /* Make chain connection */
-                    m_ConnectedSchemes.Add(socketScheme);
+                    AddConnectedOutScheme(socketScheme);
                     MakeLoopChain();
                 }
             }
             else
             {
-                m_ConnectedSchemes.Add(socketScheme);
+                AddConnectedOutScheme(socketScheme);
                 MakeDirectConnection(socketScheme);
             }
 
@@ -180,7 +233,7 @@ namespace Metamatic
         /// <exception cref="InvalidOperationException"></exception>
         public void DisconnectPlug(SocketScheme<TOutputBundle, TInputBundle> socketScheme, bool doNotReconnectedOthers = false)
         {
-            if (!m_ConnectedSchemes.Contains(socketScheme))
+            if (!m_ConnectedOutSchemes.Contains(socketScheme))
             {
                 throw new InvalidOperationException("Can't disconnect plug that is not connected");
             }
@@ -197,8 +250,8 @@ namespace Metamatic
             {
                 thatOutput.DisconnectOutput();
             }
-
-            m_ConnectedSchemes.Remove(socketScheme);
+            
+            RemoveConnectedOutScheme(socketScheme);
 
             if (doNotReconnectedOthers)
             {
@@ -210,7 +263,7 @@ namespace Metamatic
         
         public void DisconnectAllPlugs(bool doNotRebuild = false)
         {
-            foreach (var plug in m_ConnectedSchemes)
+            foreach (var plug in m_ConnectedOutSchemes.ToArray())
             {
                 DisconnectPlug(plug, true);
             }
@@ -229,20 +282,20 @@ namespace Metamatic
             {
                 DisconnectLoopbackConnection();
             }
-            Reconnect(ConnectionType.None);
+            ReconnectOut(ConnectionType.None);
         }
 
         private void Rebuild()
         {
-            if (m_ConnectedSchemes.Count > 2)
+            if (m_ConnectedOutSchemes.Count > 2)
             {
                 /* Remake loop chain */
                 MakeLoopChain();
             }
-            else if (m_ConnectedSchemes.Count > 0)
+            else if (m_ConnectedOutSchemes.Count > 0)
             {
                 /* Remake direct connection */
-                MakeDirectConnection(m_ConnectedSchemes[0]);
+                MakeDirectConnection(m_ConnectedOutSchemes[0]);
             }
             else if (loopbackMode && isMonoType)
             {
@@ -251,7 +304,7 @@ namespace Metamatic
             }
             else
             {
-                Reconnect(ConnectionType.None);
+                ReconnectOut(ConnectionType.None);
             }
         }
         
@@ -290,13 +343,13 @@ namespace Metamatic
                 }
                 thatPin.ConnectInput(thisPin);
             }
-            Reconnect(ConnectionType.Directional);
+            ReconnectOut(ConnectionType.Directional);
         }
 
         private void MakeLoopChain()
         {
-            for (var q = 0; q < m_ConnectedSchemes.Count; q++) {
-                var currentPlug = m_ConnectedSchemes[q];
+            for (var q = 0; q < m_ConnectedOutSchemes.Count; q++) {
+                var currentPlug = m_ConnectedOutSchemes[q];
                 if (q == 0)
                 {
                     /* For the first plug connect this output pins output to the other output pins input */
@@ -320,7 +373,7 @@ namespace Metamatic
                 else
                 {
                     /* For the rest connect that input pins output of previous plug to that output pins input */
-                    var previousPlug = m_ConnectedSchemes[q - 1];
+                    var previousPlug = m_ConnectedOutSchemes[q - 1];
                     var currentOutputPins = currentPlug.outputPins;
                     var previousInputPins = previousPlug.inputPins;
                     var outputTypes = outputBundle.GetTypes();
@@ -338,7 +391,7 @@ namespace Metamatic
                         currentPin.ConnectInput(previousPin);
                     }
                     
-                    if (q == m_ConnectedSchemes.Count - 1)
+                    if (q == m_ConnectedOutSchemes.Count - 1)
                     {
                         /* For the last connect that input pins output to this input pins input */
                         var thatInputPins = currentPlug.inputPins;
@@ -360,7 +413,7 @@ namespace Metamatic
                     }
                 }
             }
-            Reconnect(ConnectionType.LoopChain);
+            ReconnectOut(ConnectionType.LoopChain);
         }
 
         private void MakeLoopbackConnection()
@@ -369,7 +422,7 @@ namespace Metamatic
             var thisInputPins = inputPins;
             
             thisInputPins[0].ConnectInput(thisOutputPins[0]);
-            Reconnect(ConnectionType.Loopback);
+            ReconnectOut(ConnectionType.Loopback);
         }
 
         private void DisconnectLoopbackConnection()

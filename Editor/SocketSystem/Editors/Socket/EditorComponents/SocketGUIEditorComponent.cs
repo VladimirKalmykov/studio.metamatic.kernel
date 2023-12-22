@@ -2,8 +2,9 @@
 using Metamatic.Extensions;
 using UnityEditor;
 using UnityEditor.UIElements;
-using UnityEngine.Device;
+using UnityEngine;
 using UnityEngine.UIElements;
+using Application = UnityEngine.Device.Application;
 
 namespace Metamatic
 {
@@ -24,16 +25,16 @@ namespace Metamatic
             m_Plugs.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
             var socket = (Socket) target;
             m_SocketScheme = socket.socketScheme;
-            m_SocketScheme.OnReconnect += HandleReconnect;
+            m_SocketScheme.OnReconnectOut += HandleReconnectOut;
             m_SocketScheme.OnErrorChanged += HandleErrorChanged;
-            HandleReconnect();
+            HandleReconnectOut();
             HandleErrorChanged();
         }
         
         public override void OnDisable()
         {
             m_Plugs.style.display = DisplayStyle.None;
-            m_SocketScheme.OnReconnect -= HandleReconnect;
+            m_SocketScheme.OnReconnectOut -= HandleReconnectOut;
             m_SocketScheme.OnErrorChanged -= HandleErrorChanged;
         }
 
@@ -57,9 +58,9 @@ namespace Metamatic
             m_ErrorLabel.text = errorString;
         }
 
-        private void HandleReconnect()
+        private void HandleReconnectOut()
         {
-            var schemes = m_SocketScheme.debug_GetConnectedSchemes();
+            var schemes = m_SocketScheme.debug_GetConnectedOutSchemes();
             m_PlugContainer.Clear();
 
             if (!Application.isPlaying)
@@ -188,39 +189,12 @@ namespace Metamatic
 
             for (int i = 0; i < types.Length; i++)
             {
-                /* Create pin view */
-                var pinView = new VisualElement();
-                pinView.AddToClassList("Pin");
-                
-                /* Create pin color */
-                var pinColorContainer = new VisualElement();
-                pinColorContainer.AddToClassList("PinColorContainer");
-                var pinColor = new VisualElement();
-                pinColor.AddToClassList("PinColor");
-                pinColor.style.backgroundColor = pins[i].debugColor;
-                pinColorContainer.Add(pinColor);
-                pinView.Add(pinColorContainer);
-                
-                /* Object field container */
-                var objectFieldContainer = new VisualElement();
-                objectFieldContainer.AddToClassList("ObjectFieldContainer");
-                
-                var objectField = new ObjectField()
-                {
-                    objectType = types[i],
-                    value = pins[i]
-                };
-
                 var index = i;
-                objectField.RegisterValueChangedCallback(evt =>
+                content.Add(SocketSystemEditorUtils.CreatePinView(types[i], pins[i], pins[i] == null ? Color.black : pins[i].debugColor, evt =>
                 {
                     pins[index] = evt.newValue as Pin;
                     EditorUtility.SetDirty(target);
-                });
-                objectFieldContainer.Add(objectField);
-                pinView.Add(objectFieldContainer);
-                
-                content.Add(pinView);
+                }));
             }
 
             return root;

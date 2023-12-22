@@ -29,7 +29,7 @@ namespace Metamatic
         
 #if DEBUG
         [ShowInInspector, ReadOnly]
-        public UnityEngine.Object[] debugConnectedObjects => scheme.debug_GetConnectedSchemes()
+        public UnityEngine.Object[] debugConnectedObjects => scheme.debug_GetConnectedOutSchemes()
             .Select(sch => sch.debug_RelatedObject).ToArray();
 #endif
         private TScheme m_Scheme;
@@ -47,12 +47,12 @@ namespace Metamatic
             scheme.Dispose();
         }
 
-        public Action ConnectPlug(IPlug<TScheme> plug)
+        public Action Connect(IPlug<TScheme> plug)
         {
             return scheme.ConnectPlug(plug.scheme);
         }
         
-        public void DisconnectPlug(IPlug<TScheme> plug)
+        public void Disconnect(IPlug<TScheme> plug)
         {
             scheme.DisconnectPlug(plug.scheme);
         }

@@ -1,0 +1,34 @@
+﻿.Pin {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+
+.PinColorContainer {
+    flex-basis: 10px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    align-self: stretch;
+}
+
+.PinColor {
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    background-color: black;
+}
+
+.ObjectFieldContainer {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    align-self: stretch;
+}
+
+.ObjectFieldContainer > ObjectField {
+    flex: 1;
+}

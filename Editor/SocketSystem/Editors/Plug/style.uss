@@ -1,0 +1,104 @@
+﻿.SocketGUIContainer {
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.SocketGUIHeader {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.SocketGUIHeader > Label {
+    font-size: 16px;
+}
+
+.Section  {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+}
+
+.Section .Header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.Section .Header .LabelContainer {
+    background-color: #323232;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 2px 4px 2px 8px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.Section .Header .LabelContainer .Indicator {
+    flex-direction: row;
+    width: 9px;
+    height: 9px;
+    border-radius: 5px;
+    margin-right: 5px;
+    align-items: center;
+    justify-content: center;
+    background-color: #262626;
+}
+
+.Section .Header .LabelContainer .Indicator .Dot {
+    width: 2px;
+    height: 2px;
+    border-radius: 1px;
+    background-color: #3D3D3D;
+}
+
+.Section .Header .LabelContainer .Indicator .Dot.Connected {
+    background-color: #9EF79E;
+}
+
+.Section .Header .LabelContainer .Indicator .Dot.Disconnected {
+    background-color: #FF0D0D;
+}
+
+.Section .Header Label {
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.Section .Header > Label {
+    background-color: #323232;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 2px 4px 2px 8px;
+}
+
+.Section .Content {
+    display: flex;
+    flex-direction: column;
+    background-color: #323232;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 4px 8px 4px 8px;
+}
+
+.Message {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    padding: 6px;
+    border-radius: 3px;
+}
+
+.Message.Error {
+    background-color: #624040;
+    color: #F79E9E;
+}

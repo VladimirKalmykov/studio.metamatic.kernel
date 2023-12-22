@@ -60,10 +60,6 @@ namespace Metamatic.Effects
             m_InputPinContainer = new VisualElement();
             m_InputPinContainer.AddToClassList("InputPinObjectFieldContainer");
             root.Add(m_InputPinContainer);
-
-            var emptySpace = new VisualElement();
-            emptySpace.AddToClassList("EmptySpace");
-            root.Add(emptySpace);
             
             /* Create output object field container */
             m_OutputPinObjectFieldContainer = new VisualElement();
@@ -226,33 +222,22 @@ namespace Metamatic.Effects
                 m_RightSmallCircleStatus.RemoveFromClassList("PinBlockLineCircle_Enabled");
                 m_RightBigCircleStatus.RemoveFromClassList("VirtualPin");
                 m_OutputPinObjectFieldContainer.Clear();
+                m_OutputPinObjectFieldContainer.Add(new Label("No output pins"));
             }
         }
 
         private VisualElement CreatePinView(IPin pin)
         {
-            var outputComponent = pin.GetComponent();
-            var pinView = new VisualElement();
-            pinView.AddToClassList("Pin");
-            var pinColorContainer = new VisualElement();
-            pinColorContainer.AddToClassList("PinColorContainer");
-            var pinColor = new VisualElement();
-            pinColor.AddToClassList("PinColor");
-            pinColor.style.backgroundColor = pin.debugColor;
-            pinColorContainer.Add(pinColor);
-            pinView.Add(pinColorContainer);
-                    
-            /* Object field container */
-            var objectFieldContainer = new VisualElement();
-            objectFieldContainer.AddToClassList("ObjectFieldContainer");
-            var objectField = new ObjectField()
+            var outputComponent = pin?.GetComponent();
+            var pinView = SocketSystemEditorUtils.CreatePinView(
+                outputComponent != null ? outputComponent.GetType() : typeof(UnityEngine.Object),
+                outputComponent,
+                pin?.debugColor ?? Color.black,
+                (evt) =>
             {
-                objectType = outputComponent.GetType(),
-                value = pin.GetComponent()
-            };
-            objectFieldContainer.Add(objectField);
-                    
-            pinView.Add(objectFieldContainer);
+                return;
+            });
+            pinView.AddToClassList("PinFix");
 
             return pinView;
         }

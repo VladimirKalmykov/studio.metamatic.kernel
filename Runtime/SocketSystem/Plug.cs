@@ -29,6 +29,7 @@ namespace Metamatic
         protected abstract Type[] GetOutputTypes();
         protected abstract Type[] GetInputPinTypes();
         protected abstract Type[] GetOutputPinTypes();
+        public abstract SocketScheme socketScheme { get; }
     }
     
     public abstract class Plug<TScheme>: Plug, IPlug<TScheme>, ISerializationCallbackReceiver
@@ -38,6 +39,7 @@ namespace Metamatic
         private Socket<TScheme> m_Socket;
         private TScheme m_Scheme;
         public TScheme scheme => m_Scheme ??= new TScheme();
+        public override SocketScheme socketScheme => scheme;
         
         private void OnEnable()
         {

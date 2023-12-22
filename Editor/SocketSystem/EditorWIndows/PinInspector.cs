@@ -39,15 +39,6 @@ namespace Metamatic
             row.AddToClassList("Row");
             m_RootElement.Add(row);
             
-            /* Component selector */
-            var componentSelector = new ObjectField();
-            componentSelector.objectType = typeof(Pin);
-            componentSelector.RegisterValueChangedCallback(evt =>
-            {
-                return;
-            });
-            componentSelector.value = pin;
-            
             /* Unwatch button */
             var unwatchButton = new Button();
             unwatchButton.text = "Unwatch";
@@ -57,8 +48,11 @@ namespace Metamatic
                 unwatchButton.SetEnabled(false);
             };
             
-            row.Add(componentSelector);
-            row.Add(unwatchButton);
+            var pinView = SocketSystemEditorUtils.CreatePinView(typeof(Pin), pin, pin == null ? Color.black : pin.debugColor, evt => { }, new []
+            {
+                (VisualElement) unwatchButton
+            });
+            row.Add(pinView);
             
             /* Add second row */
             var secondRow = new VisualElement();
@@ -71,13 +65,6 @@ namespace Metamatic
         
             /* Get component type */
             HandleComponentChange(pin);
-            
-            BuildView();
-        }
-
-        private void BuildView()
-        {
-            
         }
         
         public void SetCurrentComponent(Pin component)
