@@ -1,0 +1,73 @@
+﻿.FieldSet {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+}
+
+.FieldSet .FieldSetHeader {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.FieldSet .FieldSetHeader .LabelContainer {
+    background-color: #323232;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 2px 4px 2px 6px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.FieldSet .FieldSetHeader .LabelContainer .Indicator {
+    flex-direction: row;
+    width: 9px;
+    height: 9px;
+    border-radius: 5px;
+    margin-right: 5px;
+    align-items: center;
+    justify-content: center;
+    background-color: #262626;
+}
+
+.FieldSet .FieldSetHeader .LabelContainer .Indicator .Dot {
+    width: 2px;
+    height: 2px;
+    border-radius: 1px;
+    background-color: #3D3D3D;
+}
+
+.FieldSet .FieldSetHeader .LabelContainer .Indicator .Dot.Connected {
+    background-color: #9EF79E;
+}
+
+.FieldSet .FieldSetHeader .LabelContainer .Indicator .Dot.Disconnected {
+    background-color: #FF0D0D;
+}
+
+.FieldSet .FieldSetHeader Label {
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.FieldSet .FieldSetHeader > Label {
+    background-color: #323232;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 2px 4px 2px 8px;
+}
+
+.FieldSet .Content {
+    display: flex;
+    flex-direction: column;
+    background-color: #323232;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 4px 8px 4px 8px;
+    overflow: visible;
+    white-space: normal;
+    justify-content: flex-start;
+}

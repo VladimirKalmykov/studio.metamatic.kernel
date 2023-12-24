@@ -48,7 +48,7 @@ namespace Metamatic
                 unwatchButton.SetEnabled(false);
             };
             
-            var pinView = SocketSystemEditorUtils.CreatePinView(typeof(Pin), pin, pin == null ? Color.black : pin.debugColor, evt => { }, new []
+            var pinView = SocketSystemEditorUtils.CreatePinView(typeof(Pin), pin, pin == null ? Color.black : pin.debugColor, null, new []
             {
                 (VisualElement) unwatchButton
             });

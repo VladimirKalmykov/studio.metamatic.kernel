@@ -7,23 +7,23 @@ namespace Metamatic
     /// </summary>
     public class ModuleAttachment
     {
-        public readonly Module module;
-        public readonly Slot slot;
+        public readonly ModuleLegacy moduleLegacy;
+        public readonly SlotLegacy slotLegacy;
         public bool released = false;
         public event Action OnRelease;
 
-        public ModuleAttachment(Slot slot, Module module)
+        public ModuleAttachment(SlotLegacy slotLegacy, ModuleLegacy moduleLegacy)
         {
-            this.module = module;
-            this.slot = slot;
+            this.moduleLegacy = moduleLegacy;
+            this.slotLegacy = slotLegacy;
             
             /*
              * Auto connect sockets
              */
-            var slotSockets = slot.GetSockets();
+            var slotSockets = slotLegacy.GetSockets();
             foreach (var slotSocket in slotSockets)
             {
-                slotSocket.AutoAttach(this.module.gameObject, true);
+                slotSocket.AutoAttach(this.moduleLegacy.gameObject, true);
             }
         }
         
@@ -36,13 +36,13 @@ namespace Metamatic
             /*
              * Auto disconnect sockets
              */
-            var slotSockets = slot.GetSockets();
+            var slotSockets = slotLegacy.GetSockets();
             foreach (var slotSocket in slotSockets)
             {
-                slotSocket.DetachFrom(module.gameObject);
+                slotSocket.DetachFrom(moduleLegacy.gameObject);
             }
             OnRelease?.Invoke();
-            module.Unplug(slot);
+            moduleLegacy.Unplug(slotLegacy);
         }
     }
 }

@@ -4,7 +4,10 @@ namespace Metamatic
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
-
+    
+    /// <summary>
+    /// Allows to interpolate between multiple targets position. For example, a bird fly to target (SetTarget), in the middle of the way, the target is changed to another target, the bird will interpolate to the new target.
+    /// </summary>
     [ExecuteAlways]
     public class InterpolateTargetsPositionSource : TargetPositionSource, ISerializationCallbackReceiver
     {

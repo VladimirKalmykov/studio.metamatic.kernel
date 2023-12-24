@@ -42,7 +42,7 @@ namespace Metamatic
         {
             m_Type = type;
             m_ReadOnly = readOnly;
-            var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/SocketSystem/Components/GenericObjectField/GenericObjectField.uxml");
+            var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Components/GenericObjectField/GenericObjectField.uxml");
             visualTree.CloneTree(this);
             AddToClassList("GenericObjectField");
             

@@ -7,7 +7,7 @@ namespace Metamatic {
     using UnityEngine;
 
     [ExecuteAlways]
-    public abstract class Module: MonoBehaviour
+    public abstract class ModuleLegacy: MonoBehaviour
     {
         [BoxGroup("Module"), ShowInInspector, ReadOnly, PropertyOrder(0)] public string UUID { get; private set; } = "";
         #if UNITY_EDITOR
@@ -28,26 +28,26 @@ namespace Metamatic {
         [Tooltip("Update position in editor every frame. Otherwise, update only on validate")]
         public bool editorLiveUpdate = true;
 
-        public Slot slot => GetConnectedSlot();
-        protected virtual Slot GetConnectedSlot()
+        public SlotLegacy slotLegacy => GetConnectedSlot();
+        protected virtual SlotLegacy GetConnectedSlot()
         {
             return null;
         }
 
         public ModuleAttachment attachment { get; protected set; } = null;
 
-        public ModuleAttachment PlugIn(Slot slot)
+        public ModuleAttachment PlugIn(SlotLegacy slotLegacy)
         {
-            return _PlugInFromBase(slot);
+            return _PlugInFromBase(slotLegacy);
         }
 
-        public void Unplug(Slot slot = null, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
+        public void Unplug(SlotLegacy slotLegacy = null, SlotLegacy.UnplugReason reason = SlotLegacy.UnplugReason.Unknown)
         {
-            _UnplugFromBase(slot, reason);
+            _UnplugFromBase(slotLegacy, reason);
         }
 
-        protected abstract ModuleAttachment _PlugInFromBase(Slot slot);
-        protected abstract void _UnplugFromBase(Slot slot, Slot.UnplugReason reason = Slot.UnplugReason.Unknown);
+        protected abstract ModuleAttachment _PlugInFromBase(SlotLegacy slotLegacy);
+        protected abstract void _UnplugFromBase(SlotLegacy slotLegacy, SlotLegacy.UnplugReason reason = SlotLegacy.UnplugReason.Unknown);
 
         void Start() {
             var parent = transform.parent;
@@ -100,12 +100,12 @@ namespace Metamatic {
             }
         }
 
-        protected virtual void OnPlugInSlot(Slot slot)
+        protected virtual void OnPlugInSlot(SlotLegacy slotLegacy)
         {
             
         }
         
-        protected virtual void OnUnplugSlot(Slot slot)
+        protected virtual void OnUnplugSlot(SlotLegacy slotLegacy)
         {
             
         }
@@ -127,75 +127,75 @@ namespace Metamatic {
         #endif
     }
 
-    public class Module<TSlot> : Module
-    where TSlot: Slot
+    public class ModuleLegacy<TSlot> : ModuleLegacy
+    where TSlot: SlotLegacy
     {
         public bool debug;
         [BoxGroup("Module"), ShowInInspector, ReadOnly, GUIColor("GetSlotFieldColor"), PropertyOrder(-1)]
         private TSlot m_Slot;
 
-        protected override Slot GetConnectedSlot()
+        protected override SlotLegacy GetConnectedSlot()
         {
             return m_Slot;
         }
         
-        public new ModuleAttachment PlugIn(Slot slot)
+        public new ModuleAttachment PlugIn(SlotLegacy slotLegacy)
         {
-            return slot.PlugIn(this, InternalPlugIn);
+            return slotLegacy.PlugIn(this, InternalPlugIn);
         }
         
-        protected override ModuleAttachment _PlugInFromBase(Slot slot)
+        protected override ModuleAttachment _PlugInFromBase(SlotLegacy slotLegacy)
         {
-            return PlugIn(slot);
+            return PlugIn(slotLegacy);
         }
         
-        protected override void _UnplugFromBase(Slot slot, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
+        protected override void _UnplugFromBase(SlotLegacy slotLegacy, SlotLegacy.UnplugReason reason = SlotLegacy.UnplugReason.Unknown)
         {
-            this.Unplug(slot, reason);
+            this.Unplug(slotLegacy, reason);
         }
         
         /// <summary>
         /// For internal use only
         /// </summary>
-        /// <param name="slot"></param>
+        /// <param name="slotLegacy"></param>
         /// <param name="attachment"></param>
-        private void InternalPlugIn(Slot slot, ModuleAttachment attachment)
+        private void InternalPlugIn(SlotLegacy slotLegacy, ModuleAttachment attachment)
         {
-            this.m_Slot = slot as TSlot;
+            this.m_Slot = slotLegacy as TSlot;
             this.enabled = true;
             this.attachment = attachment;
-            OnPlugInSlot(slot);
+            OnPlugInSlot(slotLegacy);
             Stick();
         }
 
-        public new void Unplug(Slot unplugSlot = null, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
+        public new void Unplug(SlotLegacy unplugSlotLegacy = null, SlotLegacy.UnplugReason reason = SlotLegacy.UnplugReason.Unknown)
         {
-            if (unplugSlot != null) unplugSlot.Unplug(this, InternalUnplug, reason);
+            if (unplugSlotLegacy != null) unplugSlotLegacy.Unplug(this, InternalUnplug, reason);
         }
 
-        public async Task<bool> InternalUnplug(Slot unplugSlot, Slot.UnplugReason reason = Slot.UnplugReason.Unknown)
+        public async Task<bool> InternalUnplug(SlotLegacy unplugSlotLegacy, SlotLegacy.UnplugReason reason = SlotLegacy.UnplugReason.Unknown)
         {
-            if (unplugSlot == null)
+            if (unplugSlotLegacy == null)
             {
                 throw new Exception("Slot is null");
             }
 
-            if (this.slot == null)
+            if (this.slotLegacy == null)
             {
                 throw new Exception("This slot is null");
             }
-            if (unplugSlot != this.slot)
+            if (unplugSlotLegacy != this.slotLegacy)
             {
-                throw new Exception($"Module you are trying to unplug does not match the slot plugged to this module. unplugSlot: ${unplugSlot.gameObject.name}, this.slot: ${this.slot.gameObject.name}");
+                throw new Exception($"Module you are trying to unplug does not match the slot plugged to this module. unplugSlot: ${unplugSlotLegacy.gameObject.name}, this.slot: ${this.slotLegacy.gameObject.name}");
             }
             
-            OnUnplugSlot(this.slot);
+            OnUnplugSlot(this.slotLegacy);
             
             m_Slot = null;
-            if (unplugSlot.virtualSlot) return true;
+            if (unplugSlotLegacy.virtualSlot) return true;
             switch (reason)
             {
-                case Slot.UnplugReason.ModuleDisable:
+                case SlotLegacy.UnplugReason.ModuleDisable:
                     // Wait for the end of frame
                     await UniTask.WaitForEndOfFrame();
                     if (this == null)
@@ -219,25 +219,25 @@ namespace Metamatic {
         
         protected override void OnInternalModuleDisable()
         {
-            if (slot != null)
+            if (slotLegacy != null)
             {
-                slot.Unplug(this, Slot.UnplugReason.ModuleDisable);
+                slotLegacy.Unplug(this, SlotLegacy.UnplugReason.ModuleDisable);
             }
         }
         
-        protected override void OnPlugInSlot(Slot slot)
+        protected override void OnPlugInSlot(SlotLegacy slotLegacy)
         {
-            this.m_Slot = (TSlot) slot;
+            this.m_Slot = (TSlot) slotLegacy;
         }
         
-        protected override void OnUnplugSlot(Slot slot)
+        protected override void OnUnplugSlot(SlotLegacy slotLegacy)
         {
             this.m_Slot = null;
         }
 
         private Color GetSlotFieldColor()
         {
-            return slot == null ? Color.gray : Color.cyan;
+            return slotLegacy == null ? Color.gray : Color.cyan;
         }
     }
 }

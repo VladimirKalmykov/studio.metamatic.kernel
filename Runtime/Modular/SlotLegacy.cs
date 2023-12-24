@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using UnityEngine.Serialization;
 
 namespace Metamatic {
     using UnityEngine;
     using Sirenix.OdinInspector;
 
     [ExecuteAlways]
-    public class Slot: MonoBehaviour
+    public class SlotLegacy: MonoBehaviour
     {
         public enum UnplugReason {
             Unknown,
@@ -17,7 +18,7 @@ namespace Metamatic {
         public bool single = false;
         [Tooltip("Attached modules will be attached to the slot without changing their parent"), LabelText("Virtual")]
         public bool virtualSlot = false;
-        public Module fallbackModule;
+        [FormerlySerializedAs("fallbackModule")] public ModuleLegacy fallbackModuleLegacy;
         public bool designMode = false;
         [ShowIf("designMode"), BoxGroup("Design")]
         public Color gizmosColor = Color.cyan;
@@ -43,20 +44,20 @@ namespace Metamatic {
             }
         }
 
-        public ModuleAttachment PlugIn(Module module)
+        public ModuleAttachment PlugIn(ModuleLegacy moduleLegacy)
         {
-            Module moduleInstance = null;
-            if (module.gameObject.scene.name == null || module.gameObject.scene.name == gameObject.name)
+            ModuleLegacy moduleLegacyInstance = null;
+            if (moduleLegacy.gameObject.scene.name == null || moduleLegacy.gameObject.scene.name == gameObject.name)
             {
                 /* Instantiate and connect prefab */
-                moduleInstance = InstanceOrigin.Clone(module);
+                moduleLegacyInstance = InstanceOrigin.Clone(moduleLegacy);
             }
             else
             {
-                if (module.slot == this) return module.attachment;
-                moduleInstance = module;
+                if (moduleLegacy.slotLegacy == this) return moduleLegacy.attachment;
+                moduleLegacyInstance = moduleLegacy;
             }
-            return moduleInstance.PlugIn(this);
+            return moduleLegacyInstance.PlugIn(this);
         }
 
         /// <summary>
@@ -65,11 +66,11 @@ namespace Metamatic {
         /// <param name="module"></param>
         /// <param name="internalPlugIn"></param>
         /// <returns></returns>
-        public ModuleAttachment PlugIn(Module moduleInstance, Action<Slot, ModuleAttachment> internalPlugIn)
+        public ModuleAttachment PlugIn(ModuleLegacy moduleLegacyInstance, Action<SlotLegacy, ModuleAttachment> internalPlugIn)
         {
             if (!virtualSlot)
             {
-                moduleInstance.transform.SetParent(transform, false);
+                moduleLegacyInstance.transform.SetParent(transform, false);
             }
             
             /* Unplug fallback before go on */
@@ -81,10 +82,10 @@ namespace Metamatic {
 
             var modulesToUnattach = m_Attachments.ToArray();
 
-            var attachement = new ModuleAttachment(this, moduleInstance);
+            var attachement = new ModuleAttachment(this, moduleLegacyInstance);
 
             internalPlugIn(this, attachement);
-            moduleInstance.gameObject.SetActive(true);
+            moduleLegacyInstance.gameObject.SetActive(true);
             
             if (single)
             {
@@ -96,22 +97,22 @@ namespace Metamatic {
             }
             m_Attachments.Add(attachement);
             
-            moduleInstance.gameObject.SetActive(true);
+            moduleLegacyInstance.gameObject.SetActive(true);
             
             return attachement;
         }
 
-        public void Unplug(Module module, UnplugReason reason = UnplugReason.Unknown)
+        public void Unplug(ModuleLegacy moduleLegacy, UnplugReason reason = UnplugReason.Unknown)
         {
-            module.Unplug(this, reason);
+            moduleLegacy.Unplug(this, reason);
         }
 
-        public async void Unplug(Module module, Func<Slot, UnplugReason, Task> unplugModule, UnplugReason reason = UnplugReason.Unknown)
+        public async void Unplug(ModuleLegacy moduleLegacy, Func<SlotLegacy, UnplugReason, Task> unplugModule, UnplugReason reason = UnplugReason.Unknown)
         {
-            var attachementIndex = m_Attachments.FindIndex(a => a.module == module);
+            var attachementIndex = m_Attachments.FindIndex(a => a.moduleLegacy == moduleLegacy);
             if (attachementIndex < 0)
             {
-                throw new Exception($"Module '{module.name}', that you're trying to unplug is not in attached modules list of the slot");
+                throw new Exception($"Module '{moduleLegacy.name}', that you're trying to unplug is not in attached modules list of the slot");
             }
             // var attachement = m_Attachments[attachementIndex];
             m_Attachments.RemoveAt(attachementIndex);
@@ -126,10 +127,10 @@ namespace Metamatic {
 
         private void Fallback()
         {
-            if (fallbackModule)
+            if (fallbackModuleLegacy)
             {
-                Debug.Log($"Fallback: {fallbackModule.name}");
-                m_FallbackAttachement = PlugIn(fallbackModule);
+                Debug.Log($"Fallback: {fallbackModuleLegacy.name}");
+                m_FallbackAttachement = PlugIn(fallbackModuleLegacy);
             }
         }
 
@@ -222,7 +223,7 @@ namespace Metamatic {
         #endif
     }
 
-    public class Slot<TSocket1> : Slot
+    public class SlotLegacy<TSocket1> : SlotLegacy
     where TSocket1: SocketLegacy
     {
         [SerializeField, BoxGroup("Sockets")]
@@ -234,7 +235,7 @@ namespace Metamatic {
         }
     }
     
-    public class Slot<TSocket1, TSocket2> : Slot<TSocket1>
+    public class SlotLegacy<TSocket1, TSocket2> : SlotLegacy<TSocket1>
         where TSocket1: SocketLegacy
         where TSocket2: SocketLegacy
     {
@@ -247,7 +248,7 @@ namespace Metamatic {
         }
     }
     
-    public class Slot<TSocket1, TSocket2, TSocket3> : Slot<TSocket1, TSocket2>
+    public class SlotLegacy<TSocket1, TSocket2, TSocket3> : SlotLegacy<TSocket1, TSocket2>
         where TSocket1: SocketLegacy
         where TSocket2: SocketLegacy
         where TSocket3: SocketLegacy

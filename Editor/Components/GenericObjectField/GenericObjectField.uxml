@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Components/GenericObjectField/GenericObjectField.uss?fileID=7433441132597879392&amp;guid=4c23954b53cd4ffc9d71af435159c121&amp;type=3#GenericObjectField" />
+    <ui:VisualElement class="GenericObjectFieldDisplay" name="display" view-data-key="display" style="flex-grow: 1;">
+        <ui:Label tabindex="-1" text="Label" parse-escape-sequences="true" display-tooltip-when-elided="true" name="label" view-data-key="label" />
+        <ui:VisualElement view-data-key="clear" name="func-btn" class="ClearBtn">
+            <ui:VisualElement view-data-key="clear-icon" class="ClearBtnIcon" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

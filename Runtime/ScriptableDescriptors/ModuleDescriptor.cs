@@ -4,12 +4,12 @@
     using UnityEngine.AddressableAssets;
     
     public abstract class ModuleDescriptor<TSlot> : ScriptableObject
-        where TSlot : Slot
+        where TSlot : SlotLegacy
     {
     [SerializeField] private string moduleName;
     [SerializeField] private SpriteAssetReference previewImage;
     [SerializeField] private float price;
         
-    [SerializeField] private AssetReferenceT<Module<TSlot>> modulePrefab;
+    [SerializeField] private AssetReferenceT<ModuleLegacy<TSlot>> modulePrefab;
     }
 }

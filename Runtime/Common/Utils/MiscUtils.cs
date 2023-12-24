@@ -887,7 +887,7 @@ namespace Metamatic {
             return FindParentSiblingsWithName(parent, name);
         }
         
-        public static string GetGenericName(Type t)
+        public static string GetGenericName(Type t, bool hideClassName = false, bool hideScopes = false)
         {
             if (!t.IsGenericType)
             {
@@ -895,8 +895,15 @@ namespace Metamatic {
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.Append(t.Name.Substring(0, t.Name.IndexOf('`')));
-            sb.Append('<');
+            if (!hideClassName)
+            {
+                sb.Append(t.Name.Substring(0, t.Name.IndexOf('`')));
+            }
+
+            if (!hideScopes)
+            {
+                sb.Append('<');
+            }
 
             Type[] genericArguments = t.GetGenericArguments();
             for (int i = 0; i < genericArguments.Length; i++)
@@ -908,7 +915,11 @@ namespace Metamatic {
                 }
             }
 
-            sb.Append('>');
+            if (!hideScopes)
+            {
+                sb.Append('>');
+            }
+
             return sb.ToString();
         }
     }

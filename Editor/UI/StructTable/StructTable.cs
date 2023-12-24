@@ -29,7 +29,7 @@ namespace Metamatic.UI
                 row.AddToClassList("Row");
                 var valueLabel = new Label();
                 valueLabel.AddToClassList("Value");
-                valueLabel.text = data.ToString();
+                valueLabel.text = data?.ToString() ?? "null";
                 row.Add(valueLabel);
                 table.Add(row);
                 return table;

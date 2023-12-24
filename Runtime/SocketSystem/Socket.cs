@@ -19,7 +19,8 @@ namespace Metamatic
         protected abstract Type[] GetInputPinTypes();
         protected abstract Type[] GetOutputPinTypes();
         public abstract SocketScheme socketScheme { get; }
-        
+        public abstract Action Connect(IPlug plug);
+        public abstract void Disconnect(IPlug plug);
         #if DEBUG
         public event Action debug_OnValidate;
         private void OnValidate()
@@ -59,10 +60,30 @@ namespace Metamatic
         {
             return scheme.ConnectPlug(plug.scheme);
         }
+
+        public override Action Connect(IPlug plug)
+        {
+            var plugAsGeneric = plug as IPlug<TScheme>;
+            if (plugAsGeneric == null)
+            {
+                throw new Exception($"Plug {plug} is not of type {typeof(TScheme)}");
+            }
+            return scheme.ConnectPlug(plugAsGeneric.scheme);
+        }
         
         public void Disconnect(IPlug<TScheme> plug)
         {
             scheme.DisconnectPlug(plug.scheme);
+        }
+        
+        public override void Disconnect(IPlug plug)
+        {
+            var plugAsGeneric = plug as IPlug<TScheme>;
+            if (plugAsGeneric == null)
+            {
+                throw new Exception($"Plug {plug} is not of type {typeof(TScheme)}");
+            }
+            scheme.DisconnectPlug(plugAsGeneric.scheme);
         }
 
         public void OnBeforeSerialize()

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
+using Object = UnityEngine.Object;
 
 namespace Metamatic
 {
@@ -39,12 +40,12 @@ namespace Metamatic
 #if DEBUG
         public List<string> debug_Error = new List<string>();
         public event Action OnErrorChanged;
-        public UnityEngine.Object debug_RelatedObject;
+        public Object debug_RelatedObject;
         /// <summary>
         /// For development purposes. Set related object to this socket scheme. It will be shown in the inspector.
         /// </summary>
         /// <param name="relatedObject"></param>
-        public void debug_SetRelatedObject(UnityEngine.Object relatedObject)
+        public void debug_SetRelatedObject(Object relatedObject)
         {
             debug_RelatedObject = relatedObject;
         }
@@ -74,6 +75,58 @@ namespace Metamatic
         {
             OnReconnectIn?.Invoke();
         }
+
+        public abstract bool IsSupportMultipleConnections();
+
+        public static bool IsSupportMultipleConnections<T>() where T : SocketScheme
+        {
+            // Получаем тип T
+            Type type = typeof(T);
+
+            // Убедитесь, что T является генериком и имеет достаточно аргументов
+            if (!type.IsGenericType || type.GetGenericArguments().Length < 2)
+            {
+                return false;
+            }
+
+            // Получаем генерик аргументы
+            Type[] genericArguments = type.GetGenericArguments();
+
+            // Получаем базовый тип для TInputBundle и TOutputBundle, если они являются производными
+            Type inputBundleBase = GetGenericTypeDefinition(genericArguments[1]);
+            Type outputBundleBase = GetGenericTypeDefinition(genericArguments[0]);
+
+            // Проверяем, является ли TInputBundle чистым TypeBundle
+            if (inputBundleBase == typeof(TypeBundle) && !genericArguments[1].IsGenericType)
+            {
+                return true;
+            }
+
+            // Проверяем, содержат ли они только один аргумент и равны ли они
+            if (inputBundleBase == typeof(TypeBundle) && outputBundleBase == typeof(TypeBundle))
+            {
+                Type[] inputBundleArgs = genericArguments[1].GetGenericArguments();
+                Type[] outputBundleArgs = genericArguments[0].GetGenericArguments();
+
+                if (inputBundleArgs.Length == 1 && outputBundleArgs.Length == 1 && inputBundleArgs[0] == outputBundleArgs[0])
+                {
+                    return true;
+                }
+            }
+
+            // В остальных случаях возвращаем false
+            return false;
+        }
+
+        // Метод для получения определения генерик-типа
+        private static Type GetGenericTypeDefinition(Type type)
+        {
+            while (type != null && !type.IsGenericType)
+            {
+                type = type.BaseType;
+            }
+            return type?.GetGenericTypeDefinition();
+        }
     }
     
     [Serializable]
@@ -99,6 +152,11 @@ namespace Metamatic
         public override SocketScheme debug_GetConnectedInScheme()
         {
             return m_ConnectedInScheme;
+        }
+
+        public override bool IsSupportMultipleConnections()
+        {
+            return false; // TODO: Implement
         }
 #endif
         
