@@ -57,7 +57,7 @@ namespace Metamatic
         /// <param name="entityName"></param>
         /// <typeparam name="TState"></typeparam>
         /// <returns></returns>
-        public static DatabaseVirtualStore<TState> GetStore<TState>(string entityName, TState initialState)
+        public static DatabaseVirtualStore<TState> GetStore<TState>(string entityName, TState initialState = default)
         {
             var branchSource = new DatabaseBranchSource( currentBranchSource);
             var entitySource = new DatabaseEntitySource(entityName);
@@ -79,7 +79,8 @@ namespace Metamatic
         {
             return new DatabaseSelector(new DatabaseBranchSource(branchName));
         }
-
+        
+        [Obsolete("Unstable")]
         public static DatabaseSelector Use(Behaviour behaviour)
         {
             if (behaviour is DatabaseContextBehaviour cb)
@@ -99,6 +100,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="behaviour"></param>
         /// <returns></returns>
+        [Obsolete("Unstable")]
         public static DatabaseSelector Branch(MonoBehaviour behaviour)
         {
             var gameObjectContext = behaviour.GetComponentInParent<DatabaseGameObjectContext>();
@@ -147,7 +149,6 @@ namespace Metamatic
             Action unsubscribeDepth4 = null;
             unsubscribeBranch = SubscribeBranch(branchName, delegate(DatabaseBranch branch)
             {
-                var xkey = UnityEngine.Random.Range(1, 10000);
                 unsubscribeDepth2?.Invoke();
                 unsubscribeDepth3?.Invoke();
                 unsubscribeDepth4?.Invoke();
@@ -267,7 +268,6 @@ namespace Metamatic
             m_Branches.TryGetValue(branchName, out branch);
             BranchOperationHandler branchOperationHandler = (name, branch, operation) =>
             {
-                Debug.Log($"BranchOperationHandler (${id}): {name}, {operation}");
                 if (name == branchName)
                 {
                     handler(branch);
@@ -345,7 +345,7 @@ namespace Metamatic
         public static void SaveStore<TState>(DatabaseStore<TState> store)
         {
             Database.Log($"Save to {store.address} data: {JsonUtility.ToJson(store.state)}");
-            Repository.Save<TState>(store.address, store.state);
+            FileSystemStorage.Save<TState>(store.address, store.state);
         }
 
         private static List<string> _storeLoadAttempts = new List<string>();
@@ -366,12 +366,12 @@ namespace Metamatic
             }
             Database.Log($"Load {fullAddress}");
             _storeLoadAttempts.Add(fullAddress);
-            if (Repository.Exists<TState>(fullAddress))
+            if (FileSystemStorage.Exists<TState>(fullAddress))
             {
-                var loadedState = Repository.Load<TState>(fullAddress);
-                var adressConfig = ParseAddress(address);
+                var loadedState = FileSystemStorage.Load<TState>(fullAddress);
+                var addressConfig = ParseAddress(address);
                 Database.Log($"Store {address} sucessfully loaded: {JsonUtility.ToJson(loadedState)}");
-                Database.TouchBranch(adressConfig.branch).TouchEntity(adressConfig.entity)
+                Database.TouchBranch(addressConfig.branch).TouchEntity(addressConfig.entity)
                     /* Initialize state without modifier to get every subscriber have only one subscription call */
                     .TouchStore<TState>(ref loadedState);
             }

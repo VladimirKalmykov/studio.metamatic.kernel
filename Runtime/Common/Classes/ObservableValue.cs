@@ -1,14 +1,17 @@
 using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Metamatic;
 
 namespace Metamatic
 {
+    public abstract class ObservableValue {}
     interface IObservableValue<TValue>
     {
         public TValue value { get; }
         public Action Subscribe(Action<TValue> handler);
     }
-    public abstract class ObservableValue<TValue>: IObservableValue<TValue>
+    public abstract class ObservableValue<TValue>: ObservableValue, IObservableValue<TValue>
     {
         private event Action<TValue> OnChange;
 
@@ -31,6 +34,48 @@ namespace Metamatic
             {
                 OnChange -= handler;
             };
+        }
+        
+        public Action SubscribeOnce(Action<TValue> handler)
+        {
+            Action<TValue> onceHandler = null;
+            onceHandler = v =>
+            {
+                handler(v);
+                OnChange -= onceHandler;
+            };
+            OnChange += onceHandler;
+            return () =>
+            {
+                OnChange -= onceHandler;
+            };
+        }
+        
+        public UniTask<TValue> WaitUntilValueIs(TValue value, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            if (GetValue().Equals(value)) return UniTask.FromResult(value);
+            var tcs = new UniTaskCompletionSource<TValue>();
+            Action<TValue> handler = null;
+            handler = v =>
+            {
+                if (v.Equals(value))
+                {
+                    tcs.TrySetResult(v);
+                    OnChange -= handler;
+                }
+            };
+            OnChange += handler;
+            var unregister= cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled(cancellationToken);
+                OnChange -= handler;
+            });
+            tcs.Task.GetAwaiter().OnCompleted(() =>
+            {
+                unregister.Dispose();
+            });
+            return tcs.Task;
         }
 
         protected void EmitValue(TValue v)

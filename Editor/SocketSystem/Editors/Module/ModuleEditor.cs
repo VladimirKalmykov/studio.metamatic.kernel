@@ -82,9 +82,17 @@ namespace Metamatic
         {
             /* Autoconnect */
             var autoConnectProp = serializedObject.FindProperty("autoConnect");
-            var autoConnectToggle = new PropertyField(autoConnectProp);
-            autoConnectToggle.Bind(serializedObject);
+            var autoConnectToggle = new Toggle("Auto Connect")
+            {
+                value = autoConnectProp.boolValue
+            };
+            autoConnectToggle.RegisterValueChangedCallback(evt =>
+            {
+                autoConnectProp.boolValue = evt.newValue;
+                serializedObject.ApplyModifiedProperties();
+            });
             m_Settings.Add(autoConnectToggle);
+            autoConnectToggle.SetEnabled(!Application.isPlaying);
             
             /* Sticky */
             var stickyProp = serializedObject.FindProperty("sticky");

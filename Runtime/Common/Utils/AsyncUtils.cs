@@ -8,6 +8,11 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    public enum TaskCompletionReason
+    {
+        Renew,
+        CancellationToken
+    }
     public static class AsyncUtils
     {
         public enum FrameType
@@ -112,14 +117,14 @@ namespace Metamatic
         /// </summary>
         /// <param name="tokenSource"></param>
         /// <returns></returns>
-        public static CancellationTokenSource Singular(ref CancellationTokenSource tokenSource)
+        public static CancellationTokenSource RenewTokenSource(ref CancellationTokenSource tokenSource)
         {
             if (tokenSource != null && !tokenSource.IsCancellationRequested)
             {
                 tokenSource.Cancel();
             }
-
-            return new CancellationTokenSource();
+            tokenSource = new CancellationTokenSource();
+            return tokenSource;
         }
         
         /// <summary>
@@ -128,7 +133,7 @@ namespace Metamatic
         /// <param name="tokenSource"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static Task Singular(ref CancellationTokenSource tokenSource, Func<CancellationToken, Task> callback)
+        public static Task RenewTokenSource(ref CancellationTokenSource tokenSource, Func<CancellationToken, Task> callback)
         {
             if (tokenSource != null && !tokenSource.IsCancellationRequested)
             {
@@ -138,6 +143,72 @@ namespace Metamatic
             tokenSource = new CancellationTokenSource();
             return callback(tokenSource.Token);
         }
+        
+        /// <summary>
+        /// Renew task completion source. If previous task is not completed, it will be finished with default value.
+        /// </summary>
+        /// <param name="taskCompletionSource"></param>
+        /// <param name="cancellationToken">The task will be finished if cancellation token will be triggered</param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static UniTask<T> RenewTask<T>(ref UniTaskCompletionSource<T> taskCompletionSource, CancellationToken cancellationToken)
+        {
+            if (taskCompletionSource != null && !taskCompletionSource.Task.Status.IsCompleted())
+            {
+                taskCompletionSource.TrySetResult(default);
+            }
+            
+            taskCompletionSource = new UniTaskCompletionSource<T>();
+            
+            if (cancellationToken.IsCancellationRequested)
+            {
+                taskCompletionSource.TrySetResult(default);
+            }
+            else
+            {
+                var memTaskCompletionSource = taskCompletionSource;
+                var registration = cancellationToken.Register(() =>
+                {
+                    memTaskCompletionSource.TrySetResult(default);
+                });
+                taskCompletionSource.Task.GetAwaiter().OnCompleted(() =>
+                {
+                    registration.Dispose();
+                });
+            }
+
+            return taskCompletionSource.Task;
+        }
+        
+        public static UniTask<TaskCompletionReason> RenewTask(ref UniTaskCompletionSource<TaskCompletionReason> taskCompletionSource, CancellationToken cancellationToken)
+        {
+            if (taskCompletionSource != null && !taskCompletionSource.Task.Status.IsCompleted())
+            {
+                taskCompletionSource.TrySetResult(TaskCompletionReason.Renew);
+            }
+            
+            taskCompletionSource = new UniTaskCompletionSource<TaskCompletionReason>();
+            
+            if (cancellationToken.IsCancellationRequested)
+            {
+                taskCompletionSource.TrySetResult(TaskCompletionReason.CancellationToken);
+            }
+            else
+            {
+                var memTaskCompletionSource = taskCompletionSource;
+                var registration = cancellationToken.Register(() =>
+                {
+                    memTaskCompletionSource.TrySetResult(TaskCompletionReason.CancellationToken);
+                });
+                taskCompletionSource.Task.GetAwaiter().OnCompleted(() =>
+                {
+                    registration.Dispose();
+                });
+            }
+
+            return taskCompletionSource.Task;
+        }
+
         
         /// <summary>
         /// Forget about task
@@ -232,6 +303,48 @@ namespace Metamatic
         {
             while (!task.IsCompleted) { yield return null; }
             if (task.IsFaulted) { throw task.Exception ?? new Exception("Task failed, but has no exception"); }
+        }
+        
+        public static UniTask CustomAwaitable(Func<Action, Action> addHandler, CancellationToken cancellationToken = default)
+        {
+            var tcs = new UniTaskCompletionSource();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                tcs.TrySetResult();
+                return tcs.Task;
+            }
+            Action complete = () =>
+            {
+                tcs.TrySetResult();
+            };
+            Action release = addHandler(complete);
+            
+            var registration = cancellationToken.Register(() =>
+            {
+                tcs.TrySetResult();
+            });
+            tcs.Task.GetAwaiter().OnCompleted(() =>
+            {
+                release();
+                registration.Dispose();
+            });
+            return tcs.Task;
+        }
+        
+        /// <summary>
+        /// Make cancellation token awaitable
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public static UniTask AsUniTask(this CancellationToken cancellationToken)
+        {
+            var completionSource = AutoResetUniTaskCompletionSource.Create();
+            CancellationTokenRegistration registration = cancellationToken.Register(() =>
+            {
+                completionSource.TrySetResult();
+            });
+
+            return completionSource.Task.ContinueWith(() => registration.Dispose());
         }
     }
 }

@@ -36,6 +36,7 @@ namespace Metamatic
 
         public event Action OnFinally;
         public event Action OnCancel;
+        private bool m_Cancelled = false;
         private CancellationTokenRegistration cancellationTokenRegistration;
         private CancellationTokenSource m_InternalExecutionCancellationTokenSource;
 
@@ -51,12 +52,17 @@ namespace Metamatic
             cancellationTokenRegistration = cancellationToken.Register(Cancel);
             m_InternalExecutionCancellationTokenSource = new CancellationTokenSource();
             
-            this.m_TaskCompletionSource = new TaskCompletionSource<T>();
+            m_TaskCompletionSource = new TaskCompletionSource<T>();
             initialize(Complete, SetError, this);
         }
 
         public void Cancel()
         {
+            if (m_Cancelled)
+            {
+                return;
+            }
+            m_Cancelled = true;
             OnCancel?.Invoke();
             m_TaskCompletionSource.TrySetCanceled();
             Finallize();

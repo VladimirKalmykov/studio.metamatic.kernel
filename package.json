@@ -16,6 +16,7 @@
       "url": "http://github.com/VladimirKalmykov"
     },
     "dependencies": {
-      "com.unity.addressables": "1.18.16"
+      "com.unity.addressables": "^1.18.16",
+      "com.unity.inputsystem": "^1.21.19"
     }
   }

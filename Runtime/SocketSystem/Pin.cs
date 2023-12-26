@@ -277,7 +277,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="component"></param>
         /// <returns></returns>
-        public VirtualPinWriter<T> CreateVirtualInput(Component component)
+        public VirtualPinWriter<T> CreateWriter(Component component)
         {
             return new VirtualPinWriter<T>(component, this);
         }
@@ -286,7 +286,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="component"></param>
         /// <returns></returns>
-        public VirtualPinReader<T> CreateVirtualOutput(Component component)
+        public VirtualPinReader<T> CreateReader(Component component)
         {
             return new VirtualPinReader<T>(component, this);
         }

@@ -88,7 +88,7 @@ namespace Metamatic.UI {
             }
             Input.Touch.onFingerUp -= HandleFingerUp;
         }
-
+        
         void HandleFingerUp(Input.Finger finger) {
             if ((movementSpring > 0f || resetOnRelease) && Input.Touch.activeTouches.Count == 0) {
                 m_TotalDelta = Vector3.zero;

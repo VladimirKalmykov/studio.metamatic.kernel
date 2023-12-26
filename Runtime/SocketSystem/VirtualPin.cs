@@ -46,7 +46,7 @@ namespace Metamatic
     }
     
     
-    public class VirtualPin<T>: VirtualPin, IPin<T>
+    public class VirtualPin<T>: VirtualPin, IPin<T>, IDisposable
     {
         private IPin<T> m_InputPin;
         private List<IPin<T>> m_OutputPins = new List<IPin<T>>();

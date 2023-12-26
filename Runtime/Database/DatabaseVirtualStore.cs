@@ -86,6 +86,11 @@ namespace Metamatic
             });
         }
         
+        public void Pull()
+        {
+            Database.TryLoadStore<TState>(databaseSelector.address);
+        }
+        
         /// <summary>
         /// Subscribe state change
         /// </summary>

@@ -1,50 +1,36 @@
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Metamatic
 {
-    public class Repository
+    interface IRepository
     {
-        public static void Save<TData>(string address, TData data)
+        public RepositoryStore<T> GetStore<T>(string name, T defaultValue = default) where T : struct;
+    }
+    public class Repository: IRepository
+    {
+        private static RepositoryBehaviour m_Instance;
+        public static RepositoryBehaviour instance
         {
-            var filepath = GetDataFilepath(address);
-            EnsureFilepathDirectoryExists(filepath);
-            
-            using (FileStream file = File.Create(filepath))
+            get
             {
-                new BinaryFormatter().Serialize(file, data);
+                if (m_Instance == null)
+                {
+                    m_Instance = new GameObject("Repository").AddComponent<RepositoryBehaviour>();
+                    m_Instance.Initialize(RepositoryStorageType.FileSystem);
+                }
+                return m_Instance;
             }
         }
-
-        public static TData Load<TData>(string address)
+        /// <summary>
+        /// Get store for specific data type and name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="defaultValue"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public RepositoryStore<T> GetStore<T>(string name, T defaultValue = default) where T: struct
         {
-            var filepath = GetDataFilepath(address);
-
-            using (FileStream file = File.Open(filepath, FileMode.Open))
-            {
-                object loadedData = new BinaryFormatter().Deserialize(file);
-                return (TData)loadedData;
-            }
-        }
-
-        public static bool Exists<TData>(string address)
-        {
-            var filepath = GetDataFilepath(address);
-            return File.Exists(filepath);
-        }
-        
-        public static string GetDataFilepath(string address) {
-            return Path.Join(Application.persistentDataPath, address) + ".dat";
-        }
-
-        public static void EnsureFilepathDirectoryExists(string path)
-        {
-            var directoryName = Path.GetDirectoryName(path);
-            if (!Directory.Exists(directoryName))
-            {
-                Directory.CreateDirectory(directoryName);
-            }
+            return instance.GetStore(name, defaultValue);
         }
     }
 }
