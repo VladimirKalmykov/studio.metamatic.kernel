@@ -497,4 +497,13 @@ namespace Metamatic
     {
         
     }
+    
+    /// <summary>
+    /// Socket with one input and one output. Input and output types are the same.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public class MonoTypeSocketScheme<T> : SocketScheme<TypeBundle<T>, TypeBundle<T>>
+    {
+        
+    }
 }

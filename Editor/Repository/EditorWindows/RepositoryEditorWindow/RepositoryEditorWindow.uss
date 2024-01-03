@@ -1,0 +1,38 @@
+﻿.RepositoryEditorWindow {
+    flex-direction: row;
+    
+}
+
+.StoreInspector {
+    flex-direction: column;
+    flex-basis: 300px;
+}
+
+.Layers {
+    flex-direction: row;
+    flex-grow: 1;
+}
+
+.Navigator {
+    flex-direction: column;
+    flex-basis: 180px;
+    flex-grow: 0;
+    border-right-width: 2px;
+    border-right-color: var(--unity-colors-separator-background);
+}
+
+.Content {
+    flex: 1;
+    flex-direction: column;
+    border-right-width: 2px;
+    border-right-color: var(--unity-colors-separator-background);
+}
+
+.Functions  {
+    height: 30px;
+    flex-direction: row;
+}
+
+#StoreInspector {
+    flex-grow: 1;
+}

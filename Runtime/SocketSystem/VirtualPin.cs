@@ -162,6 +162,11 @@ namespace Metamatic
             wire.Dispose();
         }
         
+        public T GetDefaultValue()
+        {
+            return default;
+        }
+        
         #region protected
         protected sealed override Action InternalConnectInputWithSameType(IPin pin)
         {

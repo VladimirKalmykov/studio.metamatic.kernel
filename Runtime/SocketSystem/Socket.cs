@@ -8,6 +8,8 @@ namespace Metamatic
 {
     public abstract class Socket: MonoBehaviour
     {
+        [SerializeField]
+        public bool loopback;
         public Pin[] outputPins;
         public Pin[] inputPins;
         public Type[] inputTypes => GetInputTypes();
@@ -33,9 +35,6 @@ namespace Metamatic
     public class Socket<TScheme>: Socket, ISerializationCallbackReceiver
     where TScheme: SocketScheme, new()
     {
-        
-        public bool loopback;
-        
 #if DEBUG
         [ShowInInspector, ReadOnly]
         public UnityEngine.Object[] debugConnectedObjects => scheme.debug_GetConnectedOutSchemes()

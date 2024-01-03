@@ -27,6 +27,33 @@ namespace Metamatic
 
         protected abstract void EraseProps();
     }
+    public class SequentialHandler<TContext>: SequentialHandler
+    {
+        public delegate void Handler(CancellationToken token, TContext context);
+
+        private Handler m_Handler;
+        private TContext m_Context;
+        
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken, TContext context = default)
+        {
+            m_Handler = handler;
+            m_Context = context;
+            externCancellationToken = externalCancellationToken;
+        }
+        public void Handle()
+        {
+            Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            CancelInternalToken();
+            internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
+            m_Handler(internalCancellationTokenSource.Token, m_Context);
+        }
+
+        protected override void EraseProps()
+        {
+            m_Handler = default;
+            m_Context = default;
+        }
+    }
     public class SequentialHandler<T, TContext>: SequentialHandler
     {
         public delegate void Handler(T value, CancellationToken token, TContext context);

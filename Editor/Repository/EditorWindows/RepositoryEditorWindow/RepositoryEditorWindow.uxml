@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="Layers" class="Layers" style="flex-grow: 1;">
+        <ui:VisualElement name="Navigator" class="Navigator">
+            <ui:VisualElement name="Functions">
+                <ui:VisualElement name="VisualElement">
+                    <ui:Button text="Create layer" parse-escape-sequences="true" display-tooltip-when-elided="true" name="CreateLayerButton" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:TreeView focusable="true" name="LayersTreeView" />
+        </ui:VisualElement>
+        <ui:VisualElement name="Content" class="Content" />
+    </ui:VisualElement>
+    <ui:VisualElement name="StoreInspector" />
+</ui:UXML>

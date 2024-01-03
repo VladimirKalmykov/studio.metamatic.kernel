@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xmlns:ul="UnityEngine.UIElements"
+         xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements"
+         noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="UnityEngine.UIElements file:/D:/Projects/Games/DuckJumper2024/UIElementsSchema/UnityEngine.UIElements.xsd">
+    <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Repository/EditorWindows/RepositoryEditorWindow/LayerInspector.uss?fileID=7433441132597879392&amp;guid=6cb2e2b9b04544d48b7ed5aa3478d57d&amp;type=3#LayerInspector" />
+    <ul:VisualElement class="LayerInspector">
+        <ui:VisualElement name="Header" class="Header" style="flex-grow: 1;">
+            <ui:Label tabindex="-1" text="Label" parse-escape-sequences="true" display-tooltip-when-elided="true" name="Title" />
+        </ui:VisualElement>
+        <ui:VisualElement name="LayerContent" class="Content" style="flex-grow: 1;" />
+    </ul:VisualElement>
+</ui:UXML>

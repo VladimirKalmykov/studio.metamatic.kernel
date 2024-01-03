@@ -15,12 +15,18 @@ namespace Metamatic
         {
             m_DisableCancellationTokenSource = new CancellationTokenSource();
             m_DisableTaskCompletionSource = new UniTaskCompletionSource();
+            RunAsync(componentDisableToken);
         }
 
         protected virtual void OnDisable()
         {
             m_DisableTaskCompletionSource?.TrySetResult();
             m_DisableCancellationTokenSource?.Cancel();
+        }
+
+        protected virtual void RunAsync(CancellationToken cancellationToken)
+        {
+            
         }
     }
 }

@@ -18,6 +18,7 @@ namespace Metamatic
         private VisualElement m_Plugs;
         private VisualElement m_PinsContainer;
         private SocketScheme m_SocketScheme;
+        private Toggle m_LoopbackToggle;
         public SocketGUIEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
         {
         }
@@ -25,6 +26,7 @@ namespace Metamatic
         public override void OnEnable()
         {
             m_Plugs.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
+            m_LoopbackToggle.SetEnabled(!Application.isPlaying);
             var socket = (Socket) target;
             socket.debug_OnValidate += HandleRevalidate;
             m_SocketScheme = socket.socketScheme;
@@ -97,15 +99,30 @@ namespace Metamatic
             }
             else
             {
-                m_PlugContainer.Add(new Label("No plugs connected."));
-                m_PlugIndicatorDot.RemoveFromClassList("Connected");
-                m_PlugIndicatorDot.AddToClassList("Disconnected");
+                switch (m_SocketScheme.outConnectionType)
+                {
+                    case ConnectionType.Loopback:
+                        m_PlugContainer.Add(new Label("Loopback"));
+                        m_PlugIndicatorDot.RemoveFromClassList("Disconnected");
+                        m_PlugIndicatorDot.AddToClassList("Connected");
+                        break;
+                    default:
+                        m_PlugContainer.Add(new Label("No plugs connected."));
+                        m_PlugIndicatorDot.RemoveFromClassList("Connected");
+                        m_PlugIndicatorDot.AddToClassList("Disconnected");
+                        break;
+                }
             }
         }
 
         public override VisualElement CreateInspectorGUI()
         {
             var root = new VisualElement();
+            
+            /* Create config */
+            var config = CreateConfig();
+            root.Add(config);
+            
             /* Pins container */
             m_PinsContainer = new VisualElement();
             
@@ -121,6 +138,24 @@ namespace Metamatic
             root.Add(errorMessage);
 
             RedrawPinsView();
+            
+            return root;
+        }
+
+        private VisualElement CreateConfig()
+        {
+            var root = new VisualElement();
+            root.AddToClassList("Section");
+            
+            /* Create loopback toggle */
+            m_LoopbackToggle = new Toggle("Loopback");
+            m_LoopbackToggle.value = ((Socket) target).loopback;
+            m_LoopbackToggle.RegisterValueChangedCallback(evt =>
+            {
+                ((Socket) target).loopback = evt.newValue;
+                EditorUtility.SetDirty(target);
+            });
+            root.Add(m_LoopbackToggle);
             
             return root;
         }
@@ -160,7 +195,7 @@ namespace Metamatic
             indicatorDot.AddToClassList("Dot");
             indicator.Add(indicatorDot);
             labelContainer.Add(indicator);
-            var label = new Label("Plugs");
+            var label = new Label("Connections");
             labelContainer.Add(label);
             root.Add(header);
             

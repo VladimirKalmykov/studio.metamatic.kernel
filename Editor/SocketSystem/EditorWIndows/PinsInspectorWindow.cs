@@ -202,6 +202,6 @@ public class PinsInspectorWindow : EditorWindow
     
     public void ReleaseEditModePinInspectors()
     {
-        m_EditModePinsContainer.Clear();
+        m_EditModePinsContainer?.Clear();
     }
 }
