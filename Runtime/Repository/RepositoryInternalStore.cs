@@ -2,8 +2,12 @@
 
 namespace Metamatic
 {
-    public class RepositoryInternalStore {
-    
+    public class RepositoryInternalStore: IDisposable {
+        public event Action OnDispose;
+        public void Dispose()
+        {
+            OnDispose?.Invoke();
+        }
     }
     public class RepositoryInternalStore<T>: RepositoryInternalStore
     where T: struct
@@ -13,6 +17,11 @@ namespace Metamatic
         public void Get(out T value)
         {
             value = m_Value.value;
+        }
+
+        public T Get()
+        {
+            return m_Value.value;
         }
         
         public void Set(T value)
