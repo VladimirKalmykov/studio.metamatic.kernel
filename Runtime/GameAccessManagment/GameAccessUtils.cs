@@ -9,8 +9,8 @@ namespace Metamatic.GameAccessManagment {
             }
             var accessConfig = accessable.GetAccessConfig();
             /* Check sertificates */
-            bool own = accessConfig.certify && accessConfig.certificates.All(certificate => ValidateCertificate(certificate, passes));
-            var use = !accessConfig.certify || own;
+            bool own = accessConfig.certify && accessConfig.certificates.Any(certificate => ValidateCertificate(certificate, passes));
+            var use = own || !accessConfig.certify;
             var interact = own || (accessConfig.interact == null || accessConfig.interact.Verify(passes));
             var view = own || (accessConfig.view == null || accessConfig.view.Verify(passes));
 
@@ -25,16 +25,13 @@ namespace Metamatic.GameAccessManagment {
             return accessDetails;
         }
 
-        static public bool ValidateCertificate(Certificate certificate, Pass[] passes) {
-            if (certificate != null) {
-                foreach(CertificatePass pass in passes) {
-                    if (pass == null) {
-                        continue;
-                    }
-                    
-                    if (pass.certificate == certificate) {
-                        return true;
-                    }
+        static public bool ValidateCertificate(Certificate certificate, Pass[] passes)
+        {
+            if (certificate == null) return false;
+            foreach(var pass in passes) {
+                if (pass is CertificatePass certPass && certPass.certificate == certificate)
+                {
+                    return true;
                 }
             }
             return false;

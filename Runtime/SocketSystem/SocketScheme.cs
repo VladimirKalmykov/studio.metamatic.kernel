@@ -26,20 +26,20 @@ namespace Metamatic
     [Serializable]
     public abstract class SocketScheme
     {
+        public IPin[] outputPins { get; protected set; }
+        public IPin[] inputPins { get; protected set; }
         public abstract Type[] outputTypes { get; }
         public abstract Type[] inputTypes { get; }
         public abstract Type[] outputPinTypes { get; }
         public abstract Type[] inputPinTypes { get; }
         public abstract void Initialize(IPin[] outputPins, IPin[] inputPins, bool loopbackMode = false);
+        public abstract void Initialize(UnityEngine.Object relatedObject);
         public abstract void Dispose();
         public event Action OnReconnectOut;
         public event Action OnReconnectIn;
         public ConnectionType outConnectionType { get; protected set; }
         public abstract Action ConnectPlug(SocketScheme socketScheme);
         public abstract void DisconnectPlug(SocketScheme socketScheme);
-#if DEBUG
-        public List<string> debug_Error = new List<string>();
-        public event Action OnErrorChanged;
         public Object debug_RelatedObject;
         /// <summary>
         /// For development purposes. Set related object to this socket scheme. It will be shown in the inspector.
@@ -49,6 +49,15 @@ namespace Metamatic
         {
             debug_RelatedObject = relatedObject;
         }
+        public Object debug_GetRelatedObject()
+        {
+            return debug_RelatedObject;
+        }
+#if DEBUG
+        public List<string> debug_Error = new List<string>();
+        public event Action OnErrorChanged;
+       
+        
 
         public abstract SocketScheme[] debug_GetConnectedOutSchemes();
         public abstract SocketScheme debug_GetConnectedInScheme();
@@ -136,12 +145,10 @@ namespace Metamatic
     {
         public static readonly TOutputBundle outputBundle = new TOutputBundle();
         public static readonly TInputBundle inputBundle = new TInputBundle();
-        
-        public IPin[] outputPins;
-        public IPin[] inputPins;
         private bool loopbackMode { get; set; }
         private List<SocketScheme<TOutputBundle, TInputBundle>> m_ConnectedOutSchemes = new List<SocketScheme<TOutputBundle, TInputBundle>>();
         private SocketScheme<TOutputBundle, TInputBundle> m_ConnectedInScheme = null;
+        private bool m_IsVirtual = false;
         
 #if DEBUG
         public override SocketScheme[] debug_GetConnectedOutSchemes()
@@ -220,6 +227,19 @@ namespace Metamatic
             {
                 MakeLoopbackConnection();
             }
+        }
+        
+        /// <summary>
+        /// Variant of constructor for virtual sockets and plugs. Input and output pins are created automatically.
+        /// </summary>
+        /// <param name="relatedObject"></param>
+        public sealed override void Initialize(Object relatedObject)
+        {
+            m_IsVirtual = true;
+            debug_RelatedObject = relatedObject;
+            /* Create input and output pins according to the bundle types */
+            outputPins = outputBundle.CreatePins(debug_RelatedObject).Cast<IPin>().ToArray();
+            inputPins = inputBundle.CreatePins(debug_RelatedObject).Cast<IPin>().ToArray();
         }
         
         /// <summary>
@@ -341,6 +361,19 @@ namespace Metamatic
                 DisconnectLoopbackConnection();
             }
             ReconnectOut(ConnectionType.None);
+            /* Dispose virtual pins */
+            if (m_IsVirtual)
+            {
+                foreach (var outputPin in outputPins)
+                {
+                    outputPin.Dispose();
+                }
+
+                foreach (var inputPin in inputPins)
+                {
+                    inputPin.Dispose();
+                }
+            }
         }
 
         private void Rebuild()

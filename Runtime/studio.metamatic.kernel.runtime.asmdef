@@ -7,7 +7,8 @@
         "Unity.ResourceManager",
         "Unity.InputSystem",
         "UniTask",
-        "com.es3.runtime"
+        "com.es3.runtime",
+        "Unity.Localization"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

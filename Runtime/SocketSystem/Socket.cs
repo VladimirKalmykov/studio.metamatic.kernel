@@ -39,6 +39,8 @@ namespace Metamatic
         [ShowInInspector, ReadOnly]
         public UnityEngine.Object[] debugConnectedObjects => scheme.debug_GetConnectedOutSchemes()
             .Select(sch => sch.debug_RelatedObject).ToArray();
+
+        public string debugNotice = "";
 #endif
         private TScheme m_Scheme;
         public TScheme scheme => m_Scheme ??= new TScheme();

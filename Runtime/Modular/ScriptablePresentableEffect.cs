@@ -7,7 +7,7 @@ namespace Metamatic {
     using Metamatic.GameAccessManagment;
 
     
-    public abstract class ScriptableCustomizerEffect<TEffector, TProps> : ScriptableEffectWithSubEffects<TEffector, TProps>
+    public abstract class ScriptablePresentableEffect<TEffector, TProps> : ScriptableEffectWithSubEffects<TEffector, TProps>
     where TEffector: Effector
     where TProps : struct
     {
@@ -19,7 +19,7 @@ namespace Metamatic {
         
         public override string GetEffectName()
         {
-            return $"Skin: {title}";
+            return $"Skin: {(title == "" ? name : title)}";
         }
 
         #if UNITY_EDITOR

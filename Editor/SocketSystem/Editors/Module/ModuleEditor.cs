@@ -232,6 +232,10 @@ namespace Metamatic
 
         private void UpdateModulesView()
         {
+            if (m_PlugsFieldSet == null)
+            {
+                return;
+            }
             var connectedSlot = m_Module.connectedSlot;
             m_PlugsFieldSet.isActive = connectedSlot != null;
             if (connectedSlot == null)

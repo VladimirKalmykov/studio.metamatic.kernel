@@ -30,6 +30,8 @@ namespace Metamatic
         public void DisconnectOutput();
         public void DisconnectInput();
         public string ToString();
+        public void Dispose();
+        public Type type { get; }
     }
     
     public interface IPin<T>: IPin
@@ -110,10 +112,7 @@ namespace Metamatic
 
         public Action ConnectInput(IPin pin)
         {
-            if (pin.GetType() != GetType())
-            {
-                throw new InvalidOperationException("Can't connect pins of different types");
-            }
+            Debug.Assert(pin.type == type, $"Can't connect pins of different types. Another pin is {pin.GetType().Name}, this pin is {GetType().Name}");
 
             return InternalConnectInputWithSameType(pin);
         }
@@ -121,6 +120,12 @@ namespace Metamatic
         public abstract void DisconnectOutput();
 
         public abstract void DisconnectInput();
+        public void Dispose()
+        {
+            /* Physical pins are not disposable */
+        }
+
+        public abstract Type type { get; }
 
         protected abstract Action InternalConnectInputWithSameType(IPin pin);
 
@@ -200,6 +205,8 @@ namespace Metamatic
         [Title("Output connected"), ShowIf("@m_OutputPins.Count > 0"),ShowInInspector, HideLabel, ReadOnly, LabelText("Outputs"), GUIColor("@m_OutputPins.Count > 0 ? Color.green : Color.red")]
         [ListDrawerSettings(IsReadOnly = true, NumberOfItemsPerPage = 5, ShowFoldout = true)]
         public IPin<T>[] outputPins => m_OutputPins.ToArray();
+
+        public sealed override Type type => typeof(T);
         public Action ConnectInput(IPin<T> inputPin)
         {
             if (inputPin == null)

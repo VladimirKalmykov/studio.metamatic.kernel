@@ -1,8 +1,11 @@
-﻿namespace Metamatic
+﻿using System;
+
+namespace Metamatic
 {
     using UnityEngine;
     using UnityEngine.AddressableAssets;
     
+    [Obsolete("Out of concept")]
     public abstract class ModuleDescriptor<TSlot> : ScriptableObject
         where TSlot : SlotLegacy
     {

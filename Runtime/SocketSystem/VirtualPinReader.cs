@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Metamatic
 {
@@ -20,11 +21,10 @@ namespace Metamatic
     }
     public class VirtualPinReader<T>: VirtualPin<T>, IVirtualPinOutput<T>, IPin<T>
     {
-        private Component m_Component;
-        public VirtualPinReader(Component component): base(component)
+        public VirtualPinReader(Object component): base(component)
         {
         }
-        public VirtualPinReader(Component component, IPin<T> pin): base(component)
+        public VirtualPinReader(Object component, IPin<T> pin): base(component)
         {
             ConnectInput(pin);
         }

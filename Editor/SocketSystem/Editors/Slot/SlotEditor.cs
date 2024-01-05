@@ -151,9 +151,10 @@ namespace Metamatic
 
         private void UpdateModulesView()
         {
+            if (m_ModulesFieldSet == null) return;
             var connectedModule = m_Slot.connectedModules;
-            m_ModulesFieldSet.isActive = connectedModule.Count() > 0;
-            if (connectedModule.Count() == 0)
+            m_ModulesFieldSet.isActive = connectedModule.Any();
+            if (!connectedModule.Any())
             {
                 m_ModulesFieldSet.content = new[]
                 {

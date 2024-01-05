@@ -17,6 +17,11 @@ namespace Metamatic
         {
             return new Type[] { };
         }
+        
+        public virtual VirtualPin[] CreatePins(UnityEngine.Object relatedObject)
+        {
+            return new VirtualPin[] { };
+        }
     }
     
     public class TypeBundle<T1>: TypeBundle, ITypeBundle
@@ -29,6 +34,11 @@ namespace Metamatic
         public override Type[] GetPinTypes()
         {
             return new Type[] { typeof(Pin<T1>) };
+        }
+        
+        public override VirtualPin[] CreatePins(UnityEngine.Object relatedObject)
+        {
+            return new VirtualPin[] { new VirtualPin<T1>(relatedObject) };
         }
     }
     
@@ -43,6 +53,11 @@ namespace Metamatic
         {
             return new Type[] { typeof(Pin<T1>), typeof(Pin<T2>) };
         }
+        
+        public override VirtualPin[] CreatePins(UnityEngine.Object relatedObject)
+        {
+            return new VirtualPin[] { new VirtualPin<T1>(relatedObject), new VirtualPin<T2>(relatedObject) };
+        }
     }
     
     public class TypeBundle<T1, T2, T3>: TypeBundle, ITypeBundle
@@ -55,6 +70,11 @@ namespace Metamatic
         public override Type[] GetPinTypes()
         {
             return new Type[] { typeof(Pin<T1>), typeof(Pin<T2>), typeof(Pin<T3>) };
+        }
+        
+        public override VirtualPin[] CreatePins(UnityEngine.Object relatedObject)
+        {
+            return new VirtualPin[] { new VirtualPin<T1>(relatedObject), new VirtualPin<T2>(relatedObject), new VirtualPin<T3>(relatedObject) };
         }
     }
 }

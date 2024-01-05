@@ -190,7 +190,6 @@ namespace Metamatic
         
         public void AutoConnect()
         {
-            Debug.Log("AutoConnect");
             var parent = transform.parent;
             if (parent == null)
             {

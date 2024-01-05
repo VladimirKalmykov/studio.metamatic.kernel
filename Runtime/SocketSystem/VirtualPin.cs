@@ -20,7 +20,7 @@ namespace Metamatic
 
         public Action ConnectInput(IPin pin)
         {
-            if (pin.GetType() != GetType())
+            if (pin.type != type)
             {
                 throw new InvalidOperationException("Can't connect pins of different types");
             }
@@ -31,6 +31,8 @@ namespace Metamatic
         public abstract void DisconnectOutput();
 
         public abstract void DisconnectInput();
+        public abstract void Dispose();
+        public abstract Type type { get; }
 
         protected abstract Action InternalConnectInputWithSameType(IPin pin);
 
@@ -53,6 +55,7 @@ namespace Metamatic
         private Wire<T> m_Wire;
         public IPin<T>[] outputPins => m_OutputPins.ToArray();
         public Wire<T> wire => m_Wire ??= new Wire<T>();
+        public sealed override Type type => typeof(T);
 
         public VirtualPin(UnityEngine.Object component)
         {
@@ -155,7 +158,7 @@ namespace Metamatic
             return wire;
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             Unavailable();
             DisconnectInput();

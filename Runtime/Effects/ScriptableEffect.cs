@@ -6,6 +6,10 @@ using UnityEngine.AddressableAssets;
 
 namespace Metamatic.Effects
 {
+    public struct NoEffectProps
+    {
+        
+    }
     public abstract class ScriptableEffect: ScriptableObject, IEffect
     {
         public abstract string GetEffectName();
@@ -16,7 +20,14 @@ namespace Metamatic.Effects
             // return effector.ApplyEffect(this, props);
             return ApplyWithProps(behaviour, props);
         }
+        public EffectCancellableOperationAwaiter Apply(GameObject go, object props = default)
+        {
+            // var effector = behaviour.GetComponent<TTarget>() as Effector<TTarget>;
+            // return effector.ApplyEffect(this, props);
+            return ApplyWithProps(go, props);
+        }
         internal abstract EffectCancellableOperationAwaiter ApplyWithProps(Behaviour behaviour, object props = default);
+        internal abstract EffectCancellableOperationAwaiter ApplyWithProps(GameObject go, object props = default);
     }
     public abstract class ScriptableEffect<TTarget> : ScriptableEffect, IEffect<TTarget>
         where TTarget: Behaviour
@@ -65,6 +76,17 @@ namespace Metamatic.Effects
             return Apply(effector, ref props);
         }
         
+        public EffectCancellableOperationAwaiter Apply(GameObject go, TProps props = default)
+        {
+            var effector = go.GetComponent<TEffector>();
+            if (effector == null)
+            {
+                throw new Exception($"Target has no opporiate effector with type {typeof(TEffector).Name}");
+            }
+
+            return Apply(effector, ref props);
+        }
+        
         /// <summary>
         /// Method that apply effect to the effector and it can be customized in the derived class
         /// </summary>
@@ -85,6 +107,17 @@ namespace Metamatic.Effects
         {
             return Apply(behaviour, props == null ? default(TProps) : (TProps)props);
         }
+        
+        internal sealed override EffectCancellableOperationAwaiter ApplyWithProps(GameObject go, object props = default)
+        {
+            return Apply(go, props == null ? default(TProps) : (TProps)props);
+        }
+    }
+
+    public abstract class NoPropsScriptableEffect<TEffector> : ScriptableEffect<TEffector, NoEffectProps>
+        where TEffector: Effector
+    {
+        
     }
 
     /// <summary>
