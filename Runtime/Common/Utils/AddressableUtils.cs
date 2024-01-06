@@ -56,13 +56,19 @@ namespace Metamatic {
             return tsc.Task;
         }
         
-        public static Task<TObject> LoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken) where TObject : UnityEngine.Object
+        public static async Task<TObject> LoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken) where TObject : UnityEngine.Object
         {
             // Проверка, была ли уже начата операция загрузки
             if (assetReference.OperationHandle.IsValid() && !assetReference.OperationHandle.IsDone)
             {
                 // Ожидание завершения уже запущенной операции
-                return WaitExistingOperation(assetReference, cancellationToken);
+                await new Promise((resolve, reject, self) =>
+                {
+                    assetReference.OperationHandle.Completed += (AsyncOperationHandle op) =>
+                    {
+                        resolve(op.Status == AsyncOperationStatus.Succeeded);
+                    };
+                }).Task;
             }
     
             var aoh = assetReference.LoadAssetAsync<TObject>();
@@ -78,19 +84,19 @@ namespace Metamatic {
             // Регистрируем обработку отмены
             cancellationToken.Register(() =>
             {
-                if (!aoh.IsDone)
+                if (aoh.IsDone)
                 {
-                    // Если операция еще не завершена, отменяем её
+                    // Если операция завершена, выгружаем ассет
                     Addressables.Release(aoh);
                 }
                 else
                 {
-                    // Выгружаем ассет
-                    aoh.Completed += handle => { if (!handle.IsDone) Addressables.Release(handle); };
+                    // Выгружаем ассет по готовности
+                    aoh.Completed += handle => { if (handle.IsDone) Addressables.Release(handle); };
                 }
             });
 
-            return aoh.Task;
+            return await aoh.Task;
         }
 
         private static Task<TObject> WaitExistingOperation<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken) where TObject : UnityEngine.Object

@@ -58,9 +58,11 @@ namespace Metamatic
         /// </summary>
         /// <param name="name"></param>
         /// <param name="store"></param>
+        /// <param name="forceCreateIfNoExists">Force create store if it does not exist in target layer</param>
+        /// <param name="initialValue">Initial value for new store</param>
         /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public bool InternalTryGetStore<T>(string name, out RepositoryInternalStore<T> store, bool forceCreateIfNoExists = false)
+        /// <returns>Return true if store already exists, and false if it doesn't exist (event if it has created right now according to forceCreateIfNoExists option)</returns>
+        public bool InternalTryGetStore<T>(string name, out RepositoryInternalStore<T> store, bool forceCreateIfNoExists = false, T initialValue = default)
         where T: struct
         {
             store = null;
@@ -75,15 +77,15 @@ namespace Metamatic
 
             if (forceCreateIfNoExists)
             {
-                store = CreateStore<T>(name);
-                return true;
+                store = CreateStore<T>(name, initialValue);
+                return false;
             }
             return false;
         }
 
-        private RepositoryInternalStore<T> CreateStore<T>(string name) where T: struct
+        private RepositoryInternalStore<T> CreateStore<T>(string name, T initialValue = default) where T: struct
         {
-            var internalStore = new RepositoryInternalStore<T>();
+            var internalStore = new RepositoryInternalStore<T>(initialValue);
             if (!m_Stores.TryGetValue(typeof(T), out var typeStores))
             {
                 typeStores = new Dictionary<string, RepositoryInternalStore>();

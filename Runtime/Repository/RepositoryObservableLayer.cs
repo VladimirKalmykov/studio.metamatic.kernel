@@ -132,9 +132,9 @@ namespace Metamatic
             GC.SuppressFinalize(this);
         }
         
-        public RepositoryStore<T> GetStore<T>(string name, T defaultValue = default) where T: struct
+        public RepositoryStore<T> GetStore<T>(string name) where T: struct
         {
-            return m_RepositoryBehaviour.GetStore<T>(this, name, defaultValue);
+            return m_RepositoryBehaviour.GetStore<T>(this, name);
         }
     }
     

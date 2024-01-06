@@ -17,6 +17,7 @@ namespace Metamatic.GameAccessManagment {
             var accessDetails = new AccessDetails {
                 own = own,
                 use = use,
+                view = view,
                 interact = interact,
                 config = accessConfig,
                 isCertified = accessConfig.certify && accessConfig.certificates != null && accessConfig.certificates.Length > 0

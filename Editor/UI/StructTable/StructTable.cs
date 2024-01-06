@@ -14,10 +14,19 @@ namespace Metamatic.UI
             Add(DataToVisualElement(data, dataType));
         }
         
-        public static VisualElement DataToVisualElement(object data, Type dataType)
+        public static VisualElement DataToVisualElement(object rawData, Type dataType)
         {
-            // Если data - примитивный тип, возвращаем его строковое представление
-            
+            var data = rawData;
+            Type underlyingType = Nullable.GetUnderlyingType(dataType);
+            if (underlyingType != null)
+            {
+                dataType = underlyingType;
+                if (rawData != null)
+                {
+                    var nullableType = typeof(Nullable<>).MakeGenericType(dataType);
+                    data = nullableType.GetProperty("Value").GetValue(rawData);
+                }
+            }
 
             // Создаем табличное представление для сложных типов
             var table = new VisualElement();

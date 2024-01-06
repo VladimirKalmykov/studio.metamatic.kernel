@@ -10,9 +10,9 @@
             m_LayerName = layerName;
         }
         
-        public RepositoryStore<T> GetStore<T>(string name, T defaultValue = default) where T: struct
+        public RepositoryStore<T> GetStore<T>(string name) where T: struct
         {
-            return m_RepositoryBehaviour.GetStore<T>(m_LayerName, name, defaultValue);
+            return m_RepositoryBehaviour.GetStore<T>(m_LayerName, name);
         }
     }
 }

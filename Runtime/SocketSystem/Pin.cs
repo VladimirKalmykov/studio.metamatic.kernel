@@ -181,7 +181,22 @@ namespace Metamatic
         #region public
         public override string ToString()
         {
-            return $"{gameObject.name} pin.{GetType().Name} <{typeof(T).Name}>";
+            Type typeOfT = typeof(T);
+            Type underlyingType = Nullable.GetUnderlyingType(typeOfT);
+
+            string typeName;
+            if (underlyingType != null)
+            {
+                // Если T - Nullable тип, добавляем '?' к имени базового типа
+                typeName = underlyingType.Name + "?";
+            }
+            else
+            {
+                // Если T не Nullable, используем имя типа напрямую
+                typeName = typeOfT.Name;
+            }
+
+            return $"{gameObject.name} {GetType().Name} <{typeName}>";
         }
         public Wire<T> InternalGetWire()
         {

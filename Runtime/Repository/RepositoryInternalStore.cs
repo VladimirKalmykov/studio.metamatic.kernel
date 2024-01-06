@@ -12,14 +12,19 @@ namespace Metamatic
     public class RepositoryInternalStore<T>: RepositoryInternalStore
     where T: struct
     {
-        private readonly ObservableWritableValue<T> m_Value = new();
+        private readonly ObservableWritableValue<T?> m_Value;
         
-        public void Get(out T value)
+        public RepositoryInternalStore(T initialValue)
+        {
+            m_Value = new ObservableWritableValue<T?>(initialValue);
+        }
+        
+        public void Get(out T? value)
         {
             value = m_Value.value;
         }
 
-        public T Get()
+        public T? Get()
         {
             return m_Value.value;
         }
@@ -29,7 +34,7 @@ namespace Metamatic
             m_Value.SetValue(value);
         }
         
-        public Action Subscribe(Action<T> callback)
+        public Action Subscribe(Action<T?> callback)
         {
             return m_Value.Subscribe(callback);
         }

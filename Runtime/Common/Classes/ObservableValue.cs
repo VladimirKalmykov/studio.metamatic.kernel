@@ -5,7 +5,12 @@ using Metamatic;
 
 namespace Metamatic
 {
-    public abstract class ObservableValue {}
+    public abstract class ObservableValue
+    {
+        #if DEBUG
+        public string debugName;
+        #endif
+    }
     interface IObservableValue<TValue>
     {
         public TValue value { get; }
@@ -28,8 +33,8 @@ namespace Metamatic
 
         public Action Subscribe(Action<TValue> handler)
         {
-            handler(GetValue());
             OnChange += handler;
+            handler(GetValue());
             return () =>
             {
                 OnChange -= handler;

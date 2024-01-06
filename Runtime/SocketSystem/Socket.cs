@@ -10,8 +10,9 @@ namespace Metamatic
     {
         [SerializeField]
         public bool loopback;
-        public Pin[] outputPins;
-        public Pin[] inputPins;
+
+        public Pin[] outputPins = Array.Empty<Pin>();
+        public Pin[] inputPins = Array.Empty<Pin>();
         public Type[] inputTypes => GetInputTypes();
         public Type[] outputTypes => GetOutputTypes();
         public Type[] inputPinTypes => GetInputPinTypes();

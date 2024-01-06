@@ -55,23 +55,18 @@ namespace Metamatic
         private RepositoryObservableLayer m_TargetObservableLayer;
         private ObservableWritableValue<RepositoryInternalStore<T>> m_Store =new ();
         private ObservableWritableValue<bool> m_Busy = new();
-        private T m_DefaultValue;
-        public RepositoryStore(RepositoryBehaviour repositoryBehaviour, RepositoryObservableLayer targetObservableLayer, string name, T defaultValue = default)
+        public RepositoryStore(RepositoryBehaviour repositoryBehaviour, RepositoryObservableLayer targetObservableLayer, string name)
         {
             m_Name = name;
             m_CancellationTokenSource = new CancellationTokenSource();
             m_RepositoryBehaviour = repositoryBehaviour;
             m_TargetObservableLayer = targetObservableLayer;
-            m_DefaultValue = defaultValue;
             m_RepositoryBehaviour.OnBeforeDestroy += OnBeforeRepositoryDestroy;
             
             /* Load store from storage once */
             // TODO: Combine all pull requests into one (for example if pull request already in progress, just subscribe to it)
             m_Busy.SetValue(true);
-            repositoryBehaviour.PullStore<T>(name, m_CancellationTokenSource.Token).OnCompleted(() =>
-            {
-                m_Busy.SetValue(false);
-            });
+            var pullOperation = repositoryBehaviour.PullStore<T>(name, m_CancellationTokenSource.Token);
             
             /* Subscribe to current layer changes and try to resolve store every time data layer changed */
             var layerChangeHandler =
@@ -88,6 +83,18 @@ namespace Metamatic
                 unsubscribeLayer();
                 
             };
+            pullOperation.OnCompleted(() =>
+            {
+                m_Busy.SetValue(false);
+            });
+        }
+        
+        /// <summary>
+        /// Initialize store data in memory with default value
+        /// </summary>
+        public void Initialize()
+        {
+            
         }
 
         private async void OnCurrentLayerChange(RepositoryLayer layer, CancellationToken cancellationToken, object context)
@@ -110,11 +117,11 @@ namespace Metamatic
         /// Get value from store synchronously. If store not found, return default value. If store not loaded from storage, return default value.
         /// </summary>
         /// <returns></returns>
-        public void GetSync(out T value)
+        public void GetSync(out T? value)
         {
             if (m_Store.value == null)
             {
-                value = m_DefaultValue;
+                value = null;
             }
             else
             {
@@ -126,11 +133,11 @@ namespace Metamatic
         /// Get value from store synchronously. If store not found, return default value. If store not loaded from storage, return default value.
         /// </summary>
         /// <returns></returns>
-        public T GetSync()
+        public T? GetSync()
         {
             if (m_Store.value == null)
             {
-               return m_DefaultValue;
+               return null;
             }
             else
             {
@@ -143,7 +150,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async UniTask<T> GetAsync(CancellationToken cancellationToken)
+        public async UniTask<T?> GetAsync(CancellationToken cancellationToken)
         {
             if (m_Busy.value)
             {
@@ -161,7 +168,7 @@ namespace Metamatic
                 {
                     Debug.LogError(e);
                 }
-                return m_DefaultValue;
+                return null;
             }
             else
             {
@@ -182,8 +189,10 @@ namespace Metamatic
                 return;
             }
             /* Write operation on not loaded store will force create store in current layer */
-            m_TargetObservableLayer.value.InternalTryGetStore<T>(m_Name, out var store, true);
-            store.Set(value);
+            if (!m_TargetObservableLayer.value.InternalTryGetStore<T>(m_Name, out var store, true, value))
+            {
+                store.Set(value);
+            }
         }
         
         /// <summary>
@@ -191,10 +200,10 @@ namespace Metamatic
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public Action Subscribe(Action<T> handler)
+        public Action Subscribe(Action<T?> handler)
         {
             var localCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(m_CancellationTokenSource.Token);
-            var storeHandler = new SequentialHandler< RepositoryInternalStore<T>, Action<T>>(SubscribeStoreHandler, localCancellationTokenSource.Token, handler);
+            var storeHandler = new SequentialHandler< RepositoryInternalStore<T>, Action<T?>>(SubscribeStoreHandler, localCancellationTokenSource.Token, handler);
             Action currentUnsubscriber = null;
             
             /* Wait for busy task until subscription */
@@ -219,11 +228,13 @@ namespace Metamatic
             }
             else
             {
-                m_Store.Subscribe(storeHandler.Handle);
+                currentUnsubscriber = m_Store.Subscribe(storeHandler.Handle);
             }
             
             /* Immediate get value */
             GetSync(out var value);
+            
+            handler(value);
 
             return () =>
             {
@@ -233,21 +244,22 @@ namespace Metamatic
             };
         }
         
-        private void SubscribeStoreHandler(RepositoryInternalStore<T> store, CancellationToken cancellationToken, Action<T> handler)
+        private void SubscribeStoreHandler(RepositoryInternalStore<T> store, CancellationToken cancellationToken, Action<T?> dataChangeHandler)
         {
             if (store == null)
             {
-                handler(m_DefaultValue);
+                dataChangeHandler(null);
                 return;
             }
             else
             {
-                handler(store.Get());
+                dataChangeHandler(store.Get());
             }
-            var unsubscribe = store.Subscribe(handler);
+            var unsubscribe = store.Subscribe(dataChangeHandler);
             OnDispose += unsubscribe;
             cancellationToken.Register(() =>
             {
+                OnDispose -= unsubscribe;
                 unsubscribe();
             });
         }
