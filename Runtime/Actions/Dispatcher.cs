@@ -193,6 +193,27 @@ namespace Metamatic.Actions
             Dispatch(new ConcealBehaviourAction<T>(source));
         }
         
+        /// <summary>
+        /// Get all announced behaviours of specified type
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public IReadOnlyList<T> GetAnnounced<T>() where T: Behaviour
+        {
+            if (m_Registry.TryGetValue(typeof(T), out var list))
+            {
+                return list.OfType<T>().ToArray();
+            }
+
+            return new T[0];
+        }
+        
+        /// <summary>
+        /// Subscribe to the announced behaviours of specified type. Return unsubscriber
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>Unsubscriber</returns>
         public System.Action SubscribeAnnounced<T>(Action<T[]> handler) where T: Behaviour
         {
             if (!m_Registry.TryGetValue(typeof(T), out var list))
@@ -221,6 +242,12 @@ namespace Metamatic.Actions
             };
         }
         
+        /// <summary>
+        /// Subscribe to the concealed behaviours of specified type. Return unsubscriber
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>Unsubscriber</returns>
         public System.Action SubscribeConcealed<T>(Action<T> handler) where T: Behaviour
         {
             var unsubscribe = Subscribe(delegate(Action action)

@@ -46,35 +46,13 @@ namespace Metamatic
         #region Public methods
         
         /// <summary>
-        /// Get store for specific data type and name for the current layer
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="defaultValue"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public RepositoryStore<T> GetStore<T>(string name, T defaultValue = default) where T : struct
-        {
-            if (!m_VirtualStoresPool.TryGetValue((currentLayer, typeof(T), name), out var store))
-            {
-                store = new RepositoryStore<T>(this, currentLayer, name);
-                store.OnDispose += () =>
-                {
-                    m_VirtualStoresPool.Remove((currentLayer, typeof(T), name));
-                };
-            }
-            store.Acquire();
-            return store as RepositoryStore<T>;
-        }
-        
-        /// <summary>
         /// Get store for specific data type and name for the specific layer
         /// </summary>
         /// <param name="observableLayer"></param>
         /// <param name="name"></param>
-        /// <param name="defaultValue"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public RepositoryStore<T> GetStore<T>(RepositoryObservableLayer observableLayer, string name, T defaultValue = default) where T : struct
+        public RepositoryStore<T> GetStore<T>(RepositoryObservableLayer observableLayer, string name) where T : struct
         {
             if (!m_VirtualStoresPool.TryGetValue((observableLayer, typeof(T), name), out var store))
             {
@@ -88,12 +66,32 @@ namespace Metamatic
             store.Acquire();
             return store as RepositoryStore<T>;
         }
-
-        public RepositoryStore<T> GetStore<T>(string layerName, string entityName, T defaultValue = default)
+        
+        /// <summary>
+        /// Get store for specific data type and name for the current layer
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="initialize"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public RepositoryStore<T> GetStore<T>(string name) where T : struct
+        {
+            return GetStore<T>(currentLayer, name);
+        }
+        
+        /// <summary>
+        /// Get store for specific data type and name for the specific layer
+        /// </summary>
+        /// <param name="layerName"></param>
+        /// <param name="entityName"></param>
+        /// <param name="initialize"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public RepositoryStore<T> GetStore<T>(string layerName, string entityName)
             where T : struct
         {
             var repositoryObservableLayer = RepositoryObservableLayer.Get(this, layerName);
-            return GetStore(repositoryObservableLayer, entityName, defaultValue);
+            return GetStore<T>(repositoryObservableLayer, entityName);
         }
         
         /// <summary>

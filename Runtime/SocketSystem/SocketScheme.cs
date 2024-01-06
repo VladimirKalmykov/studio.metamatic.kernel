@@ -256,6 +256,7 @@ namespace Metamatic
             {
                 if (inputBundle.GetTypes().Length == 0)
                 {
+                    AddConnectedOutScheme(socketScheme);
                     /* Connect multiple plugs to inputless socket */
                     MakeDirectConnection(socketScheme);
                 }

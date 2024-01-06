@@ -23,6 +23,7 @@ namespace Metamatic
         public LocalizedString GetDescription();
         public AssetRarityGrade grade { get; }
         public AssetReferenceSprite previewImage { get; }
+        public float GetPrice();
     }
     public abstract class GameAsset: ScriptableObject, IAccessable, IGameAsset, ISerializationCallbackReceiver
     {
@@ -41,6 +42,7 @@ namespace Metamatic
         
         [SerializeField]private LocalizedString title;
         [SerializeField]private LocalizedString description;
+        [SerializeField]private float price;
         [SerializeField][LabelText("Preview")] private AssetReferenceSprite sPreviewImage;
         [SerializeField][LabelText("Rarity")] private AssetRarityGrade sGrade;
         [BoxGroup("Access Config"), PropertyOrder(99)]
@@ -58,6 +60,11 @@ namespace Metamatic
         public LocalizedString GetDescription()
         {
             return description;
+        }
+        
+        public float GetPrice()
+        {
+            return price;
         }
 
         public AssetRarityGrade grade => sGrade;

@@ -8,6 +8,7 @@ namespace Metamatic.UI {
     /// <summary>
     /// One solution to set TextMeshPro and Text text programmatically
     /// </summary>
+    [Obsolete("Component has performance issues", true)]
     public class TextValue: MonoBehaviour {
         [Multiline(3)]
         public string text = "";

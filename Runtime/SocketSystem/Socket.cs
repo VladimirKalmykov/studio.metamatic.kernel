@@ -43,18 +43,26 @@ namespace Metamatic
         public string debugNotice = "";
 #endif
         private TScheme m_Scheme;
-        public TScheme scheme => m_Scheme ??= new TScheme();
-        public override SocketScheme socketScheme => scheme;
-
-        private void OnEnable()
+        public TScheme scheme
         {
-            scheme.debug_SetRelatedObject(this);
-            scheme.Initialize(outputPins.Cast<IPin>().ToArray(), inputPins.Cast<IPin>().ToArray(), loopback);
+            get
+            {
+                if (m_Scheme == null)
+                {
+                    m_Scheme = new TScheme();
+                    m_Scheme.debug_SetRelatedObject(this);
+                    scheme.Initialize(outputPins.Cast<IPin>().ToArray(), inputPins.Cast<IPin>().ToArray(), loopback);
+                }
+
+                return m_Scheme;
+            }
         }
+
+        public override SocketScheme socketScheme => scheme;
 
         private void OnDisable()
         {
-            scheme.Dispose();
+            m_Scheme?.Dispose();
         }
 
         public Action Connect(IPlug<TScheme> plug)

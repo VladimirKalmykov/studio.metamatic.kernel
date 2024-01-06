@@ -32,12 +32,12 @@ namespace Metamatic
         /// Get store for specific data type and name
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="defaultValue"></param>
+        /// <param name="initialize">Initialize store in memory with writing default data</param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static RepositoryStore<T> GetStore<T>(string name, T defaultValue = default) where T: struct
+        public static RepositoryStore<T> GetStore<T>(string name) where T: struct
         {
-            return instance.GetStore(name, defaultValue);
+            return instance.GetStore<T>(name);
         }
         
         /// <summary>
