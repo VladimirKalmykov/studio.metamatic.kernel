@@ -5,7 +5,9 @@ using Cysharp.Threading.Tasks;
 using Cysharp.Threading.Tasks.Triggers;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using Object = UnityEngine.Object;
 
 namespace Metamatic {
     public static class AddressableUtils
@@ -56,76 +58,76 @@ namespace Metamatic {
             return tsc.Task;
         }
         
-        public static async Task<TObject> LoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken) where TObject : UnityEngine.Object
+        public static DisposableOperation<TObject> LoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken, float releaseDelay = 0f) where TObject : UnityEngine.Object
         {
-            // Проверка, была ли уже начата операция загрузки
-            if (assetReference.OperationHandle.IsValid() && !assetReference.OperationHandle.IsDone)
+            return new DisposableOperation<TObject>((resolve, reject, token) =>
             {
-                // Ожидание завершения уже запущенной операции
-                await new Promise((resolve, reject, self) =>
+                if (!assetReference.RuntimeKeyIsValid())
                 {
-                    assetReference.OperationHandle.Completed += (AsyncOperationHandle op) =>
-                    {
-                        resolve(op.Status == AsyncOperationStatus.Succeeded);
-                    };
-                }).Task;
-            }
+                    throw new Exception("Asset reference is invalid");
+                }
+                if (assetReference.OperationHandle.IsValid())
+                {
+                    Addressables.ResourceManager.Acquire(assetReference.OperationHandle);
+                }
     
-            var aoh = assetReference.LoadAssetAsync<TObject>();
+                var aoh = assetReference.OperationHandle.IsValid() ? (assetReference.OperationHandle.Convert<TObject>()) : assetReference.LoadAssetAsync<TObject>();
 
-            // Обработка отмены
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Если токен уже отменен, отменяем загрузку и выгружаем ассет
-                aoh.Completed += handle => { if (!handle.IsDone) Addressables.Release(handle); };
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-
-            // Регистрируем обработку отмены
-            cancellationToken.Register(() =>
-            {
-                if (aoh.IsDone)
+                // Обработка отмены
+                if (token.IsCancellationRequested)
                 {
-                    // Если операция завершена, выгружаем ассет
-                    Addressables.Release(aoh);
+                    Debug.Log($"Immediately Cancel asset reference {assetReference}");
+                    // Если токен уже отменен, отменяем загрузку и выгружаем ассет
+                    Action<AsyncOperationHandle<TObject>> completeHandler = null;
+                    completeHandler = handle => { aoh.Completed -= completeHandler; /* Release with delay */
+                        AsyncUtils.ExecuteDelayed(() =>
+                        {
+                            Addressables.Release(aoh);
+                        }, releaseDelay); };
+                    aoh.Completed += completeHandler;
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
                 else
                 {
-                    // Выгружаем ассет по готовности
-                    aoh.Completed += handle => { if (handle.IsDone) Addressables.Release(handle); };
+                    // Регистрируем обработку отмены
+                    token.Register(() =>
+                    {
+                        Debug.Log($"Cancel asset reference {assetReference}");
+                        if (aoh.IsDone)
+                        {
+                            /* Release with delay */
+                            AsyncUtils.ExecuteDelayed(() =>
+                            {
+                                Addressables.Release(aoh);
+                            }, releaseDelay);
+                        }
+                        else
+                        {
+                            // Выгружаем ассет по готовности
+                            aoh.Completed += handle =>
+                            {
+                                /* Release with delay */
+                                AsyncUtils.ExecuteDelayed(() =>
+                                {
+                                    Addressables.Release(aoh);
+                                }, releaseDelay);
+                            };
+                        }
+                    });
                 }
+
+                aoh.Completed += handle =>
+                {
+                    if (handle.Status == AsyncOperationStatus.Succeeded)
+                    {
+                        resolve(handle.Result);
+                    }
+                    else
+                    {
+                        reject(handle.OperationException);
+                    }
+                };
             });
-
-            return await aoh.Task;
-        }
-
-        private static Task<TObject> WaitExistingOperation<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken) where TObject : UnityEngine.Object
-        {
-            var tcs = new TaskCompletionSource<TObject>();
-
-            assetReference.OperationHandle.Completed += (AsyncOperationHandle op) =>
-            {
-                if (op.Status == AsyncOperationStatus.Succeeded)
-                {
-                    tcs.SetResult(op.Result as TObject);
-                }
-                else
-                {
-                    tcs.SetException(new System.Exception("Asset loading failed."));
-                }
-            };
-
-            // Регистрация отмены
-            cancellationToken.Register(() =>
-            {
-                if (!assetReference.OperationHandle.IsDone)
-                {
-                    tcs.TrySetCanceled();
-                    Addressables.Release(assetReference.OperationHandle);
-                }
-            });
-
-            return tcs.Task;
         }
         
         public static DisposableAsyncOperation<GameObject> InstantiatePrefab(AssetReference assetReference, CancellationToken token, Transform transform = null)

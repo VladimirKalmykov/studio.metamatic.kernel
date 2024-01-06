@@ -223,9 +223,18 @@ namespace Metamatic
             }
             catch (Exception ex)
             {
-                // TODO: consider whether derived types are also acceptable.
-                if (!((IList) acceptableExceptions).Contains(ex.GetType()))
+                if (acceptableExceptions == null || acceptableExceptions.Length == 0)
+                {
+                    if (ex is OperationCanceledException)
+                        return;
                     throw;
+                }
+                else
+                {
+                    // TODO: consider whether derived types are also acceptable.
+                    if (!((IList) acceptableExceptions).Contains(ex.GetType()))
+                        throw;
+                }
             }
         }
         
@@ -345,6 +354,18 @@ namespace Metamatic
             });
 
             return completionSource.Task.ContinueWith(() => registration.Dispose());
+        }
+        
+        public static void ExecuteDelayed(Action action, float delay = 0f, CancellationToken cancellationToken = default)
+        {
+            if (delay > 0f)
+            {
+                UniTask.Delay(TimeSpan.FromSeconds(delay), true, PlayerLoopTiming.TimeUpdate, cancellationToken).ContinueWith(action).Forget();
+            }
+            else
+            {
+                action();
+            }
         }
     }
 }

@@ -34,6 +34,8 @@ namespace Metamatic
 
         public delegate void InitializeHandler(Action<T> resolve, Action<Exception> reject, Promise<T> self);
 
+        public event Action<T> OnResult;
+        public event Action<Exception> OnError;
         public event Action OnFinally;
         public event Action OnCancel;
         private bool m_Cancelled = false;
@@ -55,6 +57,14 @@ namespace Metamatic
             m_TaskCompletionSource = new TaskCompletionSource<T>();
             initialize(Complete, SetError, this);
         }
+        
+        ~Promise()
+        {
+            if (!isFinalised)
+            {
+                Finallize();
+            }
+        }
 
         public void Cancel()
         {
@@ -67,9 +77,22 @@ namespace Metamatic
             m_TaskCompletionSource.TrySetCanceled();
             Finallize();
         }
+        
+        public Promise<T> Then(Action<T> onResult)
+        {
+            OnResult += onResult;
+            return this;
+        }
+        
+        public Promise<T> Catch(Action<Exception> onError)
+        {
+            OnError += onError;
+            return this;
+        }
 
         private void Complete(T result = default)
         {
+            OnResult?.Invoke(result);
             if (!m_TaskCompletionSource.TrySetResult(result))
             {
                 Debug.LogWarning($"An attempt was made to transition a task to a final state when it had already completed with result {result}");
@@ -79,6 +102,7 @@ namespace Metamatic
 
         private void SetError(Exception exception)
         {
+            OnError?.Invoke(exception);
             m_TaskCompletionSource.SetException(exception);
             Finallize();
         }
@@ -89,6 +113,7 @@ namespace Metamatic
             cancellationTokenRegistration.Dispose();
             isFinalised = true;
             OnFinally?.Invoke();
+            GC.SuppressFinalize(this);
         }
     }
 
