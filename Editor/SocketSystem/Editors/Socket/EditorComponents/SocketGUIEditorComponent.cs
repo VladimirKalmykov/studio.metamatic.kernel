@@ -34,6 +34,7 @@ namespace Metamatic
             m_SocketScheme.OnErrorChanged += HandleErrorChanged;
             HandleReconnectOut();
             HandleErrorChanged();
+            UpdateUI();
         }
         
         public override void OnDisable()
@@ -43,6 +44,11 @@ namespace Metamatic
             m_Plugs.style.display = DisplayStyle.None;
             m_SocketScheme.OnReconnectOut -= HandleReconnectOut;
             m_SocketScheme.OnErrorChanged -= HandleErrorChanged;
+        }
+
+        private void UpdateUI()
+        {
+            m_LoopbackToggle.style.display = m_SocketScheme.isMonoType ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void HandleRevalidate()

@@ -623,6 +623,21 @@ namespace Metamatic {
 
             return Mathf.Abs(minDistance / distance);
         }
+
+        public static Quaternion SumQuaternions(Quaternion a, Quaternion b)
+        {
+            Vector3 slotEuler = a.eulerAngles;
+            Vector3 moduleEuler = b.eulerAngles;
+            
+            Vector3 combinedEuler = slotEuler + moduleEuler;
+            
+            combinedEuler = new Vector3(
+                (combinedEuler.x + 360) % 360,
+                (combinedEuler.y + 360) % 360,
+                (combinedEuler.z + 360) % 360
+            );
+            return Quaternion.Euler(combinedEuler);
+        }
         
         /// <summary>
         /// Find effector position by joints and its angles with forward kinematics

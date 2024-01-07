@@ -5,6 +5,7 @@ using UnityEngine.UIElements;
 namespace Metamatic
 {
     [CustomEditor(typeof(Socket), true)]
+    [RequireEditorComponent(typeof(ImguiEditorComponent))]
     [RequireEditorComponent(typeof(SocketGUIEditorComponent))]
     public class SocketEditor: ComposableEditor
     {

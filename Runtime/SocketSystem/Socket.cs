@@ -8,10 +8,11 @@ namespace Metamatic
 {
     public abstract class Socket: MonoBehaviour
     {
-        [SerializeField]
+        [SerializeField][HideInInspector]
         public bool loopback;
-
+        [HideInInspector]
         public Pin[] outputPins = Array.Empty<Pin>();
+        [HideInInspector]
         public Pin[] inputPins = Array.Empty<Pin>();
         public Type[] inputTypes => GetInputTypes();
         public Type[] outputTypes => GetOutputTypes();
@@ -37,10 +38,9 @@ namespace Metamatic
     where TScheme: SocketScheme, new()
     {
 #if DEBUG
-        [ShowInInspector, ReadOnly]
         public UnityEngine.Object[] debugConnectedObjects => scheme.debug_GetConnectedOutSchemes()
             .Select(sch => sch.debug_RelatedObject).ToArray();
-
+        [HideInInspector]
         public string debugNotice = "";
 #endif
         private TScheme m_Scheme;
@@ -61,7 +61,12 @@ namespace Metamatic
 
         public override SocketScheme socketScheme => scheme;
 
-        private void OnDisable()
+        protected virtual void OnEnable()
+        {
+            
+        }
+
+        protected virtual void OnDisable()
         {
             m_Scheme?.Dispose();
         }
@@ -96,13 +101,13 @@ namespace Metamatic
             scheme.DisconnectPlug(plugAsGeneric.scheme);
         }
 
-        public void OnBeforeSerialize()
+        public virtual void OnBeforeSerialize()
         {
             Array.Resize(ref inputPins, scheme.inputTypes.Length);
             Array.Resize(ref outputPins, scheme.outputTypes.Length);
         }
 
-        public void OnAfterDeserialize()
+        public virtual void OnAfterDeserialize()
         {
             Array.Resize(ref inputPins, scheme.inputTypes.Length);
             Array.Resize(ref outputPins, scheme.outputTypes.Length);

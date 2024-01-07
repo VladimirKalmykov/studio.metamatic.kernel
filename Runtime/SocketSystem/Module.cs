@@ -101,7 +101,7 @@ namespace Metamatic
             {
                 var t = transform;
                 t.localPosition = connectedSlot.anchorPosition + relativePosition;
-                t.localRotation = connectedSlot.anchorRotation * relativeRotation;
+                t.localRotation = Trigf.SumQuaternions(connectedSlot.anchorRotation, relativeRotation);
             }
         }
         /// <summary>
@@ -205,7 +205,7 @@ namespace Metamatic
                 return;
             }
             var slot = sticky ? parent.GetComponent<Slot<TFormFactor>>() : parent.GetComponentInParent<Slot<TFormFactor>>();
-            if (slot != null)
+            if (slot != null && connectedSlot != slot)
             {
                 Disconnect();
                 Connect(slot);

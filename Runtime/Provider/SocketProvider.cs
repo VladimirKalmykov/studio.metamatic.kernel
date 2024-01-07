@@ -1,0 +1,37 @@
+﻿using System;
+using Sirenix.OdinInspector;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
+namespace Metamatic
+{
+    public class SocketProvider<TSocketScheme>: Socket<TSocketScheme>, ISerializationCallbackReceiver
+    where TSocketScheme: SocketScheme, new()
+    {
+        private static ObservableWritableValue<SocketProvider<TSocketScheme>> m_Instance = new();
+        public static ObservableWritableValue<SocketProvider<TSocketScheme>> instance
+        {
+            get
+            {
+                return m_Instance;
+            }
+        }
+        private void Awake()
+        {
+            if (m_Instance.value == null)
+            {
+                m_Instance.value = this;
+            }
+            else
+            {
+                Debug.LogWarning("Multiple providers detected. This is not supported.");
+                Object.Destroy(this);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            m_Instance.value = null;
+        }
+    }
+}

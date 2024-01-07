@@ -79,7 +79,7 @@ namespace Metamatic
         {
             /* Allow multi connections */
             var allowMultipleConnectionsProperty = serializedObject.FindProperty("allowMultipleConnections");
-            var allowMultiConnectionsToggle = new Toggle("Allow multi connections")
+            var allowMultiConnectionsToggle = new Toggle("Allow multiple")
             {
                 value = allowMultipleConnectionsProperty.boolValue
             };

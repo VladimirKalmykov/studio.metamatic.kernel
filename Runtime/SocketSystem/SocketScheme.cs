@@ -53,6 +53,7 @@ namespace Metamatic
         {
             return debug_RelatedObject;
         }
+        public abstract bool isMonoType { get; }
 #if DEBUG
         public List<string> debug_Error = new List<string>();
         public event Action OnErrorChanged;
@@ -210,7 +211,7 @@ namespace Metamatic
         /// <summary>
         /// This schema is monotype. It means that output type is the same as input type. And there is only one type at all. Monotype schemas can be connected to each other in loopback mode and can be connected to other schemas in loop chain mode.
         /// </summary>
-        public bool isMonoType => inputBundle.GetTypes().Length == 1 && outputBundle.GetTypes().Length == 1 && inputBundle.GetTypes()[0] == outputBundle.GetTypes()[0];
+        public override bool isMonoType => inputBundle.GetTypes().Length == 1 && outputBundle.GetTypes().Length == 1 && inputBundle.GetTypes()[0] == outputBundle.GetTypes()[0];
 
         public override Type[] outputTypes => outputBundle.GetTypes();
         public override Type[] inputTypes => inputBundle.GetTypes();
@@ -314,7 +315,8 @@ namespace Metamatic
         {
             if (!m_ConnectedOutSchemes.Contains(socketScheme))
             {
-                throw new InvalidOperationException("Can't disconnect plug that is not connected");
+                Debug.LogWarning("Can't disconnect plug that is not connected");
+                return;
             }
             /* Unconnect plug */
             var thatInputPins = socketScheme.inputPins;

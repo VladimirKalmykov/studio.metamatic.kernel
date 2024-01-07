@@ -154,9 +154,18 @@ namespace Metamatic
         
         private Action InternalConnect(Module<TFormFactor> module)
         {
+            if (connectedModules.Contains(module))
+            {
+                Debug.LogWarning("Module is already connected to this slot");
+                return () => InternalDisconnect(module);
+            }
             /* Remove any children except module */
             if (dedicated)
             {
+                /* Disconnect all modules */
+                InternalDisconnectAll();
+                
+                /* Remove rest of the children */
                 for (var i = 0; i < transform.childCount; i++)
                 {
                     var child = transform.GetChild(i);
@@ -169,7 +178,7 @@ namespace Metamatic
             
             if (connectedModules.Count != 0 && !isSupportMultiConnections)
             {
-                throw new Exception($"Slot {this} is already connected to module {connectedModules}");
+                throw new Exception($"Slot can not connect to the module {module}, because {this} is already connected to module {connectedModules[0]}");
             }
             connectedModules.Add(module);
             for (var i = 0; i < sockets.Length; i++)
@@ -219,6 +228,19 @@ namespace Metamatic
                 throw new Exception($"Module {module} is not of type {typeof(TFormFactor)}");
             }
             InternalDisconnect(moduleAsGeneric);
+        }
+        
+        protected void InternalDisconnectAll()
+        {
+            for (var i = 0; i < connectedModules.Count; i++)
+            {
+                var module = connectedModules[i];
+                for (var j = 0; j < sockets.Length; j++)
+                {
+                    sockets[j].Disconnect(module.plugs[j]);
+                }
+            }
+            connectedModules.Clear();
         }
 
         public override FormFactorSocketInfo[] GetSocketSchemesTypes()
