@@ -52,21 +52,35 @@ namespace Metamatic.UI
 
                 var keyLabel = new Label(prop.Name);
                 keyLabel.AddToClassList("Key");
-                var valueLabel = new Label();
-                valueLabel.AddToClassList("Value");
+                var valueElement = new VisualElement(); // Элемент для значения, который может быть Label или ColorField
+                valueElement.AddToClassList("Value");
 
                 var value = prop.GetValue(data);
-                if (value != null && value.GetType().IsValueType)
+                if (value is Color colorValue)
                 {
+                    // Создаем элемент для отображения превью цвета
+                    var colorPreview = new VisualElement();
+                    colorPreview.AddToClassList("ColorPreview");
+                    colorPreview.style.backgroundColor = colorValue;
+                    valueElement.Add(colorPreview);
+                }
+                else if (value != null && value.GetType().IsValueType)
+                {
+                    var valueLabel = new Label();
+                    valueLabel.AddToClassList("ValueLabel");
                     valueLabel.text = value.GetType().IsPrimitive ? value.ToString() : JsonUtility.ToJson(value);
+                    valueElement.Add(valueLabel);
                 }
                 else
                 {
+                    var valueLabel = new Label();
+                    valueLabel.AddToClassList("ValueLabel");
                     valueLabel.text = value?.ToString() ?? "null";
+                    valueElement.Add(valueLabel);
                 }
 
                 row.Add(keyLabel);
-                row.Add(valueLabel);
+                row.Add(valueElement);
                 table.Add(row);
             }
 

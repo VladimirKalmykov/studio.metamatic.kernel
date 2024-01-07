@@ -91,6 +91,19 @@ namespace Metamatic
             m_Settings.Add(allowMultiConnectionsToggle);
             allowMultiConnectionsToggle.SetEnabled(m_Slot.isSupportMultiConnections && !Application.isPlaying);
             
+            /* Dedicated */
+            var dedicatedProperty = serializedObject.FindProperty("dedicated");
+            var dedicatedToggle = new Toggle("Dedicated")
+            {
+                value = dedicatedProperty.boolValue
+            };
+            dedicatedToggle.RegisterValueChangedCallback(evt =>
+            {
+                dedicatedProperty.boolValue = evt.newValue;
+                serializedObject.ApplyModifiedProperties();
+            });
+            m_Settings.Add(dedicatedToggle);
+            
             /* Sticky position */
             var stickyPositionProperty = serializedObject.FindProperty("m_AnchorPosition");
             var stickyPositionToggle = new Vector3Field("Position")

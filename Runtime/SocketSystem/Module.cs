@@ -27,6 +27,7 @@ namespace Metamatic
         /// </summary>
         [SerializeField] protected Quaternion relativeRotation;
         public Slot connectedSlot { get; protected set; }
+        private bool m_Destroyed = false;
         public Action Connect(Slot slot)
         {
             Debug.Log($"Connect slot: {slot}");
@@ -108,6 +109,8 @@ namespace Metamatic
         /// </summary>
         protected virtual void ApplyPostDisconnectionEffects()
         {
+            /* Return because we can not change parent during destroying */
+            if (m_Destroyed) return;
             /*
              * Set parent to the slot
              */
@@ -123,6 +126,12 @@ namespace Metamatic
             var color = connectedSlot != null ? ConnectedGizmoColor : DisconnectedGizmoColor;
 
             GizmoHelpers.DrawOrientation(t, worldAnchorPosition, worldAnchorRotation, 0.5f, color);
+        }
+
+        private void OnDestroy()
+        {
+            m_Destroyed = true;
+            Disconnect();
         }
     }
     

@@ -13,6 +13,10 @@ namespace Metamatic
         private static readonly Color ConnectedGizmoColor = new(0.12f, 0.77f, 0.21f);
         public Socket[] sockets;
         [SerializeField] private bool allowMultipleConnections;
+        /// <summary>
+        /// Slot can have only one children. It will remove any children when connect module.
+        /// </summary>
+        [SerializeField] protected bool dedicated;
         [SerializeField] private Vector3 m_AnchorPosition;
         [SerializeField] private Quaternion m_AnchorRotation;
         public Vector3 anchorPosition
@@ -150,6 +154,19 @@ namespace Metamatic
         
         private Action InternalConnect(Module<TFormFactor> module)
         {
+            /* Remove any children except module */
+            if (dedicated)
+            {
+                for (var i = 0; i < transform.childCount; i++)
+                {
+                    var child = transform.GetChild(i);
+                    if (child != module.transform && !connectedModules.Contains(child.GetComponent<Module>()))
+                    {
+                        Destroy(child.gameObject);
+                    }
+                }
+            }
+            
             if (connectedModules.Count != 0 && !isSupportMultiConnections)
             {
                 throw new Exception($"Slot {this} is already connected to module {connectedModules}");

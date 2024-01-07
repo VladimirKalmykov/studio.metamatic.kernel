@@ -41,7 +41,7 @@ namespace Metamatic
         public TScheme scheme => m_Scheme ??= new TScheme();
         public override SocketScheme socketScheme => scheme;
         
-        private void OnEnable()
+        protected virtual void OnEnable()
         {
             scheme.debug_SetRelatedObject(this);
             /*
@@ -50,7 +50,7 @@ namespace Metamatic
             scheme.Initialize(inputPins.Cast<IPin>().ToArray(), outputPins.Cast<IPin>().ToArray());
         }
 
-        private void OnDisable()
+        protected virtual void OnDisable()
         {
             scheme.Dispose();
         }
