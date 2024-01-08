@@ -30,7 +30,6 @@ namespace Metamatic
         private bool m_Destroyed = false;
         public Action Connect(Slot slot)
         {
-            Debug.Log($"Connect slot: {slot}");
 #if DEBUG
             if (!Application.isPlaying)
             {
