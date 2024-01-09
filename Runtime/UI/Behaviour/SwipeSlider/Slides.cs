@@ -19,7 +19,8 @@ namespace Metamatic.UI {
         
         #region Fields
         public Orientation orientation = Orientation.HORIZONTAL;
-        public Vector2 positionRatio;
+        [ShowInInspector, ReadOnly]
+        public Vector2 positionRatio { get; set; }
         
         [ShowInInspector, ReadOnly]
         #endregion

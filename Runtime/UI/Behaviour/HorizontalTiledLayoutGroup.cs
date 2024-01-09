@@ -13,33 +13,38 @@
         public int minWidth = 0;
         public int maxWidth = 99999;
         RectTransform rect;
-        DrivenRectTransformTracker dt;
+        DrivenRectTransformTracker dt = new DrivenRectTransformTracker();
+        DrivenRectTransformTracker dtChild = new DrivenRectTransformTracker();
         private event System.Action OnBeforeDisable;
         void Awake() {
             rect = (RectTransform)transform;
-            dt = new DrivenRectTransformTracker();
         }
         void OnEnable() {
             dt.Clear();
-            dt.Add(this, rect, DrivenTransformProperties.SizeDeltaX);
-
-            foreach(RectTransform child in transform) {
-                var dt = new DrivenRectTransformTracker();
-                dt.Clear();
-                dt.Add(this, child, DrivenTransformProperties.AnchoredPositionX);
-
-                ClearTrackerOnDestroy(dt);
+            if (fitContent && rect != null) {
+                dt.Add(this, rect, DrivenTransformProperties.SizeDeltaX);
             }
+
+            ProcessChild();
         }
 
-        void ClearTrackerOnDestroy(DrivenRectTransformTracker dt) {
-            OnBeforeDisable += () => {
-                dt.Clear();
-            };
+        private void ProcessChild()
+        {
+            dtChild.Clear();
+            foreach(RectTransform child in transform) {
+                
+                dtChild.Add(this, child, DrivenTransformProperties.AnchoredPositionX);
+            }
+        }
+        
+        private void OnTransformChildrenChanged()
+        {
+            ProcessChild();
         }
 
         void OnDisable() {
             dt.Clear();
+            dtChild.Clear();
             OnBeforeDisable?.Invoke();
         }
         void Start() {

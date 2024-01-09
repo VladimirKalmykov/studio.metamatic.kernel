@@ -13,6 +13,7 @@ namespace Metamatic.UI {
         [Range(0f, 1f)]
         public float inertness = 0.5f;
         public float magnetism = 5f;
+        public float accelerationThreshold = 1f;
         [SerializeField] int startIndex = 0;
         #endregion
         
@@ -60,8 +61,13 @@ namespace Metamatic.UI {
         void Update()
         {
             magnitudeRatio = swipe.isPressed ? swipe.magnitudeRatio : (inertness > 0f ? Vector2.Lerp(magnitudeRatio, Vector2.zero, Time.deltaTime * (1 - inertness) * 10f) : Vector2.zero);
-            
-            positionRatio += magnitudeRatio * Time.deltaTime;
+            UILog.Add("magnitudeRatio", magnitudeRatio);
+            var accelaratedMagnitudeRatio = new Vector2(
+                magnitudeRatio.x > accelerationThreshold ? Mathf.Abs(magnitudeRatio.x) * magnitudeRatio.x : magnitudeRatio.x,
+                magnitudeRatio.y > accelerationThreshold ? Mathf.Abs(magnitudeRatio.y) * magnitudeRatio.y : magnitudeRatio.y
+            );
+            UILog.Add("accelaratedMagnitudeRatio", accelaratedMagnitudeRatio);
+            positionRatio += accelaratedMagnitudeRatio * Time.deltaTime;
             var intPosiiton = ClampVector2BySlides(Vector2Int.RoundToInt(positionRatio));
             // TODO: Make correct active index calculation for horizontal orientation
             var unclampedNextIndex = (int)(slides.orientation == Slides.Orientation.HORIZONTAL ? positionRatio.x :slides.count - 1 + Mathf.Round(positionRatio.y));
