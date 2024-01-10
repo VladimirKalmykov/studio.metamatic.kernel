@@ -175,7 +175,8 @@ namespace Metamatic
         }
         #endregion
     }
-
+    
+    [Obsolete("Use RunnableBehaviour instead", false)]
     public abstract class UsableBehaviour<TProps> : UsableBehaviour
     where TProps : notnull
     {

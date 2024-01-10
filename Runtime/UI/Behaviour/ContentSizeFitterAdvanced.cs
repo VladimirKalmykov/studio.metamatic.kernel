@@ -86,7 +86,6 @@ namespace UnityEngine.UI
 
         protected override void OnRectTransformDimensionsChange()
         {
-            Debug.Log($"OnRectTransformDimensionsChange");
             SetDirty();
         }
 
@@ -113,7 +112,6 @@ namespace UnityEngine.UI
             {
                 var nextWidth = Mathf.Min(axis == 0 ? m_MaxWidth : m_MaxHeight,
                     LayoutUtility.GetPreferredSize(m_Rect, axis));
-                Debug.Log($"nextWidth: {nextWidth}");
                 rectTransform.SetSizeWithCurrentAnchors((RectTransform.Axis)axis,
                     nextWidth);
             }

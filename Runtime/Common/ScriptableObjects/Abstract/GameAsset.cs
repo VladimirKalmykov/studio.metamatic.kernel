@@ -35,8 +35,8 @@ namespace Metamatic
             if (id == null || id == ""){
                 id = System.Guid.NewGuid().ToString();
             }
-        }
 #endif
+        }
         [ReadOnly]
         public string id = "";
         
@@ -73,15 +73,8 @@ namespace Metamatic
         public AssetReferenceSprite previewImage => sPreviewImage;
     }
     
-    public abstract class SalableGameAsset: GameAsset, IProduct
+    public abstract class SalableGameAsset: GameAsset
     {
-        [BoxGroup("Product")]
-        public float price = 0f;
-        float IProduct.GetPrice() {
-            return price;
-        }
-        string IProduct.GetProductName() {
-            return name;
-        }
+       
     }
 }

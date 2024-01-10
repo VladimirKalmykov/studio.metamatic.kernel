@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
+    [Obsolete("Use something else instead", true)]
     public class PlayerLoopAction: IPlayerLoopItem
     {
         private readonly Func<bool> m_PlayerLoopAction;

@@ -27,6 +27,7 @@ namespace Metamatic.DevTools
         
         public static void DrawArrow(Transform transform, Vector3 position, Vector3 direction, Color color, float arrowHeadLength = 0.15f, float arrowHeadAngle = 20.0f)
         {
+#if UNITY_EDITOR
             var handleSize = HandleUtility.GetHandleSize(transform.position);
             Gizmos.color = color;
             Gizmos.DrawRay(position, direction * handleSize);
@@ -41,6 +42,7 @@ namespace Metamatic.DevTools
             Gizmos.DrawRay(position + direction * handleSize, left * arrowHeadLength);
             Gizmos.DrawRay(position + direction * handleSize, up * arrowHeadLength);
             Gizmos.DrawRay(position + direction * handleSize, down * arrowHeadLength);
+#endif
         }
     }
 }

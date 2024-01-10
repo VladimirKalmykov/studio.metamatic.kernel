@@ -87,6 +87,7 @@ namespace Metamatic
 
         public abstract FormFactorSocketInfo[] GetSocketSchemesTypes();
         
+        #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             var size = 0.5f;
@@ -99,18 +100,19 @@ namespace Metamatic
 
             GizmoHelpers.DrawOrientation(t, worldAnchorPosition, worldAnchorRotation, size, color);
         }
-
+        #endif
+        
+#if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
-#if UNITY_EDITOR
             var color = connectedModules.Count > 0 ? ConnectedGizmoColor : DisconnectedGizmoColor;
             Vector3 worldAnchorPosition = transform.TransformPoint(m_AnchorPosition);
             var handleSize = HandleUtility.GetHandleSize(transform.position);
             var textColor = new GUIStyle();
             textColor.normal.textColor = color;
             UnityEditor.Handles.Label(worldAnchorPosition + (Vector3.right * 0.33f * handleSize) + (Vector3.up * 0.33f * handleSize), $"{GetType().Name}<{MiscUtils.GetGenericName(GetType().BaseType, true, true)}>", textColor);
-#endif     
         }
+#endif  
     }
     
     public class Slot<TFormFactor> : Slot, ISerializationCallbackReceiver

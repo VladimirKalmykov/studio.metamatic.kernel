@@ -82,6 +82,34 @@ namespace Metamatic
             });
             return tcs.Task;
         }
+        
+        public UniTask<TValue> WaitUntilValueIsNotNull(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            if (GetValue() != null) return UniTask.FromResult(value);
+            var tcs = new UniTaskCompletionSource<TValue>();
+            Action<TValue> handler = null;
+            handler = v =>
+            {
+                if (cancellationToken.IsCancellationRequested) return;
+                if (v != null)
+                {
+                    tcs.TrySetResult(v);
+                    OnChange -= handler;
+                }
+            };
+            OnChange += handler;
+            var unregister= cancellationToken.Register(() =>
+            {
+                OnChange -= handler;
+                tcs.TrySetCanceled(cancellationToken);
+            });
+            tcs.Task.GetAwaiter().OnCompleted(() =>
+            {
+                unregister.Dispose();
+            });
+            return tcs.Task;
+        }
 
         protected void EmitValue(TValue v)
         {

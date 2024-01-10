@@ -161,12 +161,12 @@ namespace Metamatic
         {
             return m_ConnectedInScheme;
         }
-
+#endif
+        
         public override bool IsSupportMultipleConnections()
         {
             return false; // TODO: Implement
         }
-#endif
         
         private void AddConnectedOutScheme(SocketScheme<TOutputBundle, TInputBundle> scheme)
         {
