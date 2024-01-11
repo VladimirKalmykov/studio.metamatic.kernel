@@ -31,7 +31,7 @@ namespace Metamatic
         private CancellationTokenSource m_AsyncDisposeCancellationTokenSource;
         public event Action OnAsyncDisposeCompleted;
         private UniTaskCompletionSource m_AsyncDisposeCompleted = new UniTaskCompletionSource();
-        public UniTask AsyncDisposeCompleted => m_AsyncDisposeCompleted.Task;
+        public UniTask asyncDisposeCompleted => m_AsyncDisposeCompleted.Task;
         public async UniTask DisposeAsync()
         {
             if (m_AsyncDisposeRequested)
@@ -69,7 +69,10 @@ namespace Metamatic
             {
                 OnAsyncDisposeCompleted?.Invoke();
             }
+            OnDispose();
         }
+
+        protected abstract void OnDispose();
         
         /// <summary>
         /// Async dispose method should handle case when dispose was requested before async dispose was called, e.g. to complete animation.
@@ -77,5 +80,32 @@ namespace Metamatic
         /// <param name="cancellationToken">Cancel async dispose and force to immediate dispose</param>
         /// <returns></returns>
         protected abstract UniTask OnDisposeAsync(CancellationToken cancellationToken = default);
+    }
+
+    public class AsyncDisposableOperation<T>: AsyncDisposable
+    {
+        private readonly DisposableAsyncOperation<T> m_DisposableAsyncOperation;
+        private Func<UniTask> m_OnAsyncDisposeRequest;
+        private Action m_OnDispose;
+        public DisposableAsyncOperation<T> operation => m_DisposableAsyncOperation;
+        public AsyncDisposableOperation(DisposableAsyncOperation<T>.DisposableProcedure asyncOperation, Func<UniTask> onAsyncDisposeRequest, Action onDispose, CancellationToken cancellationToken = default)
+        {
+            m_DisposableAsyncOperation = new DisposableAsyncOperation<T>(asyncOperation, cancellationToken);
+            m_OnAsyncDisposeRequest = onAsyncDisposeRequest;
+            m_OnDispose = onDispose;
+        }
+
+        protected override void OnDispose()
+        {
+            m_OnDispose?.Invoke();
+        }
+
+        protected override UniTask OnDisposeAsync(CancellationToken cancellationToken = default)
+        {
+            m_DisposableAsyncOperation.Dispose();
+            return m_OnAsyncDisposeRequest.Invoke();
+        }
+        
+        
     }
 }

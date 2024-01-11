@@ -160,8 +160,12 @@ namespace Metamatic.UI {
             SetDirtyNextFrame();
         }
         
-        private void SetDirtyNextFrame() {
+        private void SetDirtyNextFrame()
+        {
+            var that = this;
             UnityEditor.EditorApplication.delayCall += () => {
+                if (that == null)
+                    return;
                 SetDirty();
             };
         }

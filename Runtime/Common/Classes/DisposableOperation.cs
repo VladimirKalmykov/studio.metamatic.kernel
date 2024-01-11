@@ -98,8 +98,10 @@ namespace Metamatic
         public delegate UniTask<T> DisposableProcedure(CancellationToken cancellationToken);
 
         private CancellationTokenSource m_CancellationTokenSource;
+        private UniTaskCompletionSource<T> m_UniTaskCompletionSource = new UniTaskCompletionSource<T>();
         private bool m_Resolved = false;
         private bool m_Rejected = false;
+        public UniTask<T> task => m_UniTaskCompletionSource.Task;
         public T Result { get; private set; }
         public Exception Exception { get; private set; }
         public event Action<Exception> OnError;
@@ -117,14 +119,17 @@ namespace Metamatic
             try
             {
                 Result = await procedure(cancellationToken);
+                m_UniTaskCompletionSource.TrySetResult(Result);
                 OnResult?.Invoke(Result);
             }
             catch (OperationCanceledException)
             {
+                m_UniTaskCompletionSource.TrySetCanceled();
                 Dispose();
             }
             catch (Exception e)
             {
+                m_UniTaskCompletionSource.TrySetException(e);
                 OnError?.Invoke(e);
                 Exception = e;
                 m_Rejected = true;

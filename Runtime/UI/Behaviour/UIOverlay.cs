@@ -4,6 +4,7 @@ using Metamatic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Metamatic.UI
 {
@@ -12,6 +13,7 @@ namespace Metamatic.UI
     /// </summary>
     /// <remarks>Use UIOverlay.Instance to get current Overlay. Call Instance.Asquire() to make overlay's backdrop visible. Call Instance.Release() to make it invisible.</remarks>
     [RequireComponent(typeof(CanvasGroup))]
+    [RequireComponent(typeof(GraphicRaycaster))]
     public class UIOverlay: UIBehaviour
     {
         private static ObservableWritableValue<UIOverlay> _Instance = new();
@@ -22,6 +24,8 @@ namespace Metamatic.UI
         private CancellationTokenSource m_RequireCancellationTokenSource;
         private CanvasGroup m_CanvasGroup;
         public CanvasGroup canvasGroup => m_CanvasGroup != null ? m_CanvasGroup : m_CanvasGroup = GetComponent<CanvasGroup>();
+        private GraphicRaycaster m_GraphicRaycaster;
+        public GraphicRaycaster graphicRaycaster => m_GraphicRaycaster != null ? m_GraphicRaycaster : m_GraphicRaycaster = GetComponent<GraphicRaycaster>();
 
         private void Awake()
         {
@@ -31,6 +35,7 @@ namespace Metamatic.UI
             }
             _Instance.value = this;
             canvasGroup.alpha = 0;
+            graphicRaycaster.enabled = false;
             gameObject.SetActive(false);
         }
 
@@ -51,6 +56,7 @@ namespace Metamatic.UI
             Debug.Log("Acquire");
             m_ReleaseCancellationTokenSource?.Cancel();
             m_AcquireCount++;
+            graphicRaycaster.enabled = true;
             gameObject.SetActive(true);
             if (m_AcquireCount > 1)
             {
@@ -83,6 +89,7 @@ namespace Metamatic.UI
                     return;
                 }
                 canvasGroup.alpha = 0;
+                graphicRaycaster.enabled = false;
                 gameObject.SetActive(false);
             }
         }

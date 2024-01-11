@@ -5,11 +5,12 @@ using Metamatic;
 
 namespace Metamatic
 {
-    public abstract class ObservableValue
+    public abstract class ObservableValue: IDisposable
     {
         #if DEBUG
         public string debugName;
         #endif
+        public abstract void Dispose();
     }
     interface IObservableValue<TValue>
     {
@@ -19,6 +20,7 @@ namespace Metamatic
     public abstract class ObservableValue<TValue>: ObservableValue, IObservableValue<TValue>
     {
         private event Action<TValue> OnChange;
+        private CancellationTokenSource m_DisposeCancellationTokenSource;
 
         public TValue value
         {
@@ -28,7 +30,7 @@ namespace Metamatic
 
         public ObservableValue()
         {
-            
+            m_DisposeCancellationTokenSource = new CancellationTokenSource();
         }
 
         public Action Subscribe(Action<TValue> handler)
@@ -59,6 +61,9 @@ namespace Metamatic
         public UniTask<TValue> WaitUntilValueIs(TValue value, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
+                { m_DisposeCancellationTokenSource.Token, cancellationToken });
+            var combinedCancellationToken = combinedCancellationTokenSource.Token;
             if (GetValue().Equals(value)) return UniTask.FromResult(value);
             var tcs = new UniTaskCompletionSource<TValue>();
             Action<TValue> handler = null;
@@ -66,14 +71,15 @@ namespace Metamatic
             {
                 if (v.Equals(value))
                 {
+                    combinedCancellationTokenSource.Dispose();
                     tcs.TrySetResult(v);
                     OnChange -= handler;
                 }
             };
             OnChange += handler;
-            var unregister= cancellationToken.Register(() =>
+            var unregister= combinedCancellationToken.Register(() =>
             {
-                tcs.TrySetCanceled(cancellationToken);
+                tcs.TrySetCanceled(combinedCancellationToken);
                 OnChange -= handler;
             });
             tcs.Task.GetAwaiter().OnCompleted(() =>
@@ -86,20 +92,24 @@ namespace Metamatic
         public UniTask<TValue> WaitUntilValueIsNotNull(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
+                { m_DisposeCancellationTokenSource.Token, cancellationToken });
+            var combinedCancellationToken = combinedCancellationTokenSource.Token;
             if (GetValue() != null) return UniTask.FromResult(value);
             var tcs = new UniTaskCompletionSource<TValue>();
             Action<TValue> handler = null;
             handler = v =>
             {
-                if (cancellationToken.IsCancellationRequested) return;
+                if (combinedCancellationToken.IsCancellationRequested) return;
                 if (v != null)
                 {
+                    combinedCancellationTokenSource.Dispose();
                     tcs.TrySetResult(v);
                     OnChange -= handler;
                 }
             };
             OnChange += handler;
-            var unregister= cancellationToken.Register(() =>
+            var unregister= combinedCancellationToken.Register(() =>
             {
                 OnChange -= handler;
                 tcs.TrySetCanceled(cancellationToken);
@@ -116,11 +126,15 @@ namespace Metamatic
             OnChange?.Invoke(v);
         }
 
-        
-
         public abstract TValue GetValue();
 
         public abstract void SetValue(TValue value);
+        
+        public override void Dispose()
+        {
+            m_DisposeCancellationTokenSource?.Cancel();
+            OnChange = null;
+        }
     }
 
     public class ObservableWritableValue<TValue> : ObservableValue<TValue>
