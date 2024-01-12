@@ -3,7 +3,7 @@ using UnityEngine.EventSystems;
 
 namespace Metamatic.UI
 {
-    public class UIOverlayWidget: UIWidget
+    public abstract class UIOverlayWidget: UIWidget
     {
         protected bool m_OverlayAcquired;
         private UIOverlay m_Overlay;

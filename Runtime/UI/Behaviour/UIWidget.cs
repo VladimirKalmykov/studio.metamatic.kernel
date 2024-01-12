@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 
 namespace Metamatic.UI
 {
-    public class UIWidget: MonoBehaviour
+    public abstract class UIWidget: MonoBehaviour
     {
         protected enum State
         {
@@ -141,34 +141,16 @@ namespace Metamatic.UI
             }
         }
 
-        protected virtual void BeforeShow()
-        {
-            
-        }
-        
-        protected virtual void PerformShow(Action onEnd = null)
-        {
-            
-        }
+        protected abstract void BeforeShow();
 
-        protected virtual void AfterShow()
-        {
-            
-        }
-        
-        protected virtual void BeforeHide()
-        {
-            
-        }
+        protected abstract void PerformShow(Action onEnd = null);
 
-        protected virtual void PerformHide(Action onEnd = null)
-        {
-            
-        }
-        
-        protected virtual void AfterHide()
-        {
-            
-        }
+        protected abstract void AfterShow();
+
+        protected abstract void BeforeHide();
+
+        protected abstract void PerformHide(Action onEnd = null);
+
+        protected abstract void AfterHide();
     }
 }
