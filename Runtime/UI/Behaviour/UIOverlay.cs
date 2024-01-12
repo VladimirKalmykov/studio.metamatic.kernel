@@ -41,7 +41,6 @@ namespace Metamatic.UI
 
         private void OnDestroy()
         {
-            Debug.Log("Overlay destroy");
             m_RequireCancellationTokenSource?.Cancel();
             m_ReleaseCancellationTokenSource?.Cancel();
             if (_Instance.value == this)
@@ -53,7 +52,6 @@ namespace Metamatic.UI
         [Button]
         public async void Acquire()
         {
-            Debug.Log("Acquire");
             m_ReleaseCancellationTokenSource?.Cancel();
             m_AcquireCount++;
             graphicRaycaster.enabled = true;
