@@ -1,9 +1,8 @@
 ﻿using System;
-using UnityEngine.EventSystems;
 
 namespace Metamatic.UI
 {
-    public abstract class UIOverlayWidget: UIWidget
+    public abstract class UIOverlayWidget: Widget
     {
         protected bool m_OverlayAcquired;
         private UIOverlay m_Overlay;

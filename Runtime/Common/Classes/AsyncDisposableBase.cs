@@ -25,7 +25,7 @@ namespace Metamatic
     ///            }
     ///     }
     /// </example>
-    public abstract class AsyncDisposable: IAsyncDisposable
+    public abstract class AsyncDisposableBase: IAsyncDisposable
     {
         private bool m_AsyncDisposeRequested = false;
         private CancellationTokenSource m_AsyncDisposeCancellationTokenSource;
@@ -81,8 +81,29 @@ namespace Metamatic
         /// <returns></returns>
         protected abstract UniTask OnDisposeAsync(CancellationToken cancellationToken = default);
     }
+    
+    public class AsyncDisposable: AsyncDisposableBase
+    {
+        private Func<CancellationToken, UniTask> m_OnAsyncDisposeRequest;
+        private Action m_OnDispose;
+        public AsyncDisposable(Func<CancellationToken, UniTask> onAsyncDisposeRequest, Action onDispose)
+        {
+            m_OnAsyncDisposeRequest = onAsyncDisposeRequest;
+            m_OnDispose = onDispose;
+        }
 
-    public class AsyncDisposableOperation<T>: AsyncDisposable
+        protected override void OnDispose()
+        {
+            m_OnDispose?.Invoke();
+        }
+
+        protected override UniTask OnDisposeAsync(CancellationToken cancellationToken = default)
+        {
+            return m_OnAsyncDisposeRequest.Invoke(cancellationToken);
+        }
+    }
+
+    public class AsyncDisposableOperation<T>: AsyncDisposableBase
     {
         private readonly DisposableAsyncOperation<T> m_DisposableAsyncOperation;
         private Func<UniTask> m_OnAsyncDisposeRequest;
@@ -105,7 +126,5 @@ namespace Metamatic
             m_DisposableAsyncOperation.Dispose();
             return m_OnAsyncDisposeRequest.Invoke();
         }
-        
-        
     }
 }

@@ -27,7 +27,7 @@
         public event Action<T, IDisposable> OnHandleItem;
         public event Action<T, IDisposable> OnDisposeItem;
 
-        public ItemsInitializer(Func<T, IDisposable> initializer, CancellationToken cancellationToken)
+        public ItemsInitializer(Func<T, IDisposable> initializer, CancellationToken cancellationToken = default)
         {
             m_Initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
             _cancellationTokenRegistration = cancellationToken.Register(DisposeAll);

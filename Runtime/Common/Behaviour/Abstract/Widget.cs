@@ -1,11 +1,14 @@
 ﻿using System;
+using System.Collections;
 using System.Threading;
+using Cysharp.Threading.Tasks;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace Metamatic.UI
+namespace Metamatic
 {
-    public abstract class UIWidget: MonoBehaviour
+    public abstract class Widget: MonoBehaviour
     {
         protected enum State
         {
@@ -26,14 +29,24 @@ namespace Metamatic.UI
 
         protected virtual void OnDisable()
         {
-            m_ShowOperationCancellationTokenSource?.Cancel();
-            m_HideOperationCancellationTokenSource?.Cancel();
+            Debug.Log("[DIALOG] Disable widget");
+            CancelShowOperation();
+            CancelHideOperation();
+            ClearShowOperation();
+            ClearHideOperation();
+            Invoke("DelayedReset", 0.1f);
+        }
+        
+        private void DelayedReset()
+        {
+            if (this.enabled) return;
+            SetIdle();
+            state = State.Hiding;
         }
 
         protected virtual void OnDestroy()
         {
-            m_ShowOperationCancellationTokenSource?.Cancel();
-            m_HideOperationCancellationTokenSource?.Cancel();
+            
         }
 
         protected virtual void SetBusy()
@@ -77,8 +90,9 @@ namespace Metamatic.UI
         {
             m_HideOperationCancellationTokenSource = null;
         }
-
-        public void Show()
+        
+        [Button, DisableInEditorMode]
+        public async void Show()
         {
             if (state == State.Shown)
             {
@@ -93,22 +107,21 @@ namespace Metamatic.UI
             gameObject.SetActive(true);
             try
             {
-                PerformShow(() =>
+                await PerformShow(showOperationCancellationToken);
+                if (showOperationCancellationToken.IsCancellationRequested)
                 {
-                    if (showOperationCancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
-                    ClearShowOperation();
-                    AfterShow();
-                });
+                    throw new OperationCanceledException();
+                }
+                ClearShowOperation();
+                AfterShow();
             } catch (OperationCanceledException)
             {
                 ClearShowOperation();
             }
         }
-
-        public void Hide()
+        
+        [Button, DisableInEditorMode]
+        public async UniTask Hide()
         {
             if (state == State.Hiding)
             {
@@ -122,18 +135,16 @@ namespace Metamatic.UI
             
             try
             {
-                PerformHide(() =>
+                await PerformHide(hideOperationCancellationToken);
+                if (hideOperationCancellationToken.IsCancellationRequested)
                 {
-                    if (hideOperationCancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
-                    ClearHideOperation();
-                    AfterHide();
+                    throw new OperationCanceledException();
+                }
+                ClearHideOperation();
+                AfterHide();
                 
-                    gameObject.SetActive(false);
-                    SetIdle();
-                });
+                gameObject.SetActive(false);
+                SetIdle();
             }
             catch (OperationCanceledException)
             {
@@ -143,13 +154,13 @@ namespace Metamatic.UI
 
         protected abstract void BeforeShow();
 
-        protected abstract void PerformShow(Action onEnd = null);
+        protected abstract UniTask PerformShow(CancellationToken cancellationToken = default);
 
         protected abstract void AfterShow();
 
         protected abstract void BeforeHide();
 
-        protected abstract void PerformHide(Action onEnd = null);
+        protected abstract UniTask PerformHide(CancellationToken cancellationToken = default);
 
         protected abstract void AfterHide();
     }
