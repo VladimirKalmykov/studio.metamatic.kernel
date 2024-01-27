@@ -137,7 +137,25 @@ namespace Metamatic
         public RepositoryObservableLayer CreateLayer(string name, RepositoryLayer parent = null)
         {
             InternalCreateLayer(name, parent);
-            return new RepositoryObservableLayer(this, name);
+            return new RepositoryObservableLayer(this, name, true);
+        }
+        
+        /// <summary>
+        /// Force release and remove layer
+        /// </summary>
+        /// <param name="name"></param>
+        /// <exception cref="Exception"></exception>
+        public void RemoveLayer(string name)
+        {
+            /* Find layer */
+            var layer = m_Layers.Find(l => l.name == name);
+            if (layer == null)
+            {
+                throw new Exception($"Layer with name {name} not found");
+            }
+            /* Release layer */
+            layer.Dispose();
+            m_Layers.RemoveAll(l => l.name == name);
         }
         
         /// <summary>

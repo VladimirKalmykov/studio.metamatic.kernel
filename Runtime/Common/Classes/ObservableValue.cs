@@ -6,6 +6,7 @@ using Metamatic;
 namespace Metamatic
 {
     public abstract class ObservableValue: IDisposable
+    
     {
         #if DEBUG
         public string debugName;

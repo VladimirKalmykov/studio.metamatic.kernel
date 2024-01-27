@@ -13,20 +13,20 @@ namespace Metamatic.Actions
         
     }
     
-    class AnnounceBehaviourAction<T>: BehaviourAction<T>
+    class AnnounceBehaviourActionLegacy<T>: BehaviourActionLegacy<T>
     where T: Behaviour
     {
         
-        public AnnounceBehaviourAction(T source) : base(source)
+        public AnnounceBehaviourActionLegacy(T source) : base(source)
         {
             
         }
     }
     
-    class ConcealBehaviourAction<T>: BehaviourAction<T>
+    class ConcealBehaviourActionLegacy<T>: BehaviourActionLegacy<T>
     where T: Behaviour
     {
-        public ConcealBehaviourAction(T source) : base(source)
+        public ConcealBehaviourActionLegacy(T source) : base(source)
         {
             
         }
@@ -35,10 +35,18 @@ namespace Metamatic.Actions
     [DisallowMultipleComponent]
     public class Dispatcher : MonoBehaviour
     {
-        public delegate bool ActionHandler(Action action);
+        
         public bool enableLogging = false;
-        private readonly List<ActionHandler> m_ActionHandlers = new List<ActionHandler>();
-        private Dictionary<Type, List<ActionHandler>> m_ActionHandlersByType = new Dictionary<Type, List<ActionHandler>>();
+        
+        #region Legacy
+        public delegate bool LegacyActionHandler(ActionLegacy actionLegacy);
+        private readonly List<LegacyActionHandler> m_LegacyActionHandlers = new List<LegacyActionHandler>();
+        private Dictionary<Type, List<LegacyActionHandler>> m_ActionHandlersByType = new Dictionary<Type, List<LegacyActionHandler>>();
+        #endregion
+        
+        public delegate bool ActionHandler(Action action);
+        private readonly Dictionary<System.Type, List<Delegate>> m_EventListeners = new Dictionary<System.Type, List<Delegate>>();
+        
         private static Dispatcher _globalDispatcher;
         private TypesRegistry m_Registry = new TypesRegistry();
 
@@ -46,34 +54,34 @@ namespace Metamatic.Actions
         {
             get => _globalDispatcher ??= new GameObject("__GLOBALDISPATCHER__").AddComponent<Dispatcher>();
         }
-        public virtual void Dispatch(Action action)
+        public virtual void DispatchLegacy(ActionLegacy actionLegacy)
         {
             if (enableLogging)
             {
-                Debug.Log($"<color=cyan>ACTION</color>: {action.GetDebugMessage()}");
+                Debug.Log($"<color=cyan>ACTION</color>: {actionLegacy.GetDebugMessage()}");
             }
-            OnDispatch(action);
+            OnDispatchLegacy(actionLegacy);
         }
 
-        public virtual void OnDispatch(Action action)
+        public virtual void OnDispatchLegacy(ActionLegacy actionLegacy)
         {
-            switch (action)
+            switch (actionLegacy)
             {
                 // Apply effect to the current target
-                case ApplyEffectAction aea:
+                case ApplyEffectActionLegacy aea:
                     Debug.LogWarning("ApplyEffectAction is deprecated. Use direct all effect Apply method instead: effect.Apply(behaviour, props)");
                     aea.effect.Apply(this, aea.props);
                     break;
-                case EffectExitAction eea:
+                case EffectExitActionLegacy eea:
                     Debug.LogWarning("EffectExitAction is deprecated. Avoid using it.");
                     // Skip
                     break;
                 default:
                     // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
                     var actionHandled = false;
-                    foreach (var ah in m_ActionHandlers)
+                    foreach (var ah in m_LegacyActionHandlers)
                     {
-                        if (ah(action))
+                        if (ah(actionLegacy))
                         {
                             actionHandled = true;
                         }
@@ -81,10 +89,10 @@ namespace Metamatic.Actions
                     /*
                      * Invoke listeners from m_ActionHandlersByType
                      */
-                    if (m_ActionHandlersByType.TryGetValue(action.GetType(), out var list)) {
+                    if (m_ActionHandlersByType.TryGetValue(actionLegacy.GetType(), out var list)) {
                         foreach (var ah in list)
                         {
-                            if (ah(action))
+                            if (ah(actionLegacy))
                             {
                                 actionHandled = true;
                             }
@@ -100,30 +108,67 @@ namespace Metamatic.Actions
         }
         
         /// <summary>
+        /// Subscribe to instant action
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        private System.Action Subscribe<T>(ActionHandler handler)
+        {
+            if (!m_EventListeners.TryGetValue(typeof(T), out var list))
+            {
+                m_EventListeners.Add(typeof(T), list = new List<Delegate>());
+            }
+            list.Add(handler);
+            return () =>
+            {
+                list.Remove(handler);
+            };
+        }
+        
+        private void Dispatch<T>(T action) where T : Action
+        {
+            if (enableLogging)
+            {
+                Debug.Log($"<color=cyan>ACTION</color>: {action.GetDebugMessage()}");
+            }
+
+            if (m_EventListeners.TryGetValue(typeof(T), out var list))
+            {
+                foreach (var handler in list)
+                {
+                    ((System.Action<T>)handler)?.Invoke(action);
+                }
+            }
+
+            action.Clear();
+        }
+        
+        /// <summary>
         /// Subscribe to the action events. Return unsubscriber
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public System.Action Subscribe(ActionHandler handler)
+        public System.Action SubscribeLegacy(LegacyActionHandler handler)
         {
-            m_ActionHandlers.Add(handler);
+            m_LegacyActionHandlers.Add(handler);
             return () =>
             {
-                m_ActionHandlers.Remove(handler);
+                m_LegacyActionHandlers.Remove(handler);
             };
         }
 
         /**
          * Subscribe to specified action type. Return unsubscriber
          */
-        public System.Action Subscribe<T>(System.Action<T> handler) where T : Action
+        public System.Action SubscribeLegacy<T>(System.Action<T> handler) where T : ActionLegacy
         {
             if (!m_ActionHandlersByType.TryGetValue(typeof(T), out var list))
             {
-                list = new List<ActionHandler>();
+                list = new List<LegacyActionHandler>();
                 m_ActionHandlersByType.Add(typeof(T), list);
             }
-            var actionHandler = new ActionHandler(delegate(Action action)
+            var actionHandler = new LegacyActionHandler(delegate(ActionLegacy action)
             {
                 if (action is T action1)
                 {
@@ -143,11 +188,11 @@ namespace Metamatic.Actions
             };
         }
 
-        public Task<T> WhenEmit<T>(CancellationToken cancellationToken) where T : Action
+        public Task<T> WhenEmit<T>(CancellationToken cancellationToken) where T : ActionLegacy
         {
             var result = new Promise<T>((resolve, reject, self) =>
             {
-                var unsubscribe = Subscribe(delegate(Action action)
+                var unsubscribe = SubscribeLegacy(delegate(ActionLegacy action)
                 {
                     if (action is T action1)
                     {
@@ -177,7 +222,7 @@ namespace Metamatic.Actions
                 m_Registry.Add(typeof(T), list);
             }
             list.Add(source);
-            Dispatch(new AnnounceBehaviourAction<T>(source));
+            DispatchLegacy(new AnnounceBehaviourActionLegacy<T>(source));
         }
         
         /**
@@ -185,12 +230,12 @@ namespace Metamatic.Actions
          */
         public void Conceal<T>(T source) where T: Behaviour
         {
-            Dispatch(new ConcealBehaviourAction<T>(source));
+            DispatchLegacy(new ConcealBehaviourActionLegacy<T>(source));
             if (m_Registry.TryGetValue(typeof(T), out var list))
             {
                 list.Remove(source);
             }
-            Dispatch(new ConcealBehaviourAction<T>(source));
+            DispatchLegacy(new ConcealBehaviourActionLegacy<T>(source));
         }
         
         /// <summary>
@@ -214,7 +259,7 @@ namespace Metamatic.Actions
         /// <param name="handler"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns>Unsubscriber</returns>
-        public System.Action SubscribeAnnounced<T>(Action<T[]> handler) where T: Behaviour
+        public System.Action SubscribeAnnounced<T>(System.Action<T[]> handler) where T: Behaviour
         {
             if (!m_Registry.TryGetValue(typeof(T), out var list))
             {
@@ -226,9 +271,9 @@ namespace Metamatic.Actions
             {
                 handler(list.OfType<T>().ToArray());
             }
-            var unsubscribe = Subscribe(delegate(Action action)
+            var unsubscribe = SubscribeLegacy(delegate(ActionLegacy action)
             {
-                if (action is AnnounceBehaviourAction<T> aba)
+                if (action is AnnounceBehaviourActionLegacy<T> aba)
                 {
                     handler(new [] { aba.behaviour as T });
                     return true;
@@ -248,11 +293,11 @@ namespace Metamatic.Actions
         /// <param name="handler"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns>Unsubscriber</returns>
-        public System.Action SubscribeConcealed<T>(Action<T> handler) where T: Behaviour
+        public System.Action SubscribeConcealed<T>(System.Action<T> handler) where T: Behaviour
         {
-            var unsubscribe = Subscribe(delegate(Action action)
+            var unsubscribe = SubscribeLegacy(delegate(ActionLegacy action)
             {
-                if (action is ConcealBehaviourAction<T> aba)
+                if (action is ConcealBehaviourActionLegacy<T> aba)
                 {
                     handler(aba.behaviour as T);
                     return true;

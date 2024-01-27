@@ -31,14 +31,14 @@ namespace Metamatic.Effects
 
 
 #if UNITY_EDITOR
-        public event Action<EffectsChannel[]> editor_OnChannelsChange;
-        public void editor_SubscribeChannels(Action<EffectsChannel[]> handler)
+        public event System.Action<EffectsChannel[]> editor_OnChannelsChange;
+        public void editor_SubscribeChannels(System.Action<EffectsChannel[]> handler)
         {
             handler(channels.Values.ToArray());
             editor_OnChannelsChange += handler;
         }
         
-        public void editor_UnsubscribeChannels(Action<EffectsChannel[]> handler)
+        public void editor_UnsubscribeChannels(System.Action<EffectsChannel[]> handler)
         {
             editor_OnChannelsChange -= handler;
         }
@@ -112,9 +112,9 @@ namespace Metamatic.Effects
         /// Get all active effects as actions (to be able to restore it later)
         /// </summary>
         /// <returns></returns>
-        public Metamatic.Actions.Action[] GetActiveEffectsAsActions()
+        public Metamatic.Actions.ActionLegacy[] GetActiveEffectsAsActions()
         {
-            var actions = new Collection<Metamatic.Actions.Action>();
+            var actions = new Collection<Metamatic.Actions.ActionLegacy>();
             foreach (var execution in channels.Values.SelectMany(channel => channel.executions))
             {
                 actions.Add(execution.GetAsAction());

@@ -31,13 +31,21 @@ namespace Metamatic
         private RepositoryLayer m_Value;
         private RepositoryBehaviour m_RepositoryBehaviour;
         private bool m_IsReleased;
+        private bool m_IsOwner;
         private readonly Reservations m_Reservations = new();
         /// <summary>
         /// Determines if this selector represents the original layer (true) or a proxy layer (false)
         /// </summary>
         public bool isOriginal => m_Value.name == name;
-        public RepositoryObservableLayer(RepositoryBehaviour repositoryBehaviour, string name)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="repositoryBehaviour">Ref to repositoryBehaviour</param>
+        /// <param name="name">Name of the layer</param>
+        /// <param name="isOwner">Is owner of the layer - will release layer when be released itself</param>
+        public RepositoryObservableLayer(RepositoryBehaviour repositoryBehaviour, string name, bool isOwner = false)
         {
+            m_Reservations.OnReadyForRelease += Release;
             m_RepositoryBehaviour = repositoryBehaviour;
             SetLayerName(name);
             m_RepositoryBehaviour.OnLayerAdded += OnLayerAdded;
@@ -129,6 +137,10 @@ namespace Metamatic
             m_IsReleased = true;
             m_RepositoryBehaviour.OnLayerAdded -= OnLayerAdded;
             m_RepositoryBehaviour.OnLayerRemoved -= OnLayerRemoved;
+            if (m_IsOwner)
+            {
+                m_RepositoryBehaviour.RemoveLayer(name);
+            }
             GC.SuppressFinalize(this);
         }
         

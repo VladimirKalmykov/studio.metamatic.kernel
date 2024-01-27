@@ -4,14 +4,14 @@ namespace Metamatic.Actions
 {
     public class ActionSource
     {
-        public readonly Behaviour source;
+        public readonly Object source;
         public readonly string description = "";
         public ActionSource()
         {
             
         }
 
-        public ActionSource(Behaviour source)
+        public ActionSource(Object source)
         {
             this.source = source;
         }
@@ -31,7 +31,7 @@ namespace Metamatic.Actions
         {
             var thisType = GetType();
             var actionTypeName = thisType == typeof(ActionSource) ? "" : GetType().Name;
-            var sourceTypeName = source == null ? "" : $"{source.gameObject.name}({source.GetType().Name})";
+            var sourceTypeName = source == null ? "" : $"{source.name}({source.GetType().Name})";
             var actionTypeText = actionTypeName == "" ? "" : $"{actionTypeName} ";
             var sourceTypeText = sourceTypeName.Length > 0 ? $"{sourceTypeName} " : "";
             return $"{(actionTypeText)}{(sourceTypeText.Length > 0 || actionTypeText.Length > 0 ? "<color=cyan> <- </color>" : "")}{(sourceTypeText)}{(description.Length > 0 ? $"{description}" : "")}";

@@ -2,11 +2,11 @@ using Metamatic.Effects;
 
 namespace Metamatic.Actions
 {
-    public class ApplyEffectAction : Action
+    public class ApplyEffectActionLegacy : ActionLegacy
     {
         public readonly ScriptableEffect effect;
         public readonly object props;
-        public ApplyEffectAction(ScriptableEffect effect, object props, ActionSource source): base(source)
+        public ApplyEffectActionLegacy(ScriptableEffect effect, object props, ActionSource source): base(source)
         {
             this.effect = effect;
             this.props = props;

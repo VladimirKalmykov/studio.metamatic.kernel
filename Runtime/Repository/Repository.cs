@@ -28,6 +28,7 @@ namespace Metamatic
                 return m_Instance;
             }
         }
+        public static RepositoryLayer rootLayer => instance.rootLayer;
         /// <summary>
         /// Get store for specific data type and name
         /// </summary>
@@ -48,6 +49,11 @@ namespace Metamatic
         public static RepositoryLayerSelector SelectLayer(string name)
         {
             return instance.SelectLayer(name);
+        }
+        
+        public static RepositoryObservableLayer CreateLayer(string name, RepositoryLayer parent = null)
+        {
+            return Repository.instance.CreateLayer(name, parent);
         }
     }
 }

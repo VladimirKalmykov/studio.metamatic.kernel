@@ -71,12 +71,12 @@ namespace Metamatic.Effects
             OnRelease?.Invoke();
         }
 
-        public ApplyEffectAction GetAsAction()
+        public ApplyEffectActionLegacy GetAsAction()
         {
             return GetAsActionWithProps();
         }
 
-        protected abstract ApplyEffectAction GetAsActionWithProps();
+        protected abstract ApplyEffectActionLegacy GetAsActionWithProps();
     }
    
     public class EffectExecutionContext<TEffector, TEffectProps>: EffectExecutionContext
@@ -192,22 +192,22 @@ namespace Metamatic.Effects
         /// </summary>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public Metamatic.Actions.Action GenerateAction()
+        public Metamatic.Actions.ActionLegacy GenerateAction()
         {
             if (effect is not ScriptableEffect)
             {
                 throw new Exception("Can not generate effect action for non scriptable effect");
             }
-            return new ApplyEffectAction((ScriptableEffect)effect, props, new ActionSource("GenerateAction"));
+            return new ApplyEffectActionLegacy((ScriptableEffect)effect, props, new ActionSource("GenerateAction"));
         }
 
-        protected override ApplyEffectAction GetAsActionWithProps()
+        protected override ApplyEffectActionLegacy GetAsActionWithProps()
         {
             if (effect is not ScriptableEffect)
             {
                 throw new Exception("Can not generate effect action with non scriptable effect");
             }
-            return new ApplyEffectAction(effect as ScriptableEffect, props, new ActionSource(target, "Recreated from execution"));
+            return new ApplyEffectActionLegacy(effect as ScriptableEffect, props, new ActionSource(target, "Recreated from execution"));
         }
     }
 }

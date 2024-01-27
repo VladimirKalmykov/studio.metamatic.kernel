@@ -23,6 +23,7 @@ namespace Metamatic
         private HashSet<Reservation> m_Reservations = new HashSet<Reservation>();
         private int m_AnonyousReservations;
         public bool isReserved => m_Reservations.Count > 0 || m_AnonyousReservations > 0;
+        public event Action OnReadyForRelease;
         public System.Action Acquire(object booker)
         {
             #if DEBUG
@@ -39,6 +40,10 @@ namespace Metamatic
             return () =>
             {
                 m_Reservations.Remove(reservation);
+                if (!isReserved)
+                {
+                    OnReadyForRelease?.Invoke();
+                }
             };
         }
 

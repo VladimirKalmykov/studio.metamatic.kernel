@@ -61,7 +61,7 @@ namespace Metamatic
         private Handler m_Handler;
         private TContext m_Context;
         
-        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken, TContext context = default)
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default, TContext context = default)
         {
             m_Handler = handler;
             m_Context = context;
@@ -122,6 +122,12 @@ namespace Metamatic
             m_Handler = handler;
             m_Context = context;
             externCancellationToken = externalCancellationToken;
+        }
+        public SequentialHandlerRef(Handler handler, TContext context = default)
+        {
+            m_Handler = handler;
+            m_Context = context;
+            externCancellationToken = default;
         }
         public void Handle(ref T value)
         {

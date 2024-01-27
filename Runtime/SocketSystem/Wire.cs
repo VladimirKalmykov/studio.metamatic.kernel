@@ -278,7 +278,7 @@ namespace Metamatic
             Action reconnect = () =>
             {
                 unsubscribe();
-                Subscribe(handler);
+                unsubscribe = Subscribe(handler);
             };
             unsubscribe = () =>
             {
@@ -306,7 +306,7 @@ namespace Metamatic
             Action reconnect = () =>
             {
                 unsubscribe();
-                SubscribeRef(handler);
+                unsubscribe = SubscribeRef(handler);
             };
             unsubscribe = () =>
             {
