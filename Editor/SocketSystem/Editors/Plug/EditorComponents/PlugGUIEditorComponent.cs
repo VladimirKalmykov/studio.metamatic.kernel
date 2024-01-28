@@ -13,11 +13,17 @@ namespace Metamatic
         private VisualElement m_Socket;
         private VisualElement m_ErrorContainer;
         private Label m_ErrorLabel;
+        private Label m_ConnectionLabel;
         private VisualElement m_ConnectionContainer;
         private VisualElement m_ConnectionContentContainer;
         private VisualElement m_SocketIndicatorDot;
         private VisualElement m_PinsContainer;
+        private Toggle m_AutoConnectSocketByNameElement;
+        private TextField m_SocketNameElement;
         private SocketScheme m_SocketScheme;
+        private AutoConnectStrategies m_AutoConnectStrategy;
+        private bool m_AutoConnectByName;
+        private Action m_UnsubscribeAutoLocked;
         public PlugGUIEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
         {
             
@@ -30,7 +36,8 @@ namespace Metamatic
             m_SocketScheme = plug.socketScheme;
             m_SocketScheme.OnReconnectIn += HandleReconnectIn;
             m_SocketScheme.OnErrorChanged += HandleErrorChanged;
-            HandleReconnectIn();
+            m_UnsubscribeAutoLocked = plug.autoLocked.Subscribe(HandleAutoLockedChanged);
+            HandleReconnectIn(true);
             HandleErrorChanged();
         }
         
@@ -39,11 +46,17 @@ namespace Metamatic
             m_ConnectionContainer.style.display = DisplayStyle.None;
             m_SocketScheme.OnReconnectIn -= HandleReconnectIn;
             m_SocketScheme.OnErrorChanged -= HandleErrorChanged;
+            m_UnsubscribeAutoLocked?.Invoke();
         }
         
-        private void HandleReconnectIn()
+        private void HandleAutoLockedChanged(bool autoLocked)
         {
-            var scheme = m_SocketScheme.debug_GetConnectedInScheme();
+            m_ConnectionLabel.text = autoLocked ? "Connection (Locked)" : "Connection";
+        }
+        
+        private void HandleReconnectIn(bool connected)
+        {
+            var scheme = m_SocketScheme.GetConnectedInScheme();
             m_ConnectionContentContainer.Clear();
 
             if (!Application.isPlaying)
@@ -97,6 +110,71 @@ namespace Metamatic
         {
             var root = new VisualElement();
             
+            /* Header */
+            var header = new VisualElement();
+            header.AddToClassList("PlugHeader");
+            var label = new Label("PLUG");
+            label.AddToClassList("Title");
+            header.Add(label);
+            var typeContainer = new VisualElement();
+            typeContainer.AddToClassList("TypeContainer");
+            var typeLabel = new Label(MiscUtils.GetGenericName(target.GetType().BaseType, true, true));
+            typeLabel.AddToClassList("Type");
+            typeContainer.Add(typeLabel);
+            header.Add(typeContainer);
+            root.Add(header);
+            
+            /* Settings */
+            var settings = new VisualElement();
+            settings.AddToClassList("Settings");
+            root.Add(settings);
+            
+            /* Autoconnect */
+            var autoConnectProp = serializedObject.FindProperty("autoConnect");
+            m_AutoConnectStrategy = (AutoConnectStrategies) autoConnectProp.enumValueIndex;
+            var autoConnectToggle = new EnumField("Auto Connect")
+            {
+                bindingPath = autoConnectProp.propertyPath
+            };
+
+            autoConnectToggle.BindProperty(autoConnectProp);
+            autoConnectToggle.RegisterValueChangedCallback(evt =>
+            {
+                if (evt.newValue == null)
+                {
+                    return;
+                }
+                m_AutoConnectStrategy = (AutoConnectStrategies) evt.newValue;
+                UpdateSettings();
+            });
+            settings.Add(autoConnectToggle);
+            autoConnectToggle.SetEnabled(!Application.isPlaying);
+            
+            /* Connect by name */
+            var autoConnectByNameProp = serializedObject.FindProperty("autoConnectByName");
+            m_AutoConnectByName = autoConnectByNameProp.boolValue;
+            var autoConnectByNameToggle = m_AutoConnectSocketByNameElement = new Toggle("Named")
+            {
+                bindingPath = autoConnectByNameProp.propertyPath
+            };
+            autoConnectByNameToggle.BindProperty(autoConnectByNameProp);
+            autoConnectByNameToggle.RegisterValueChangedCallback(evt =>
+            {
+                m_AutoConnectByName = evt.newValue;
+                UpdateSettings();
+            });
+            settings.Add(autoConnectByNameToggle);
+            
+            /* Socket name */
+            var socketNameProp = serializedObject.FindProperty("socketName");
+            var socketNameField = m_SocketNameElement = new TextField("Socket Name")
+            {
+                bindingPath = socketNameProp.propertyPath
+            };
+            socketNameField.BindProperty(socketNameProp);
+            settings.Add(socketNameField);
+            
+            
             /* Pins container */
             m_PinsContainer = new VisualElement();
             root.Add(m_PinsContainer);
@@ -110,8 +188,15 @@ namespace Metamatic
             root.Add(errorMessage);
             
             RedrawPinsView();
+            UpdateSettings();
             
             return root;
+        }
+
+        private void UpdateSettings()
+        {
+            m_AutoConnectSocketByNameElement.style.display = m_AutoConnectStrategy != AutoConnectStrategies.Disabled ? DisplayStyle.Flex : DisplayStyle.None;
+            m_SocketNameElement.style.display = m_AutoConnectStrategy != AutoConnectStrategies.Disabled && m_AutoConnectByName ? DisplayStyle.Flex : DisplayStyle.None;
         }
         
         private VisualElement CreateConnectionView()
@@ -131,7 +216,7 @@ namespace Metamatic
             indicatorDot.AddToClassList("Dot");
             indicator.Add(indicatorDot);
             labelContainer.Add(indicator);
-            var label = new Label("Connection");
+            var label = m_ConnectionLabel = new Label("Connection");
             labelContainer.Add(label);
             root.Add(header);
             

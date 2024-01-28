@@ -25,6 +25,11 @@ namespace Metamatic
         private Socket<TScheme> m_Socket;
         private TScheme m_Scheme;
         public TScheme scheme => m_Scheme ??= new TScheme();
+        public void LockOnSocket(ISocket<TScheme> socket)
+        {
+            /* Virtual plug has no auto connect behavior. Thus it does not need to be locked. */
+        }
+
         public override SocketScheme socketScheme => scheme;
         
         public VirtualPlug(Object relatedObject)
@@ -84,7 +89,5 @@ namespace Metamatic
         {
             scheme.Dispose();
         }
-        
-        
     }
 }

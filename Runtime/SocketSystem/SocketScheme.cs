@@ -36,7 +36,7 @@ namespace Metamatic
         public abstract void Initialize(UnityEngine.Object relatedObject);
         public abstract void Dispose();
         public event Action OnReconnectOut;
-        public event Action OnReconnectIn;
+        public event Action<bool> OnReconnectIn;
         public ConnectionType outConnectionType { get; protected set; }
         public abstract Action ConnectPlug(SocketScheme socketScheme);
         public abstract void DisconnectPlug(SocketScheme socketScheme);
@@ -61,7 +61,7 @@ namespace Metamatic
         
 
         public abstract SocketScheme[] debug_GetConnectedOutSchemes();
-        public abstract SocketScheme debug_GetConnectedInScheme();
+        public abstract SocketScheme GetConnectedInScheme();
         protected void AddError(string error)
         {
             debug_Error.Add(error);
@@ -81,9 +81,9 @@ namespace Metamatic
             OnReconnectOut?.Invoke();
         }
 
-        protected void ReconnectIn()
+        protected void ReconnectIn(bool connected)
         {
-            OnReconnectIn?.Invoke();
+            OnReconnectIn?.Invoke(connected);
         }
 
         public abstract bool IsSupportMultipleConnections();
@@ -156,12 +156,12 @@ namespace Metamatic
         {
             return m_ConnectedOutSchemes.Cast<SocketScheme>().ToArray();
         }
-
-        public override SocketScheme debug_GetConnectedInScheme()
+#endif
+        
+        public override SocketScheme GetConnectedInScheme()
         {
             return m_ConnectedInScheme;
         }
-#endif
         
         public override bool IsSupportMultipleConnections()
         {
@@ -195,7 +195,7 @@ namespace Metamatic
                 throw new InvalidOperationException("Can't add more than one connected in scheme");
             }
             m_ConnectedInScheme = scheme;
-            ReconnectIn();
+            ReconnectIn(true);
         }
         
         private void RemoveConnectedInScheme(SocketScheme<TOutputBundle, TInputBundle> scheme)
@@ -205,7 +205,7 @@ namespace Metamatic
                 throw new InvalidOperationException("Can't remove scheme that is not connected");
             }
             m_ConnectedInScheme = null;
-            ReconnectIn();
+            ReconnectIn(false);
         }
         
         /// <summary>

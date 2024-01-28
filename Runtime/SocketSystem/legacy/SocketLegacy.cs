@@ -11,7 +11,7 @@ namespace Metamatic {
         ParentSocketDestroyed
     }
     
-    public interface ISocket<TState>
+    public interface ISocketLegacy<TState>
     {
         public ref TState GetState();
         public void SetState(StateMachine<TState>.StateModifier modifier);
@@ -36,7 +36,7 @@ namespace Metamatic {
         public abstract void DetachFrom(GameObject gameObject);
     }
 
-    public abstract class SocketLegacy<TState, TEventType> : SocketLegacy, ISerializationCallbackReceiver, ISocket<TState>
+    public abstract class SocketLegacy<TState, TEventType> : SocketLegacy, ISerializationCallbackReceiver, ISocketLegacy<TState>
     where TState: struct
     {
         private event Action OnReattach;

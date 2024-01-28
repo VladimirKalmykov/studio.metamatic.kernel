@@ -3,12 +3,26 @@ using System.Collections.Generic;
 using System.Linq;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Metamatic
 {
-    public abstract class Socket: MonoBehaviour
+    public interface ISocket
     {
-        [SerializeField][HideInInspector]
+        public string socketName { get; }
+    }
+
+    public interface ISocket<out TScheme>: ISocket
+        where TScheme: SocketScheme
+    {
+        public TScheme scheme { get; }
+    }
+    public abstract class Socket: MonoBehaviour, ISocket
+    {
+        [SerializeField, LabelText("Name")] protected string p_SocketName;
+        [SerializeField, Tooltip("Socket be able to auto connect by global pattern")] protected bool isGlobal;
+        [SerializeField, Tooltip("Once auto connected plug cannot disconnect according hierarchy or global changes"), LabelText("Autolock")] protected bool p_AutoLock;
+        [SerializeField, HideInInspector]
         public bool loopback;
         [HideInInspector]
         public Pin[] outputPins = Array.Empty<Pin>();
@@ -18,6 +32,7 @@ namespace Metamatic
         public Type[] outputTypes => GetOutputTypes();
         public Type[] inputPinTypes => GetInputPinTypes();
         public Type[] outputPinTypes => GetOutputPinTypes();
+        public string socketName => p_SocketName;
         protected abstract Type[] GetInputTypes();
         protected abstract Type[] GetOutputTypes();
         protected abstract Type[] GetInputPinTypes();
@@ -25,7 +40,7 @@ namespace Metamatic
         public abstract SocketScheme socketScheme { get; }
         public abstract Action Connect(IPlug plug);
         public abstract void Disconnect(IPlug plug);
-        #if DEBUG
+#if DEBUG
         public event Action debug_OnValidate;
         private void OnValidate()
         {
@@ -34,7 +49,7 @@ namespace Metamatic
 #endif
     }
     
-    public class Socket<TScheme>: Socket, ISerializationCallbackReceiver
+    public class Socket<TScheme>: Socket, ISerializationCallbackReceiver, ISocket<TScheme>
     where TScheme: SocketScheme, new()
     {
 #if DEBUG
@@ -43,6 +58,23 @@ namespace Metamatic
         [HideInInspector]
         public string debugNotice = "";
 #endif
+        #region Static
+        /// <summary>
+        /// Contains all sockets in the scene that marked as global.
+        /// </summary>
+        public static readonly List<Socket<TScheme>> Registry = new ();
+        /// <summary>
+        /// Get global socket by name.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static Socket<TScheme> GetByName(string name)
+        {
+            return Registry.FirstOrDefault(s => s.p_SocketName == name);
+        }
+
+        public static event Action OnSocketRegistryChange;
+        #endregion
         private TScheme m_Scheme;
         public TScheme scheme
         {
@@ -63,17 +95,35 @@ namespace Metamatic
 
         protected virtual void OnEnable()
         {
-            
+            if (isGlobal)
+            {
+                Registry.Add(this);
+                OnSocketRegistryChange?.Invoke();
+            }
         }
 
         protected virtual void OnDisable()
         {
+            if (isGlobal)
+            {
+                Registry.Remove(this);
+                OnSocketRegistryChange?.Invoke();
+            }
             m_Scheme?.Dispose();
         }
 
         public Action Connect(IPlug<TScheme> plug)
         {
-            return scheme.ConnectPlug(plug.scheme);
+            var disconnect = scheme.ConnectPlug(plug.scheme);
+            #if DEBUG
+            /* Validate connection */
+            if (plug.scheme.GetConnectedInScheme() != scheme)
+            {
+                throw new Exception($"Plug is connected to socket after explicit connection");
+            }
+            #endif
+            plug.LockOnSocket(this);
+            return disconnect;
         }
 
         public override Action Connect(IPlug plug)

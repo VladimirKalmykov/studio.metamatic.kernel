@@ -26,8 +26,6 @@ namespace Metamatic
             m_Settings = root.Q<VisualElement>("settings");
             m_Body = root.Q<VisualElement>("body");
             
-            
-            
             var slot = target as Slot;
             
             if (slot == null)
