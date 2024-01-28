@@ -1,9 +1,11 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Use plug with autoConnect = true instead.")]
     public class SocketConsumerRef<TSocketScheme>: AsyncBehaviour
         where TSocketScheme: SocketScheme, new()
     {
@@ -25,7 +27,12 @@ namespace Metamatic
             base.OnDisable();
             m_DisableCancellationTokenSource.Cancel();
         }
-        
+
+        protected override void RunAsync(CancellationToken cancellationToken)
+        {
+            
+        }
+
         private void HandleProviderChange(SocketProviderRef<TSocketScheme> provider, CancellationToken cancellationToken, object _)
         {
             if (provider != null && provider.socket != null && plug != null)

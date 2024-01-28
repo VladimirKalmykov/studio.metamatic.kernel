@@ -1,7 +1,11 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Threading;
+using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Metamatic
 {
+    [Obsolete("Use plug with autoConnect = true instead.")]
     public class SocketProviderRef<TSocketScheme>: AsyncBehaviour
         where TSocketScheme: SocketScheme, new()
     {
@@ -31,6 +35,11 @@ namespace Metamatic
         private void OnDestroy()
         {
             m_Instance.value = null;
+        }
+
+        protected override void RunAsync(CancellationToken cancellationToken)
+        {
+            
         }
     }
 }

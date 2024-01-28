@@ -46,10 +46,7 @@ namespace Metamatic
             m_DisableTaskCompletionSource?.TrySetResult();
         }
 
-        protected virtual void RunAsync(CancellationToken cancellationToken)
-        {
-            
-        }
+        protected abstract void RunAsync(CancellationToken cancellationToken);
 
         public UniTask RunAsync(RunAsyncHandler handler)
         {

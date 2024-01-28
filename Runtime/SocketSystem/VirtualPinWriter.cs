@@ -31,6 +31,11 @@ namespace Metamatic
             wire.SetData(data);
         }
 
+        public void Write(T data)
+        {
+            wire.SetData(data);
+        }
+
         public void SetData(IWire<T>.Transformer transformer)
         {
             wire.SetData(transformer);
