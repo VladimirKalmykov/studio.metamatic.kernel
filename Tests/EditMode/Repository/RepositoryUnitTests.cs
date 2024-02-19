@@ -21,13 +21,13 @@ namespace Tests.EditMode
         [UnityTest]
         public IEnumerator SaveAndLoadData()
         {
-            FileSystemStorage.Save<TestData>("unittesting/simplesaveload", new TestData()
+            BinaryFileSystemStorage.Save<TestData>("unittesting/simplesaveload", new TestData()
             {
                 a = 2,
                 b = "hello world",
                 c = new string[] { "one", "two", "three", "four", "five" },
             });
-            var loadedData = FileSystemStorage.Load<TestData>("unittesting/simplesaveload");
+            var loadedData = BinaryFileSystemStorage.Load<TestData>("unittesting/simplesaveload");
             Assert.AreEqual(2, loadedData.a);
             Assert.AreEqual("hello world", loadedData.b);
             Assert.True(loadedData.c != null && loadedData.c.Length == 5 && loadedData.c[0] == "one", "Array should be equal");
@@ -38,13 +38,13 @@ namespace Tests.EditMode
         public IEnumerator SaveAndLoadFileWithNestedFolders()
         {
             var address = "unittesting/sub1/sub2/data1";
-            FileSystemStorage.Save<TestData>(address, new TestData()
+            BinaryFileSystemStorage.Save<TestData>(address, new TestData()
             {
                 a = 2,
                 b = "hello world",
                 c = new string[] { "one", "two", "three", "four", "five" },
             });
-            var loadedData = FileSystemStorage.Load<TestData>(address);
+            var loadedData = BinaryFileSystemStorage.Load<TestData>(address);
             Assert.AreEqual(2, loadedData.a);
             Assert.AreEqual("hello world", loadedData.b);
             Assert.True(loadedData.c != null && loadedData.c.Length == 5 && loadedData.c[0] == "one", "Array should be equal");

@@ -85,7 +85,7 @@ namespace Metamatic
             {
                 return;
             }
-            using var store = Repository.GetStore<T>(storeName);
+            using var store = RepositoryLegacy.GetStore<T>(storeName);
             using (new DisposableCallback(store.Subscribe(value => { writeToPin(value); })))
             {
                 await cancellationToken;

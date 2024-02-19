@@ -345,7 +345,7 @@ namespace Metamatic
         public static void SaveStore<TState>(DatabaseStore<TState> store)
         {
             Database.Log($"Save to {store.address} data: {JsonUtility.ToJson(store.state)}");
-            FileSystemStorage.Save<TState>(store.address, store.state);
+            BinaryFileSystemStorage.Save<TState>(store.address, store.state);
         }
 
         private static List<string> _storeLoadAttempts = new List<string>();
@@ -366,9 +366,9 @@ namespace Metamatic
             }
             Database.Log($"Load {fullAddress}");
             _storeLoadAttempts.Add(fullAddress);
-            if (FileSystemStorage.Exists<TState>(fullAddress))
+            if (BinaryFileSystemStorage.Exists<TState>(fullAddress))
             {
-                var loadedState = FileSystemStorage.Load<TState>(fullAddress);
+                var loadedState = BinaryFileSystemStorage.Load<TState>(fullAddress);
                 var addressConfig = ParseAddress(address);
                 Database.Log($"Store {address} sucessfully loaded: {JsonUtility.ToJson(loadedState)}");
                 Database.TouchBranch(addressConfig.branch).TouchEntity(addressConfig.entity)

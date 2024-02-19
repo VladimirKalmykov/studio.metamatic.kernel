@@ -1,59 +1,54 @@
-﻿using UnityEngine;
+﻿using System.Threading;
+using Metamatic;
+using UnityEngine;
 
 namespace Metamatic
 {
-    
-    public class Repository
+    public class Repository: AsyncBehaviour
     {
-        private static RepositoryBehaviour m_Instance;
-        public static RepositoryBehaviour instance
+        private static Repository m_Instance;
+        public static Repository instance
         {
             get
             {
                 if (m_Instance == null)
                 {
-                    #if UNITY_EDITOR
-                    /* Find repository in scene */
-                    m_Instance = Object.FindObjectOfType<RepositoryBehaviour>();
-                    if (m_Instance != null)
-                    {
-                        m_Instance.Initialize(RepositoryStorageType.FileSystem);
-                        return m_Instance;
-                    }
-                    #else
-                    m_Instance = new GameObject("Repository").AddComponent<RepositoryBehaviour>();
-                    m_Instance.Initialize(RepositoryStorageType.FileSystem);
-                    #endif
+                    
+                    m_Instance = new GameObject("Repository").AddComponent<Repository>();
+                    m_Instance.Initialize();
+#if UNITY_EDITOR
+                    m_Instance.gameObject.hideFlags = HideFlags.DontSaveInEditor & HideFlags.DontSave;
+#endif
                 }
                 return m_Instance;
             }
         }
-        public static RepositoryLayer rootLayer => instance.rootLayer;
-        /// <summary>
-        /// Get store for specific data type and name
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="initialize">Initialize store in memory with writing default data</param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static RepositoryStore<T> GetStore<T>(string name) where T: struct
+        
+        public readonly ObservableWritableValue<IOSource> m_Source = new ObservableWritableValue<IOSource>(new FsJsonSource());
+        public IOSource source
         {
-            return instance.GetStore<T>(name);
+            get => m_Source.value;
+            private set => m_Source.value = value;
         }
         
-        /// <summary>
-        /// Select layer by name
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        public static RepositoryLayerSelector SelectLayer(string name)
+        public AsyncReadOperation<T> Read<T>(string address, IOSource source, CancellationToken token = default)
         {
-            return instance.SelectLayer(name);
+            return source.Read<T>(address, token);
         }
         
-        public static RepositoryObservableLayer CreateLayer(string name, RepositoryLayer parent = null)
+        public AsyncWriteOperation<T> Write<T>(string address, T value, IOSource source, CancellationToken token = default)
         {
-            return Repository.instance.CreateLayer(name, parent);
+            return source.Write<T>(address, value, token);
+        }
+
+        private void Initialize()
+        {
+            source = new FsJsonSource();
+        }
+
+        protected override void RunAsync(CancellationToken cancellationToken)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }

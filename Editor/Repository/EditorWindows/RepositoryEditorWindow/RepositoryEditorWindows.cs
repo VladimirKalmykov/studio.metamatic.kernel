@@ -71,7 +71,7 @@ namespace Metamatic
             /* Layers navigation tree */
             m_LayersTreeView = rootVisualElement.Q<TreeView>("LayersTreeView");
             // Получение данных
-            var data = Repository.instance.layers; // List<IRepositoryDataLayer>
+            var data = RepositoryLegacy.instance.layers; // List<IRepositoryDataLayer>
             // Создание и добавление TreeViewItem в TreeView
             var rootItems = treeRoots;
             m_LayersTreeView.makeItem = () => new Label();
@@ -162,7 +162,7 @@ namespace Metamatic
         private void OnEnable()
         {
             m_LayerHandler = new SequentialHandler<RepositoryLayer, object>(SetSelectedLayer, default, null);
-            m_RepositoryInstance = Repository.instance;
+            m_RepositoryInstance = RepositoryLegacy.instance;
             m_RepositoryInstance.OnLayerAdded += HandleLayerAdded;
             m_RepositoryInstance.OnLayerRemoved += HandleLayerRemoved;
             m_RepositoryInstance.OnLayerMerged += HandleLayerMerged;
@@ -231,9 +231,9 @@ namespace Metamatic
             get
             {
                 int id = 0;
-                var layers = Repository.instance.layers;
+                var layers = RepositoryLegacy.instance.layers;
                 var roots = new List<TreeViewItemData<RepositoryLayer>>(layers.Count);
-                foreach (var layer in Repository.instance.layers)
+                foreach (var layer in RepositoryLegacy.instance.layers)
                 {
                     
                     roots.Add(new TreeViewItemData<RepositoryLayer>(id++, layer, GetChildren(layer.children)));

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class Store<T>: AsyncBehaviour
+    public class StoreObsolete<T>: AsyncBehaviour
     where T: struct
     
     {
@@ -11,7 +11,7 @@ namespace Metamatic
 
         protected override async void RunAsync(CancellationToken cancellationToken)
         {
-            using var store = Repository.GetStore<T>(storeName);
+            using var store = RepositoryLegacy.GetStore<T>(storeName);
         }
     }
 }

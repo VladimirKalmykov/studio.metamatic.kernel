@@ -1,41 +1,46 @@
+﻿using System;
 using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 
 namespace Metamatic
 {
-    public class FileSystemStorage
+    public class JsonFileSystemStorage
     {
         public static void Save<TData>(string address, TData data)
         {
             var filepath = GetDataFilepath(address);
             EnsureFilepathDirectoryExists(filepath);
-            
-            using (FileStream file = File.Create(filepath))
-            {
-                new BinaryFormatter().Serialize(file, data);
-            }
+
+            string jsonData = JsonUtility.ToJson(data);
+            File.WriteAllText(filepath, jsonData);
+            Debug.Log($"File saved to {filepath}");
         }
 
         public static TData Load<TData>(string address)
         {
             var filepath = GetDataFilepath(address);
+            string jsonData = File.ReadAllText(filepath);
 
-            using (FileStream file = File.Open(filepath, FileMode.Open))
-            {
-                object loadedData = new BinaryFormatter().Deserialize(file);
-                return (TData)loadedData;
-            }
+            return JsonUtility.FromJson<TData>(jsonData);
+        }
+        
+        public static object Load(string address, Type type)
+        {
+            var filepath = GetDataFilepath(address);
+            string jsonData = File.ReadAllText(filepath);
+
+            return JsonUtility.FromJson(jsonData, type);
         }
 
-        public static bool Exists<TData>(string address)
+        public static bool Exists(string address)
         {
             var filepath = GetDataFilepath(address);
             return File.Exists(filepath);
         }
         
-        public static string GetDataFilepath(string address) {
-            return Path.Join(Application.persistentDataPath, address) + ".dat";
+        public static string GetDataFilepath(string address) 
+        {
+            return Path.Combine(Application.persistentDataPath, address) + ".json";
         }
 
         public static void EnsureFilepathDirectoryExists(string path)
