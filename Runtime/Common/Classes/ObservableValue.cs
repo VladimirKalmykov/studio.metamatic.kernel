@@ -90,6 +90,37 @@ namespace Metamatic
             return tcs.Task;
         }
         
+        public UniTask<TValue> WaitUntilValueIsNot(TValue value, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
+                { m_DisposeCancellationTokenSource.Token, cancellationToken });
+            var combinedCancellationToken = combinedCancellationTokenSource.Token;
+            if (!GetValue().Equals(value)) return UniTask.FromResult(value);
+            var tcs = new UniTaskCompletionSource<TValue>();
+            Action<TValue> handler = null;
+            handler = v =>
+            {
+                if (!v.Equals(value))
+                {
+                    combinedCancellationTokenSource.Dispose();
+                    tcs.TrySetResult(v);
+                    OnChange -= handler;
+                }
+            };
+            OnChange += handler;
+            var unregister= combinedCancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled(combinedCancellationToken);
+                OnChange -= handler;
+            });
+            tcs.Task.GetAwaiter().OnCompleted(() =>
+            {
+                unregister.Dispose();
+            });
+            return tcs.Task;
+        }
+        
         public UniTask<TValue> WaitUntilValueIsNotNull(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);

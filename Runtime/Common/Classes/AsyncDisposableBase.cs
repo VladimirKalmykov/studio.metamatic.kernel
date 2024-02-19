@@ -5,7 +5,7 @@ using Cysharp.Threading.Tasks;
 namespace Metamatic
 {
     
-    interface IAsyncDisposable: IDisposable
+    interface IMAsyncDisposable: IDisposable
     {
         public event Action OnAsyncDisposeCompleted;
         public UniTask DisposeAsync();
@@ -25,7 +25,7 @@ namespace Metamatic
     ///            }
     ///     }
     /// </example>
-    public abstract class AsyncDisposableBase: IAsyncDisposable
+    public abstract class ImAsyncDisposableBase: IMAsyncDisposable
     {
         private bool m_AsyncDisposeRequested = false;
         private CancellationTokenSource m_AsyncDisposeCancellationTokenSource;
@@ -82,11 +82,11 @@ namespace Metamatic
         protected abstract UniTask OnDisposeAsync(CancellationToken cancellationToken = default);
     }
     
-    public class AsyncDisposable: AsyncDisposableBase
+    public class ImAsyncDisposable: ImAsyncDisposableBase
     {
         private Func<CancellationToken, UniTask> m_OnAsyncDisposeRequest;
         private Action m_OnDispose;
-        public AsyncDisposable(Func<CancellationToken, UniTask> onAsyncDisposeRequest, Action onDispose)
+        public ImAsyncDisposable(Func<CancellationToken, UniTask> onAsyncDisposeRequest, Action onDispose)
         {
             m_OnAsyncDisposeRequest = onAsyncDisposeRequest;
             m_OnDispose = onDispose;
@@ -103,13 +103,13 @@ namespace Metamatic
         }
     }
 
-    public class AsyncDisposableOperation<T>: AsyncDisposableBase
+    public class ImAsyncDisposableOperation<T>: ImAsyncDisposableBase
     {
         private readonly DisposableAsyncOperation<T> m_DisposableAsyncOperation;
         private Func<UniTask> m_OnAsyncDisposeRequest;
         private Action m_OnDispose;
         public DisposableAsyncOperation<T> operation => m_DisposableAsyncOperation;
-        public AsyncDisposableOperation(DisposableAsyncOperation<T>.DisposableProcedure asyncOperation, Func<UniTask> onAsyncDisposeRequest, Action onDispose, CancellationToken cancellationToken = default)
+        public ImAsyncDisposableOperation(DisposableAsyncOperation<T>.DisposableProcedure asyncOperation, Func<UniTask> onAsyncDisposeRequest, Action onDispose, CancellationToken cancellationToken = default)
         {
             m_DisposableAsyncOperation = new DisposableAsyncOperation<T>(asyncOperation, cancellationToken);
             m_OnAsyncDisposeRequest = onAsyncDisposeRequest;

@@ -1,4 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using Metamatic;
 using UnityEngine;
 
@@ -23,8 +26,13 @@ namespace Metamatic
                 return m_Instance;
             }
         }
+
+        [SerializeField] private bool isGlobal;
+        
+        private Dictionary<(Type type, string uri), InternalStore> m_Stores = new Dictionary<(Type type, string uri), InternalStore>();
         
         public readonly ObservableWritableValue<IOSource> m_Source = new ObservableWritableValue<IOSource>(new FsJsonSource());
+
         public IOSource source
         {
             get => m_Source.value;
@@ -46,9 +54,58 @@ namespace Metamatic
             source = new FsJsonSource();
         }
 
+        private void Awake()
+        {
+            if (m_Instance == null && isGlobal)
+            {
+                m_Instance = this;
+                Initialize();
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
+        }
+
         protected override void RunAsync(CancellationToken cancellationToken)
         {
             throw new System.NotImplementedException();
+        }
+        
+        /// <summary>
+        /// Get data address by its type and uri
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static string GetUriAddress<T>(string uri)
+        {
+            var typeName = typeof(T).FullName;
+            return $"{typeName}/{uri}";
+        }
+        
+        /// <summary>
+        /// Initialize and get store from the repository
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public Store<T> GetStore<T>(string uri)
+        {
+            if (instance.m_Stores.TryGetValue((typeof(T), uri), out var internalStore))
+            {
+                internalStore = new InternalStore<T>(this, uri);
+            }
+            return new Store<T>(internalStore as InternalStore<T>);
+        }
+        
+        /// <summary>
+        /// Remove store from the repository
+        /// </summary>
+        /// <param name="store"></param>
+        public void Remove(InternalStore store)
+        {
+            m_Stores.Remove((store.type, store.uri));
         }
     }
 }
