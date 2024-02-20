@@ -1,7 +1,9 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -10,14 +12,17 @@ namespace Metamatic
         
     }
     public class Store<T>: Store, IDisposable
+    where T: struct
     {
         private InternalStore<T> m_InternalStore;
         private List<Action> m_Subscriptions = new List<Action>();
+        private bool m_IsDisposed;
         public T value
         {
             get => m_InternalStore.value;
             set => m_InternalStore.value = value;
         }
+        public InternalStore.DataOrigin dataOrigin => m_InternalStore.dataOrigin;
         public Store(InternalStore<T> store)
         {
             this.m_InternalStore = store;
@@ -30,6 +35,12 @@ namespace Metamatic
         }
         public void Dispose()
         {
+            if (m_IsDisposed)
+            {
+                return;
+            }
+            m_IsDisposed = true;
+            m_Subscriptions.ForEach(action => action.Invoke());
             m_InternalStore.Release();
             GC.SuppressFinalize(this);
         }
@@ -40,6 +51,7 @@ namespace Metamatic
         /// <returns></returns>
         public Action Subscribe(Action<T> action)
         {
+            Debug.Assert(m_IsDisposed == false, "Store is disposed");
             var unsubscribe = m_InternalStore.Subscribe(action);
             m_Subscriptions.Add(unsubscribe);
 
@@ -48,6 +60,19 @@ namespace Metamatic
                 m_Subscriptions.Remove(unsubscribe);
                 unsubscribe();
             };
+        }
+        
+        /// <summary>
+        /// Save store changes to the repository.
+        /// </summary>
+        public async UniTask Save()
+        {
+            await m_InternalStore.Push();
+        }
+
+        public UniTask WhenSynced()
+        {
+            return m_InternalStore.WhenSynced();
         }
     }
 }

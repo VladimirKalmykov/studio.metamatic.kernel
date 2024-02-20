@@ -29,16 +29,24 @@ namespace Metamatic
         public void OnCompleted(Action continuation)
         {
             var operation = this;
-            Action subscription = null;
-            subscription = m_Source.status.Subscribe((AsyncIOOperationSource.Status status) =>
+            if (m_Source.status.value == AsyncIOOperationSource.Status.Success ||
+                m_Source.status.value == AsyncIOOperationSource.Status.Error)
             {
-                if (status == AsyncIOOperationSource.Status.Success ||
-                    status == AsyncIOOperationSource.Status.Error)
+                continuation();
+            }
+            else
+            {
+                Action subscription = null;
+                subscription = m_Source.status.Subscribe((AsyncIOOperationSource.Status status) =>
                 {
-                    subscription?.Invoke();
-                    continuation();
-                }
-            });
+                    if (status == AsyncIOOperationSource.Status.Success ||
+                        status == AsyncIOOperationSource.Status.Error)
+                    {
+                        subscription?.Invoke();
+                        continuation();
+                    }
+                });
+            }
         }
 
         public T GetResult()
@@ -125,7 +133,6 @@ namespace Metamatic
         }
         public void SetError(Exception exception)
         {
-            Debug.LogError(exception);
             this.progress = 1;
             this.exception = exception;
             status.value = Status.Error;
@@ -133,10 +140,10 @@ namespace Metamatic
     }
     public class AsyncReadOperationSource<T>: AsyncIOOperationSource<T>
     {
-        public T result { get; protected set; }
+        public T? result { get; protected set; }
         public AsyncReadOperation<T> Operation => new AsyncReadOperation<T>(this);
         
-        protected void SetResult(T result)
+        protected void SetResult(T? result)
         {
             this.progress = 1;
             this.result = result;
@@ -165,7 +172,7 @@ namespace Metamatic
                     {
                         object value = valueProperty.GetValue(oldData);
                         
-                        var migratedData = Migrate<T>(testData.metadata.typeVersion, value);
+                        var migratedData = Migrate(testData.metadata.typeVersion, value);
                         SetResult(migratedData);
                     }
                 }
@@ -176,7 +183,7 @@ namespace Metamatic
             }
         }
         
-        protected T Migrate<T>(string version, object data)
+        protected T Migrate(string version, object data)
         {
             var migrateMethod = typeof(T).GetMethod("Migrate", BindingFlags.Static | BindingFlags.Public);
             if (migrateMethod != null)

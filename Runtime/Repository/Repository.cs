@@ -10,7 +10,7 @@ namespace Metamatic
     public class Repository: AsyncBehaviour
     {
         private static Repository m_Instance;
-        public static Repository instance
+        public static Repository Global
         {
             get
             {
@@ -90,11 +90,15 @@ namespace Metamatic
         /// <param name="uri"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public Store<T> GetStore<T>(string uri)
+        public Store<T> GetStore<T>(string uri, T defaultValue = default, bool autoPush = false) where T: struct
         {
-            if (instance.m_Stores.TryGetValue((typeof(T), uri), out var internalStore))
+            if (!Global.m_Stores.TryGetValue((typeof(T), uri), out var internalStore))
             {
-                internalStore = new InternalStore<T>(this, uri);
+                internalStore = new InternalStore<T>(repository: this, uri: uri, defaultValue: defaultValue, autoPush: autoPush);
+            }
+            else
+            {
+                // TODO: Apply default value and auto push settings to the existing store
             }
             return new Store<T>(internalStore as InternalStore<T>);
         }
@@ -106,6 +110,11 @@ namespace Metamatic
         public void Remove(InternalStore store)
         {
             m_Stores.Remove((store.type, store.uri));
+        }
+        
+        public void AssertError(Exception e)
+        {
+            Debug.LogException(e);
         }
     }
 }

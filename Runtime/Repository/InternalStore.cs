@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
@@ -12,6 +14,13 @@ namespace Metamatic
             Fetching,
             Pushing
         }
+        public enum DataOrigin
+        {
+            Uninitialized,
+            Persistent,
+            Manual,
+            Default
+        }
         public readonly string uri;
         public readonly Type type;
         public InternalStore(Type type, string uri)
@@ -22,7 +31,9 @@ namespace Metamatic
     }
     
     public class InternalStore<T>: InternalStore
+    where T: struct
     {
+        private T defaultValue;
         /// <summary>
         /// Current value of the store.
         /// </summary>
@@ -38,8 +49,13 @@ namespace Metamatic
         /// <summary>
         /// Initial value of the store (used to reset the value).
         /// </summary>
-        public T initialValue;
-        public readonly string uri;
+        public T originalValue;
+        /// <summary>
+        /// Determines the origin of the data (concrete data which is stored in the originalValue property).
+        /// </summary>
+        public DataOrigin dataOrigin { get; private set; } = DataOrigin.Uninitialized;
+
+        public bool isDirty { get; private set; } = false;
         public readonly Repository repository;
         public bool autoPush;
         private ObservableWritableValue<Status> m_Status = new ObservableWritableValue<Status>(Status.Idle);
@@ -51,6 +67,10 @@ namespace Metamatic
         private Exception m_Exception;
         private int m_AcquireCount;
         public event Action<Exception> OnError;
+        /// <summary>
+        /// Event is triggered when the store is synced with the repository source.
+        /// </summary>
+        public event Action<Exception> OnSyncFailed;
         public event Action<T> OnValueChange;
         /// <summary>
         /// 
@@ -58,9 +78,19 @@ namespace Metamatic
         /// <param name="repository">Ref to repository</param>
         /// <param name="uri">State uri</param>
         /// <param name="autoPush">Auto push to repository source on changes</param>
-        public InternalStore(Repository repository, string uri, bool autoPush = false): base(typeof(T), uri) {
+        public InternalStore(Repository repository, string uri, bool autoPush = false, T defaultValue = default): base(typeof(T), uri) {
+            m_Value = defaultValue;
             this.repository = repository;
             this.autoPush = autoPush;
+            this.defaultValue = defaultValue;
+        }
+        
+        /// <summary>
+        /// Wait until the store is synced with the repository source.
+        /// </summary>
+        public async UniTask WhenSynced()
+        {
+            await m_Status.WaitUntilValueIs(Status.Idle);
         }
         
         /// <summary>
@@ -80,12 +110,28 @@ namespace Metamatic
             try
             {
                 var newValue = await repository.Read<T>(Repository.GetUriAddress<T>(uri), repository.source, token);
-                initialValue = newValue;
+                originalValue = newValue;
+                dataOrigin = DataOrigin.Persistent;
                 this.value = newValue;
+            }
+            catch (OperationCanceledException)
+            {
+                // Do nothing
+            }
+            catch (DirectoryNotFoundException)
+            {
+                dataOrigin = DataOrigin.Default;
+                OnSyncFailed?.Invoke(new DirectoryNotFoundException($"Directory not found for {uri}"));
+            }
+            catch (FileNotFoundException)
+            {
+                dataOrigin = DataOrigin.Default;
+                OnSyncFailed?.Invoke(new FileNotFoundException($"File not found for {uri}"));
             }
             catch (System.Exception e)
             {
-                AssertError(e);
+                dataOrigin = DataOrigin.Default;
+                AssertError(new ReadRepositoryException(uri: uri, innerException: e, message: $"Internal store fetch error: {e.Message}"));
             }
             finally
             {
@@ -97,7 +143,7 @@ namespace Metamatic
         /// Push the value to the repository source.
         /// </summary>
         /// <param name="token"></param>
-        public async void Push(CancellationToken token = default)
+        public async UniTask Push(CancellationToken token = default)
         {
             if (status != Status.Idle)
             {
@@ -107,10 +153,14 @@ namespace Metamatic
             try
             {
                 await repository.Write<T>(Repository.GetUriAddress<T>(uri), value, repository.source, token);
+                dataOrigin = DataOrigin.Manual;
+                originalValue = value;
+                isDirty = false;
             }
             catch (System.Exception e)
             {
-                AssertError(e);
+                AssertError(new WriteRepositoryException(uri: uri, innerException: e, message: "Internal store push error: " + e.Message));
+                throw e;
             }
             finally
             {
@@ -144,12 +194,14 @@ namespace Metamatic
         
         public void Reset()
         {
-            value = initialValue;
+            value = originalValue;
+            isDirty = false;
         }
         
         public void SetValue(T value)
         {
-            this.value = value;
+            this.m_Value = value;
+            isDirty = true;
             OnValueChange?.Invoke(value);
             if (autoPush)
             {
@@ -165,7 +217,8 @@ namespace Metamatic
 
         private void AssertError(Exception ex)
         {
-            Debug.LogError(ex);
+            /* Tell repository that an error occurred */
+            repository.AssertError(ex);
             OnError?.Invoke(ex);
             m_Exception = ex;
         }

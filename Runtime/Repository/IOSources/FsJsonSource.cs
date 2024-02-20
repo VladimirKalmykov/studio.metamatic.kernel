@@ -51,10 +51,17 @@ namespace Metamatic
             operationSource.SetProgress(0);
             UniTask.Run(async () =>
             {
-                
                 try
                 {
                     token.ThrowIfCancellationRequested();
+
+                    // Создаем все недостающие директории для fullPath
+                    string directoryPath = Path.GetDirectoryName(fullPath);
+                    if (!string.IsNullOrEmpty(directoryPath))
+                    {
+                        Directory.CreateDirectory(directoryPath); // Создаем директории
+                    }
+
                     using (await lockerManager.GetAsyncUriLocker(uri, token))
                     using (StreamWriter writer = new StreamWriter(fullPath, false))
                     {
@@ -62,7 +69,7 @@ namespace Metamatic
                         await writer.WriteAsync(json);
                     }
                     token.ThrowIfCancellationRequested();
-                        
+                
                     await UniTask.SwitchToMainThread();
                     operationSource.SetCompleted();
                 }
@@ -74,5 +81,6 @@ namespace Metamatic
             });
             return operationSource.Operation;
         }
+
     }
 }
