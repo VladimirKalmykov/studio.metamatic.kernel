@@ -63,6 +63,27 @@ namespace Metamatic
         }
         
         /// <summary>
+        /// Subscribe to store changes.
+        /// </summary>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public Action Subscribe(Action<T, InternalStore.DataStatus> action)
+        {
+            Debug.Assert(m_IsDisposed == false, "Store is disposed");
+            var unsubscribe = m_InternalStore.Subscribe((val) =>
+            {
+                action(val, m_InternalStore.GetDataStatus());
+            });
+            m_Subscriptions.Add(unsubscribe);
+
+            return () =>
+            {
+                m_Subscriptions.Remove(unsubscribe);
+                unsubscribe();
+            };
+        }
+        
+        /// <summary>
         /// Save store changes to the repository.
         /// </summary>
         public async UniTask Save()

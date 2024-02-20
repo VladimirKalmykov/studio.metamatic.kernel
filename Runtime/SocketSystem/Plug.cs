@@ -109,7 +109,7 @@ namespace Metamatic
                 AutoConnectToParent();
             } else if (autoConnect == AutoConnectStrategies.Global)
             {
-                AutoConnectToGlobal();
+                SubscribeAndAutoConnectToGlobal();
             }
         }
 
@@ -245,21 +245,27 @@ namespace Metamatic
         /// <summary>
         /// Auto connect to the first global socket that matches the plug in the scene.
         /// </summary>
-        private void AutoConnectToGlobal()
+        private void SubscribeAndAutoConnectToGlobal()
         {
             if (m_AutoLocked.value)
             {
                 return;
             }
-            Socket<TScheme> globalSocket;
+            
+            Socket<TScheme>.OnSocketRegistryChange += AutoConnectToGlobal;
+            AutoConnectToGlobal();
+        }
 
+        private void AutoConnectToGlobal()
+        {
+            Socket<TScheme> globalSocket;
             if (autoConnectByName)
             {
                 globalSocket = Socket<TScheme>.GetByName(socketName);
             }
             else
             {
-                globalSocket = Socket<TScheme>.Registry.First();
+                globalSocket = Socket<TScheme>.Registry.FirstOrDefault();
             }
             if (globalSocket == null)
             {

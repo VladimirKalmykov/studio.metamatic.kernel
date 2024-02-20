@@ -95,6 +95,8 @@ namespace Metamatic
             if (!Global.m_Stores.TryGetValue((typeof(T), uri), out var internalStore))
             {
                 internalStore = new InternalStore<T>(repository: this, uri: uri, defaultValue: defaultValue, autoPush: autoPush);
+                m_Stores.Add((typeof(T), uri), internalStore);
+                Debug.Log($"Create new store {typeof(T).FullName} {uri}");
             }
             else
             {
@@ -110,6 +112,7 @@ namespace Metamatic
         public void Remove(InternalStore store)
         {
             m_Stores.Remove((store.type, store.uri));
+            Debug.Log($"Remove store {store.type.FullName} {store.uri}");
         }
         
         public void AssertError(Exception e)

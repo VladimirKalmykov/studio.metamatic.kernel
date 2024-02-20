@@ -18,8 +18,14 @@ namespace Metamatic
         {
             Uninitialized,
             Persistent,
-            Manual,
+            Local,
             Default
+        }
+        public struct DataStatus
+        {
+            public Status storeStatus;
+            public DataOrigin origin;
+            public bool isDirty;
         }
         public readonly string uri;
         public readonly Type type;
@@ -49,7 +55,7 @@ namespace Metamatic
         /// <summary>
         /// Initial value of the store (used to reset the value).
         /// </summary>
-        public T originalValue;
+        public T initialValue;
         /// <summary>
         /// Determines the origin of the data (concrete data which is stored in the originalValue property).
         /// </summary>
@@ -88,9 +94,9 @@ namespace Metamatic
         /// <summary>
         /// Wait until the store is synced with the repository source.
         /// </summary>
-        public async UniTask WhenSynced()
+        public async UniTask WhenSynced(CancellationToken token = default)
         {
-            await m_Status.WaitUntilValueIs(Status.Idle);
+            await m_Status.WaitUntilValueIs(Status.Idle, token);
         }
         
         /// <summary>
@@ -110,7 +116,7 @@ namespace Metamatic
             try
             {
                 var newValue = await repository.Read<T>(Repository.GetUriAddress<T>(uri), repository.source, token);
-                originalValue = newValue;
+                initialValue = newValue;
                 dataOrigin = DataOrigin.Persistent;
                 this.value = newValue;
             }
@@ -153,8 +159,8 @@ namespace Metamatic
             try
             {
                 await repository.Write<T>(Repository.GetUriAddress<T>(uri), value, repository.source, token);
-                dataOrigin = DataOrigin.Manual;
-                originalValue = value;
+                dataOrigin = DataOrigin.Persistent;
+                initialValue = value;
                 isDirty = false;
             }
             catch (System.Exception e)
@@ -194,7 +200,7 @@ namespace Metamatic
         
         public void Reset()
         {
-            value = originalValue;
+            value = initialValue;
             isDirty = false;
         }
         
@@ -202,6 +208,7 @@ namespace Metamatic
         {
             this.m_Value = value;
             isDirty = true;
+            dataOrigin = DataOrigin.Local;
             OnValueChange?.Invoke(value);
             if (autoPush)
             {
@@ -211,8 +218,32 @@ namespace Metamatic
         
         public Action Subscribe(Action<T> action)
         {
+            var subscriptionCancellationTokenSource = new CancellationTokenSource();
+            /* Standart subscription should provide value immediately. But we should wait util the store is synchronized */
+            WhenSynced(subscriptionCancellationTokenSource.Token).ContinueWith(() =>
+            {
+                action(value);
+            }).Forget();
             OnValueChange += action;
-            return () => OnValueChange -= action;
+            return () =>
+            {
+                subscriptionCancellationTokenSource.Cancel();
+                OnValueChange -= action;
+            };
+        }
+        
+        /// <summary>
+        /// Get current store status as a DataStatus object.
+        /// </summary>
+        /// <returns></returns>
+        public DataStatus GetDataStatus()
+        {
+            return new DataStatus()
+            {
+                storeStatus = status,
+                origin = dataOrigin,
+                isDirty = isDirty
+            };
         }
 
         private void AssertError(Exception ex)
