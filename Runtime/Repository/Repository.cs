@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Metamatic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Metamatic
 {
@@ -14,9 +15,20 @@ namespace Metamatic
         {
             get
             {
+                
                 if (m_Instance == null)
                 {
-                    
+                    /* Find repository in scene that contains property isGlobal true */
+                    var repositories = Object.FindObjectsOfType<Repository>();
+                    foreach (var repository in repositories)
+                    {
+                        if (repository.isGlobal)
+                        {
+                            m_Instance = repository;
+                            return m_Instance;
+                        }
+                    } 
+                    /* Create new repository if predefined repository does not exist */
                     m_Instance = new GameObject("Repository").AddComponent<Repository>();
                     m_Instance.Initialize();
 #if UNITY_EDITOR
@@ -56,14 +68,11 @@ namespace Metamatic
 
         private void Awake()
         {
-            if (m_Instance == null && isGlobal)
+            Debug.Assert(!isGlobal || (m_Instance == this || m_Instance == null), "Repository is marked as global but there is already another global repository");
+            if (isGlobal)
             {
                 m_Instance = this;
                 Initialize();
-            }
-            else
-            {
-                Destroy(gameObject);
             }
         }
 
