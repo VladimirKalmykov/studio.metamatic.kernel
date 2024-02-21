@@ -308,31 +308,34 @@ namespace Metamatic
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="socketScheme">Scheme to disconnect</param>
+        /// <param name="plugSocketScheme">Scheme to disconnect</param>
         /// <param name="doNotReconnectedOthers">Do not reconnected rest plugs and don't create loopback connection</param>
         /// <exception cref="InvalidOperationException"></exception>
-        public void DisconnectPlug(SocketScheme<TOutputBundle, TInputBundle> socketScheme, bool doNotReconnectedOthers = false)
+        public void DisconnectPlug(SocketScheme<TOutputBundle, TInputBundle> plugSocketScheme, bool doNotReconnectedOthers = false)
         {
-            if (!m_ConnectedOutSchemes.Contains(socketScheme))
+            if (!m_ConnectedOutSchemes.Contains(plugSocketScheme))
             {
                 Debug.LogWarning("Can't disconnect plug that is not connected");
                 return;
             }
-            /* Unconnect plug */
-            var thatInputPins = socketScheme.inputPins;
+            /* We use outputPins of plug socket scheme as plug's input pins, because in plug logic its input pins places in outputPins property of socket scheme */
+            var thatInputPins = plugSocketScheme.outputPins;
             var thisOutputPins = outputPins;
             
             foreach( var thatInput in thatInputPins)
             {
-                thatInput.DisconnectOutput();
-            }
-
-            foreach (var thatOutput in thisOutputPins)
-            {
-                thatOutput.DisconnectOutput();
+                thatInput?.DisconnectInput();
             }
             
-            RemoveConnectedOutScheme(socketScheme);
+            /* Wo don't need to disconnect output pins manually, because they will be disconnected automatically when disconnect their input pins */
+            /* foreach (var thisOutput in thisOutputPins)
+            {
+                // IMPORTANT NOTE: When disconnect output of this pin, it should be disconnected from only that input pin, not from all input pins
+                thisOutput.DisconnectOutput();
+            }
+            */
+            
+            RemoveConnectedOutScheme(plugSocketScheme);
 
             if (doNotReconnectedOthers)
             {

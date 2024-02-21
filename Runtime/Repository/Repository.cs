@@ -78,7 +78,7 @@ namespace Metamatic
 
         protected override void RunAsync(CancellationToken cancellationToken)
         {
-            throw new System.NotImplementedException();
+            
         }
         
         /// <summary>
