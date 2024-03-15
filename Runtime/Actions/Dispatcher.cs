@@ -113,7 +113,7 @@ namespace Metamatic.Actions
         /// <param name="handler"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        private System.Action Subscribe<T>(ActionHandler handler)
+        public System.Action Subscribe<T>(ActionHandler handler)
         {
             if (!m_EventListeners.TryGetValue(typeof(T), out var list))
             {
@@ -126,7 +126,7 @@ namespace Metamatic.Actions
             };
         }
         
-        private void Dispatch<T>(T action) where T : Action
+        public void Dispatch<T>(T action) where T : Action
         {
             if (enableLogging)
             {

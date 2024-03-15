@@ -17,7 +17,7 @@ namespace Metamatic.Actions
         public string GetDebugMessage()
         {
 #if DEBUG
-            return $"<color=cyan>ACTION:</color> {owner} {this.GetType().Name}";
+            return $"{owner} {this.GetType().Name}";
             #else
             return $"{this.GetType().Name}";
 #endif
@@ -51,20 +51,27 @@ namespace Metamatic.Actions
     {
         private static Action<T> m_Instance;
 
-        public static Action<T> Create(T value, Object owner = null)
+        public delegate void EventHandler(T value);
+
+        public static event EventHandler OnEmit;
+
+        public static Action<T> Emit(T value, Object owner = null)
         {
             if (m_Instance == null)
             {
-                m_Instance = new Action<T>(value);
+                m_Instance = new Action<T>();
             }
-            else
-            {
-                m_Instance.m_Value = value;
-            }
+            m_Instance.InternalEmit(value);
             #if DEBUG
             m_Instance.OnRecreate(owner);
             #endif
             return m_Instance;
+        }
+
+        private void InternalEmit(T value)
+        {
+            m_Instance.m_Value = value;
+            OnEmit?.Invoke(value);
         }
         
         private T m_Value;
@@ -72,13 +79,12 @@ namespace Metamatic.Actions
         
         
 
-        public Action(T value)
+        public Action()
         {
             if (m_Instance != null)
             {
                 throw new Exception("Action<T> is a singleton. Use Action<T>.Create instead.");
             }
-            this.m_Value = value;
         }
 
         public void Dispose()
@@ -86,7 +92,17 @@ namespace Metamatic.Actions
             // Dispose
         }
 
-        protected override void OnClear()
+        public static System.Action Subscribe(EventHandler handler)
+        {
+            OnEmit += handler;
+
+            return () =>
+            {
+                OnEmit -= handler;
+            };
+        }
+
+        protected sealed override void OnClear()
         {
             m_Value = default(T);
         }

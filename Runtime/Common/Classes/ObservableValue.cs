@@ -124,10 +124,10 @@ namespace Metamatic
         public UniTask<TValue> WaitUntilValueIsNotNull(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            if (GetValue() != null) return UniTask.FromResult(value);
             var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
                 { m_DisposeCancellationTokenSource.Token, cancellationToken });
             var combinedCancellationToken = combinedCancellationTokenSource.Token;
-            if (GetValue() != null) return UniTask.FromResult(value);
             var tcs = new UniTaskCompletionSource<TValue>();
             Action<TValue> handler = null;
             handler = v =>

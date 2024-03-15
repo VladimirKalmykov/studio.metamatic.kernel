@@ -9,7 +9,7 @@ namespace Metamatic.GameAccessManagment {
             }
             var accessConfig = accessable.GetAccessConfig();
             /* Check sertificates */
-            bool own = accessConfig.certify && accessConfig.certificates.Any(certificate => ValidateCertificate(certificate, passes));
+            bool own = passes.OfType<OwnAssetPass>().Any((pass => pass.vendorCode == accessConfig.vendorCode)) || accessConfig.certify && accessConfig.certificates.Any(certificate => ValidateCertificate(certificate, passes));
             var use = own || !accessConfig.certify;
             var interact = own || (accessConfig.interact == null || accessConfig.interact.Verify(passes));
             var view = own || (accessConfig.view == null || accessConfig.view.Verify(passes));

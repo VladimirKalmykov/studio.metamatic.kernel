@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
@@ -324,6 +326,35 @@ namespace Metamatic
             {
                 unsubscribe();
             };
+        }
+        
+        /// <summary>
+        /// Wait until predicate is true
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public UniTask<T> WaitUntil(Func<T, bool> predicate, CancellationToken cancellationToken)
+        {
+            var tcs = new UniTaskCompletionSource<T>();
+            Action unsubscribe = null;
+            CancellationTokenRegistration registration = default;
+            IWire<T>.ChangeRefHandler handler = (ref T data) =>
+            {
+                if (predicate(data))
+                {
+                    unsubscribe?.Invoke();
+                    registration.Dispose();
+                    tcs.TrySetResult(data);
+                }
+            };
+            unsubscribe = SubscribeRef(handler);
+            registration = cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                unsubscribe?.Invoke();
+            });
+            return tcs.Task;
         }
 
         public void Dispose()

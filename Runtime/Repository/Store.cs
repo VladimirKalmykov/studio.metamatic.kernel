@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -21,6 +22,11 @@ namespace Metamatic
         {
             get => m_InternalStore.value;
             set => m_InternalStore.value = value;
+        }
+
+        public T initialValue
+        {
+            get => m_InternalStore.value;
         }
         public InternalStore.DataOrigin dataOrigin => m_InternalStore.dataOrigin;
         public Store(InternalStore<T> store)
@@ -44,6 +50,17 @@ namespace Metamatic
             m_InternalStore.Release();
             GC.SuppressFinalize(this);
         }
+        
+        /// <summary>
+        /// Lock store
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public UniTask<IDisposable> Lock(CancellationToken cancellationToken = default)
+        {
+            return m_InternalStore.Lock(cancellationToken);
+        }
+        
         /// <summary>
         /// Subscribe to store changes.
         /// </summary>
@@ -89,6 +106,11 @@ namespace Metamatic
         public async UniTask Save()
         {
             await m_InternalStore.Push();
+        }
+
+        public async UniTask CommitAllAndPush(Func<T, T> modifier)
+        {
+            await m_InternalStore.CommitAllAndPush(modifier);
         }
 
         public UniTask WhenSynced()

@@ -12,6 +12,7 @@
         public float smoothSpeed = 6f;
         public int minWidth = 0;
         public int maxWidth = 99999;
+        private int m_ActiveChildrenCount;
         RectTransform rect;
         DrivenRectTransformTracker dt = new DrivenRectTransformTracker();
         DrivenRectTransformTracker dtChild = new DrivenRectTransformTracker();
@@ -32,7 +33,7 @@
         {
             dtChild.Clear();
             foreach(RectTransform child in transform) {
-                
+                if (!child.gameObject.activeInHierarchy) continue;
                 dtChild.Add(this, child, DrivenTransformProperties.AnchoredPositionX);
             }
         }
@@ -47,8 +48,12 @@
             dtChild.Clear();
             OnBeforeDisable?.Invoke();
         }
-        void Start() {
+        void Start()
+        {
+            m_ActiveChildrenCount = 0;
             foreach(RectTransform child in transform) {
+                if (!child.gameObject.activeInHierarchy) continue;
+                m_ActiveChildrenCount++;
                 child.anchorMax = new Vector2(
                     0,
                     child.anchorMax.y
@@ -68,18 +73,23 @@
         {
             float left = paddingLeft;
             int index = 0;
+            var nextActiveChildCount = 0;
             foreach(RectTransform child in transform) {
+                if (!child.gameObject.activeInHierarchy) continue;
+                nextActiveChildCount++;
                 child.anchoredPosition = new Vector3(
                     left,
                     child.anchoredPosition.y
                 );
                 left += child.sizeDelta.x;
 
-                if (index < transform.childCount - 1) {
+                if (index < m_ActiveChildrenCount - 1) {
                     left += spacing;
                 }
                 index++;
             }
+
+            m_ActiveChildrenCount = nextActiveChildCount;
             if (fitContent) {
                 var finalWidth = Mathf.Min(Mathf.Max(minWidth + paddingRight, left + paddingRight), maxWidth);
                 if (smooth) {

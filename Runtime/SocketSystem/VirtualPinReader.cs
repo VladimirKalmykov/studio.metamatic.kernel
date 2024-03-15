@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -46,6 +48,11 @@ namespace Metamatic
         public Action SubscribeRef(IWire<T>.ChangeRefHandler handler)
         {
             return wire.SubscribeRef(handler);
+        }
+        
+        public UniTask<T> WaitUntil(Func<T, bool> predicate, CancellationToken cancellationToken)
+        {
+            return wire.WaitUntil(predicate, cancellationToken);
         }
     }
 }

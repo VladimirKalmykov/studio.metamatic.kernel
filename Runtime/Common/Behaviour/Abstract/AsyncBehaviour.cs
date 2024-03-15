@@ -12,6 +12,7 @@ namespace Metamatic
 
         public delegate UniTask RunAsyncHandler(CancellationToken cancellationToken);
         public UniTask componentDisableTask => m_DisableTaskCompletionSource.Task;
+        public CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource.Token;
 
         public CancellationToken componentDisableToken
         {

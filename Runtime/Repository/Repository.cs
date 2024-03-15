@@ -99,7 +99,7 @@ namespace Metamatic
         /// <param name="uri"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public Store<T> GetStore<T>(string uri, T defaultValue = default, bool autoPush = false) where T: struct
+        public Store<T> GetStore<T>(string uri = "global", T defaultValue = default, bool autoPush = false) where T: struct
         {
             if (!Global.m_Stores.TryGetValue((typeof(T), uri), out var internalStore))
             {
