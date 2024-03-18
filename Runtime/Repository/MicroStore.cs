@@ -16,7 +16,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static MicroStore<T> Scope(string name, T defaultValue = default)
+        public static MicroStore<T> Entity(string name, T defaultValue = default)
         {
             if (!m_Scopes.TryGetValue(name, out var store))
             {
@@ -40,7 +40,7 @@ namespace Metamatic
             }
         }
         
-        public static MicroStore<T> Default => Scope("default");
+        public static MicroStore<T> Default => Entity("default");
         #endregion
         public enum IOStatuses
         {
@@ -297,29 +297,42 @@ namespace Metamatic
         /// <param name="token"></param>
         public async UniTask Pull(CancellationToken token = default)
         {
-            await Read(token);
+            await Read(token: token);
         }
-        
+
+        /// <summary>
+        /// Pull from persistent storage
+        /// </summary>
+        /// <param name="populate"></param>
+        /// <param name="token"></param>
+        public async UniTask Pull(bool populate = false, CancellationToken token = default, T defaultValue = default)
+        {
+            await Read(populate: populate, token: token, defaultValue: defaultValue);
+        }
+
         /// <summary>
         /// Read from persistent storage
         /// </summary>
+        /// <param name="populate"></param>
         /// <param name="token"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async UniTask<T> Read(CancellationToken token = default)
+        private async UniTask<T> Read(bool populate = false, CancellationToken token = default, T defaultValue = default)
         {
+            T nextValue = defaultValue;
+            bool isCancelled = false;
+            bool isError = false;
             try
             {
                 await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, token);
                 m_IOStatus.value = IOStatuses.Synchronizing;
-                var value = await Repository.Global.Read<T>(name, Repository.Global.source, token);
-                m_PersistentValue = value;
-                m_IsSynchronized.value = true;
+                nextValue = await Repository.Global.Read<T>(name, Repository.Global.source, token);
                 m_DataSource.value = DataSource.Persistent;
                 return value;
             }
             catch (OperationCanceledException)
             {
+                isCancelled = true;
                 m_IsSynchronized.value = false;
             }
             catch (DirectoryNotFoundException)
@@ -338,13 +351,31 @@ namespace Metamatic
             }
             catch (System.Exception e)
             {
+                isError = true;
                 m_IsSynchronized.value = false;
                 m_DataSource.value = DataSource.Fallback;
                 Debug.LogWarning(new ReadRepositoryException(uri: name, innerException: e, message: $"Internal store fetch error: {e.Message}"));
             }
             finally
             {
-                m_IOStatus.value = IOStatuses.Idle;
+                if (!isError && !isCancelled)
+                {
+                    m_PersistentValue = nextValue;
+                    /* Apply new value to all branches if populate option is truly */
+                    if (populate)
+                    {
+                        foreach (var branch in m_Branches.Values)
+                        {
+                            branch.Reset();
+                        }
+                    } else if (!m_CurrentBranch.value.isDirty)
+                    {
+                        /* Reset current branch if it is not dirty */
+                        m_CurrentBranch.value.Reset();
+                    }
+                    m_IsSynchronized.value = true;
+                    m_IOStatus.value = IOStatuses.Idle;
+                }
             }
 
             return default;
@@ -392,6 +423,11 @@ namespace Metamatic
             });
             cancellationToken.Register(releaseSubscription);
             return await taskCompletionSource.Task;
+        }
+        
+        public async UniTask WaitUntilIdle(CancellationToken cancellationToken = default)
+        {
+            await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, cancellationToken);
         }
         
         /// <summary>

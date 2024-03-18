@@ -26,7 +26,9 @@ namespace Metamatic
 
             public void OnCompleted(Action continuation) => cancellationToken.Register(continuation);
 
-            public void GetResult() => cancellationToken.WaitHandle.WaitOne();
+            public void GetResult()
+            {
+            }
         }
         
         public static Task AsTask(this CancellationToken cancellationToken)

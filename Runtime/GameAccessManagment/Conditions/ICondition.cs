@@ -1,5 +1,5 @@
 namespace Metamatic.GameAccessManagment {
     public interface ICondition {
-        public bool Verify(Pass[] passes);
+        public bool Verify(UnityEngine.Object target, Passes passes);
     }
 }

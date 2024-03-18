@@ -11,10 +11,11 @@ namespace Metamatic
 {
     public class FsJsonSource: IOSource
     {
-        public override AsyncReadOperation<T> Read<T>(string filePath, CancellationToken token)
+        public override AsyncReadOperation<T> Read<T>(string name, CancellationToken token)
         {
             var operationSource = new AsyncReadOperationSource<T>();
-            string fullPath = Path.Combine(Application.persistentDataPath, $"{filePath}.json");
+            var uri = GetUriAddress<T>(name);
+            string fullPath = Path.Combine(Application.persistentDataPath, uri);
             // Запускаем асинхронную операцию чтения файла
             UniTask.Run(async delegate ()
             {
@@ -42,10 +43,11 @@ namespace Metamatic
             return operationSource.Operation;
         }
 
-        public override AsyncWriteOperation<T> Write<T>(string uri, T value, CancellationToken token)
+        public override AsyncWriteOperation<T> Write<T>(string name, T value, CancellationToken token)
         {
             var operationSource = new AsyncWriteOperationSource<T>();
-            string fullPath = Path.Combine(Application.persistentDataPath, $"{uri}.json");
+            var uri = GetUriAddress<T>(name);
+            string fullPath = Path.Combine(Application.persistentDataPath, uri);
             var package = new SerializableDataPackage<T>(value);
             string json = JsonUtility.ToJson(package);
             operationSource.SetProgress(0);
@@ -80,6 +82,18 @@ namespace Metamatic
                 }
             });
             return operationSource.Operation;
+        }
+        
+        /// <summary>
+        /// Get data address by its type and uri
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static string GetUriAddress<T>(string uri)
+        {
+            var typeName = typeof(T).FullName;
+            return $"{typeName}/{uri}.json";
         }
 
     }

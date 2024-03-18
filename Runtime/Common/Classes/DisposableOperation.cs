@@ -18,6 +18,8 @@ namespace Metamatic
         public event Action<T> OnResult;
         public event Action OnCancel;
         public event Action OnDispose;
+        private UniTaskCompletionSource<T> m_TaskCompletionSource = new UniTaskCompletionSource<T>();
+        public UniTask<T> Task => m_TaskCompletionSource.Task;
 
         public DisposableOperation(DisposableProcedure procedure, CancellationToken cancellationToken = default)
         {
@@ -28,6 +30,7 @@ namespace Metamatic
 
         private void DoCancel()
         {
+            m_TaskCompletionSource.TrySetCanceled();
             cancellationTokenRegistration.Dispose();
             OnCancel?.Invoke();
         }
@@ -38,6 +41,7 @@ namespace Metamatic
             {
                 throw new Exception("Async operation already resolved");
             }
+            m_TaskCompletionSource.TrySetResult(value);
             Result = value;
             OnResult?.Invoke(value);
             m_Resolved = true;
@@ -50,6 +54,7 @@ namespace Metamatic
                 throw new Exception("Async operation already resolved");
             }
             Exception = e;
+            m_TaskCompletionSource.TrySetException(e);
             OnError?.Invoke(e);
             m_Rejected = true;
             m_Resolved = true;
@@ -93,7 +98,7 @@ namespace Metamatic
     }
     
     
-    public class DisposableAsyncOperation<T>: IDisposable
+    public class DisposableAsyncOperationT<T>: IDisposable
     {
         public delegate UniTask<T> DisposableProcedure(CancellationToken cancellationToken);
 
@@ -108,7 +113,7 @@ namespace Metamatic
         public event Action<T> OnResult;
         public event Action OnDispose;
 
-        public DisposableAsyncOperation(DisposableProcedure procedure, CancellationToken cancellationToken = default)
+        public DisposableAsyncOperationT(DisposableProcedure procedure, CancellationToken cancellationToken = default)
         {
             m_CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             RunProcedure(procedure, m_CancellationTokenSource.Token);
@@ -141,7 +146,7 @@ namespace Metamatic
 
         }
         
-        public DisposableAsyncOperation<T> Then(Action<T> action)
+        public DisposableAsyncOperationT<T> Then(Action<T> action)
         {
             if (m_Resolved)
             {
@@ -154,7 +159,7 @@ namespace Metamatic
             return this;
         }
         
-        public DisposableAsyncOperation<T> Catch(Action<Exception> action)
+        public DisposableAsyncOperationT<T> Catch(Action<Exception> action)
         {
             if (m_Resolved)
             {
@@ -168,6 +173,58 @@ namespace Metamatic
                 OnError += action;
             }
             return this;
+        }
+
+        public void Dispose()
+        {
+            m_CancellationTokenSource.Cancel();
+            OnDispose?.Invoke();
+        }
+    }
+    
+    public class DisposableAsyncOperation: IDisposable
+    {
+        public delegate UniTask DisposableProcedure(CancellationToken cancellationToken);
+
+        private CancellationTokenSource m_CancellationTokenSource;
+        private UniTaskCompletionSource m_UniTaskCompletionSource = new UniTaskCompletionSource();
+        private bool m_Resolved = false;
+        private bool m_Rejected = false;
+        public UniTask task => m_UniTaskCompletionSource.Task;
+        public Exception Exception { get; private set; }
+        public event Action<Exception> OnError;
+        public event Action OnDispose;
+
+        public DisposableAsyncOperation(DisposableProcedure procedure, CancellationToken cancellationToken = default)
+        {
+            m_CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            RunProcedure(procedure, m_CancellationTokenSource.Token);
+        }
+        
+        public async void RunProcedure(DisposableProcedure procedure, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await procedure(cancellationToken);
+                m_UniTaskCompletionSource.TrySetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                m_UniTaskCompletionSource.TrySetCanceled();
+                Dispose();
+            }
+            catch (Exception e)
+            {
+                m_UniTaskCompletionSource.TrySetException(e);
+                OnError?.Invoke(e);
+                Exception = e;
+                m_Rejected = true;
+            }
+            finally
+            {
+                m_Resolved = true;
+            }
+
         }
 
         public void Dispose()

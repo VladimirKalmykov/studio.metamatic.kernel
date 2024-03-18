@@ -2,7 +2,10 @@ using System;
 
 namespace Metamatic.GameAccessManagment {
     [Serializable]
-    public class Pass: IPass {
-        
+    public struct Pass
+    {
+        public PassType type;
+        public string value;
+        public float count;
     }
 }

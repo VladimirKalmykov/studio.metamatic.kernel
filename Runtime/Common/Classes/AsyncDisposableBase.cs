@@ -105,13 +105,13 @@ namespace Metamatic
 
     public class ImAsyncDisposableOperation<T>: ImAsyncDisposableBase
     {
-        private readonly DisposableAsyncOperation<T> m_DisposableAsyncOperation;
+        private readonly DisposableAsyncOperationT<T> m_DisposableAsyncOperationT;
         private Func<UniTask> m_OnAsyncDisposeRequest;
         private Action m_OnDispose;
-        public DisposableAsyncOperation<T> operation => m_DisposableAsyncOperation;
-        public ImAsyncDisposableOperation(DisposableAsyncOperation<T>.DisposableProcedure asyncOperation, Func<UniTask> onAsyncDisposeRequest, Action onDispose, CancellationToken cancellationToken = default)
+        public DisposableAsyncOperationT<T> OperationT => m_DisposableAsyncOperationT;
+        public ImAsyncDisposableOperation(DisposableAsyncOperationT<T>.DisposableProcedure asyncOperation, Func<UniTask> onAsyncDisposeRequest, Action onDispose, CancellationToken cancellationToken = default)
         {
-            m_DisposableAsyncOperation = new DisposableAsyncOperation<T>(asyncOperation, cancellationToken);
+            m_DisposableAsyncOperationT = new DisposableAsyncOperationT<T>(asyncOperation, cancellationToken);
             m_OnAsyncDisposeRequest = onAsyncDisposeRequest;
             m_OnDispose = onDispose;
         }
@@ -123,7 +123,7 @@ namespace Metamatic
 
         protected override UniTask OnDisposeAsync(CancellationToken cancellationToken = default)
         {
-            m_DisposableAsyncOperation.Dispose();
+            m_DisposableAsyncOperationT.Dispose();
             return m_OnAsyncDisposeRequest.Invoke();
         }
     }

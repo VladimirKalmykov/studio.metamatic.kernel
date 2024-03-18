@@ -3,24 +3,22 @@ using System;
 namespace Metamatic.GameAccessManagment {
     using System.Linq;
     public class GameAccessUtils {
-        public static AccessDetails GetAccess(IAccessable accessable, Pass[] passes) {
+        public static AccessDetails GetAccess(UnityEngine.Object target, IAccessable accessable, Passes passes) {
             if (accessable == null) {
                 return AccessDetails.None;
             }
             var accessConfig = accessable.GetAccessConfig();
             /* Check sertificates */
-            bool own = passes.OfType<OwnAssetPass>().Any((pass => pass.vendorCode == accessConfig.vendorCode)) || accessConfig.certify && accessConfig.certificates.Any(certificate => ValidateCertificate(certificate, passes));
-            var use = own || !accessConfig.certify;
-            var interact = own || (accessConfig.interact == null || accessConfig.interact.Verify(passes));
-            var view = own || (accessConfig.view == null || accessConfig.view.Verify(passes));
+            
+            var use = (!accessConfig.use.enabled || accessConfig.use.Value == null || accessConfig.use.Value.Verify(target, passes));
+            var interact = use || (!accessConfig.interact.enabled || accessConfig.interact.Value == null || accessConfig.interact.Value.Verify(target, passes));
+            var view = interact || (!accessConfig.view.enabled || accessConfig.view.Value == null || accessConfig.view.Value.Verify(target, passes));
 
             var accessDetails = new AccessDetails {
-                own = own,
                 use = use,
-                view = view,
                 interact = interact,
-                config = accessConfig,
-                isCertified = accessConfig.certify && accessConfig.certificates != null && accessConfig.certificates.Length > 0
+                view = view,
+                config = accessConfig
             };
 
             return accessDetails;
@@ -28,13 +26,6 @@ namespace Metamatic.GameAccessManagment {
 
         static public bool ValidateCertificate(Certificate certificate, Pass[] passes)
         {
-            if (certificate == null) return false;
-            foreach(var pass in passes) {
-                if (pass is CertificatePass certPass && certPass.certificate == certificate)
-                {
-                    return true;
-                }
-            }
             return false;
         }
     }

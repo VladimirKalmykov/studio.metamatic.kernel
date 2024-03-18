@@ -87,6 +87,7 @@ namespace Metamatic
         /// <param name="uri"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
+        [Obsolete("Use GetUriAdress in IOSource instead")]
         public static string GetUriAddress<T>(string uri)
         {
             var typeName = typeof(T).FullName;
@@ -99,6 +100,7 @@ namespace Metamatic
         /// <param name="uri"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
+        [Obsolete("Use MicroStore<T> instead")]
         public Store<T> GetStore<T>(string uri = "global", T defaultValue = default, bool autoPush = false) where T: struct
         {
             if (!Global.m_Stores.TryGetValue((typeof(T), uri), out var internalStore))
@@ -118,6 +120,7 @@ namespace Metamatic
         /// Remove store from the repository
         /// </summary>
         /// <param name="store"></param>
+        [Obsolete("Use MicroStore<T> instead")]
         public void Remove(InternalStore store)
         {
             m_Stores.Remove((store.type, store.uri));

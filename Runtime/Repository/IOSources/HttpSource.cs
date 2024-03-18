@@ -9,14 +9,14 @@ namespace Metamatic
 {
     public class HttpSource: IOSource
     {
-        public override AsyncReadOperation<T> Read<T>(string uri, CancellationToken token)
+        public override AsyncReadOperation<T> Read<T>(string name, CancellationToken token)
         {
             var operationSource = new AsyncReadOperationSource<T>();
             UniTask.Run(async delegate () 
             {
                 try
                 {
-                    using (UnityWebRequest webRequest = UnityWebRequest.Get(uri))
+                    using (UnityWebRequest webRequest = UnityWebRequest.Get(name))
                     {
                         operationSource.SetProgress(0);
                         await webRequest.SendWebRequest();
