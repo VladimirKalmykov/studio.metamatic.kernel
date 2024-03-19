@@ -3,7 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Threading;
-        
+    
     /// <summary>
     /// Allows to initialize (or some way process it) items and dispose them when they are not needed anymore.
     /// For argument handler accept item and return disposable object that will be disposed when item is removed from an array passed to Handle method.
@@ -16,6 +16,7 @@
     /// initializer.Handler(newItems);
     /// </example>
     /// <typeparam name="T"></typeparam>
+    [Obsolete("Use ExclusiveArrayHandler<T> instead", true)]
     public class ItemsInitializer<T> : IDisposable where T : class
     {
         private readonly Func<T, IDisposable> m_Initializer;
