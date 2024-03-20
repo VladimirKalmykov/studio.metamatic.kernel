@@ -159,7 +159,6 @@ namespace Metamatic
         /// Auto connect to the first socket that matches the plug in the parent hierarchy.
         /// </summary>
         protected override void AutoConnectToParent() {
-            Debug.Log($"transform.parent: {transform.parent?.name}");
             if (transform.parent == null)
             {
                 AutoDisconnectFromParent();

@@ -5,6 +5,7 @@ using Object = UnityEngine.Object;
 
 namespace Metamatic
 {
+    [Obsolete("Use Socket with global settings instead.", true)]
     public class SocketProvider<TSocketScheme>: Socket<TSocketScheme>, ISerializationCallbackReceiver
     where TSocketScheme: SocketScheme, new()
     {
@@ -20,6 +21,7 @@ namespace Metamatic
         {
             if (m_Instance.value == null)
             {
+
                 m_Instance.value = this;
             }
             else

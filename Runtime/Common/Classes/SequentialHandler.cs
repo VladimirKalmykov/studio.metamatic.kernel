@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Use ExclusiveHandler instead", true)]
     public abstract class SequentialHandler: IDisposable
     {
         protected CancellationToken externCancellationToken;
@@ -27,6 +28,7 @@ namespace Metamatic
 
         protected abstract void EraseProps();
     }
+    [Obsolete("Use ExclusiveHandler instead", true)]
     public class SequentialHandler<TContext>: SequentialHandler
     {
         public delegate void Handler(CancellationToken token, TContext context);
@@ -54,6 +56,7 @@ namespace Metamatic
             m_Context = default;
         }
     }
+    [Obsolete("Use ExclusiveHandler instead", true)]
     public class SequentialHandler<T, TContext>: SequentialHandler
     {
         public delegate void Handler(T value, CancellationToken token, TContext context);
@@ -81,7 +84,7 @@ namespace Metamatic
             m_Context = default;
         }
     }
-    
+    [Obsolete("Use ExclusiveHandler instead", true)]
     public class SequentialHandler<T1, T2, TContext>: SequentialHandler
     {
         public delegate void Handler(T1 value1, T2 value2, CancellationToken token, TContext context);
@@ -109,7 +112,7 @@ namespace Metamatic
             m_Context = default;
         }
     }
-    
+    [Obsolete("Use ExclusiveHandler instead", true)]
     public class SequentialHandlerRef<T, TContext>: SequentialHandler
     {
         public delegate void Handler(ref T value, CancellationToken token, TContext context);
@@ -143,7 +146,7 @@ namespace Metamatic
             m_Context = default;
         }
     }
-    
+    [Obsolete("Use ExclusiveHandler instead", true)]
     public class SequentialHandlerRef<T1, T2, TContext>: SequentialHandler
     {
         public delegate void Handler(ref T1 value1, ref T2 value2, CancellationToken token, TContext context);

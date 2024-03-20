@@ -7,16 +7,20 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class MicroStore<T>: IDisposable, IAcquirable
+    public class MicroStore<T>: IDisposable, IAcquirable, IStore<T>
+        where T : struct
     {
         #region Static
-        private static Dictionary<string, MicroStore<T>> m_Scopes = new Dictionary<string, MicroStore<T>>();
+        private static Dictionary<string, MicroStore<T>> m_Scopes = new();
+        private static Dictionary<string, string> m_AliasValues = new();
+        private static Dictionary<string, MicroStoreAlias<T>> m_Aliases = new();
+        private static event Action<string, string> m_OnAliasChanged;
         /// <summary>
         /// Returns store for the specified scope name
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static MicroStore<T> Entity(string name, T defaultValue = default)
+        public static MicroStore<T> Id(string name, T defaultValue = default)
         {
             if (!m_Scopes.TryGetValue(name, out var store))
             {
@@ -31,6 +35,35 @@ namespace Metamatic
 
             return store;
         }
+
+        public static IStore<T> Alias(string name)
+        {
+            if (!m_Aliases.TryGetValue(name, out var alias))
+            {
+                string id;
+                if (!m_AliasValues.TryGetValue(name, out id))
+                {
+                    id = "default";
+                }
+                alias = new MicroStoreAlias<T>(id);
+                m_Aliases[name] = alias;
+                Action<string, string> aliasChangedHandler = (aliasName, id) =>
+                {
+                    if (aliasName == name)
+                    {
+                        alias.SetId(id);
+                    }
+                };
+                m_OnAliasChanged += aliasChangedHandler;
+                alias.OnDidDispose += () =>
+                {
+                    m_OnAliasChanged -= aliasChangedHandler;
+                    m_Aliases.Remove(name);
+                };
+            }
+            alias.Acquire();
+            return alias;
+        }
         
         private static void ReleaseScope(string name)
         {
@@ -40,102 +73,42 @@ namespace Metamatic
             }
         }
         
-        public static MicroStore<T> Default => Entity("default");
+        public static MicroStore<T> Default => Id("default");
+        /// <summary>
+        /// Set alias for the store
+        /// </summary>
+        /// <param name="alias"></param>
+        /// <param name="id"></param>
+        public static void SetAlias(string alias, string id)
+        {
+            m_AliasValues[alias] = id;
+            m_OnAliasChanged?.Invoke(alias, id);
+        }
+        /// <summary>
+        /// Release aliases
+        /// </summary>
+        /// <param name="alias"></param>
+        public static void ReleaseAlias(string alias)
+        {
+            m_AliasValues.Remove(alias);
+            m_OnAliasChanged?.Invoke(alias, null);
+        }
         #endregion
         public enum IOStatuses
         {
             Idle,
             Synchronizing,
         }
-
-        public struct Metadata
-        {
-            public readonly bool isSynchronized;
-            public readonly DataSource dataSource;
-            public readonly bool isDirty;
-            public Metadata(bool isSynchronized, DataSource dataSource, bool isDirty)
-            {
-                this.isSynchronized = isSynchronized;
-                this.dataSource = dataSource;
-                this.isDirty = isDirty;
-            }
-        }
-        public enum DataSource
-        {
-            Default,
-            Fallback,
-            Persistent,
-        }
-        public class Branch: IAcquirable, IDisposable
-        {
-            private readonly MicroStore<T> m_Store;
-            public readonly string name;
-            public readonly bool locked;
-            private readonly ObservableWritableValue<T> m_Value = new ObservableWritableValue<T>();
-            private int m_ReferenceCount;
-            public bool isAcquired => m_ReferenceCount > 0;
-            public bool isDirty { get; private set; }
-
-            public T value
-            {
-                get => m_Value.value;
-                set => SetValue(value);
-            }
-            public Branch(MicroStore<T> store, string name, T value, bool locked = false)
-            {
-                this.m_Store = store;
-                this.name = name;
-                m_Value.value = value;
-                this.locked = locked;
-            }
-            
-            public void SetValue(T nextValue)
-            {
-                isDirty = true;
-                m_Value.value = nextValue;
-            }
-
-            public void Reset()
-            {
-                isDirty = false;
-                m_Value.value = m_Store.persistentValue;
-            }
-            
-            public Action Subscribe(Action<T> handler)
-            {
-                return m_Value.Subscribe(handler);
-            }
-
-            public void Acquire()
-            {
-                m_ReferenceCount++;
-            }
-
-            public void Release()
-            {
-                m_ReferenceCount--;
-                if (m_ReferenceCount == 0)
-                {
-                    m_Store?.Dispose();
-                    m_Value?.Dispose();
-                    m_Store.InternalRemoveBranch(this);
-                }
-            }
-
-            public void Dispose()
-            {
-                Release();
-            }
-        }
-        private Dictionary<string, Branch> m_Branches = new ();
-        private ObservableWritableValue<Branch> m_CurrentBranch = new ObservableWritableValue<Branch>();
+        
+        private Dictionary<string, IStore<T>.Branch> m_Branches = new ();
+        private ObservableWritableValue<IStore<T>.Branch> m_CurrentBranch = new();
         /// <summary>
         /// Determines that store is synchronized with the persistent storage
         /// </summary>
-        private ObservableWritableValue<bool> m_IsSynchronized = new ObservableWritableValue<bool>(false);
-        private ObservableWritableValue<DataSource> m_DataSource = new ObservableWritableValue<DataSource>(DataSource.Default);
-        public DataSource dataSource => m_DataSource.value;
-        private ObservableWritableValue<IOStatuses> m_IOStatus = new ObservableWritableValue<IOStatuses>(IOStatuses.Idle);
+        private ObservableWritableValue<bool> m_IsSynchronized = new(false);
+        private ObservableWritableValue<IStore.DataSource> m_DataSource = new(IStore.DataSource.Default);
+        public IStore.DataSource dataSource => m_DataSource.value;
+        private ObservableWritableValue<IOStatuses> m_IOStatus = new(IOStatuses.Idle);
         public ObservableValue<IOStatuses> IOStatus => m_IOStatus;
         private int m_ReferenceCount;
         public readonly string name;
@@ -153,7 +126,7 @@ namespace Metamatic
         {
             this.name = name;
             this.m_ReleaseHandler = onRelease;
-            var defaultBranch = new Branch(this, "default", defaultValue);
+            var defaultBranch = new IStore<T>.Branch(this, InternalRemoveBranch, "default", defaultValue);
             m_Branches["default"] = defaultBranch;
             m_CurrentBranch.value = defaultBranch;
             m_PersistentValue = defaultValue;
@@ -237,7 +210,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public Action SubscribeMetadata(Action<T, Metadata> handler)
+        public Action SubscribeMetadata(Action<T, IStore.Metadata> handler)
         {
             Action releaseSubscription = null;
             if (m_IOStatus.value != IOStatuses.Idle)
@@ -272,7 +245,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        private Action SubscribeBranchAndValueMetadata_Internally(Action<T, Metadata> handler)
+        private Action SubscribeBranchAndValueMetadata_Internally(Action<T, IStore.Metadata> handler)
         {
             Action valueSubscription = null;
             var subscription =  m_CurrentBranch.Subscribe((branch) =>
@@ -280,7 +253,7 @@ namespace Metamatic
                 valueSubscription?.Invoke();
                 valueSubscription = branch.Subscribe(nextData =>
                 {
-                    handler(nextData, new Metadata(m_IsSynchronized.value, dataSource, branch.isDirty));
+                    handler(nextData, new IStore.Metadata(m_IsSynchronized.value, dataSource, branch.isDirty));
                 });
             });
 
@@ -327,7 +300,7 @@ namespace Metamatic
                 await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, token);
                 m_IOStatus.value = IOStatuses.Synchronizing;
                 nextValue = await Repository.Global.Read<T>(name, Repository.Global.source, token);
-                m_DataSource.value = DataSource.Persistent;
+                m_DataSource.value = IStore<T>.DataSource.Persistent;
                 return value;
             }
             catch (OperationCanceledException)
@@ -339,21 +312,21 @@ namespace Metamatic
             {
                 /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
                 m_IsSynchronized.value = true;
-                m_DataSource.value = DataSource.Fallback;
+                m_DataSource.value = IStore.DataSource.Fallback;
                 Debug.LogWarning(new DirectoryNotFoundException($"Directory not found for {name}"));
             }
             catch (FileNotFoundException)
             {
                 /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
                 m_IsSynchronized.value = true;
-                m_DataSource.value = DataSource.Fallback;
+                m_DataSource.value = IStore.DataSource.Fallback;
                 Debug.LogWarning(new FileNotFoundException($"File not found for {name}"));
             }
             catch (System.Exception e)
             {
                 isError = true;
                 m_IsSynchronized.value = false;
-                m_DataSource.value = DataSource.Fallback;
+                m_DataSource.value = IStore.DataSource.Fallback;
                 Debug.LogWarning(new ReadRepositoryException(uri: name, innerException: e, message: $"Internal store fetch error: {e.Message}"));
             }
             finally
@@ -454,13 +427,13 @@ namespace Metamatic
         /// </summary>
         /// <param name="commitHandler">Function that accepts dirty and persistent value and return new persistent value (it also reset dirty value)</param>
         /// <param name="save">Save to the persistent storage</param>
-        public async UniTask CommitChanges(Func<T, T, T> commitHandler, bool save = false)
+        public async UniTask CommitChanges(Func<T, T, T> commitHandler, bool save = false, CancellationToken token = default)
         {
             m_PersistentValue = commitHandler(m_CurrentBranch.value.value, m_PersistentValue);
             m_CurrentBranch.value.Reset();
             if (save)
             {
-                await Save();
+                await Save(token);
             }
         }
         
@@ -528,7 +501,7 @@ namespace Metamatic
             }
         }
 
-        public Branch Checkout(string branchName = "default", bool locked = false)
+        public IDisposable Checkout(string branchName = "default", bool locked = false)
         {
             if (m_Branches.TryGetValue(branchName, out var branch))
             {
@@ -539,7 +512,7 @@ namespace Metamatic
             }
             else
             {
-                var newBranch = new Branch(this, branchName, m_PersistentValue, locked);
+                var newBranch = new IStore<T>.Branch(this, InternalRemoveBranch, branchName, m_PersistentValue, locked);
                 m_Branches[branchName] = newBranch;
                 m_CurrentBranch.value = newBranch;
             }
@@ -551,7 +524,7 @@ namespace Metamatic
         /// Remove branch from the store
         /// </summary>
         /// <param name="branch"></param>
-        public void InternalRemoveBranch(Branch branch)
+        private void InternalRemoveBranch(IStore<T>.Branch branch)
         {
             if (branch.isAcquired)
             {
@@ -561,7 +534,7 @@ namespace Metamatic
             Checkout();
         }
         
-        private ObservableWritableValue<bool> m_Locked = new ObservableWritableValue<bool>(false);
+        private ObservableWritableValue<bool> m_Locked = new(false);
         private Queue<(UniTaskCompletionSource<IDisposable>, CancellationToken)> m_LockQueue = new ();
         /// <summary>
         /// Lock store to avoid simultaneously read/write operations

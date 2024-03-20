@@ -70,7 +70,7 @@ namespace Metamatic
             
             /* Subscribe to current layer changes and try to resolve store every time data layer changed */
             var layerChangeHandler =
-                new SequentialHandler<RepositoryLayer, object>(OnCurrentLayerChange,
+                new ExclusiveHandler<RepositoryLayer>(OnCurrentLayerChange,
                     m_CancellationTokenSource.Token);
             var unsubscribeLayer = targetObservableLayer.Subscribe(layerChangeHandler.Handle);
             
@@ -97,16 +97,16 @@ namespace Metamatic
             
         }
 
-        private async void OnCurrentLayerChange(RepositoryLayer layer, CancellationToken cancellationToken, object context)
+        private async void OnCurrentLayerChange(RepositoryLayer layer, CancellationToken cancellationToken)
         {
-            using (var layerStoreChangeHandler = new SequentialHandler<RepositoryInternalStore<T>, object>(OnLayerStoreChange, cancellationToken))
+            using (var layerStoreChangeHandler = new ExclusiveHandler<RepositoryInternalStore<T>>(OnLayerStoreChange, cancellationToken))
             using (new DisposableCallback(layer.InternalSubscribeStore<T>(m_Name, layerStoreChangeHandler.Handle)))
             {
                 await cancellationToken.AsUniTask();
             }
         }
         
-        private async void OnLayerStoreChange(RepositoryInternalStore<T> store, CancellationToken cancellationToken, object context)
+        private async void OnLayerStoreChange(RepositoryInternalStore<T> store, CancellationToken cancellationToken)
         {
             m_Store.SetValue(store);
         }
@@ -203,7 +203,7 @@ namespace Metamatic
         public Action Subscribe(Action<T?> handler)
         {
             var localCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(m_CancellationTokenSource.Token);
-            var storeHandler = new SequentialHandler< RepositoryInternalStore<T>, Action<T?>>(SubscribeStoreHandler, localCancellationTokenSource.Token, handler);
+            var storeHandler = new ExclusiveHandler< RepositoryInternalStore<T>>((store, token) => SubscribeStoreHandler(store, token, handler), localCancellationTokenSource.Token);
             Action currentUnsubscriber = null;
             
             /* Wait for busy task until subscription */

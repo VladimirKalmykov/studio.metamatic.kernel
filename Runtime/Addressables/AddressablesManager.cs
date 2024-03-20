@@ -46,7 +46,6 @@ namespace Metamatic
                     // Регистрируем обработку отмены
                     token.Register(() =>
                     {
-                        Debug.Log($"Cancel asset reference {assetReference}");
                         if (aoh.IsDone)
                         {
                             /* Release with delay */

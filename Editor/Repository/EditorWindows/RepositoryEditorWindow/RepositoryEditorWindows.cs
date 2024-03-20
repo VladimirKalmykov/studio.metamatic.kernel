@@ -52,7 +52,7 @@ namespace Metamatic
         private TreeView m_LayersTreeView;
         private RepositoryLayer m_SelectedLayer;
         private VisualElement m_Content;
-        private SequentialHandler<RepositoryLayer, object> m_LayerHandler;
+        private ExclusiveHandler<RepositoryLayer> m_LayerHandler;
         [MenuItem("Window/Repository/Manager")]
         public static void ShowWindow()
         {
@@ -101,7 +101,7 @@ namespace Metamatic
             m_LayerHandler?.Handle(null);
         }
 
-        private async void SetSelectedLayer(RepositoryLayer layer, CancellationToken token, object context)
+        private async void SetSelectedLayer(RepositoryLayer layer, CancellationToken token)
         {
             m_SelectedLayer = layer;
             m_Content.Clear();
@@ -125,7 +125,7 @@ namespace Metamatic
                 
                 /* Subscribe for stores */
                 using (var layerStoreChangeHandler =
-                       new SequentialHandler<Tuple<VisualElement, RepositoryLayer>>(OnLayerStoresChange, token, new Tuple<VisualElement, RepositoryLayer>(layerContent, layer)))
+                       new ExclusiveHandler((cancellationToken) => OnLayerStoresChange(cancellationToken, layerContent, layer), token))
                 using (new DisposableCallback(layer.SubscribeStoresChanged(layerStoreChangeHandler.Handle)))
                 {
                     layerStoreChangeHandler.Handle();
@@ -133,16 +133,15 @@ namespace Metamatic
                 }
             }
         }
-        
+
         /// <summary>
         /// React to layer stores change and update layer content view
         /// </summary>
         /// <param name="token"></param>
         /// <param name="context"></param>
-        private void OnLayerStoresChange(CancellationToken token, Tuple<VisualElement, RepositoryLayer> context)
+        /// <param name="layerContent"></param>
+        private void OnLayerStoresChange(CancellationToken token, VisualElement layerContent, RepositoryLayer layer)
         {
-            var layerContent = context.Item1;
-            var layer = context.Item2;
             layerContent.Clear();
             layer.stores.ForEach(pair =>
             {
@@ -161,7 +160,7 @@ namespace Metamatic
         
         private void OnEnable()
         {
-            m_LayerHandler = new SequentialHandler<RepositoryLayer, object>(SetSelectedLayer, default, null);
+            m_LayerHandler = new ExclusiveHandler<RepositoryLayer>(SetSelectedLayer, default);
             m_RepositoryInstance = RepositoryLegacy.instance;
             m_RepositoryInstance.OnLayerAdded += HandleLayerAdded;
             m_RepositoryInstance.OnLayerRemoved += HandleLayerRemoved;
