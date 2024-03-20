@@ -52,7 +52,7 @@ namespace Metamatic
         private TreeView m_LayersTreeView;
         private RepositoryLayer m_SelectedLayer;
         private VisualElement m_Content;
-        private ExclusiveHandler<RepositoryLayer> m_LayerHandler;
+        private ExclusiveExecution<RepositoryLayer> m_LayerExecution;
         [MenuItem("Window/Repository/Manager")]
         public static void ShowWindow()
         {
@@ -84,11 +84,11 @@ namespace Metamatic
             {
                 if (selection.Count() > 0)
                 {
-                    m_LayerHandler?.Handle(selection.First() as RepositoryLayer);
+                    m_LayerExecution?.Handle(selection.First() as RepositoryLayer);
                 }
                 else
                 {
-                    m_LayerHandler?.Handle(null);
+                    m_LayerExecution?.Handle(null);
                 }
             };
             
@@ -98,7 +98,7 @@ namespace Metamatic
             
             /* Content */
             m_Content = rootVisualElement.Q<VisualElement>("Content");
-            m_LayerHandler?.Handle(null);
+            m_LayerExecution?.Handle(null);
         }
 
         private async void SetSelectedLayer(RepositoryLayer layer, CancellationToken token)
@@ -160,7 +160,7 @@ namespace Metamatic
         
         private void OnEnable()
         {
-            m_LayerHandler = new ExclusiveHandler<RepositoryLayer>(SetSelectedLayer, default);
+            m_LayerExecution = new ExclusiveExecution<RepositoryLayer>(SetSelectedLayer, default);
             m_RepositoryInstance = RepositoryLegacy.instance;
             m_RepositoryInstance.OnLayerAdded += HandleLayerAdded;
             m_RepositoryInstance.OnLayerRemoved += HandleLayerRemoved;
@@ -169,7 +169,7 @@ namespace Metamatic
 
         private void OnDisable()
         {
-            m_LayerHandler.Dispose();
+            m_LayerExecution.Dispose();
             m_RepositoryInstance.OnLayerAdded -= HandleLayerAdded;
             m_RepositoryInstance.OnLayerRemoved -= HandleLayerRemoved;
             m_RepositoryInstance.OnLayerMerged -= HandleLayerMerged;

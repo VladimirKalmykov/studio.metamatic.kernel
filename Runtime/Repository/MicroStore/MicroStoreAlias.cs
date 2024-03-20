@@ -9,13 +9,13 @@ namespace Metamatic
         where T : struct
     {
         private readonly ObservableWritableValue<MicroStore<T>> m_MicroStore = new ();
-        private readonly ExclusiveHandler<string> m_IdHandler;
+        private readonly ExclusiveExecution<string> m_IdExecution;
         public MicroStore<T> store => m_MicroStore.value;
         public T value => m_MicroStore.value.value;
         public MicroStoreAlias(string id)
         {
-            m_IdHandler = new ExclusiveHandler<string>(HandleIdChange);
-            m_IdHandler.Handle(id);
+            m_IdExecution = new ExclusiveExecution<string>(HandleIdChange);
+            m_IdExecution.Handle(id);
         }
         private int m_AcquireCount;
         public event Action OnDidDispose;
@@ -31,7 +31,7 @@ namespace Metamatic
         
         public void SetId(string id)
         {
-            m_IdHandler.Handle(id);
+            m_IdExecution.Handle(id);
         }
 
         public async UniTask WithStoreCycled(Func<MicroStore<T>, CancellationToken, UniTask> action, CancellationToken cancellationToken = default)
@@ -276,7 +276,7 @@ namespace Metamatic
             m_AcquireCount--;
             if (m_AcquireCount == 0)
             {
-                m_IdHandler.Dispose();
+                m_IdExecution.Dispose();
                 OnDidDispose?.Invoke();
                 OnDidDispose = null;
             }

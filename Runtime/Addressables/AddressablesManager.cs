@@ -5,6 +5,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.SceneManagement;
 
 namespace Metamatic
 {
@@ -12,7 +13,7 @@ namespace Metamatic
     {
         // TODO: Cleanup instances on unload
         public static Dictionary<int, string> mapInstanceIDToAssetGUID = new Dictionary<int, string>();
-        public static DisposableOperation<TObject> LoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken, float releaseDelay = 0f) where TObject : UnityEngine.Object
+        public static DisposableOperation<TObject> LoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken = default, float releaseDelay = 0f) where TObject : UnityEngine.Object
         {
             return new DisposableOperation<TObject>((resolve, reject, token) =>
             {
@@ -114,6 +115,38 @@ namespace Metamatic
                     registration = cancellationToken.Register(cancellationCallback);
                 };
                 instantiateOperation.Destroyed += handle =>
+                {
+                    taskCompletionSource.TrySetException(new OperationCanceledException());
+                };
+                return taskCompletionSource.Task;
+            }, token);
+        }
+        
+        public static DisposableAsyncOperation LoadSceneAsync(string sceneName, LoadSceneMode loadSceneMode, bool activateOnLoad, CancellationToken token)
+        {
+            return new DisposableAsyncOperation(cancellationToken =>
+            {
+                var taskCompletionSource = new UniTaskCompletionSource();
+                var loadSceneOperation = Addressables.LoadSceneAsync(sceneName, loadSceneMode, activateOnLoad);
+                loadSceneOperation.Completed += handle =>
+                {
+                    taskCompletionSource.TrySetResult();
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        taskCompletionSource.TrySetException(new OperationCanceledException());
+                        Addressables.UnloadSceneAsync(handle);
+                    }
+
+                    CancellationTokenRegistration registration = default;
+                    Action cancellationCallback = () =>
+                    {
+                        registration.Dispose();
+                        taskCompletionSource.TrySetException(new OperationCanceledException());
+                        Addressables.UnloadSceneAsync(handle);
+                    };
+                    registration = cancellationToken.Register(cancellationCallback);
+                };
+                loadSceneOperation.Destroyed += handle =>
                 {
                     taskCompletionSource.TrySetException(new OperationCanceledException());
                 };

@@ -72,7 +72,7 @@ namespace Metamatic
                 {
                     pinWriter.SetData(value.Value);
                 };
-            using var storeNameHandler = new ExclusiveHandler<string>((value, token) => OnStoreNameChanged(value, token, writeDataToPin), default);
+            using var storeNameHandler = new ExclusiveExecution<string>((value, token) => OnStoreNameChanged(value, token, writeDataToPin), default);
             using (new DisposableCallback(m_StoreName.Subscribe(storeNameHandler.Handle)))
             {
                 await cancellationToken;

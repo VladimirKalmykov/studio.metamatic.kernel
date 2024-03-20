@@ -50,13 +50,13 @@ namespace Metamatic
             m_Handler = default;
         }
     }
-    public class ExclusiveHandler<T>: ExclusiveHandlerBase
+    public class ExclusiveExecution<T>: ExclusiveHandlerBase
     {
         public delegate void Handler(T value, CancellationToken token);
 
         private Handler m_Handler;
     
-        public ExclusiveHandler(Handler handler, CancellationToken externalCancellationToken = default)
+        public ExclusiveExecution(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;

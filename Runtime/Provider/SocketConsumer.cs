@@ -8,14 +8,14 @@ namespace Metamatic
     public class SocketConsumer<TSocketScheme>: Plug<TSocketScheme>
         where TSocketScheme: SocketScheme, new()
     {
-        private ExclusiveHandler<SocketProvider<TSocketScheme>> m_ProviderHandler;
+        private ExclusiveExecution<SocketProvider<TSocketScheme>> m_ProviderExecution;
         private CancellationTokenSource m_DisableCancellationTokenSource;
         protected sealed override void OnEnable()
         {
             base.OnEnable();
             m_DisableCancellationTokenSource = new CancellationTokenSource();
-            m_ProviderHandler = new ExclusiveHandler<SocketProvider<TSocketScheme>>(HandleProviderChange, m_DisableCancellationTokenSource.Token);
-            m_DisableCancellationTokenSource.Token.Register(SocketProvider<TSocketScheme>.instance.Subscribe(m_ProviderHandler.Handle));
+            m_ProviderExecution = new ExclusiveExecution<SocketProvider<TSocketScheme>>(HandleProviderChange, m_DisableCancellationTokenSource.Token);
+            m_DisableCancellationTokenSource.Token.Register(SocketProvider<TSocketScheme>.instance.Subscribe(m_ProviderExecution.Handle));
         }
 
         protected sealed override void OnDisable()
@@ -26,7 +26,7 @@ namespace Metamatic
         
         private void HandleProviderChange(SocketProvider<TSocketScheme> provider, CancellationToken cancellationToken)
         {
-            m_ProviderHandler?.Dispose();
+            m_ProviderExecution?.Dispose();
             if (provider != null)
             {
                 cancellationToken.Register(provider.Connect(this));

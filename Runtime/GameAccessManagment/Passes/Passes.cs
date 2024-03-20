@@ -22,6 +22,57 @@ namespace Metamatic.GameAccessManagment
             return clone;
         }
         
+        public void Add(string key, Pass value)
+        {
+            if (TryGetValue(key, out var passes))
+            {
+                var list = new List<Pass>(passes);
+                list.Add(value);
+                this[key] = list.ToArray();
+            }
+            else
+            {
+                this[key] = new[] {value};
+            }
+        }
+        
+        public bool Remove(string key, int count)
+        {
+            if (TryGetValue(key, out var passes))
+            {
+                var list = new List<Pass>(passes);
+                if (list.Count == 0)
+                {
+                    return false;
+                }
+                var firstPass = list[0];
+                if (firstPass.count < count)
+                {
+                    return false;
+                }
+                if (firstPass.count > count)
+                {
+                    firstPass.count -= count;
+                    list[0] = firstPass;
+                }
+                else
+                {
+                    list.RemoveAt(0);
+                }
+                if (list.Count == 0)
+                {
+                    Remove(key);
+                }
+                else
+                {
+                    this[key] = list.ToArray();
+                }
+                return true;
+            }
+
+            return false;
+        }
+        
         void ISerializationCallbackReceiver.OnAfterDeserialize()
         {
             this.Clear();
