@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
 namespace Metamatic
@@ -122,15 +124,15 @@ namespace Metamatic
             }, token);
         }
         
-        public static DisposableAsyncOperation LoadSceneAsync(string sceneName, LoadSceneMode loadSceneMode, bool activateOnLoad, CancellationToken token)
+        public static DisposableAsyncOperationT<SceneInstance> LoadSceneAsync(AssetReferenceT<SceneAsset> sceneName, LoadSceneMode loadSceneMode, bool activateOnLoad, CancellationToken token)
         {
-            return new DisposableAsyncOperation(cancellationToken =>
+            return new DisposableAsyncOperationT<SceneInstance>(cancellationToken =>
             {
-                var taskCompletionSource = new UniTaskCompletionSource();
+                var taskCompletionSource = new UniTaskCompletionSource<SceneInstance>();
                 var loadSceneOperation = Addressables.LoadSceneAsync(sceneName, loadSceneMode, activateOnLoad);
                 loadSceneOperation.Completed += handle =>
                 {
-                    taskCompletionSource.TrySetResult();
+                    taskCompletionSource.TrySetResult(handle.Result);
                     if (cancellationToken.IsCancellationRequested)
                     {
                         taskCompletionSource.TrySetException(new OperationCanceledException());

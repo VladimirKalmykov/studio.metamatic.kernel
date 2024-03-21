@@ -20,6 +20,7 @@ namespace Metamatic
         public void Dispose()
         {
             disposed = true;
+            internalCancellationTokenSource?.Cancel();
             internalCancellationTokenSource?.Dispose();
             EraseProps();
         }
@@ -151,13 +152,13 @@ namespace Metamatic
         }
     }
     
-    public class ExclusiveHandlerRef<T>: ExclusiveHandlerBase
+    public class ExclusiveExecutionRef<T>: ExclusiveHandlerBase
     {
         public delegate void Handler(ref T value, CancellationToken token);
 
         private Handler m_Handler;
     
-        public ExclusiveHandlerRef(Handler handler, CancellationToken externalCancellationToken = default)
+        public ExclusiveExecutionRef(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;

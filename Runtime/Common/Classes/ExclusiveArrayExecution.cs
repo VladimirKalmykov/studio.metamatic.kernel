@@ -8,7 +8,7 @@
     /// Exclusive handler for array of items. It allows to initialize (or some way process it) items and dispose them when they are not needed anymore.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class ExclusiveArrayHandler<T> : IDisposable where T : class
+    public class ExclusiveArrayExecution<T> : IDisposable where T : class
     {
         private readonly Action<T, CancellationToken> m_Initializer;
         private readonly CancellationTokenRegistration _cancellationTokenRegistration;
@@ -17,7 +17,7 @@
 
         public event Action<Exception> OnError;
 
-        public ExclusiveArrayHandler(Action<T, CancellationToken> initializer, CancellationToken cancellationToken = default)
+        public ExclusiveArrayExecution(Action<T, CancellationToken> initializer, CancellationToken cancellationToken = default)
         {
             m_Initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
             _cancellationTokenRegistration = cancellationToken.Register(CancelAll);
@@ -26,7 +26,7 @@
         public void Handle(T[] newItems)
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(ExclusiveArrayHandler<T>));
+                throw new ObjectDisposedException(nameof(ExclusiveArrayExecution<T>));
 
             var newItemsSet = new HashSet<T>(newItems);
             var oldItemsSet = new HashSet<T>(_items.Keys);
