@@ -11,6 +11,7 @@ namespace Metamatic
         public UniTask DisposeAsync();
     }
     
+    
     /// <summary>
     /// The concept of async disposable is to allow to dispose object asynchronously. For example, you can dispose confirm dialog and it need to wait for animation to complete.
     /// </summary>
@@ -25,6 +26,7 @@ namespace Metamatic
     ///            }
     ///     }
     /// </example>
+    /// [Obsolete("Use IAsyncDisposable pattern", true)]
     public abstract class ImAsyncDisposableBase: IMAsyncDisposable
     {
         private bool m_AsyncDisposeRequested = false;
@@ -82,6 +84,7 @@ namespace Metamatic
         protected abstract UniTask OnDisposeAsync(CancellationToken cancellationToken = default);
     }
     
+    [Obsolete("Use IAsyncDisposable pattern", true)]
     public class ImAsyncDisposable: ImAsyncDisposableBase
     {
         private Func<CancellationToken, UniTask> m_OnAsyncDisposeRequest;
@@ -102,7 +105,8 @@ namespace Metamatic
             return m_OnAsyncDisposeRequest.Invoke(cancellationToken);
         }
     }
-
+    
+    [Obsolete("Use IAsyncDisposable pattern", true)]
     public class ImAsyncDisposableOperation<T>: ImAsyncDisposableBase
     {
         private readonly DisposableAsyncOperationT<T> m_DisposableAsyncOperationT;

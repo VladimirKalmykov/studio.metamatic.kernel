@@ -83,7 +83,7 @@ namespace Metamatic.Actions
         {
             if (m_Instance != null)
             {
-                throw new Exception("Action<T> is a singleton. Use Action<T>.Create instead.");
+                throw new Exception("Action<T> is a static singleton. Do not create its instances.");
             }
         }
 

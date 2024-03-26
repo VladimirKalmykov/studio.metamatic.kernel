@@ -16,7 +16,7 @@ namespace Metamatic
     interface IObservableValue<TValue>
     {
         public TValue value { get; }
-        public Action Subscribe(Action<TValue> handler);
+        public DisposableAction Subscribe(Action<TValue> handler);
     }
     public abstract class ObservableValue<TValue>: ObservableValue, IObservableValue<TValue>
     {
@@ -34,14 +34,14 @@ namespace Metamatic
             m_DisposeCancellationTokenSource = new CancellationTokenSource();
         }
 
-        public Action Subscribe(Action<TValue> handler)
+        public DisposableAction Subscribe(Action<TValue> handler)
         {
             OnChange += handler;
             handler(GetValue());
-            return () =>
+            return new DisposableAction(() =>
             {
                 OnChange -= handler;
-            };
+            });
         }
         
         public Action SubscribeOnce(Action<TValue> handler)
@@ -172,6 +172,7 @@ namespace Metamatic
     public class ObservableWritableValue<TValue> : ObservableValue<TValue>
     {
         private TValue m_Value;
+        public delegate void MutateHandler(ref TValue value);
         
         public ObservableWritableValue(TValue initialValue = default)
         {
@@ -191,6 +192,11 @@ namespace Metamatic
         {
             m_Value = value;
             EmitValue(value);
+        }
+        
+        public void Mutate(MutateHandler mutationHandler)
+        {
+            mutationHandler(ref m_Value);
         }
     }
 

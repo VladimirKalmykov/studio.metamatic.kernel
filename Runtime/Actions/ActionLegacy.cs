@@ -13,12 +13,12 @@ namespace Metamatic.Actions
     }
     
     public abstract class BehaviourActionLegacy<T>: ActionLegacy
-    where T: Behaviour
+    where T: notnull
     {
         public readonly Behaviour behaviour;
-        public BehaviourActionLegacy(T behaviour) : base(new ActionSource(behaviour))
+        public BehaviourActionLegacy(T behaviour) : base(new ActionSource())
         {
-            this.behaviour = behaviour;
+            this.behaviour = null;
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
@@ -98,7 +99,7 @@ namespace Metamatic
     }
     
     
-    public class DisposableAsyncOperationT<T>: IDisposable
+    public class DisposableAsyncOperationT<T>: IDisposable, IAsyncDisposable
     {
         public delegate UniTask<T> DisposableProcedure(CancellationToken cancellationToken);
 
@@ -179,6 +180,11 @@ namespace Metamatic
         {
             m_CancellationTokenSource.Cancel();
             OnDispose?.Invoke();
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            throw new NotImplementedException();
         }
     }
     

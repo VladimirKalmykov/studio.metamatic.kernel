@@ -2,7 +2,7 @@
 
 namespace Metamatic
 {
-    public class SpatialEvent: InstantEvent
+    public class SpatialEventLegacy: InstantEventLegacy
     {
         public Vector3 position;
         public void Emit(in Vector3 position)
@@ -12,7 +12,7 @@ namespace Metamatic
         }
     }
     
-    public class SpatialEvent<T> : SpatialEvent
+    public class SpatialEventLegacy<T> : SpatialEventLegacy
     {
         public T value;
 

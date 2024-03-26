@@ -24,7 +24,7 @@ namespace Metamatic
         protected State state { get; set; } = State.Hiding;
         protected virtual void OnEnable()
         {
-            
+            BeforeShow();
         }
 
         protected virtual void OnDisable()
@@ -92,8 +92,11 @@ namespace Metamatic
         }
         
         [Button, DisableInEditorMode]
-        public async void Show()
+        public async UniTask Show(CancellationToken cancellationToken = default)
         {
+            var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, showOperationCancellationToken).Token;
+            CancellationTokenRegistration registration = default;
+            
             if (state == State.Shown)
             {
                 Debug.LogWarning("Already shown");
@@ -102,16 +105,18 @@ namespace Metamatic
             SetBusy();
             CancelHideOperation();
             RenewShowOperation();
+            registration = combinedToken.Register(() =>
+            {
+                registration.Dispose();
+                Hide();
+            });
             state = State.Shown;
             BeforeShow();
             gameObject.SetActive(true);
             try
             {
-                await PerformShow(showOperationCancellationToken);
-                if (showOperationCancellationToken.IsCancellationRequested)
-                {
-                    throw new OperationCanceledException();
-                }
+                await PerformShow(combinedToken);
+                combinedToken.ThrowIfCancellationRequested();
                 ClearShowOperation();
                 AfterShow();
             } catch (OperationCanceledException)

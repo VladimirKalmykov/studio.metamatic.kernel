@@ -8,14 +8,13 @@ namespace Metamatic
     /// <summary>
     /// An event that has an initiator
     /// </summary>
-    public abstract class InstantAction<ResultT>
-        where ResultT: struct
+    public abstract class InstantActionLegacy<ResultT>
     {
         public delegate void Modifier(MutablePayload<ResultT> value, CancellationToken cancellationToken);
         private event Modifier OnInvoke;
         private event Action OnEmit;
         public readonly List<CancellationTokenSource> processes = new List<CancellationTokenSource>();
-        public Behaviour initiator
+        public UnityEngine.Object initiator
         {
             get;
             private set;
@@ -29,7 +28,7 @@ namespace Metamatic
         /// <param name="initiator"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        protected MutablePayload<ResultT> Invoke(Behaviour initiator, CancellationToken cancellationToken = default)
+        protected MutablePayload<ResultT> Invoke(UnityEngine.Object initiator, CancellationToken cancellationToken = default)
         {
             this.initiator = initiator;
             OnEmit?.Invoke();

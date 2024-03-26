@@ -26,32 +26,21 @@ namespace Metamatic.Effects
             // return effector.ApplyEffect(this, props);
             return ApplyWithProps(go, props);
         }
-        internal abstract EffectCancellableOperationAwaiter ApplyWithProps(Behaviour behaviour, object props = default);
-        internal abstract EffectCancellableOperationAwaiter ApplyWithProps(GameObject go, object props = default);
-    }
-    public abstract class ScriptableEffect<TTarget> : ScriptableEffect, IEffect<TTarget>
-        where TTarget: Behaviour
-    {
-        /// <summary>
-        /// Determines the behaviour of the effect when another same effect applies
-        /// </summary>
         public abstract EffectDuplicationBehaviour effectDuplication { get; }
-        
-        // [Obsolete("Dont' use runEffect with TTarget. Use effect.Apply instead. The reason is passing Effects propsless")]
-        // public abstract UniTask RunEffect(EffectExecutionContext<TTarget> executionContext,
-        //     CancellationToken cancellationToken);
+        protected abstract EffectCancellableOperationAwaiter ApplyWithProps(Behaviour behaviour, object props = default);
+        protected abstract EffectCancellableOperationAwaiter ApplyWithProps(GameObject go, object props = default);
     }
     
-    public abstract class ScriptableEffect<TEffector, TProps> : ScriptableEffect<TEffector>, IEffectWithProps<TEffector, TProps>
+    public abstract class ScriptableEffect<TEffector, TProps, TResult> : ScriptableEffect, IEffect<TEffector, TProps, TResult>
         where TEffector: Effector
         where TProps: struct
     {
-        public UniTask InternalRunEffect(EffectExecutionContext<TEffector, TProps> executionContext,
+        public UniTask InternalRunEffect(IEffect<TEffector, TProps, TResult>.EffectExecutionContext executionContext,
             CancellationToken cancellationToken)
         {
             return WrapEffectTask(RunEffect(executionContext, cancellationToken), executionContext, cancellationToken);
         }
-        public abstract UniTask RunEffect(EffectExecutionContext<TEffector, TProps> executionContext,
+        public abstract UniTask RunEffect(IEffect<TEffector, TProps, TResult>.EffectExecutionContext executionContext,
             CancellationToken cancellationToken);
         
         /// <summary>
@@ -59,7 +48,7 @@ namespace Metamatic.Effects
         /// </summary>
         /// <param name="effectTask"></param>
         /// <returns></returns>
-        public virtual UniTask WrapEffectTask(UniTask effectTask, EffectExecutionContext<TEffector, TProps> executionContext,
+        public virtual UniTask WrapEffectTask(UniTask effectTask, IEffect<TEffector, TProps, TResult>.EffectExecutionContext executionContext,
             CancellationToken cancellationToken)
         {
             return effectTask;
@@ -81,7 +70,7 @@ namespace Metamatic.Effects
             var effector = go.GetComponent<TEffector>();
             if (effector == null)
             {
-                throw new Exception($"Target has no opporiate effector with type {typeof(TEffector).Name}");
+                throw new Exception($"Target has no appropriate effector with type {typeof(TEffector).Name}");
             }
 
             return Apply(effector, ref props);
@@ -103,18 +92,25 @@ namespace Metamatic.Effects
         /// <param name="behaviour"></param>
         /// <param name="props"></param>
         /// <returns></returns>
-        internal sealed override EffectCancellableOperationAwaiter ApplyWithProps(Behaviour behaviour, object props = default)
+        protected sealed override EffectCancellableOperationAwaiter ApplyWithProps(Behaviour behaviour, object props = default)
         {
             return Apply(behaviour, props == null ? default(TProps) : (TProps)props);
         }
-        
-        internal sealed override EffectCancellableOperationAwaiter ApplyWithProps(GameObject go, object props = default)
+
+        protected sealed override EffectCancellableOperationAwaiter ApplyWithProps(GameObject go, object props = default)
         {
             return Apply(go, props == null ? default(TProps) : (TProps)props);
         }
     }
-
-    public abstract class NoPropsScriptableEffect<TEffector> : ScriptableEffect<TEffector, NoEffectProps>
+    
+    public abstract class ScriptableEffect<TEffector, TProps> : ScriptableEffect<TEffector, TProps, object>
+        where TEffector: Effector
+        where TProps: struct
+    {
+        
+    }
+    
+    public abstract class ScriptableEffect<TEffector> : ScriptableEffect<TEffector, NoEffectProps, object>
         where TEffector: Effector
     {
         
@@ -137,9 +133,21 @@ namespace Metamatic.Effects
     /// GameObject only asset reference.
     /// </summary>
     [System.Serializable]
-    public class AssetReferenceScriptableEffect<TEffector, TState> : AssetReferenceT<ScriptableEffect<TEffector, TState>>
+    public class AssetReferenceScriptableEffect<TEffector, TState, TResult> : AssetReferenceT<ScriptableEffect<TEffector, TState, TResult>>
     where TEffector : Effector
     where TState : struct
+    {
+        /// <summary>
+        /// Constructs a new reference to a GameObject.
+        /// </summary>
+        /// <param name="guid">The object guid.</param>
+        public AssetReferenceScriptableEffect(string guid) : base(guid) {}
+    }
+    
+    [System.Serializable]
+    public class AssetReferenceScriptableEffect<TEffector, TProps> : AssetReferenceT<ScriptableEffect<TEffector, TProps>>
+        where TEffector : Effector
+        where TProps : struct
     {
         /// <summary>
         /// Constructs a new reference to a GameObject.

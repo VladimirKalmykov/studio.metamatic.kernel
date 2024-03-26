@@ -80,7 +80,7 @@ namespace Metamatic
             {
                 disposeLayer();
                 layerChangeHandler.Dispose();
-                unsubscribeLayer();
+                unsubscribeLayer.Invoke();
                 
             };
             pullOperation.OnCompleted(() =>

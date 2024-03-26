@@ -140,7 +140,12 @@ namespace Metamatic
         {
             m_CurrentBranch.value.SetValue(nextValue);
         }
-        
+
+        public void Mutate(IStore<T>.MutateHandler mutationHandler)
+        {
+            m_CurrentBranch.value.Mutate(mutationHandler);
+        }
+
         /// <summary>
         /// Transform dirty value
         /// </summary>
@@ -155,7 +160,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public Action Subscribe(Action<T> handler)
+        public DisposableAction Subscribe(Action<T> handler)
         {
             Action releaseSubscription = null;
             if (m_IOStatus.value != IOStatuses.Idle)
@@ -178,10 +183,11 @@ namespace Metamatic
             {
                 releaseSubscription = SubscribeBranchAndValue_Internally(handler);
             }
-            return () =>
+
+            return new DisposableAction(() =>
             {
                 releaseSubscription?.Invoke();
-            };
+            });
         }
         
         /// <summary>
@@ -272,6 +278,11 @@ namespace Metamatic
         {
             await Read(token: token);
         }
+        
+        public async UniTask Pull(Func<T> getDefaultValue, CancellationToken token = default)
+        {
+            await Read(getDefaultValue: getDefaultValue, token: token);
+        }
 
         /// <summary>
         /// Pull from persistent storage
@@ -290,7 +301,7 @@ namespace Metamatic
         /// <param name="token"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        private async UniTask<T> Read(bool populate = false, CancellationToken token = default, T defaultValue = default)
+        private async UniTask<T> Read(bool populate = false, CancellationToken token = default, T defaultValue = default, Func<T> getDefaultValue = null)
         {
             T nextValue = defaultValue;
             bool isCancelled = false;
@@ -311,6 +322,7 @@ namespace Metamatic
             catch (DirectoryNotFoundException)
             {
                 /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
+                nextValue = getDefaultValue?.Invoke() ?? defaultValue;
                 m_IsSynchronized.value = true;
                 m_DataSource.value = IStore.DataSource.Fallback;
                 Debug.LogWarning(new DirectoryNotFoundException($"Directory not found for {name}"));
@@ -318,6 +330,7 @@ namespace Metamatic
             catch (FileNotFoundException)
             {
                 /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
+                nextValue = getDefaultValue?.Invoke() ?? defaultValue;
                 m_IsSynchronized.value = true;
                 m_DataSource.value = IStore.DataSource.Fallback;
                 Debug.LogWarning(new FileNotFoundException($"File not found for {name}"));

@@ -64,12 +64,12 @@ namespace Metamatic
                 }
                 catch
                 {
-                    unsubscribe();
+                    unsubscribe.Invoke();
                     localCancellation?.Dispose();
                     throw;
                 }
             }
-            unsubscribe();
+            unsubscribe.Invoke();
             localCancellation?.Dispose();
         }
         
@@ -100,12 +100,12 @@ namespace Metamatic
                 }
                 catch
                 {
-                    unsubscribe();
+                    unsubscribe.Invoke();
                     localCancellation?.Dispose();
                     throw;
                 }
             }
-            unsubscribe();
+            unsubscribe.Invoke();
             localCancellation?.Dispose();
         }
         
@@ -137,12 +137,12 @@ namespace Metamatic
                 }
                 catch
                 {
-                    unsubscribe();
+                    unsubscribe.Invoke();
                     localCancellation?.Dispose();
                     throw;
                 }
             }
-            unsubscribe();
+            unsubscribe.Invoke();
             localCancellation?.Dispose();
             return result;
         }
@@ -188,12 +188,17 @@ namespace Metamatic
             m_MicroStore.value.SetValue(nextValue);
         }
 
+        public void Mutate(IStore<T>.MutateHandler mutationHandler)
+        {
+            m_MicroStore.value.Mutate(mutationHandler);
+        }
+
         public void TransformValue(Func<T, T> transformHandler)
         {
             m_MicroStore.value.TransformValue(transformHandler);
         }
 
-        public Action Subscribe(Action<T> handler)
+        public DisposableAction Subscribe(Action<T> handler)
         {
             Action unsubscribeData = null;
             var unsubscribeStore = m_MicroStore.Subscribe(store =>
@@ -201,11 +206,11 @@ namespace Metamatic
                 unsubscribeData?.Invoke();
                 unsubscribeData = store.Subscribe(handler);
             });
-            return () =>
+            return new DisposableAction(() =>
             {
                 unsubscribeData?.Invoke();
-                unsubscribeStore();
-            };
+                unsubscribeStore.Invoke();
+            });
         }
 
         public Action SubscribeMetadata(Action<T, IStore.Metadata> handler)
@@ -219,7 +224,7 @@ namespace Metamatic
             return () =>
             {
                 unsubscribeData?.Invoke();
-                unsubscribeStore();
+                unsubscribeStore.Invoke();
             };
         }
 

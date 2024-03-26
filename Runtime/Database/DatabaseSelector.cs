@@ -121,8 +121,8 @@ namespace Metamatic
 
             return () =>
             {
-                unsubscriveBranch();
-                unsubscribeEntity();
+                unsubscriveBranch.Invoke();
+                unsubscribeEntity.Invoke();
             };
         }
         

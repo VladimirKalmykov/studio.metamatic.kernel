@@ -36,6 +36,7 @@ namespace Metamatic
     public interface IStore<T>: IStore
         where T : struct
     {
+        public delegate void MutateHandler(ref T value);
         public class Branch: IAcquirable, IDisposable
         {
             private readonly MicroStore<T> m_Store;
@@ -65,6 +66,12 @@ namespace Metamatic
                 isDirty = true;
                 m_Value.value = nextValue;
             }
+            
+            public void Mutate(MutateHandler mutationHandler)
+            {
+                isDirty = true;
+                m_Value.Mutate((ref T val) => mutationHandler(ref val));
+            }
 
             public void Reset()
             {
@@ -72,7 +79,7 @@ namespace Metamatic
                 m_Value.value = m_Store.persistentValue;
             }
             
-            public Action Subscribe(Action<T> handler)
+            public DisposableAction Subscribe(Action<T> handler)
             {
                 return m_Value.Subscribe(handler);
             }
@@ -100,8 +107,9 @@ namespace Metamatic
         }
         public T value { get; }
         public void SetValue(T nextValue);
+        public void Mutate(MutateHandler mutationHandler);
         public void TransformValue(Func<T, T> transformHandler);
-        public Action Subscribe(Action<T> handler);
+        public DisposableAction Subscribe(Action<T> handler);
         public Action SubscribeMetadata(Action<T, Metadata> handler);
         public UniTask Pull(bool populate = false, CancellationToken token = default, T defaultValue = default);
         public UniTask<T> WaitUntilValueIs(Func<T, bool> condition, CancellationToken cancellationToken = default);

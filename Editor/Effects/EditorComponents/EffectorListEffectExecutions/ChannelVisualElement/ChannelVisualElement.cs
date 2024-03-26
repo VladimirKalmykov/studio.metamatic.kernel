@@ -36,7 +36,7 @@ namespace Metamatic.Effects
             channel.editor_SubscribeEffectExecutionsChange(HandleEffectsExecutionsChange);
         }
 
-        private void HandleEffectsExecutionsChange(EffectExecutionContext[] executions)
+        private void HandleEffectsExecutionsChange(IEffect.EffectExecutionContext[] executions)
         {
             var onlyNewExecutions = executions.ToList();
             foreach (var item in m_ChannelEffectExecutionVisualElements.ToArray())
