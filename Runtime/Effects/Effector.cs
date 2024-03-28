@@ -14,7 +14,6 @@ namespace Metamatic.Effects
         public event Action OnBeforeDestroy;
         public readonly List<IEffect.EffectExecutionContext> effectExecutions = new List<IEffect.EffectExecutionContext>();
         public readonly Dictionary<string, EffectsChannel> channels = new Dictionary<string, EffectsChannel>();
-        private Dispatcher m_Dispatcher;
 
         // public Dispatcher dispatcher
         // {

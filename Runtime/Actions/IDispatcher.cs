@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
@@ -7,6 +8,10 @@ namespace Metamatic.Actions
     public interface IDispatcher
     {
         delegate bool Condition<T>(T source) where T : notnull;
+        delegate void AnnouncementsHandler<T>(T[] sources) where T : notnull;
+        delegate void RetractionsHandler<T>(T source) where T : notnull;
+
+        delegate void EventHandler<T>(T source);
         /// <summary>
         /// Emit an event of type T
         /// </summary>
@@ -19,7 +24,13 @@ namespace Metamatic.Actions
         /// <param name="handler"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public DisposableAction Subscribe<T>(System.Action<T> handler) where T : notnull;
+        public DisposableAction Subscribe<T>(EventHandler<T> handler) where T : notnull;
+        /// <summary>
+        /// Unsubscribe from an event of type T
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <typeparam name="T"></typeparam>
+        public void Unsubscribe<T>(EventHandler<T> handler) where T : notnull;
         /// <summary>
         /// Wait for an event of type T
         /// </summary>
@@ -61,13 +72,36 @@ namespace Metamatic.Actions
         /// <param name="handler"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public DisposableAction SubscribeAnnouncements<T>(System.Action<T[]> handler) where T : notnull;
+        public DisposableAction SubscribeAnnouncements<T>(AnnouncementsHandler<T> handler) where T : notnull;
         /// <summary>
         /// Subscribe to retractions of type T
         /// </summary>
         /// <param name="handler"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public DisposableAction SubscribeRetractions<T>(System.Action<T> handler) where T : notnull;
+        public DisposableAction SubscribeRetractions<T>(RetractionsHandler<T> handler) where T : notnull;
+        /// <summary>
+        /// Register an object of type T with an id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="source"></param>
+        /// <typeparam name="T"></typeparam>
+        public IDisposable Register<TKey, TValue>(TKey id, TValue source) where TValue : notnull;
+        /// <summary>
+        /// Subscribe to registered objects of type T with an id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="handler"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public DisposableAction SubscribeRegistry<TKey, TValue>(string id, EventHandler<TValue> handler) where TValue : notnull;
+        /// <summary>
+        /// Wait for a registered object of type T with an id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public UniTask<TValue> WhenRegistered<TKey, TValue>(string id, CancellationToken cancellationToken) where TValue : notnull;
     }
 }

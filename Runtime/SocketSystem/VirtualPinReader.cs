@@ -18,8 +18,8 @@ namespace Metamatic
         /// </summary>
         /// <returns></returns>
         public ref T GetDataRef();
-        public Action Subscribe(IWire<T>.ChangeHandler handler);
-        public Action SubscribeRef(IWire<T>.ChangeRefHandler handler);
+        public DisposableAction Subscribe(IWire<T>.ChangeHandler handler);
+        public DisposableAction SubscribeRef(IWire<T>.ChangeRefHandler handler);
     }
     public class VirtualPinReader<T>: VirtualPin<T>, IVirtualPinOutput<T>, IPin<T>
     {
@@ -40,14 +40,16 @@ namespace Metamatic
             return ref wire.GetDataRef();
         }
 
-        public Action Subscribe(IWire<T>.ChangeHandler handler)
+        public DisposableAction Subscribe(IWire<T>.ChangeHandler handler)
         {
-            return wire.Subscribe(handler);
+            var release = wire.Subscribe(handler);
+            return new DisposableAction(() => release());
         }
 
-        public Action SubscribeRef(IWire<T>.ChangeRefHandler handler)
+        public DisposableAction SubscribeRef(IWire<T>.ChangeRefHandler handler)
         {
-            return wire.SubscribeRef(handler);
+            var release = wire.SubscribeRef(handler);
+            return new DisposableAction(() => release());
         }
         
         public UniTask<T> WaitUntil(Func<T, bool> predicate, CancellationToken cancellationToken)
