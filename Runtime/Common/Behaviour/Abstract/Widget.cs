@@ -94,7 +94,7 @@ namespace Metamatic
         [Button, DisableInEditorMode]
         public async UniTask Show(CancellationToken cancellationToken = default)
         {
-            var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, showOperationCancellationToken).Token;
+           
             CancellationTokenRegistration registration = default;
             
             if (state == State.Shown)
@@ -105,6 +105,7 @@ namespace Metamatic
             SetBusy();
             CancelHideOperation();
             RenewShowOperation();
+            var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, showOperationCancellationToken).Token;
             registration = combinedToken.Register(() =>
             {
                 registration.Dispose();

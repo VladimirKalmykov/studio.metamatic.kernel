@@ -208,13 +208,15 @@ namespace Metamatic.Actions
         #region Registry
         public IDisposable Register<TKey, TValue>(TKey id, TValue source) where TValue : notnull
         {
-            if (!m_RegistryTypesKeys.TryGetValue(typeof(TKey), out var keyTypeDictionary))
+            var keyType = typeof(TKey);
+            var valueType = typeof(TValue);
+            if (!m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
             {
-                keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
+                m_RegistryTypesKeys[keyType] = keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
             }
-            if (!keyTypeDictionary.TryGetValue(typeof(TValue), out var valueTypeDictionary))
+            if (!keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
             {
-                valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
+                keyTypeDictionary[valueType] = valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
             }
             if (!valueTypeDictionary.TryGetValue(id, out var registry))
             {
@@ -239,19 +241,21 @@ namespace Metamatic.Actions
             });
         }
 
-        public DisposableAction SubscribeRegistry<TKey, TValue>(string id, IDispatcher.EventHandler<TValue> handler) where TValue : notnull
+        public DisposableAction SubscribeRegistry<TKey, TValue>(TKey id, IDispatcher.EventHandler<TValue> handler) where TValue : notnull
         {
-            if (!m_RegistryTypesKeys.TryGetValue(typeof(TKey), out var keyTypeDictionary))
+            var keyType = typeof(TKey);
+            var valueType = typeof(TValue);
+            if (!m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
             {
-                keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
+                m_RegistryTypesKeys[keyType] = keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
             }
-            if (!keyTypeDictionary.TryGetValue(typeof(TValue), out var valueTypeDictionary))
+            if (!keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
             {
-                valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
+                keyTypeDictionary[valueType] = valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
             }
             if (!valueTypeDictionary.TryGetValue(id, out var registry))
             {
-                registry = new RegistrySource<object>();
+                valueTypeDictionary[id] = registry = new RegistrySource<object>();
             }
             System.Action<object> handlerWrapper = source =>
             {
@@ -274,6 +278,16 @@ namespace Metamatic.Actions
                     }
                 }
             });
+        }
+
+        public IDisposable Register<TValue>(TValue source) where TValue : notnull
+        {
+            return Register(this, source);
+        }
+
+        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler) where TValue : notnull
+        {
+            return SubscribeRegistry(this, handler);
         }
 
         public UniTask<TValue> WhenRegistered<TKey, TValue>(string id, CancellationToken cancellationToken) where TValue : notnull

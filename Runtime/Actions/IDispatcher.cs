@@ -94,7 +94,25 @@ namespace Metamatic.Actions
         /// <param name="handler"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public DisposableAction SubscribeRegistry<TKey, TValue>(string id, EventHandler<TValue> handler) where TValue : notnull;
+        public DisposableAction SubscribeRegistry<TKey, TValue>(TKey id, EventHandler<TValue> handler) where TValue : notnull;
+        /// <summary>
+        /// A version of Register method without id (it takes a self reference as an id)
+        /// </summary>
+        /// <param name="source"></param>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
+        public IDisposable Register<TValue>(TValue source) where TValue : notnull;
+
+        /// <summary>
+        /// A version of SubscribeRegistry method without id (it takes a self reference as an id)
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
+        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler)
+            where TValue : notnull;
         /// <summary>
         /// Wait for a registered object of type T with an id
         /// </summary>
