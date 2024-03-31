@@ -120,6 +120,13 @@ namespace Metamatic.Actions
         /// <param name="cancellationToken"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public UniTask<TValue> WhenRegistered<TKey, TValue>(string id, CancellationToken cancellationToken) where TValue : notnull;
+        public UniTask<TValue> WhenRegistered<TKey, TValue>(TKey id, CancellationToken cancellationToken) where TValue : notnull;
+        /// <summary>
+        /// A version of WhenRegistered method without id (it takes a self reference as an id)
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
+        public UniTask<TValue> WhenRegistered<TValue>(CancellationToken cancellationToken) where TValue : notnull;
     }
 }

@@ -290,10 +290,34 @@ namespace Metamatic.Actions
             return SubscribeRegistry(this, handler);
         }
 
-        public UniTask<TValue> WhenRegistered<TKey, TValue>(string id, CancellationToken cancellationToken) where TValue : notnull
+        public UniTask<TValue> WhenRegistered<TKey, TValue>(TKey id, CancellationToken cancellationToken = default) where TValue : notnull
         {
-            throw new NotImplementedException();
+            var tcs = new UniTaskCompletionSource<TValue>();
+            UniTask<TValue> task = tcs.Task;
+            System.Action releaseSubscription = null;
+            CancellationTokenRegistration cancellationTokenRegistration = cancellationToken.Register(() =>
+            {
+                releaseSubscription?.Invoke();
+                tcs.TrySetCanceled(cancellationToken);
+            });
+            releaseSubscription = SubscribeRegistry<TKey, TValue>(id, source =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                releaseSubscription?.Invoke();
+                cancellationTokenRegistration.Dispose();
+                tcs.TrySetResult(source);
+            });
+            return task;
         }
+
+        public UniTask<TValue> WhenRegistered<TValue>(CancellationToken cancellationToken = default) where TValue : notnull
+        {
+            return WhenRegistered<Dispatcher, TValue>(this, cancellationToken);
+        }
+
         #endregion
     }
 }
