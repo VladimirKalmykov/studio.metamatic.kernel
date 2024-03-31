@@ -1,7 +1,9 @@
+using System;
 using UnityEngine;
 
 namespace Metamatic.Actions
 {
+    [Obsolete("Is out of  concept", true)]
     public abstract class ActionLegacy: ActionSource
     {
         public readonly float createdTime;
@@ -12,6 +14,7 @@ namespace Metamatic.Actions
         }
     }
     
+    [Obsolete("Is out of  concept", true)]
     public abstract class BehaviourActionLegacy<T>: ActionLegacy
     where T: notnull
     {

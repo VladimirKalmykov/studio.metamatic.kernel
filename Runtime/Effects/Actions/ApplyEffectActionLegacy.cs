@@ -1,7 +1,9 @@
+using System;
 using Metamatic.Effects;
 
 namespace Metamatic.Actions
 {
+    [Obsolete("Is out of  concept", true)]
     public class ApplyEffectActionLegacy : ActionLegacy
     {
         public readonly ScriptableEffect effect;

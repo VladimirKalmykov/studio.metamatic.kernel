@@ -1,7 +1,10 @@
+using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Metamatic.Actions
 {
+    [Obsolete("Use Dispatcher events instead", true)]
     public class ActionSource
     {
         public readonly Object source;
