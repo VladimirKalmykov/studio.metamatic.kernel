@@ -1,13 +1,13 @@
 namespace Metamatic
 {
-    public class DatabaseEntitySource: ObservableProxyValue<string>
+    public class DatabaseEntitySource: MicroStateProxy<string>
     {
-        public DatabaseEntitySource(string initialName) : base(new ObservableWritableValue<string>(initialName))
+        public DatabaseEntitySource(string initialName) : base(new MicroState<string>(initialName))
         {
             
         }
         
-        public DatabaseEntitySource(ObservableValue<string> source) : base(source)
+        public DatabaseEntitySource(ReadOnlyMicroState<string> source) : base(source)
         {
             PlugIn(source);
         }

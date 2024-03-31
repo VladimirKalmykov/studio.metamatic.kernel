@@ -43,7 +43,7 @@ namespace Metamatic
         
         private Dictionary<(Type type, string uri), InternalStore> m_Stores = new Dictionary<(Type type, string uri), InternalStore>();
         
-        public readonly ObservableWritableValue<IOSource> m_Source = new ObservableWritableValue<IOSource>(new FsJsonSource());
+        public readonly MicroState<IOSource> m_Source = new MicroState<IOSource>(new FsJsonSource());
 
         public IOSource source
         {

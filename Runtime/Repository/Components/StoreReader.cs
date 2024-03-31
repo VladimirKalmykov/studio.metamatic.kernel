@@ -24,7 +24,7 @@ namespace Metamatic
         #endregion
 
         private delegate void WriteDataToPinDelegate(T? value);
-        private ObservableWritableValue<string> m_StoreName = new();
+        private MicroState<string> m_StoreName = new();
         
         /// <summary>
         /// Dynamically set store name. If store name is not set, default store name will be used

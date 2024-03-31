@@ -16,8 +16,8 @@ namespace Metamatic.UI
     [RequireComponent(typeof(GraphicRaycaster))]
     public class UIOverlay: UIBehaviour
     {
-        private static ObservableWritableValue<UIOverlay> _Instance = new();
-        public static ObservableValue<UIOverlay> Instance => _Instance;
+        private static MicroState<UIOverlay> _Instance = new();
+        public static ReadOnlyMicroState<UIOverlay> Instance => _Instance;
         [ShowInInspector, LabelText("Acquire count")]
         private int m_AcquireCount = 0;
         private CancellationTokenSource m_ReleaseCancellationTokenSource;

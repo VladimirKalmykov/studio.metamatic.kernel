@@ -53,8 +53,8 @@ namespace Metamatic
         
         private string m_Name;
         private RepositoryObservableLayer m_TargetObservableLayer;
-        private ObservableWritableValue<RepositoryInternalStore<T>> m_Store =new ();
-        private ObservableWritableValue<bool> m_Busy = new();
+        private MicroState<RepositoryInternalStore<T>> m_Store =new ();
+        private MicroState<bool> m_Busy = new();
         public RepositoryStore(RepositoryBehaviour repositoryBehaviour, RepositoryObservableLayer targetObservableLayer, string name)
         {
             m_Name = name;

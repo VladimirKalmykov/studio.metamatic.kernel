@@ -5,7 +5,7 @@ using Metamatic;
 
 namespace Metamatic
 {
-    public abstract class ObservableValue: IDisposable
+    public abstract class MicroStateBase: IDisposable
     
     {
         #if DEBUG
@@ -18,7 +18,7 @@ namespace Metamatic
         public TValue value { get; }
         public DisposableAction Subscribe(Action<TValue> handler);
     }
-    public abstract class ObservableValue<TValue>: ObservableValue, IObservableValue<TValue>
+    public abstract class ReadOnlyMicroState<TValue>: MicroStateBase, IObservableValue<TValue>
     {
         private event Action<TValue> OnChange;
         private CancellationTokenSource m_DisposeCancellationTokenSource;
@@ -29,7 +29,7 @@ namespace Metamatic
             set => SetValue(value);
         }
 
-        public ObservableValue()
+        public ReadOnlyMicroState()
         {
             m_DisposeCancellationTokenSource = new CancellationTokenSource();
         }
@@ -169,12 +169,12 @@ namespace Metamatic
         }
     }
 
-    public class ObservableWritableValue<TValue> : ObservableValue<TValue>
+    public class MicroState<TValue> : ReadOnlyMicroState<TValue>
     {
         private TValue m_Value;
         public delegate void MutateHandler(ref TValue value);
         
-        public ObservableWritableValue(TValue initialValue = default)
+        public MicroState(TValue initialValue = default)
         {
             m_Value = initialValue;
         }
@@ -200,10 +200,10 @@ namespace Metamatic
         }
     }
 
-    public class ObservableGettableValue<TValue> : ObservableValue<TValue>
+    public class MicroStateGetter<TValue> : ReadOnlyMicroState<TValue>
     {
         private Func<TValue> m_Getter;
-        public ObservableGettableValue(Func<TValue> getter) : base()
+        public MicroStateGetter(Func<TValue> getter) : base()
         {
             m_Getter = getter;
         }
@@ -223,15 +223,15 @@ namespace Metamatic
         }
     }
 
-    public class ObservableProxyValue<TValue> : ObservableValue<TValue>
+    public class MicroStateProxy<TValue> : ReadOnlyMicroState<TValue>
     {
         protected Action pluginUnsubscribe;
-        protected ObservableValue<TValue> pluggedIn;
-        public ObservableProxyValue(): base()
+        protected ReadOnlyMicroState<TValue> pluggedIn;
+        public MicroStateProxy(): base()
         {
             
         }
-        public ObservableProxyValue(ObservableValue<TValue> other): base()
+        public MicroStateProxy(ReadOnlyMicroState<TValue> other): base()
         {
             PlugIn(other);
         }
@@ -250,7 +250,7 @@ namespace Metamatic
         /// Plug another observable value to get its value every time it changed
         /// </summary>
         /// <param name="other"></param>
-        public void PlugIn(ObservableValue<TValue> other)
+        public void PlugIn(ReadOnlyMicroState<TValue> other)
         {
             pluginUnsubscribe?.Invoke();
             pluggedIn = other;

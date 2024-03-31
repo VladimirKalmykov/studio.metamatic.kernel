@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Metamatic;
 
-namespace Micro.Event
+namespace Metamatic
 {
     public class MicroEvent
     {

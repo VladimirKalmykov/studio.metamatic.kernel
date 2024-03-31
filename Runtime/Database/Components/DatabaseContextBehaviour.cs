@@ -49,13 +49,13 @@ namespace Metamatic
             m_BrancheSource ??= new DatabaseBranchSource(GetBranchNameSource());
         public DatabaseEntitySource entitySource => m_EntitySource ??= new DatabaseEntitySource(GetEntityNameSource());
 
-        private ObservableValue<string> GetEntityNameSource()
+        private ReadOnlyMicroState<string> GetEntityNameSource()
         {
             if (useEntityAsSource)
             {
                 if (entityComponent == null)
                 {
-                    return new ObservableWritableValue<string>(gameObject.name);
+                    return new MicroState<string>(gameObject.name);
                 }
                 else
                 {
@@ -64,11 +64,11 @@ namespace Metamatic
             }
             else
             {
-                return new ObservableWritableValue<string>(entityName);
+                return new MicroState<string>(entityName);
             }
         }
 
-        private ObservableValue<string> GetBranchNameSource()
+        private ReadOnlyMicroState<string> GetBranchNameSource()
         {
             switch (branchNameSource)
             {
@@ -86,7 +86,7 @@ namespace Metamatic
                     }
                     break;
                 case BranchNameSourceType.FixedValue:
-                    return new ObservableGettableValue<string>(() =>
+                    return new MicroStateGetter<string>(() =>
                     {
                         return branchName.Length > 0 ? branchName : Database.currentBranchSource.value;
                     });

@@ -9,8 +9,8 @@ namespace Metamatic
     public class SocketProviderRef<TSocketScheme>: AsyncBehaviour
         where TSocketScheme: SocketScheme, new()
     {
-        private static ObservableWritableValue<SocketProviderRef<TSocketScheme>> m_Instance = new();
-        public static ObservableWritableValue<SocketProviderRef<TSocketScheme>> instance
+        private static MicroState<SocketProviderRef<TSocketScheme>> m_Instance = new();
+        public static MicroState<SocketProviderRef<TSocketScheme>> instance
         {
             get
             {

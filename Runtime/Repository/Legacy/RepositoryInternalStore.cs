@@ -12,11 +12,11 @@ namespace Metamatic
     public class RepositoryInternalStore<T>: RepositoryInternalStore
     where T: struct
     {
-        private readonly ObservableWritableValue<T?> m_Value;
+        private readonly MicroState<T?> m_Value;
         
         public RepositoryInternalStore(T initialValue)
         {
-            m_Value = new ObservableWritableValue<T?>(initialValue);
+            m_Value = new MicroState<T?>(initialValue);
         }
         
         public void Get(out T? value)

@@ -30,9 +30,9 @@ namespace Metamatic
         }
         public readonly string uri;
         public readonly Type type;
-        private ObservableWritableValue<bool> m_Locked = new ObservableWritableValue<bool>(false);
+        private MicroState<bool> m_Locked = new MicroState<bool>(false);
         private Queue<(UniTaskCompletionSource<IDisposable>, CancellationToken)> m_LockQueue = new ();
-        protected ObservableWritableValue<Status> m_Status = new ObservableWritableValue<Status>(Status.Idle);
+        protected MicroState<Status> m_Status = new MicroState<Status>(Status.Idle);
         public Status status
         {
             get => m_Status.value;

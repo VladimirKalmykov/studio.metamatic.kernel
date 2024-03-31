@@ -8,7 +8,7 @@ namespace Metamatic
     public class MicroStoreAlias<T>: IStore<T>
         where T : struct
     {
-        private readonly ObservableWritableValue<MicroStore<T>> m_MicroStore = new ();
+        private readonly MicroState<MicroStore<T>> m_MicroStore = new ();
         private readonly ExclusiveExecution<string> m_IdExecution;
         public MicroStore<T> store => m_MicroStore.value;
         public T value => m_MicroStore.value.value;

@@ -12,7 +12,7 @@ namespace Metamatic
         public event BeforeDestroy OnBeforeDestroy;
 
         public RepositoryStorageType storageType { get; private set; }
-        private Dictionary<(ObservableValue, Type, string), RepositoryStore> m_VirtualStoresPool = new();
+        private Dictionary<(MicroStateBase, Type, string), RepositoryStore> m_VirtualStoresPool = new();
         private RepositoryLayer m_RootLayer;
         private List<RepositoryLayer> m_Layers = new();
         public IReadOnlyList<RepositoryLayer> layers => m_Layers;

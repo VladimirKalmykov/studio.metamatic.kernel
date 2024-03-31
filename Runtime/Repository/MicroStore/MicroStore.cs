@@ -101,15 +101,15 @@ namespace Metamatic
         }
         
         private Dictionary<string, IStore<T>.Branch> m_Branches = new ();
-        private ObservableWritableValue<IStore<T>.Branch> m_CurrentBranch = new();
+        private MicroState<IStore<T>.Branch> m_CurrentBranch = new();
         /// <summary>
         /// Determines that store is synchronized with the persistent storage
         /// </summary>
-        private ObservableWritableValue<bool> m_IsSynchronized = new(false);
-        private ObservableWritableValue<IStore.DataSource> m_DataSource = new(IStore.DataSource.Default);
+        private MicroState<bool> m_IsSynchronized = new(false);
+        private MicroState<IStore.DataSource> m_DataSource = new(IStore.DataSource.Default);
         public IStore.DataSource dataSource => m_DataSource.value;
-        private ObservableWritableValue<IOStatuses> m_IOStatus = new(IOStatuses.Idle);
-        public ObservableValue<IOStatuses> IOStatus => m_IOStatus;
+        private MicroState<IOStatuses> m_IOStatus = new(IOStatuses.Idle);
+        public ReadOnlyMicroState<IOStatuses> IOStatus => m_IOStatus;
         private int m_ReferenceCount;
         public readonly string name;
         private T m_PersistentValue;
@@ -547,7 +547,7 @@ namespace Metamatic
             Checkout();
         }
         
-        private ObservableWritableValue<bool> m_Locked = new(false);
+        private MicroState<bool> m_Locked = new(false);
         private Queue<(UniTaskCompletionSource<IDisposable>, CancellationToken)> m_LockQueue = new ();
         /// <summary>
         /// Lock store to avoid simultaneously read/write operations

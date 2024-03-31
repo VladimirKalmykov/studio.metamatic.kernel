@@ -42,7 +42,7 @@ namespace Metamatic
             private readonly MicroStore<T> m_Store;
             public readonly string name;
             public readonly bool locked;
-            private readonly ObservableWritableValue<T> m_Value = new();
+            private readonly MicroState<T> m_Value = new();
             private int m_ReferenceCount;
             public bool isAcquired => m_ReferenceCount > 0;
             public bool isDirty { get; private set; }

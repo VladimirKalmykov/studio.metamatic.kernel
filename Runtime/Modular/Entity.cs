@@ -30,7 +30,7 @@ namespace Metamatic
         [BoxGroup("Entity")]
         [SerializeField, PropertyOrder(3)] private EntityClass entityClass;
 
-        private ObservableValue<string> n_ObservableValue = null;
-        public ObservableValue<string> observableName => n_ObservableValue ??= new ObservableGettableValue<string>(() => this.fullname);
+        private ReadOnlyMicroState<string> n_ObservableValue = null;
+        public ReadOnlyMicroState<string> observableName => n_ObservableValue ??= new MicroStateGetter<string>(() => this.fullname);
     }
 }

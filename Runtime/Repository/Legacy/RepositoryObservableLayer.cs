@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class RepositoryObservableLayer: ObservableValue<RepositoryLayer>, IDisposable, IReserved
+    public class RepositoryObservableLayer: ReadOnlyMicroState<RepositoryLayer>, IDisposable, IReserved
     {
         private static Dictionary<(RepositoryBehaviour, string), RepositoryObservableLayer> m_Pool = new();
         public static RepositoryObservableLayer Get(RepositoryBehaviour repositoryBehaviour, string name)

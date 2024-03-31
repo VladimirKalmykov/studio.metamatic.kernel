@@ -109,7 +109,7 @@ namespace Metamatic
             Success,
             Error
         }
-        public ObservableWritableValue<Status> status = new ObservableWritableValue<Status>(Status.Idle);
+        public MicroState<Status> status = new MicroState<Status>(Status.Idle);
         public float progress { get; set; }
         public Exception exception { get; protected set; }
         public bool isLoading => status.value == Status.Loading;

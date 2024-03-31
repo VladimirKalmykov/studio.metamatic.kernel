@@ -9,8 +9,8 @@ namespace Metamatic
     public class SocketProvider<TSocketScheme>: Socket<TSocketScheme>, ISerializationCallbackReceiver
     where TSocketScheme: SocketScheme, new()
     {
-        private static ObservableWritableValue<SocketProvider<TSocketScheme>> m_Instance = new();
-        public static ObservableWritableValue<SocketProvider<TSocketScheme>> instance
+        private static MicroState<SocketProvider<TSocketScheme>> m_Instance = new();
+        public static MicroState<SocketProvider<TSocketScheme>> instance
         {
             get
             {
