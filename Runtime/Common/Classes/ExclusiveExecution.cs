@@ -27,13 +27,13 @@ namespace Metamatic
 
         protected abstract void EraseProps();
     }
-    public class ExclusiveHandler: ExclusiveHandlerBase
+    public class ExclusiveExecution: ExclusiveHandlerBase
     {
         public delegate void Handler(CancellationToken token);
 
         private Handler m_Handler;
     
-        public ExclusiveHandler(Handler handler, CancellationToken externalCancellationToken = default)
+        public ExclusiveExecution(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
@@ -75,13 +75,13 @@ namespace Metamatic
             m_Handler = default;
         }
     }
-    public class ExclusiveHandler<T1, T2>: ExclusiveHandlerBase
+    public class ExclusiveExecution<T1, T2>: ExclusiveHandlerBase
     {
         public delegate void Handler(T1 value1, T2 value2, CancellationToken token);
 
         private Handler m_Handler;
     
-        public ExclusiveHandler(Handler handler, CancellationToken externalCancellationToken = default)
+        public ExclusiveExecution(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
@@ -100,13 +100,13 @@ namespace Metamatic
         }
     }
 
-    public class ExclusiveHandler<T1, T2, T3> : ExclusiveHandlerBase
+    public class ExclusiveExecution<T1, T2, T3> : ExclusiveHandlerBase
     {
         public delegate void Handler(T1 value1, T2 value2, T3 value3, CancellationToken token);
 
         private Handler m_Handler;
 
-        public ExclusiveHandler(Handler handler, CancellationToken externalCancellationToken = default)
+        public ExclusiveExecution(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
@@ -126,13 +126,13 @@ namespace Metamatic
         }
     }
     
-    public class ExclusiveHandler<T1, T2, T3, T4> : ExclusiveHandlerBase
+    public class ExclusiveExecution<T1, T2, T3, T4> : ExclusiveHandlerBase
     {
         public delegate void Handler(T1 value1, T2 value2, T3 value3, T4 value4, CancellationToken token);
 
         private Handler m_Handler;
 
-        public ExclusiveHandler(Handler handler, CancellationToken externalCancellationToken = default)
+        public ExclusiveExecution(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;

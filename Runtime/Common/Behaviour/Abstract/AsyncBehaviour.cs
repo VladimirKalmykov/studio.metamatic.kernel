@@ -7,7 +7,6 @@ namespace Metamatic
 {
     public abstract class AsyncBehaviour: MonoBehaviour
     {
-        public bool debug;
         private UniTaskCompletionSource m_DisableTaskCompletionSource;
         private CancellationTokenSource m_DisableCancellationTokenSource;
 

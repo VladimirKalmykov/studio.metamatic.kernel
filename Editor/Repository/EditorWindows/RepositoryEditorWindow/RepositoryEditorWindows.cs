@@ -125,7 +125,7 @@ namespace Metamatic
                 
                 /* Subscribe for stores */
                 using (var layerStoreChangeHandler =
-                       new ExclusiveHandler((cancellationToken) => OnLayerStoresChange(cancellationToken, layerContent, layer), token))
+                       new ExclusiveExecution((cancellationToken) => OnLayerStoresChange(cancellationToken, layerContent, layer), token))
                 using (new DisposableCallback(layer.SubscribeStoresChanged(layerStoreChangeHandler.Handle)))
                 {
                     layerStoreChangeHandler.Handle();
