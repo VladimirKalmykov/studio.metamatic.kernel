@@ -1,6 +1,5 @@
 ﻿using System.Threading;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Metamatic
 {

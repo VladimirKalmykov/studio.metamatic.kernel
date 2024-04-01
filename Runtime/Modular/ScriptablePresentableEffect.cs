@@ -4,9 +4,8 @@ namespace Metamatic {
     using System;
     using UnityEngine.AddressableAssets;
     using Sirenix.OdinInspector;
-    using Metamatic.GameAccessManagment;
 
-    
+
     public abstract class ScriptablePresentableEffect<TEffector, TProps> : ScriptableEffectWithSubEffects<TEffector, TProps>
     where TEffector: Effector
     where TProps : struct

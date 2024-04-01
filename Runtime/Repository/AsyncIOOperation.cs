@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Cysharp.Threading.Tasks;
-using Metamatic;
 using UnityEngine;
 
 namespace Metamatic

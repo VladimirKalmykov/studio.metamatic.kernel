@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Sirenix.OdinInspector;
-using Touch = UnityEngine.Touch;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif

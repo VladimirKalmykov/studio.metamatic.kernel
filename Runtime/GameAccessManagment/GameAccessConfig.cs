@@ -3,8 +3,7 @@ using System;
 
 namespace Metamatic.GameAccessManagment {
     using UnityEngine;
-    using Sirenix.OdinInspector;
-    
+
     [Serializable]
     public class ToggleableScriptableCondition: Toggleable<ScriptableCondition>
     {

@@ -1,5 +1,3 @@
-using Sirenix.OdinInspector;
-
 namespace Metamatic {
     using UnityEngine;
 

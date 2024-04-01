@@ -1,10 +1,8 @@
-﻿using System.Collections.Generic;
-using Metamatic.GameAccessManagment;
+﻿using Metamatic.GameAccessManagment;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Localization;
-using UnityEngine.Serialization;
 
 namespace Metamatic
 {

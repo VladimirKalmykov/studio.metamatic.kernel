@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using Codice.Client.Common.Connection.ServerAlias;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic

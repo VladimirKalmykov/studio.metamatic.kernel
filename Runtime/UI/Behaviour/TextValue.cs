@@ -3,7 +3,6 @@ using UnityEngine.UI;
 namespace Metamatic.UI {
     using System;
     using UnityEngine;
-    using Sirenix.OdinInspector;
 
     /// <summary>
     /// One solution to set TextMeshPro and Text text programmatically

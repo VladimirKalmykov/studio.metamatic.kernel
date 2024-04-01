@@ -1,7 +1,4 @@
-using System;
-
 namespace Metamatic.GameAccessManagment {
-    using System.Linq;
     public class GameAccessUtils {
         public static AccessDetails GetAccess(UnityEngine.Object target, IAccessable accessable, Passes passes) {
             if (accessable == null) {

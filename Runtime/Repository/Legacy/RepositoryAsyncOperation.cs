@@ -3,9 +3,6 @@
 namespace Metamatic
 {
     using System;
-    using System.Runtime.CompilerServices;
-    using System.Threading.Tasks;
-    using UnityEngine;
 
     public class RepositoryAsyncOperation
     {

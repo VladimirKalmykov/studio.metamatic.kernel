@@ -2,8 +2,7 @@ namespace Metamatic
 {
     using System;
     using UnityEngine;
-    using Metamatic;
-    
+
     public class GameplayTimeSystem : MonoBehaviour
     {
         private static GameplayTimeSystem m_Instance;

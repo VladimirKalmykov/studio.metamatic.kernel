@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
-using UnityEditor.VersionControl;
 
 namespace Metamatic
 {

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using Sirenix.OdinInspector;
-using UnityEngine;
 
 namespace Metamatic
 {

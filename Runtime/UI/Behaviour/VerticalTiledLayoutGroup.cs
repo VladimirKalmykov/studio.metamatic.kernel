@@ -1,5 +1,4 @@
 ﻿using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace Metamatic.UI {
     using UnityEngine;
