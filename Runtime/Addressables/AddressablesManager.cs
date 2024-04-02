@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -124,7 +123,7 @@ namespace Metamatic
             }, token);
         }
         
-        public static DisposableAsyncOperationT<SceneInstance> LoadSceneAsync(AssetReferenceT<SceneAsset> sceneName, LoadSceneMode loadSceneMode, bool activateOnLoad, CancellationToken token)
+        public static DisposableAsyncOperationT<SceneInstance> LoadSceneAsync(AssetReference sceneName, LoadSceneMode loadSceneMode, bool activateOnLoad, CancellationToken token)
         {
             return new DisposableAsyncOperationT<SceneInstance>(cancellationToken =>
             {

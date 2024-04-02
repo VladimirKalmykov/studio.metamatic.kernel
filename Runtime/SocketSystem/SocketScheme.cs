@@ -56,11 +56,8 @@ namespace Metamatic
 #if DEBUG
         public List<string> debug_Error = new List<string>();
         public event Action OnErrorChanged;
-       
-        
 
         public abstract SocketScheme[] debug_GetConnectedOutSchemes();
-        public abstract SocketScheme GetConnectedInScheme();
         protected void AddError(string error)
         {
             debug_Error.Add(error);
@@ -74,6 +71,8 @@ namespace Metamatic
             OnErrorChanged?.Invoke();
         }
 #endif
+        public abstract SocketScheme GetConnectedInScheme();
+        
         protected void ReconnectOut(ConnectionType connectionType)
         {
             outConnectionType = connectionType;
