@@ -6,10 +6,12 @@ using UniTask = Cysharp.Threading.Tasks.UniTask;
 
 namespace Metamatic
 {
+    [PlatformCompatible(RuntimePlatform.WindowsPlayer)]
     public class FsJsonSource: IOSource
     {
         public override AsyncReadOperation<T> Read<T>(string name, CancellationToken token)
         {
+            
             var operationSource = new AsyncReadOperationSource<T>();
             var uri = GetUriAddress<T>(name);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
@@ -30,8 +32,21 @@ namespace Metamatic
                     await UniTask.SwitchToMainThread();
                     operationSource.SetRawValue(fileContent);
                 }
+                catch (DirectoryNotFoundException)
+                {
+                    /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
+                    await UniTask.SwitchToMainThread();
+                    operationSource.SetError(new IOSource.NotFoundException("Directory not found"));
+                }
+                catch (FileNotFoundException)
+                {
+                    /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
+                    await UniTask.SwitchToMainThread();
+                    operationSource.SetError(new IOSource.NotFoundException("File not found"));
+                }
                 catch (Exception e)
                 {
+                    Debug.Log($"[DEBUG] Read file error");
                     await UniTask.SwitchToMainThread();
                     operationSource.SetError(e);
                 }
@@ -45,8 +60,7 @@ namespace Metamatic
             var operationSource = new AsyncWriteOperationSource<T>();
             var uri = GetUriAddress<T>(name);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
-            var package = new SerializableDataPackage<T>(value);
-            string json = JsonUtility.ToJson(package);
+            string json = operationSource.PrepareValue(value);
             operationSource.SetProgress(0);
             UniTask.Run(async () =>
             {

@@ -6,6 +6,8 @@ using UniTask = Cysharp.Threading.Tasks.UniTask;
 
 namespace Metamatic
 {
+    [PlatformCompatible(RuntimePlatform.WindowsPlayer)]
+    [PlatformCompatible(RuntimePlatform.WebGLPlayer)]
     public class HttpSource: IOSource
     {
         public override AsyncReadOperation<T> Read<T>(string name, CancellationToken token)

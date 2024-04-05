@@ -200,5 +200,11 @@ namespace Metamatic
             this.progress = 1;
             status.value = Status.Success;
         }
+
+        public string PrepareValue(T value)
+        {
+            var package = new SerializableDataPackage<T>(value);
+            return JsonUtility.ToJson(package);
+        }
     }
 }

@@ -8,30 +8,20 @@ namespace Metamatic
 {
     public class Repository: AsyncBehaviour
     {
+        public static readonly string SettingsPath = "Assets/Metamatic/Resources/Settings/Repository.asset";
         private static Repository m_Instance;
         public static Repository Global
         {
             get
             {
-                
                 if (m_Instance == null)
                 {
-                    /* Find repository in scene that contains property isGlobal true */
-                    var repositories = Object.FindObjectsOfType<Repository>();
-                    foreach (var repository in repositories)
-                    {
-                        if (repository.isGlobal)
-                        {
-                            m_Instance = repository;
-                            return m_Instance;
-                        }
-                    } 
-                    /* Create new repository if predefined repository does not exist */
-                    m_Instance = new GameObject("Repository").AddComponent<Repository>();
-                    m_Instance.Initialize();
+                    m_Instance = new GameObject("__GLOBALREPOSITORY__").AddComponent<Repository>();
+                    m_Instance.isGlobal = true;
 #if UNITY_EDITOR
                     m_Instance.gameObject.hideFlags = HideFlags.DontSaveInEditor & HideFlags.DontSave;
 #endif
+                    m_Instance.InitializeGlobal();
                 }
                 return m_Instance;
             }
@@ -39,9 +29,7 @@ namespace Metamatic
 
         [SerializeField] private bool isGlobal;
         
-        private Dictionary<(Type type, string uri), InternalStore> m_Stores = new Dictionary<(Type type, string uri), InternalStore>();
-        
-        public readonly MicroState<IOSource> m_Source = new MicroState<IOSource>(new FsJsonSource());
+        public readonly MicroState<IOSource> m_Source = new MicroState<IOSource>(null);
 
         public IOSource source
         {
@@ -49,29 +37,43 @@ namespace Metamatic
             private set => m_Source.value = value;
         }
         
-        public AsyncReadOperation<T> Read<T>(string address, IOSource source, CancellationToken token = default)
+        public AsyncReadOperation<T> Read<T>(string address, CancellationToken token = default)
         {
             return source.Read<T>(address, token);
         }
         
-        public AsyncWriteOperation<T> Write<T>(string address, T value, IOSource source, CancellationToken token = default)
+        public AsyncWriteOperation<T> Write<T>(string address, T value, CancellationToken token = default)
         {
             return source.Write<T>(address, value, token);
         }
 
-        private void Initialize()
+        private void InitializeGlobal()
         {
-            source = new FsJsonSource();
-        }
-
-        private void Awake()
-        {
-            Debug.Assert(!isGlobal || (m_Instance == this || m_Instance == null), "Repository is marked as global but there is already another global repository");
-            if (isGlobal)
+            /* Load settings */
+            var settings = Resources.Load<RepositorySettings>("Settings/Repository");
+            var platforms = settings != null ? settings.platforms : new PlatformSource[] { };
+            foreach (var platform in platforms)
             {
-                m_Instance = this;
-                Initialize();
+                if (platform.platform == Application.platform)
+                {
+                    var sourceType = Type.GetType(platform.sourceClassName);
+                    if (sourceType != null)
+                    {
+                        source = (IOSource) Activator.CreateInstance(sourceType);
+                        // source.Initialize(platform.settings);
+                        break;
+                    }
+                    else
+                    {
+                        Debug.LogError("Source class not found");
+                    }
+                }
             }
+            if (source == null)
+                source = new LocalMemorySource();
+            
+            /* Display source class name */
+            Debug.Log($"Repository source: {source.GetType().Name}");
         }
 
         protected override void RunAsync(CancellationToken cancellationToken)
@@ -90,39 +92,6 @@ namespace Metamatic
         {
             var typeName = typeof(T).FullName;
             return $"{typeName}/{uri}";
-        }
-        
-        /// <summary>
-        /// Initialize and get store from the repository
-        /// </summary>
-        /// <param name="uri"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        [Obsolete("Use MicroStore<T> instead")]
-        public Store<T> GetStore<T>(string uri = "global", T defaultValue = default, bool autoPush = false) where T: struct
-        {
-            if (!Global.m_Stores.TryGetValue((typeof(T), uri), out var internalStore))
-            {
-                internalStore = new InternalStore<T>(repository: this, uri: uri, defaultValue: defaultValue, autoPush: autoPush);
-                m_Stores.Add((typeof(T), uri), internalStore);
-                Debug.Log($"Create new store {typeof(T).FullName} {uri}");
-            }
-            else
-            {
-                // TODO: Apply default value and auto push settings to the existing store
-            }
-            return new Store<T>(internalStore as InternalStore<T>);
-        }
-        
-        /// <summary>
-        /// Remove store from the repository
-        /// </summary>
-        /// <param name="store"></param>
-        [Obsolete("Use MicroStore<T> instead")]
-        public void Remove(InternalStore store)
-        {
-            m_Stores.Remove((store.type, store.uri));
-            Debug.Log($"Remove store {store.type.FullName} {store.uri}");
         }
         
         public void AssertError(Exception e)

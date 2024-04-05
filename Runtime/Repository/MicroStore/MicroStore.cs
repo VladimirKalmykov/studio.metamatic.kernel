@@ -310,7 +310,7 @@ namespace Metamatic
             {
                 await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, token);
                 m_IOStatus.value = IOStatuses.Synchronizing;
-                nextValue = await Repository.Global.Read<T>(name, Repository.Global.source, token);
+                nextValue = await Repository.Global.Read<T>(name, token);
                 m_DataSource.value = IStore<T>.DataSource.Persistent;
                 return value;
             }
@@ -319,21 +319,13 @@ namespace Metamatic
                 isCancelled = true;
                 m_IsSynchronized.value = false;
             }
-            catch (DirectoryNotFoundException)
+            catch (IOSource.NotFoundException nfe)
             {
                 /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
                 nextValue = getDefaultValue?.Invoke() ?? defaultValue;
                 m_IsSynchronized.value = true;
                 m_DataSource.value = IStore.DataSource.Fallback;
-                Debug.LogWarning(new DirectoryNotFoundException($"Directory not found for {name}"));
-            }
-            catch (FileNotFoundException)
-            {
-                /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
-                nextValue = getDefaultValue?.Invoke() ?? defaultValue;
-                m_IsSynchronized.value = true;
-                m_DataSource.value = IStore.DataSource.Fallback;
-                Debug.LogWarning(new FileNotFoundException($"File not found for {name}"));
+                Debug.LogWarning(nfe);
             }
             catch (System.Exception e)
             {
@@ -377,7 +369,7 @@ namespace Metamatic
             {
                 await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, token);
                 m_IOStatus.value = IOStatuses.Synchronizing;
-                await Repository.Global.Write<T>(name, m_PersistentValue, Repository.Global.source, token);
+                await Repository.Global.Write<T>(name, m_PersistentValue, token);
                 m_IsSynchronized.value = true;
             }
             catch (System.Exception e)
