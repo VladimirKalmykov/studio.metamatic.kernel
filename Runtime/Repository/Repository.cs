@@ -73,7 +73,7 @@ namespace Metamatic
                 source = new LocalMemorySource();
             
             /* Display source class name */
-            Debug.Log($"Repository source: {source.GetType().Name}");
+            Debug.Log($"<color=red>Repository source</color>: {source.GetType().Name}");
         }
 
         protected override void RunAsync(CancellationToken cancellationToken)
