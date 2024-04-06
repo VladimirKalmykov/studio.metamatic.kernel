@@ -56,6 +56,7 @@ namespace Metamatic.Effects
         
         public EffectCancellableOperationAwaiter Apply(Behaviour behaviour, TProps props = default)
         {
+            Debug.Assert(behaviour != null, "Behaviour is null");
             var effector = behaviour.GetComponent<TEffector>();
             if (effector == null)
             {

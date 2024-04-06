@@ -41,6 +41,7 @@ namespace Metamatic
         public void Handle()
         {
             Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            Debug.Assert(m_Handler != null, "Handler is null");
             CancelInternalToken();
             internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
             m_Handler(internalCancellationTokenSource.Token);
