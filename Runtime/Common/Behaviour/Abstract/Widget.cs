@@ -27,7 +27,6 @@ namespace Metamatic
 
         protected virtual void OnDisable()
         {
-            Debug.Log("[DIALOG] Disable widget");
             CancelShowOperation();
             CancelHideOperation();
             ClearShowOperation();

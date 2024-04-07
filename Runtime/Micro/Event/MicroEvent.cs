@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
@@ -16,6 +18,21 @@ namespace Metamatic
             });
         }
         
+        public DisposableAction SubscribeOnce(Action handler)
+        {
+            Action onceHandler = null;
+            onceHandler = () =>
+            {
+                handler();
+                m_EventHandlers.Remove(onceHandler);
+            };
+            m_EventHandlers.Add(onceHandler);
+            return new DisposableAction(() =>
+            {
+                m_EventHandlers.Remove(onceHandler);
+            });
+        }
+        
         public void Emit()
         {
             var handlers = m_EventHandlers.ToArray();
@@ -23,6 +40,24 @@ namespace Metamatic
             {
                 handler();
             }
+        }
+        
+        public UniTask WaitUntilEmitted(CancellationToken cancellationToken)
+        {
+            var tcs = new UniTaskCompletionSource();
+            Action handler = null;
+            handler = () =>
+            {
+                tcs.TrySetResult();
+                m_EventHandlers.Remove(handler);
+            };
+            m_EventHandlers.Add(handler);
+            cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                m_EventHandlers.Remove(handler);
+            });
+            return tcs.Task;
         }
     }
     
@@ -46,6 +81,24 @@ namespace Metamatic
             {
                 handler(arg);
             }
+        }
+        
+        public UniTask<T> WaitUntilEmitted(CancellationToken cancellationToken)
+        {
+            var tcs = new UniTaskCompletionSource<T>();
+            Action<T> handler = null;
+            handler = arg =>
+            {
+                tcs.TrySetResult(arg);
+                m_EventHandlers.Remove(handler);
+            };
+            m_EventHandlers.Add(handler);
+            cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                m_EventHandlers.Remove(handler);
+            });
+            return tcs.Task;
         }
     }
 }

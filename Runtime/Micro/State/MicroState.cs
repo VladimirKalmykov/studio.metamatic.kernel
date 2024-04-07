@@ -58,6 +58,26 @@ namespace Metamatic
             };
         }
         
+        /// <summary>
+        /// Wait until value changed once
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public UniTask<TValue> WaitUntilChangeOnce(CancellationToken cancellationToken = default)
+        {
+            var taskCompletionSource = new UniTaskCompletionSource<TValue>();
+            var release = SubscribeOnce(v =>
+            {
+                taskCompletionSource.TrySetResult(v);
+            });
+            cancellationToken.Register(() =>
+            {
+                taskCompletionSource.TrySetCanceled(cancellationToken);
+                release();
+            });
+            return taskCompletionSource.Task;
+        }
+        
         public UniTask<TValue> WaitUntilValueIs(TValue value, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
