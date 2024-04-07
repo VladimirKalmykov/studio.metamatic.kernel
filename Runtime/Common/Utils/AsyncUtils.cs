@@ -40,6 +40,25 @@ namespace Metamatic
 
             return ticker;
         }
+        
+        public static UniTask PlayerLoopAction(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, CancellationToken cancellationToken = default)
+        {
+            var startTime = Time.time;
+            return UniTask.WaitUntil(() =>
+            {
+                var ratio = duration > 0f ? Mathf.Clamp01((Time.time - startTime) / duration) : 1f;
+                if (ratio >= 1f)
+                {
+                    callback(1f);
+                    return true;
+                }
+
+                callback(ratio);
+                
+                return false;
+
+            }, timing, cancellationToken);
+        }
 
         public static IDisposable RunEveryFrame(Action callback, BehaviourTicker.FrameType frameType = BehaviourTicker.FrameType.Update)
         {

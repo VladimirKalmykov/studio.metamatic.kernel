@@ -209,12 +209,12 @@ namespace Metamatic {
         }
 
         /// <summary>
-        /// Get result of lerp and indemnify it of stuck
+        /// Adjusts the result of a linear interpolation (lerp) to prevent it from "stuck" situations by applying a threshold (gap). It is designed to ensure that the interpolation result reaches the target value (b) without getting stuck due to small differences that could prevent exact equality due to floating-point precision limitations.
         /// </summary>
-        /// <param name="a">From</param>
-        /// <param name="b">To</param>
-        /// <param name="result">Result</param>
-        /// <param name="gap">Gap</param>
+        /// <param name="a">The start value of the interpolation.</param>
+        /// <param name="b">The end target value of the interpolation.</param>
+        /// <param name="result">The current result of the linear interpolation between a and b.</param>
+        /// <param name="gap">An optional threshold that defines the "close enough" margin to b. Default is 0.01f.</param>
         /// <returns></returns>    
         public static float Indemnify(float a, float b, float result, float gap = 0.01f) {
             if ((b > a && result + gap >= b) || (b < a && result - gap <= b)) {
@@ -224,13 +224,12 @@ namespace Metamatic {
         }
 
         /// <summary>
-        /// Get result of lerp and indemnify it of stuck
+        /// Checks if the result is within a specified gap around a value, and returns the result if it's close enough; otherwise, it returns the original value.
         /// </summary>
-        /// <param name="a">From</param>
-        /// <param name="b">To</param>
-        /// <param name="result">Result</param>
-        /// <param name="gap">Gap</param>
-        /// <returns></returns>    
+        /// <param name="value">The target value you're aiming to reach.</param>
+        /// <param name="result">The current value that you're evaluating to see if it's close enough to value.</param>
+        /// <param name="gap">An optional parameter that defines the tolerance range around value within which result is considered acceptable. The default is 0.01f.</param>
+        /// <returns></returns>
         public static float Indemnify(float value, float result, float gap = 0.01f) {
             if ((result + gap >= value) && (result - gap <= value)) {
                 return result;

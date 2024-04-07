@@ -221,7 +221,7 @@ namespace Metamatic {
         /// <param name="found">Will true if intersect</param>
         /// <param name="thickness">Thickness of line (when zero intersection point will be difficult to determine)</param>
         /// <returns></returns>
-        public static Vector2? getLinesIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2, float thickness = 0.1f) {
+        public static Vector2? GetLinesIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2, float thickness = 0.1f) {
             var point = GetRaysIntersectionPoint(A1, A2, B1, B2);
             
             if (point.HasValue) {
@@ -270,17 +270,17 @@ namespace Metamatic {
                 innerPoint,
                 topLeft
             ) && pointAngle <= angleTopRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
             } else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
             /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
             } else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle < Trigf.GetAngleInverted(
                 innerPoint,
                 bottomLeft
             ))) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
             } else {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
             }
 
             return intersection;
@@ -338,17 +338,17 @@ namespace Metamatic {
                 innerPoint,
                 topLeft
             ) && pointAngle <= angleTopRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
             } else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
             /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
             } else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle < Trigf.GetAngleInverted(
                 innerPoint,
                 bottomLeft
             ))) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
             } else {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
             }
 
             return intersection;
