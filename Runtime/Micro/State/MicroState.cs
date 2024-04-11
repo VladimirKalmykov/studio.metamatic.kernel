@@ -252,7 +252,7 @@ namespace Metamatic
         }
         public MicroStateProxy(ReadOnlyMicroState<TValue> other): base()
         {
-            PlugIn(other);
+            SetProxy(other);
         }
         
         public override TValue GetValue()
@@ -269,8 +269,13 @@ namespace Metamatic
         /// Plug another observable value to get its value every time it changed
         /// </summary>
         /// <param name="other"></param>
-        public void PlugIn(ReadOnlyMicroState<TValue> other)
+        public void SetProxy(ReadOnlyMicroState<TValue> other)
         {
+            if (other == null)
+            {
+                Unplug();
+                return;
+            }
             pluginUnsubscribe?.Invoke();
             pluggedIn = other;
             pluginUnsubscribe = other.Subscribe(v =>

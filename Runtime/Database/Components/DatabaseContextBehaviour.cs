@@ -116,13 +116,13 @@ namespace Metamatic
                 var nextEntity = GetComponentInParent<Entity>();
                 if (nextEntity != m_EntityComponent)
                 {
-                    m_EntitySource.PlugIn(GetEntityNameSource());
+                    m_EntitySource.SetProxy(GetEntityNameSource());
                 }
             }
 
             if (branchNameSource == BranchNameSourceType.ParentContext && m_BrancheSource != null)
             {
-                m_BrancheSource.PlugIn(GetBranchNameSource());
+                m_BrancheSource.SetProxy(GetBranchNameSource());
             }
         }
     }

@@ -45,7 +45,7 @@ namespace Metamatic
         /// <returns></returns>
         public DatabaseSelector Branch(string branchName)
         {
-            this.branch.PlugIn(new DatabaseBranchSource(branchName));
+            this.branch.SetProxy(new DatabaseBranchSource(branchName));
             return this;
         }
         
@@ -72,7 +72,7 @@ namespace Metamatic
         /// <returns></returns>
         public DatabaseSelector Entity(string entityName)
         {
-            this.entity.PlugIn(new DatabaseEntitySource(entityName));
+            this.entity.SetProxy(new DatabaseEntitySource(entityName));
             return this;
         }
         
@@ -88,7 +88,7 @@ namespace Metamatic
             {
                 return Entity(behaviour.gameObject.name);
             }
-            this.entity.PlugIn(new DatabaseEntitySource(gameObjectEntity.entitySource));
+            this.entity.SetProxy(new DatabaseEntitySource(gameObjectEntity.entitySource));
             return this;
         }
         

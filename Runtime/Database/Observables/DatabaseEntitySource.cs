@@ -9,7 +9,7 @@ namespace Metamatic
         
         public DatabaseEntitySource(ReadOnlyMicroState<string> source) : base(source)
         {
-            PlugIn(source);
+            SetProxy(source);
         }
 
         public string GetEntityName()
