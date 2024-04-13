@@ -94,6 +94,9 @@ namespace Metamatic
         private bool m_IsDisposed;
         private event Action OnDispose;
         private event IWire<T>.ChangeRefHandler OnChange;
+        #if DEBUG
+        private event IWire<T>.ChangeRefHandler OnDebugChange;
+        #endif
         /// <summary>
         /// Determines that data was changed, but change event did not be invoked
         /// </summary>
@@ -170,6 +173,9 @@ namespace Metamatic
             OnReconnect?.Invoke();
             /* Call change event (because source changes so data too) */
             OnChange?.Invoke(ref GetDataRef());
+            #if DEBUG
+            OnDebugChange?.Invoke(ref GetDataRef());
+            #endif
             return () =>
             {
                 DisconnectInput(wire);
@@ -223,6 +229,9 @@ namespace Metamatic
             else
             {
                 OnChange?.Invoke(ref m_Data);
+#if DEBUG
+                OnDebugChange?.Invoke(ref m_Data);
+#endif
             }
         }
 
@@ -241,6 +250,9 @@ namespace Metamatic
             else
             {
                 OnChange?.Invoke(ref m_Data);
+#if DEBUG
+                OnDebugChange?.Invoke(ref m_Data);
+#endif
             }
         }
 
@@ -257,6 +269,9 @@ namespace Metamatic
             else
             {
                 OnChange?.Invoke(ref m_Data);
+#if DEBUG
+                OnDebugChange?.Invoke(ref m_Data);
+#endif
             }
         }
 
@@ -265,6 +280,9 @@ namespace Metamatic
             if (isDirty)
             {
                 OnChange?.Invoke(ref m_Data);
+#if DEBUG
+                OnDebugChange?.Invoke(ref m_Data);
+#endif
             }
         }
 
@@ -327,6 +345,36 @@ namespace Metamatic
                 unsubscribe();
             };
         }
+        
+        #if DEBUG
+        public Action DebugSubscribeRef(IWire<T>.ChangeRefHandler handler)
+        {
+            var sourceWire = m_SourceWire ?? this;
+            sourceWire.OnDebugChange += handler;
+            Action unsubscribe = null;
+            Action reconnect = () =>
+            {
+                unsubscribe();
+                unsubscribe = DebugSubscribeRef(handler);
+            };
+            unsubscribe = () =>
+            {
+                sourceWire.OnDebugChange -= handler;
+                OnReconnect -= reconnect;
+                OnDispose -= unsubscribe;
+                unsubscribe = () => { };
+            };
+            OnReconnect += reconnect;
+            OnDispose += unsubscribe;
+            ref var currentData = ref GetDataRef();
+            handler(ref currentData);
+
+            return () =>
+            {
+                unsubscribe();
+            };
+        }
+        #endif
         
         /// <summary>
         /// Wait until predicate is true

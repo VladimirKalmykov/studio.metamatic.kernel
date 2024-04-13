@@ -234,6 +234,7 @@ namespace Metamatic
             }
             if (m_InputPin != null)
             {
+                Debug.LogWarning("Input pin is null!");
                 DisconnectInput();
             }
             /* Connect input pin to this pin */
@@ -330,7 +331,7 @@ namespace Metamatic
         private Action m_DebugUnsubscribeWire;
         void OnEnable()
         {
-            m_DebugUnsubscribeWire = wire.SubscribeRef(DebugHandleChangeTyped);
+            m_DebugUnsubscribeWire = wire.DebugSubscribeRef(DebugHandleChangeTyped);
             if (debug_Inspect && !s_Inspect.Contains(this))
             {
                 AddToInspect(this);

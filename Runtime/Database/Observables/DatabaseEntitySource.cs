@@ -7,7 +7,7 @@ namespace Metamatic
             
         }
         
-        public DatabaseEntitySource(ReadOnlyMicroState<string> source) : base(source)
+        public DatabaseEntitySource(MicroStateReadOnly<string> source) : base(source)
         {
             SetProxy(source);
         }

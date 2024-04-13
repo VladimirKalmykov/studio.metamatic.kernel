@@ -17,7 +17,7 @@ namespace Metamatic
         public TValue value { get; }
         public DisposableAction Subscribe(Action<TValue> handler);
     }
-    public abstract class ReadOnlyMicroState<TValue>: MicroStateBase, IObservableValue<TValue>
+    public abstract class MicroStateReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>
     {
         private event Action<TValue> OnChange;
         private CancellationTokenSource m_DisposeCancellationTokenSource;
@@ -28,20 +28,12 @@ namespace Metamatic
             set => SetValue(value);
         }
 
-        public ReadOnlyMicroState()
+        public MicroStateReadOnly()
         {
             m_DisposeCancellationTokenSource = new CancellationTokenSource();
         }
 
-        public DisposableAction Subscribe(Action<TValue> handler)
-        {
-            OnChange += handler;
-            handler(GetValue());
-            return new DisposableAction(() =>
-            {
-                OnChange -= handler;
-            });
-        }
+        public abstract DisposableAction Subscribe(Action<TValue> handler);
         
         public Action SubscribeOnce(Action<TValue> handler)
         {
@@ -176,6 +168,15 @@ namespace Metamatic
         {
             OnChange?.Invoke(v);
         }
+        protected void AddListener(Action<TValue> handler)
+        {
+            OnChange += handler;
+        }
+        
+        protected void RemoveListener(Action<TValue> handler)
+        {
+            OnChange -= handler;
+        }
 
         public abstract TValue GetValue();
 
@@ -188,7 +189,7 @@ namespace Metamatic
         }
     }
 
-    public class MicroState<TValue> : ReadOnlyMicroState<TValue>
+    public class MicroState<TValue> : MicroStateReadOnly<TValue>
     {
         private TValue m_Value;
         public delegate void MutateHandler(ref TValue value);
@@ -196,6 +197,16 @@ namespace Metamatic
         public MicroState(TValue initialValue = default)
         {
             m_Value = initialValue;
+        }
+
+        public override DisposableAction Subscribe(Action<TValue> handler)
+        {
+            AddListener(handler);
+            handler(GetValue());
+            return new DisposableAction(() =>
+            {
+                RemoveListener(handler);
+            });
         }
 
         public override TValue GetValue()
@@ -219,13 +230,19 @@ namespace Metamatic
         }
     }
 
-    public class MicroStateGetter<TValue> : ReadOnlyMicroState<TValue>
+    public class MicroStateGetter<TValue> : MicroStateReadOnly<TValue>
     {
         private Func<TValue> m_Getter;
         public MicroStateGetter(Func<TValue> getter) : base()
         {
             m_Getter = getter;
         }
+
+        public override DisposableAction Subscribe(Action<TValue> handler)
+        {
+            throw new NotImplementedException();
+        }
+
         public override TValue GetValue()
         {
             return m_Getter != null ? m_Getter.Invoke() : default;
@@ -242,22 +259,50 @@ namespace Metamatic
         }
     }
 
-    public class MicroStateProxy<TValue> : ReadOnlyMicroState<TValue>
+    public class MicroStateProxy<TValue> : MicroStateReadOnly<TValue>, IDisposable
     {
-        protected Action pluginUnsubscribe;
-        protected ReadOnlyMicroState<TValue> pluggedIn;
+        protected readonly MicroState<MicroStateReadOnly<TValue>> m_Proxy = new MicroState<MicroStateReadOnly<TValue>>();
         public MicroStateProxy(): base()
         {
             
         }
-        public MicroStateProxy(ReadOnlyMicroState<TValue> other): base()
+        public MicroStateProxy(MicroStateReadOnly<TValue> other): base()
         {
             SetProxy(other);
         }
-        
+
+        ~MicroStateProxy()
+        {
+            Dispose();
+        }
+
+        public override DisposableAction Subscribe(Action<TValue> handler)
+        {
+            Action releaseValueListener = default;
+            var releaseProxyListener = m_Proxy.Subscribe((MicroStateReadOnly<TValue> value) =>
+            {
+                releaseValueListener?.Invoke();
+                if (value != null)
+                {
+                    releaseValueListener = value.Subscribe(handler);
+                }
+            });
+            return new DisposableAction(() =>
+            {
+                releaseValueListener?.Invoke();
+                releaseProxyListener?.Invoke();
+                releaseValueListener = null;
+                releaseProxyListener = null;
+            });
+        }
+
         public override TValue GetValue()
         {
-            return pluggedIn.value;
+            if (m_Proxy == null)
+            {
+                throw new NullReferenceException("Proxy value is null");
+            }
+            return m_Proxy.value.GetValue();
         }
 
         public override void SetValue(TValue value)
@@ -268,30 +313,16 @@ namespace Metamatic
         /// <summary>
         /// Plug another observable value to get its value every time it changed
         /// </summary>
-        /// <param name="other"></param>
-        public void SetProxy(ReadOnlyMicroState<TValue> other)
+        /// <param name="proxy"></param>
+        public void SetProxy(MicroStateReadOnly<TValue> proxy)
         {
-            if (other == null)
-            {
-                Unplug();
-                return;
-            }
-            pluginUnsubscribe?.Invoke();
-            pluggedIn = other;
-            pluginUnsubscribe = other.Subscribe(v =>
-            {
-                EmitValue(v);
-            });
-            EmitValue(other.value);
+            m_Proxy.value = proxy;
         }
         
-        public void Unplug()
+        public void Dispose()
         {
-            if (pluggedIn != null)
-            {
-                pluggedIn = null;
-                pluginUnsubscribe?.Invoke();
-            }
+            m_Proxy.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

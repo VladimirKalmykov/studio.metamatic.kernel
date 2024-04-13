@@ -18,7 +18,7 @@ namespace Metamatic
         public CancellationToken showOperationCancellationToken => m_ShowOperationCancellationTokenSource.Token;
         public CancellationToken hideOperationCancellationToken => m_HideOperationCancellationTokenSource.Token;
         private readonly MicroState<bool> m_Busy = new MicroState<bool>(false);
-        public ReadOnlyMicroState<bool> busy => m_Busy;
+        public MicroStateReadOnly<bool> busy => m_Busy;
         protected State state { get; set; } = State.Hiding;
         protected virtual void OnEnable()
         {

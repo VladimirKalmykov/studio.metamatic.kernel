@@ -165,6 +165,16 @@ namespace Metamatic
             });
             settings.Add(autoConnectByNameToggle);
             
+            /* Debug mode toggle (boolean switcher) */
+            // var debugModeProp = serializedObject.FindProperty("debugMode");
+            // var debugModeToggle = new Toggle("Debug Mode")
+            // {
+            //     bindingPath = debugModeProp.propertyPath
+            // };
+            // debugModeToggle.BindProperty(debugModeProp);
+            // settings.Add(debugModeToggle);
+            
+            
             /* Socket name */
             var socketNameProp = serializedObject.FindProperty("socketName");
             var socketNameField = m_SocketNameElement = new TextField("Socket Name")

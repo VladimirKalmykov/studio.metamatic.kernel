@@ -16,7 +16,7 @@ namespace Metamatic.UI
     public class UIOverlay: UIBehaviour
     {
         private static MicroState<UIOverlay> _Instance = new();
-        public static ReadOnlyMicroState<UIOverlay> Instance => _Instance;
+        public static MicroStateReadOnly<UIOverlay> Instance => _Instance;
         [ShowInInspector, LabelText("Acquire count")]
         private int m_AcquireCount = 0;
         private CancellationTokenSource m_ReleaseCancellationTokenSource;

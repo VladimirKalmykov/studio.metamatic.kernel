@@ -12,10 +12,10 @@ namespace Metamatic
         /// Used for unsubscribe branch
         /// </summary>
         private Action m_UnsubscribeBranch;
-        private ReadOnlyMicroState<DatabaseStore<TState>> m_ObservableStore = new MicroState<DatabaseStore<TState>>();
+        private MicroStateReadOnly<DatabaseStore<TState>> m_ObservableStore = new MicroState<DatabaseStore<TState>>();
         
         #if DEBUG
-        public ReadOnlyMicroState<DatabaseStore<TState>> debugObservableStore
+        public MicroStateReadOnly<DatabaseStore<TState>> debugObservableStore
         {
             get
             {

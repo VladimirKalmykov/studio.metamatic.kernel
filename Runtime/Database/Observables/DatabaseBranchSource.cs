@@ -7,7 +7,7 @@ namespace Metamatic
             
         }
         
-        public DatabaseBranchSource(ReadOnlyMicroState<string> other) : base(other)
+        public DatabaseBranchSource(MicroStateReadOnly<string> other) : base(other)
         {
             
         }

@@ -49,7 +49,7 @@ namespace Metamatic
             m_BrancheSource ??= new DatabaseBranchSource(GetBranchNameSource());
         public DatabaseEntitySource entitySource => m_EntitySource ??= new DatabaseEntitySource(GetEntityNameSource());
 
-        private ReadOnlyMicroState<string> GetEntityNameSource()
+        private MicroStateReadOnly<string> GetEntityNameSource()
         {
             if (useEntityAsSource)
             {
@@ -68,7 +68,7 @@ namespace Metamatic
             }
         }
 
-        private ReadOnlyMicroState<string> GetBranchNameSource()
+        private MicroStateReadOnly<string> GetBranchNameSource()
         {
             switch (branchNameSource)
             {

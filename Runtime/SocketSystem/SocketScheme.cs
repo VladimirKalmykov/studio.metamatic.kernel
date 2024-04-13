@@ -325,6 +325,7 @@ namespace Metamatic
                 thatInput?.DisconnectInput();
             }
             
+            
             /* Wo don't need to disconnect output pins manually, because they will be disconnected automatically when disconnect their input pins */
             /* foreach (var thisOutput in thisOutputPins)
             {
@@ -337,6 +338,7 @@ namespace Metamatic
 
             if (doNotReconnectedOthers)
             {
+                ReconnectOut(ConnectionType.None);
                 return;
             }
 
@@ -365,6 +367,12 @@ namespace Metamatic
                 DisconnectLoopbackConnection();
             }
             ReconnectOut(ConnectionType.None);
+            /* Dispose input schemes */
+            if (m_ConnectedInScheme != null)
+            {
+                m_ConnectedInScheme.DisconnectPlug(this, true);
+            }
+            
             /* Dispose virtual pins */
             if (m_IsVirtual)
             {

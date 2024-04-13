@@ -109,7 +109,7 @@ namespace Metamatic
         private MicroState<IStore.DataSource> m_DataSource = new(IStore.DataSource.Default);
         public IStore.DataSource dataSource => m_DataSource.value;
         private MicroState<IOStatuses> m_IOStatus = new(IOStatuses.Idle);
-        public ReadOnlyMicroState<IOStatuses> IOStatus => m_IOStatus;
+        public MicroStateReadOnly<IOStatuses> IOStatus => m_IOStatus;
         private int m_ReferenceCount;
         public readonly string name;
         private T m_PersistentValue;
