@@ -27,6 +27,8 @@ namespace Metamatic
             get => GetValue();
             set => SetValue(value);
         }
+        
+        public abstract bool HasValue();
 
         public MicroStateReadOnly()
         {
@@ -199,6 +201,11 @@ namespace Metamatic
             m_Value = initialValue;
         }
 
+        public override bool HasValue()
+        {
+            return true;
+        }
+
         public override DisposableAction Subscribe(Action<TValue> handler)
         {
             AddListener(handler);
@@ -236,6 +243,11 @@ namespace Metamatic
         public MicroStateGetter(Func<TValue> getter) : base()
         {
             m_Getter = getter;
+        }
+
+        public override bool HasValue()
+        {
+            return m_Getter != null;
         }
 
         public override DisposableAction Subscribe(Action<TValue> handler)
@@ -295,12 +307,17 @@ namespace Metamatic
                 releaseProxyListener = null;
             });
         }
+        
+        public override bool HasValue()
+        {
+            return m_Proxy.value != null;
+        }
 
         public override TValue GetValue()
         {
             if (m_Proxy == null)
             {
-                throw new NullReferenceException("Proxy value is null");
+                throw new NullReferenceException("Proxy value is null. Check HasValue() before calling GetValue()");
             }
             return m_Proxy.value.GetValue();
         }
