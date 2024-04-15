@@ -68,7 +68,6 @@ namespace Metamatic
         protected abstract Type[] GetOutputPinTypes();
         public abstract SocketScheme socketScheme { get; }
         private void OnTransformParentChanged() {
-            Debug.Log($"Transform parent changed! {name}, {autoConnect}");
             if (autoConnect == AutoConnectStrategies.Hierarchical)
             {
                 AutoConnectToParent();
