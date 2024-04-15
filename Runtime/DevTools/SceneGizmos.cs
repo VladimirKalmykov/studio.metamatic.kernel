@@ -26,7 +26,7 @@ namespace Metamatic.DevTools
             return go.AddComponent<SceneGizmos>();  
         }
 
-        private class Gizmo
+        public class Gizmo
         {
             public Color color = Color.white;
             public delegate void Drawer(Gizmo gizmo);
@@ -66,15 +66,38 @@ namespace Metamatic.DevTools
             }, color, duration));
             #endif
         }
+        
+        public static DisposableAction AddGizmoRenderer(Gizmo.Drawer drawer, Color color = default, float duration = 1f)
+        {
+            #if UNITY_EDITOR
+            var gizmoRenderer = new Gizmo(drawer, color, duration);
+            instance.gizmos.Add(gizmoRenderer);
 
-        public static void AddRay(Vector3 position, Vector3 direction, float distance, Color color = default, float duration = 1f)
+            return new DisposableAction(() =>
+            {
+                instance.gizmos.Remove(gizmoRenderer);
+            });
+            #else
+            return new DisposableAction(() => {});
+            #endif
+        }
+
+        public static DisposableAction AddRay(Vector3 position, Vector3 direction, float distance, Color color = default, float duration = 1f)
         {
             #if UNITY_EDITOR
             var endPosition = position + (direction.normalized * distance);
-            instance.gizmos.Add(new Gizmo(gizmo =>
+            var gizmoRenderer = new Gizmo(gizmo =>
             {
-                Handles.DrawLine(position, endPosition);
-            }, color, duration));
+                Handles.DrawDottedLine(position, endPosition, 5f);
+            }, color, duration);
+            instance.gizmos.Add(gizmoRenderer);
+
+            return new DisposableAction(() =>
+            {
+                instance.gizmos.Remove(gizmoRenderer);
+            });
+            #else
+            return new DisposableAction(() => {});
             #endif
         }
 
