@@ -22,7 +22,7 @@ namespace Metamatic
         public SerializableDataPackage(T value, Metadata metadata = default) {
             this.value = value;
             /* Read version from VersionAttribute of T, if exists. Or use default version: 0.0 */
-            var version = VersionAttribute.GetVersion<T>("0.0");
+            var version = VersionAttribute.GetVersion<T>();
             this.metadata.typeVersion = version;
         }
     }

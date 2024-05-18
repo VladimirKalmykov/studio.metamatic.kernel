@@ -152,9 +152,9 @@ namespace Metamatic
             return WithStore((store, token) => store.Pull(token), cancellationToken);
         }
 
-        public UniTask Save(CancellationToken cancellationToken = default)
+        public UniTask Push(CancellationToken cancellationToken = default)
         {
-            return WithStore((store, token) => store.Save(token), cancellationToken);
+            return WithStore((store, token) => store.Push(token), cancellationToken);
         }
 
         public UniTask WaitUntilIdle(CancellationToken cancellationToken = default)
@@ -192,9 +192,9 @@ namespace Metamatic
             m_MicroStore.value.Mutate(mutationHandler);
         }
 
-        public void TransformValue(Func<T, T> transformHandler)
+        public void Modify(Func<T, T> transformHandler, bool commit = false)
         {
-            m_MicroStore.value.TransformValue(transformHandler);
+            m_MicroStore.value.Modify(transformHandler, commit);
         }
 
         public DisposableAction Subscribe(Action<T> handler)

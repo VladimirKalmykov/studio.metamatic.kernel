@@ -107,7 +107,7 @@ namespace Metamatic
         private UniTaskCompletionSource<T> m_UniTaskCompletionSource = new UniTaskCompletionSource<T>();
         private bool m_Resolved = false;
         private bool m_Rejected = false;
-        public UniTask<T> task => m_UniTaskCompletionSource.Task;
+        public UniTask<T> Task => m_UniTaskCompletionSource.Task;
         public T Result { get; private set; }
         public Exception Exception { get; private set; }
         public event Action<Exception> OnError;
@@ -184,7 +184,9 @@ namespace Metamatic
 
         public ValueTask DisposeAsync()
         {
-            throw new NotImplementedException();
+            m_CancellationTokenSource.Cancel();
+            OnDispose?.Invoke();
+            return new ValueTask();
         }
     }
     

@@ -26,7 +26,7 @@ namespace Metamatic
         }
 
         public UniTask Pull(CancellationToken token = default);
-        public UniTask Save(CancellationToken token = default);
+        public UniTask Push(CancellationToken token = default);
         public UniTask WaitUntilIdle(CancellationToken cancellationToken = default);
         public UniTask WaitUntilSynchronized(CancellationToken cancellationToken = default);
         public void CommitChanges();
@@ -108,7 +108,7 @@ namespace Metamatic
         public T value { get; }
         public void SetValue(T nextValue);
         public void Mutate(MutateHandler mutationHandler);
-        public void TransformValue(Func<T, T> transformHandler);
+        public void Modify(Func<T, T> transformHandler, bool commit = false);
         public DisposableAction Subscribe(Action<T> handler);
         public Action SubscribeMetadata(Action<T, Metadata> handler);
         public UniTask Pull(bool populate = false, CancellationToken token = default, T defaultValue = default);

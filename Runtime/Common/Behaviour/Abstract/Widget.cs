@@ -16,7 +16,9 @@ namespace Metamatic
         private CancellationTokenSource m_ShowOperationCancellationTokenSource;
         private CancellationTokenSource m_HideOperationCancellationTokenSource;
         public CancellationToken showOperationCancellationToken => m_ShowOperationCancellationTokenSource.Token;
-        public CancellationToken hideOperationCancellationToken => m_HideOperationCancellationTokenSource.Token;
+
+        public CancellationToken hideOperationCancellationToken =>
+            m_HideOperationCancellationTokenSource?.Token ?? CancellationToken.None;
         private readonly MicroState<bool> m_Busy = new MicroState<bool>(false);
         public MicroStateReadOnly<bool> busy => m_Busy;
         protected State state { get; set; } = State.Hiding;
@@ -29,8 +31,6 @@ namespace Metamatic
         {
             CancelShowOperation();
             CancelHideOperation();
-            ClearShowOperation();
-            ClearHideOperation();
             Invoke("DelayedReset", 0.1f);
         }
         
@@ -88,7 +88,6 @@ namespace Metamatic
             m_HideOperationCancellationTokenSource = null;
         }
         
-        [Button, DisableInEditorMode]
         public async UniTask Show(CancellationToken cancellationToken = default)
         {
            
@@ -123,7 +122,6 @@ namespace Metamatic
             }
         }
         
-        [Button, DisableInEditorMode]
         public async UniTask Hide()
         {
             if (state == State.Hiding)

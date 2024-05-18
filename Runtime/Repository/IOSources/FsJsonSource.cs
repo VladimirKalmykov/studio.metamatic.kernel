@@ -7,6 +7,7 @@ using UniTask = Cysharp.Threading.Tasks.UniTask;
 namespace Metamatic
 {
     [PlatformCompatible(RuntimePlatform.WindowsPlayer)]
+    [PlatformCompatible(RuntimePlatform.WindowsEditor)]
     public class FsJsonSource: IOSource
     {
         public override AsyncReadOperation<T> Read<T>(string name, CancellationToken token)

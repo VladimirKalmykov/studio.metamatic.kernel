@@ -160,6 +160,7 @@ namespace Metamatic
                 /* Migrate */
                 var oldVersionType = VersionAttribute.GetTypeForSpecifiedVersion<T>(testData.metadata.typeVersion);
                 Debug.Log($"Old version type is {oldVersionType}");
+                Debug.Assert(oldVersionType != null, "Old version type is not supported");
                 if (oldVersionType != null)
                 {
                     Type genericType = typeof(SerializableDataPackage<>);
@@ -173,6 +174,10 @@ namespace Metamatic
                         var migratedData = Migrate(testData.metadata.typeVersion, value);
                         SetResult(migratedData);
                     }
+                }
+                else
+                {
+                    SetResult(default);
                 }
             }
             else

@@ -150,9 +150,13 @@ namespace Metamatic
         /// Transform dirty value
         /// </summary>
         /// <param name="transformHandler"></param>
-        public void TransformValue(Func<T, T> transformHandler)
+        public void Modify(Func<T, T> transformHandler, bool commit = false)
         {
             m_CurrentBranch.value.value = transformHandler(m_CurrentBranch.value.value);
+            if (commit)
+            {
+                CommitChanges();
+            }
         }
         
         /// <summary>
@@ -363,7 +367,7 @@ namespace Metamatic
         /// Save to persistent storage
         /// </summary>
         /// <returns></returns>
-        public async UniTask Save(CancellationToken token = default)
+        public async UniTask Push(CancellationToken token = default)
         {
             try
             {
@@ -438,7 +442,7 @@ namespace Metamatic
             m_CurrentBranch.value.Reset();
             if (save)
             {
-                await Save(token);
+                await Push(token);
             }
         }
         
@@ -450,7 +454,7 @@ namespace Metamatic
             CommitChanges();
             if (save)
             {
-                await Save(token);
+                await Push(token);
             }
         }
         
@@ -468,7 +472,7 @@ namespace Metamatic
             }
             if (save)
             {
-                await Save(token);
+                await Push(token);
             }
         }
         
