@@ -55,7 +55,7 @@ namespace Metamatic
                 objectFromPool.Release();
                 return;
             }
-            var origin = instance.GetComponent<InstanceOrigin>();
+            /* var origin = instance.GetComponent<InstanceOrigin>();
             if (origin != null)
             {
                 UnityEngine.Object.Destroy(instance.gameObject);
@@ -63,7 +63,8 @@ namespace Metamatic
             else
             {
                 instance.transform.SetParent(null);
-            }
+            }*/
+            UnityEngine.Object.Destroy(instance.gameObject);
         }
     }
 }
