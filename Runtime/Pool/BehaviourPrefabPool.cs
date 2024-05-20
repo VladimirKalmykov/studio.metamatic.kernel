@@ -10,6 +10,14 @@ namespace Metamatic
         where T: MonoBehaviour
     {
         private readonly ObjectPool<T> m_Pool;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="prefab"></param>
+        /// <param name="parentTransform"></param>
+        /// <param name="collectionCheck">Set false for best performance, true for more accuracy</param>
+        /// <param name="defaultCapacity"></param>
+        /// <param name="maxSize"></param>
         public BehaviourPrefabPool(T prefab, Transform parentTransform = null, bool collectionCheck = true, int defaultCapacity = 10, int maxSize = 10000)
         {
             m_Pool = new ObjectPool<T>(
@@ -64,6 +72,7 @@ namespace Metamatic
         public int CountInactive => m_Pool.CountInactive;
         public void Dispose()
         {
+            Clear();
             m_Pool?.Dispose();
         }
     }
