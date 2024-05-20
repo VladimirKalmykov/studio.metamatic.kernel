@@ -5,6 +5,7 @@ namespace Metamatic
     public class ObjectFromPool : Releasable
     {
         private Action m_ReleaseAction;
+        private bool m_ReleasedManually;
         /// <summary>
         /// If you want to do something when object is released, set this action.
         /// </summary>
@@ -20,6 +21,7 @@ namespace Metamatic
         }
         public override void Release()
         {
+            m_ReleasedManually = true;
             if (m_ReleaseAction != null)
             {
                 m_ReleaseAction();
@@ -27,6 +29,19 @@ namespace Metamatic
             else
             {
                 gameObject.SetActive(false);
+            }
+        }
+
+        private void OnEnable()
+        {
+            m_ReleasedManually = false;
+        }
+
+        private void OnDisable()
+        {
+            if (!m_ReleasedManually)
+            {
+                Release();
             }
         }
     }

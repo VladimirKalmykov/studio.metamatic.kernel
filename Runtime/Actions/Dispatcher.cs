@@ -301,7 +301,7 @@ namespace Metamatic.Actions
             });
             releaseSubscription = SubscribeRegistry<TKey, TValue>(id, source =>
             {
-                if (cancellationToken.IsCancellationRequested)
+                if (cancellationToken.IsCancellationRequested || source == null)
                 {
                     return;
                 }

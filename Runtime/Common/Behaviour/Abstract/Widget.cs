@@ -153,16 +153,20 @@ namespace Metamatic
             }
         }
 
-        protected abstract void BeforeShow();
+        protected virtual void BeforeShow() {}
 
         protected abstract UniTask PerformShow(CancellationToken cancellationToken = default);
 
-        protected abstract void AfterShow();
+        protected virtual void AfterShow() {}
 
-        protected abstract void BeforeHide();
+        protected virtual void BeforeHide()
+        {
+        }
 
         protected abstract UniTask PerformHide(CancellationToken cancellationToken = default);
 
-        protected abstract void AfterHide();
+        protected virtual void AfterHide()
+        {
+        }
     }
 }

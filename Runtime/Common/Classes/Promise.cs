@@ -121,4 +121,111 @@ namespace Metamatic
     {
         public Promise(InitializeHandler initializer, CancellationToken cancellationToken = default): base(initializer, cancellationToken) {}
     }
+    
+    public class UniPromise
+    {
+        private readonly TaskCompletionSource<object> m_TaskCompletionSource;
+
+        public Task<object> task
+        {
+            get
+            {
+                return m_TaskCompletionSource.Task;
+            }
+        }
+
+        public Task<object> Task
+        {
+            get
+            {
+                return m_TaskCompletionSource.Task;
+            }
+        }
+        
+        public bool isFinalised { get; private set; } = false;
+
+        public delegate void InitializeHandler(Action resolve, Action<Exception> reject, UniPromise self);
+
+        public event Action OnResult;
+        public event Action<Exception> OnError;
+        public event Action OnFinally;
+        public event Action OnCancel;
+        private bool m_Cancelled = false;
+        private CancellationTokenRegistration cancellationTokenRegistration;
+        private CancellationTokenSource m_InternalExecutionCancellationTokenSource;
+
+        public CancellationToken executionCancellationToken
+        {
+            get
+            {
+                return m_InternalExecutionCancellationTokenSource.Token;
+            }
+        }
+        public UniPromise(InitializeHandler initialize, CancellationToken cancellationToken = default)
+        {
+            cancellationTokenRegistration = cancellationToken.Register(Cancel);
+            m_InternalExecutionCancellationTokenSource = new CancellationTokenSource();
+            
+            m_TaskCompletionSource = new TaskCompletionSource<object>();
+            initialize(Complete, SetError, this);
+        }
+        
+        ~UniPromise()
+        {
+            if (!isFinalised)
+            {
+                Finallize();
+            }
+        }
+
+        public void Cancel()
+        {
+            if (m_Cancelled)
+            {
+                return;
+            }
+            m_Cancelled = true;
+            OnCancel?.Invoke();
+            m_TaskCompletionSource.TrySetCanceled();
+            Finallize();
+        }
+        
+        public UniPromise Then(Action onResult)
+        {
+            OnResult += onResult;
+            return this;
+        }
+        
+        public UniPromise Catch(Action<Exception> onError)
+        {
+            OnError += onError;
+            return this;
+        }
+
+        private void Complete()
+        {
+            OnResult?.Invoke();
+            if (!m_TaskCompletionSource.TrySetResult(null))
+            {
+                Debug.LogWarning($"An attempt was made to transition a task to a final state when it had already completed");
+            }
+            Finallize();
+        }
+
+        private void SetError(Exception exception)
+        {
+            OnError?.Invoke(exception);
+            m_TaskCompletionSource.SetException(exception);
+            Finallize();
+        }
+
+        private void Finallize()
+        {
+            m_InternalExecutionCancellationTokenSource.Cancel();
+            cancellationTokenRegistration.Dispose();
+            isFinalised = true;
+            OnFinally?.Invoke();
+            GC.SuppressFinalize(this);
+        }
+    }
 }
