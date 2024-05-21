@@ -18,16 +18,28 @@ namespace Metamatic
         /// <param name="collectionCheck">Set false for best performance, true for more accuracy</param>
         /// <param name="defaultCapacity"></param>
         /// <param name="maxSize"></param>
-        public BehaviourPrefabPool(T prefab, Transform parentTransform = null, bool collectionCheck = true, int defaultCapacity = 10, int maxSize = 10000)
+        public BehaviourPrefabPool(T prefab, bool collectionCheck = true, int defaultCapacity = 10, int maxSize = 10000)
         {
             m_Pool = new ObjectPool<T>(
                 createFunc: () =>
                 {
-                    var instance = UnityEngine.Object.Instantiate(prefab, parentTransform);
+                    var instance = UnityEngine.Object.Instantiate(prefab);
                     instance.gameObject.SetActive(false);
                     instance.gameObject.AddComponent<ObjectFromPool>().SetReleaseAction(() =>
                     {
-                        m_Pool?.Release(instance);
+#if DEBUG
+                        try
+                        {
+#endif
+                            m_Pool.Release(instance);
+#if DEBUG
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogError($"Release object {instance.name} from pool error");
+                            Debug.LogError(e);
+                        }
+#endif
                         instance.gameObject.SetActive(false);
                     });
                     return instance;

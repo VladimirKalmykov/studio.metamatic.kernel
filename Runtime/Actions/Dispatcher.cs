@@ -258,7 +258,34 @@ namespace Metamatic.Actions
             }
             System.Action<object> handlerWrapper = source =>
             {
-                handler((TValue)source);
+                try
+                {
+                    #if DEBUG
+                    if (handler == null)
+                    {
+                        Debug.LogError("Handler is null");
+                        return;
+                    }
+                    #endif
+
+                    if (source == null)
+                    {
+                        Debug.LogWarning("Source is null, but trying to cast to " + typeof(TValue).Name);
+                        handler(default(TValue));
+                    }
+                    else
+                    {
+                        handler((TValue)source);
+                    }
+                }
+                catch (InvalidCastException e)
+                {
+                    Debug.LogError("Invalid cast from " + source.GetType().Name + " to " + typeof(TValue).Name + ": " + e);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
             };
             var releaseSubscription = registry.Subscribe(handlerWrapper);
             return new DisposableAction(() =>

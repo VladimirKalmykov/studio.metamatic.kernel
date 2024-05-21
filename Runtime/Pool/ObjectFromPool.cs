@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -35,14 +36,6 @@ namespace Metamatic
         private void OnEnable()
         {
             m_ReleasedManually = false;
-        }
-
-        private void OnDisable()
-        {
-            if (!m_ReleasedManually)
-            {
-                Release();
-            }
         }
     }
 }
