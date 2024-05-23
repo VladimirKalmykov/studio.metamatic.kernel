@@ -11,6 +11,9 @@ namespace Metamatic
         private bool m_IsDisabled = false;
         public delegate UniTask RunAsyncHandler(CancellationToken cancellationToken);
         public CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource.Token;
+        
+        private event Action OnValidateEvent;
+        private event Action OnDrawGizmosEvent;
 
         public CancellationToken componentDisableToken
         {
@@ -60,5 +63,29 @@ namespace Metamatic
         {
             return handler(componentDisableToken);
         }
+        
+        protected DisposableAction SubscribeValidate(Action action)
+        {
+            OnValidateEvent += action;
+            return new DisposableAction(() => OnValidateEvent -= action);
+        }
+        
+        protected DisposableAction SubscribeDrawGizmos(Action action)
+        {
+            OnDrawGizmosEvent += action;
+            return new DisposableAction(() => OnDrawGizmosEvent -= action);
+        }
+
+        #if UNITY_EDITOR
+        protected void OnValidate()
+        {
+            OnValidateEvent?.Invoke();
+        }
+
+        protected void OnDrawGizmos()
+        {
+            OnDrawGizmosEvent?.Invoke();
+        }
+        #endif
     }
 }

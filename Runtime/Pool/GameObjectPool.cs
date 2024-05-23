@@ -42,8 +42,6 @@ namespace Metamatic
                             }
  #endif
                         }
-                        
-                        instance.SetActive(false);
                     });
                     return instance;
                 },
@@ -95,6 +93,7 @@ namespace Metamatic
         public int CountInactive => m_Pool.CountInactive;
         public void Dispose()
         {
+            Debug.Log("Dispose pull");
             Clear();
             m_Pool?.Dispose();
         }

@@ -41,6 +41,24 @@ namespace Metamatic
             return ticker;
         }
         
+        public static DisposableAction PlayerLoopAction(Action callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, CancellationToken cancellationToken = default)
+        {
+            var active = true;
+            UniTask.WaitUntil(() =>
+            {
+                if (!active) return true;
+                callback();
+                
+                return !active;
+
+            }, timing, cancellationToken).Forget();
+            
+            return new DisposableAction(() =>
+            {
+                active = false;
+            });
+        }
+        
         public static UniTask PlayerLoopAction(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, CancellationToken cancellationToken = default)
         {
             var startTime = Time.time;
