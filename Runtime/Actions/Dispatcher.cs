@@ -343,6 +343,52 @@ namespace Metamatic.Actions
         {
             return WhenRegistered<Dispatcher, TValue>(this, cancellationToken);
         }
+        
+        public TValue GetRegistry<TKey, TValue>(TKey id) where TValue : notnull
+        {
+            var keyType = typeof(TKey);
+            var valueType = typeof(TValue);
+            if (m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
+            {
+                if (keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
+                {
+                    if (valueTypeDictionary.TryGetValue(id, out var registry))
+                    {
+                        return (TValue)registry.Subject;
+                    }
+                }
+            }
+            
+            return default;
+        }
+        
+        public T GetRegistry<T>() where T : notnull
+        {
+            return GetRegistry<Dispatcher, T>(this);
+        }
+        
+        public bool HasRegistry<TKey, TValue>(TKey id) where TValue : notnull
+        {
+            var keyType = typeof(TKey);
+            var valueType = typeof(TValue);
+            if (m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
+            {
+                if (keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
+                {
+                    if (valueTypeDictionary.TryGetValue(id, out var registry))
+                    {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        public bool HasRegistry<T>() where T : notnull
+        {
+            return HasRegistry<Dispatcher, T>(this);
+        }
 
         #endregion
     }

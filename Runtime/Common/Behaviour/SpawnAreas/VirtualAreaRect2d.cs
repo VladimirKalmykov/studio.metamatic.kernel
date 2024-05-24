@@ -33,10 +33,10 @@ namespace Metamatic
                 return worldRect;
             }
         }
-        public override Vector2 GetRandomPosition()
+        public override Vector2 GetRandomPosition(bool local = false)
         {
             /* Get random position on rect */
-            var worldRect = this.rect;
+            var worldRect = local ? m_Rect : this.rect;
             return new Vector3(UnityEngine.Random.Range(worldRect.xMin, worldRect.xMax), UnityEngine.Random.Range(worldRect.yMin, worldRect.yMax));
         }
 

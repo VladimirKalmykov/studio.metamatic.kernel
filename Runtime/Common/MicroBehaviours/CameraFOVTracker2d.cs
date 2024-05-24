@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
@@ -12,11 +13,37 @@ namespace Metamatic.MicroBehaviours
     /// </summary>
     public class CameraFOVTracker2d: MicroBehaviour
     {
+        private class AreaTracker
+        {
+            public readonly VirtualArea2d area;
+            public int acquirings = 0;
+            /// <summary>
+            /// Activator for the area (null if not activated)
+            /// </summary>
+            public VirtualArea2d.Activator activator;
+            /// <summary>
+            /// Refers to the active rect of camera FOV which is currently overlaps area
+            /// </summary>
+            public Rect activeRect;
+            public AreaTracker(VirtualArea2d area)
+            {
+                this.area = area;
+            }
+            
+            public void Acquire()
+            {
+                acquirings++;
+            }
+            public void Release()
+            {
+                acquirings--;
+            }
+        }
         private Camera m_CustomCamera;
         private float m_InnerBuffer;
         private float m_OuterBuffer;
-        private IReadOnlyList<VirtualArea2d> m_TrackedAreas;
-        private IReadOnlyList<Transform> m_TrackedTransforms;
+        private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreas;
+        private List<Transform> m_TrackedTransforms;
         private float m_ZDepth;
         private Rect[] m_SideRects;
 
@@ -32,16 +59,14 @@ namespace Metamatic.MicroBehaviours
             set => m_OuterBuffer = value;
         }
 
-        public IReadOnlyList<VirtualArea2d> trackedAreas
+        private IReadOnlyDictionary<VirtualArea2d, AreaTracker> trackedAreas
         {
             get => m_TrackedAreas;
-            set => m_TrackedAreas = value;
         }
 
         public IReadOnlyList<Transform> trackedTransforms
         {
             get => m_TrackedTransforms;
-            set => m_TrackedTransforms = value;
         }
 
         public float zDepth
@@ -49,14 +74,35 @@ namespace Metamatic.MicroBehaviours
             get => m_ZDepth;
             set => m_ZDepth = value;
         }
-        private Rect[] sideRects => m_SideRects;
+        private bool m_IsTracking = false;
         
         #region Events
-        public event Action<VirtualArea2d, Rect, float> OnAreaOverlapped;
-        public event Action<VirtualArea2d> OnAreaNotOverlapped;
+        public event Action<VirtualArea2d, Rect> OnAreaActivated;
+        public event Action<VirtualArea2d> OnAreaDisactivated;
         public event Action<Transform> OnTransformOverlapped;
         public event Action<Transform> OnTransformNotOverlapped;
-        public event Action OnPostTrack;
+        public event Action OnPostTracking;
+        
+        public DisposableAction SubscribeOnAreaOverlapped(Action<VirtualArea2d, Rect> action)
+        {
+            OnAreaActivated += action;
+            return new DisposableAction(() => OnAreaActivated -= action);
+        }
+        public DisposableAction SubscribeOnAreaNotOverlapped(Action<VirtualArea2d> action)
+        {
+            OnAreaDisactivated += action;
+            return new DisposableAction(() => OnAreaDisactivated -= action);
+        }
+        public DisposableAction SubscribeOnTransformOverlapped(Action<Transform> action)
+        {
+            OnTransformOverlapped += action;
+            return new DisposableAction(() => OnTransformOverlapped -= action);
+        }
+        public DisposableAction SubscribeOnTransformNotOverlapped(Action<Transform> action)
+        {
+            OnTransformNotOverlapped += action;
+            return new DisposableAction(() => OnTransformNotOverlapped -= action);
+        }
         #endregion
         
         public Camera camera
@@ -70,6 +116,7 @@ namespace Metamatic.MicroBehaviours
 
                 return m_CustomCamera;
             }
+            set => m_CustomCamera = value;
         }
         /// <summary>
         /// 
@@ -88,30 +135,132 @@ namespace Metamatic.MicroBehaviours
             float innerBuffer = 0f,
             float outerBuffer = 1f,
             float zDepth = 0f,
-            IReadOnlyList<VirtualArea2d> trackAreas = null,
-            IReadOnlyList<Transform> trackedTransforms = null
+            bool autoRun = true
             ): base()
         {
             m_CustomCamera = camera;
             this.m_InnerBuffer = innerBuffer;
             this.m_OuterBuffer = outerBuffer;
-            this.m_TrackedAreas = trackAreas;
-            this.m_TrackedTransforms = trackedTransforms;
+            this.m_TrackedAreas = new Dictionary<VirtualArea2d, AreaTracker>();
+            this.m_TrackedTransforms = new List<Transform>();
             this.m_ZDepth = zDepth;
 
-            Run();
+            if (autoRun)
+            {
+                Run();
+            }
+        }
+        
+        public bool ContainsArea(VirtualArea2d area)
+        {
+            return m_TrackedAreas.ContainsKey(area);
+        }
+        
+        public void TrackArea(VirtualArea2d area)
+        {
+            SafeExecute(() =>
+            {
+                if (m_TrackedAreas.TryGetValue(area, out var tracker))
+                {
+                    tracker.Acquire();
+                    return;
+                }
+                m_TrackedAreas.Add(area, new AreaTracker(area));
+            });
+        }
+        
+        public void UntrackArea(VirtualArea2d area)
+        {
+            SafeExecute(() =>
+            {
+                if (m_TrackedAreas.TryGetValue(area, out var tracker))
+                {
+                    tracker.Release();
+                    if (tracker.acquirings == 0)
+                    {
+                        m_TrackedAreas.Remove(area);
+                    }
+                }
+            });
+        }
+        
+        public void TrackAreas(IEnumerable<VirtualArea2d> areas)
+        {
+            SafeExecute(() =>
+            {
+                foreach (var area in areas)
+                {
+                    TrackArea(area);
+                }
+            });
+        }
+        
+        public bool HasObject(Transform t)
+        {
+            return m_TrackedTransforms.Contains(t);
+        }
+        
+        public void TrackObject(Transform t)
+        {
+            SafeExecute(() =>
+            {
+                if (m_TrackedTransforms.Contains(t)) return;
+                m_TrackedTransforms.Add(t);
+            });
+        }
+        
+        public void UntrackObject(Transform t)
+        {
+            SafeExecute(() =>
+            {
+                if (!m_TrackedTransforms.Contains(t)) return;
+                m_TrackedTransforms.Remove(t);
+            });
+        }
+        
+        public void TrackObjects(IEnumerable<Transform> transforms)
+        {
+            SafeExecute(() =>
+            {
+                if (m_TrackedTransforms.Count == 0)
+                {
+                    m_TrackedTransforms.AddRange(transforms);
+                    return;
+                }
+                foreach (var t in transforms)
+                {
+                    TrackObject(t);
+                }
+            });
+        }
+        
+        
+        /// <summary>
+        /// Execute action safely (when not tracking)
+        /// </summary>
+        /// <param name="action"></param>
+        public void SafeExecute(Action action)
+        {
+            if (!m_IsTracking)
+            {
+                action();
+            }
+            else
+            {
+                OnPostTracking += action;
+            }
         }
         
         #region Private Methods
 
         protected override async UniTask Main(CancellationToken cancellationToken)
         {
-            var camera = this.camera;
             Rect previousBounds = default;
             var diceThrower = new UniqueDice(4);
             using var lifecycle = AsyncUtils.PlayerLoopAction(() =>
             {
-                var (mainBounds, innerBufferBounds) = CalculateCameraBounds(camera, m_ZDepth, outerBuffer, innerBuffer);
+                m_IsTracking = true;
+                var (mainBounds, innerBufferBounds) = CalculateCameraBounds(this.camera, m_ZDepth, outerBuffer, innerBuffer);
                 if (previousBounds == mainBounds) return;
                 
                 m_SideRects = new Rect[]
@@ -128,22 +277,37 @@ namespace Metamatic.MicroBehaviours
                     
                 if (m_TrackedAreas != null) {
                     /* Track areas */
-                    foreach (var area in m_TrackedAreas)
+                    foreach (var (area, areaTrack) in m_TrackedAreas)
                     {
                         diceThrower.Reset();
                         int side = 0;
                         while((side = diceThrower.Next()) > -1)
                         {
-                            var t = m_SideRects[side];
-                            var overlapSize = area.OverlapsAreaSize(t);
-                            if (overlapSize > 0f)
+                            var sideRect = m_SideRects[side];
+                            var overlaps = area.Overlaps(sideRect);
+                            if (overlaps)
                             {
-                                OnAreaOverlapped?.Invoke(area, t, overlapSize);
+                                if (areaTrack.activator == null)
+                                {
+                                    areaTrack.activator = new VirtualArea2d.Activator((pos) => areaTrack.activeRect.Contains(pos));
+                                    area.Activate(areaTrack.activator);
+                                }
+                                else
+                                {
+                                    areaTrack.activeRect = sideRect;
+                                    areaTrack.activator.TriggerIntersection();
+                                }
+                                OnAreaActivated?.Invoke(area, sideRect);
                                 break;
                             }
                             else
                             {
-                                OnAreaNotOverlapped?.Invoke(area);
+                                if (areaTrack.activator != null)
+                                {
+                                    area.Deactivate(areaTrack.activator);
+                                    areaTrack.activator = null;
+                                }
+                                OnAreaDisactivated?.Invoke(area);
                             }
                         }
                     }
@@ -164,8 +328,9 @@ namespace Metamatic.MicroBehaviours
                         }
                     }
                 }
-                OnPostTrack?.Invoke();
-                OnPostTrack = null;
+                m_IsTracking = false;
+                OnPostTracking?.Invoke();
+                OnPostTracking = null;
             }, PlayerLoopTiming.FixedUpdate);
 
             await cancellationToken;
