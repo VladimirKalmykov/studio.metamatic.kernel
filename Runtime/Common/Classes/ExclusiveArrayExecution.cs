@@ -23,7 +23,7 @@
             _cancellationTokenRegistration = cancellationToken.Register(CancelAll);
         }
 
-        public void Handle(T[] newItems)
+        public void Handle(IEnumerable<T> newItems)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ExclusiveArrayExecution<T>));

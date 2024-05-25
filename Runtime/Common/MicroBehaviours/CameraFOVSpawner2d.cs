@@ -52,7 +52,7 @@ namespace Metamatic.MicroBehaviours
         {
             using var pool = new GameObjectPool(onCreateObject, false, 10);
             using var areaOverlappedSubscription = cameraFOVTracker.SubscribeOnAreaOverlapped(HandleAreaOverlapped);
-            using var objectNotOverlappedSubscription = cameraFOVTracker.SubscribeOnTransformNotOverlapped(HandleTransformNotOverlapped);
+            using var objectNotOverlappedSubscription = cameraFOVTracker.SubscribeObjectReactivate(HandleTransformNotOverlapped);
             await cancellationToken;
         }
         

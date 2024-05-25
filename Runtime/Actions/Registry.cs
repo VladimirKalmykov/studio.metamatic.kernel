@@ -6,7 +6,7 @@ namespace Metamatic.Actions
     where T : class
     {
         public class Token {}
-        public T Subject { get; private set; } = null;
+        public T value { get; private set; } = null;
         public event System.Action OnRelease;
         public event System.Action<T> OnChange;
         public Registry<T> Registry => new Registry<T>(this);
@@ -18,7 +18,7 @@ namespace Metamatic.Actions
         
         public Token Register(T subject)
         {
-            Subject = subject;
+            value = subject;
             OnChange?.Invoke(subject);
             m_ValueToken = new Token();
             return m_ValueToken;
@@ -27,7 +27,7 @@ namespace Metamatic.Actions
         public bool Release(Token token)
         {
             if (m_ValueToken != token) return false;
-            Subject = null;
+            value = null;
             OnChange?.Invoke(null);
             m_ValueToken = null;
             return true;
@@ -39,7 +39,7 @@ namespace Metamatic.Actions
         /// <returns></returns>
         public bool isEmpty()
         {
-            return Subject == null && OnChange == null;
+            return value == null && OnChange == null;
         }
 
         ~RegistrySource()
@@ -50,7 +50,8 @@ namespace Metamatic.Actions
         public System.Action Subscribe(System.Action<T> handler)
         {
             OnChange += handler;
-            handler(Subject);
+            if (value != null)
+                handler(value);
             return () =>
             {
                 OnChange -= handler;
@@ -71,7 +72,7 @@ namespace Metamatic.Actions
     public struct Registry<T>: IDisposable
     where T : class
     {
-        public T subject => m_Source == null ? default : m_Source.Subject;
+        public T subject => m_Source == null ? default : m_Source.value;
         public bool isDisposed => m_Source == null;
         private RegistrySource<T> m_Source;
 

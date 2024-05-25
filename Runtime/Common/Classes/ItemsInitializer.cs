@@ -16,7 +16,7 @@
     /// initializer.Handler(newItems);
     /// </example>
     /// <typeparam name="T"></typeparam>
-    [Obsolete("Use ExclusiveArrayHandler<T> instead", true)]
+    [Obsolete("Use ExclusiveArrayExecution<T> instead", true)]
     public class ItemsInitializer<T> : IDisposable where T : class
     {
         private readonly Func<T, IDisposable> m_Initializer;

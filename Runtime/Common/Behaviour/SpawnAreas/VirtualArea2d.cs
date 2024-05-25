@@ -1,19 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
 {
     public abstract class VirtualArea2d: VirtualArea
     {
-        public class Activator
+        public class Activator: IDisposable
         {
             private event Action OnIntersection;
+            private event Action OnDeactivation;
             private readonly Func<Vector2, bool> m_Contains;
-            public Activator(Func<Vector2, bool> contains)
+            public readonly VirtualArea2d area;
+            private UniTaskCompletionSource m_UniTaskCompletionSource;
+            private bool m_Disposed;
+            public Activator(VirtualArea2d area, Func<Vector2, bool> contains)
             {
+                this.area = area;
                 m_Contains = contains;
+                m_UniTaskCompletionSource = new UniTaskCompletionSource();
             }
+            ~Activator()
+            {
+                Release();
+            }
+
             public DisposableAction SubscribeIntersections(Action action)
             {
                 OnIntersection += action;
@@ -38,6 +50,39 @@ namespace Metamatic
             {
                 return m_Contains(position);
             }
+            
+            public DisposableAction SubscribeDeactivation(Action action)
+            {
+                OnDeactivation += action;
+                return new DisposableAction(() =>
+                {
+                    OnDeactivation -= action;
+                });
+            }
+            
+            public UniTask WaitDeactivation()
+            {
+                return m_UniTaskCompletionSource.Task;
+            }
+            
+            public void Dispose()
+            {
+                if (m_Disposed)
+                {
+                    throw new System.Exception("Activator is already disposed");
+                }
+                m_Disposed = true;
+                OnDeactivation?.Invoke();
+                OnDeactivation = null;
+                m_UniTaskCompletionSource.TrySetResult();
+                GC.SuppressFinalize(this);
+            }
+            
+            public void Release()
+            {
+                Dispose();
+            }
+            
         }
         public event Action<Activator> onActivated;
         public event Action<Activator> onDeactivated;
@@ -83,6 +128,7 @@ namespace Metamatic
         /// <param name="activator"></param>
         public void Deactivate(Activator activator)
         {
+            
             #if DEBUG
             if (!m_Activators.Contains(activator))
             {

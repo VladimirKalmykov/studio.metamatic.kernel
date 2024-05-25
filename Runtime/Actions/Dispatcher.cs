@@ -354,7 +354,7 @@ namespace Metamatic.Actions
                 {
                     if (valueTypeDictionary.TryGetValue(id, out var registry))
                     {
-                        return (TValue)registry.Subject;
+                        return (TValue)registry.value;
                     }
                 }
             }
@@ -377,7 +377,7 @@ namespace Metamatic.Actions
                 {
                     if (valueTypeDictionary.TryGetValue(id, out var registry))
                     {
-                        return true;
+                        return registry.value != null;
                     }
                 }
             }

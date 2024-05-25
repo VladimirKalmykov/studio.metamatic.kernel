@@ -6,7 +6,7 @@ namespace Metamatic
     {
         private readonly int sides;
         private int usedSidesMask;
-        private int remainingSides;
+        public int remainingSides { get; private set; }
 
         public UniqueDice(int sides)
         {
