@@ -8,7 +8,8 @@ using Random = UnityEngine.Random;
 
 namespace Metamatic.MicroBehaviours
 {
-    public class CameraFOVSpawner2d: MicroBehaviour
+    /*
+     *public class CameraFOVSpawner2d: MicroBehaviour
     {
         class AreaSpawnPoint
         {
@@ -71,21 +72,21 @@ namespace Metamatic.MicroBehaviours
 
         private void HandleAreaOverlapped(VirtualArea2d area, Rect rect)
         {
-            /* Check objects count */
+            /* Check objects count * /
             var maxAreaCount = m_AreaPrebakedSpawnPointsMap[area].Length;
             var currentAreaCount = m_AreaSpawnedObjectMap[area].Count;
             if (currentAreaCount < maxAreaCount)
             {
-                /* Find free area spawn point */
+                /* Find free area spawn point * /
                 AreaSpawnPoint freeAreaSpawnPoint = null;
                 foreach (var areaSpawnPoint in m_AreaPrebakedSpawnPointsMap[area])
                 {
                     if (areaSpawnPoint.spawned == null && rect.Contains(areaSpawnPoint.position))
                     {
                         freeAreaSpawnPoint = areaSpawnPoint;
-                        /* Get random position inside the rect */
+                        /* Get random position inside the rect * /
                         var spawnPosition = freeAreaSpawnPoint.position;
-                        /* Get random object */
+                        /* Get random object * /
                         var go = onCreateObject();
                         go.transform.position = spawnPosition;
                         m_SpawnedObjects.Add(go.transform);
@@ -103,7 +104,7 @@ namespace Metamatic.MicroBehaviours
         public DisposableAction TrackArea(VirtualArea2d area)
         {
             m_AreaSpawnedObjectMap.Add(area, new List<Transform>());
-            /* Generate spawn points on virtual area */
+            /* Generate spawn points on virtual area * /
             var size = area.areaSize;
             var count = Mathf.FloorToInt(Random.Range(minCount * size, maxCount * size));
             var areaSpawnPoints = new AreaSpawnPoint[count];
@@ -142,4 +143,6 @@ namespace Metamatic.MicroBehaviours
             m_CameraFOVTracker.DrawGizmos();
         }
     }
+     * 
+     */
 }

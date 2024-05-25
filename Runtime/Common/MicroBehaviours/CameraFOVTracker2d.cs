@@ -13,13 +13,13 @@ namespace Metamatic.MicroBehaviours
     public class CameraFOVTracker2d: MicroBehaviour
     {
         [Flags]
-        public enum BoundsType
+        public enum FovBoundsType
         {
             None = 0,
             /// <summary>
             /// All bounds including FOV, inner buffer and outer buffer
             /// </summary>
-            All = 1,
+            Full = 1,
             /// <summary>
             /// Only FOV bounds (what camera sees)
             /// </summary>
@@ -50,43 +50,45 @@ namespace Metamatic.MicroBehaviours
             OuterBottom = 128
         }
         
-        private static readonly Dictionary<BoundsType, int[]> MapBoundsTypeToBoundsCacheIndex = new()
+        private static readonly Dictionary<FovBoundsType, int[]> MapBoundsTypeToBoundsCacheIndex = new()
         {
-            {BoundsType.All, new[]{0}},
-            {BoundsType.Fov, new[]{1}},
-            {BoundsType.InnerBuffer, new[]{2}},
-            {BoundsType.OuterBufferOnly, new[]{3, 4, 5, 6}},
-            {BoundsType.OuterLeft, new[]{3}},
-            {BoundsType.OuterRight, new[]{4}},
-            {BoundsType.OuterTop, new[]{5}},
-            {BoundsType.OuterBottom, new[]{6}}
+            {FovBoundsType.Full, new[]{0}},
+            {FovBoundsType.Fov, new[]{1}},
+            {FovBoundsType.InnerBuffer, new[]{2}},
+            {FovBoundsType.OuterBufferOnly, new[]{3, 4, 5, 6}},
+            {FovBoundsType.OuterLeft, new[]{3}},
+            {FovBoundsType.OuterRight, new[]{4}},
+            {FovBoundsType.OuterTop, new[]{5}},
+            {FovBoundsType.OuterBottom, new[]{6}}
         };
         
         private class ObjectTracker
         {
             public readonly Transform transform;
-            public BoundsType activatedBoundsTypesMask { get; private set; } = 0;
-            private Dictionary<BoundsType, int> m_AcquiredBoundsTypeMap = new();
-            public BoundsType acquiredBoundsTypesBinaryMask { get; private set; }= 0;
-            private event Action<BoundsType> OnActivateChange;
+            public FovBoundsType activatedBoundsTypesMask { get; private set; } = 0;
+            private Dictionary<FovBoundsType, int> m_AcquiredBoundsTypeMap = new();
+            public FovBoundsType acquiredBoundsTypesBinaryMask { get; private set; }= 0;
+            private event Action<FovBoundsType> OnActivateChange;
             public int acquireCount { get; private set; }
             public ObjectTracker(Transform t)
             {
                 this.transform = t;
             }
 
-            public bool ApplyBounds(BoundsType boundsType)
+            public bool ApplyBounds(FovBoundsType boundsType)
             {
-                if ((activatedBoundsTypesMask & boundsType) == boundsType)
+                if (activatedBoundsTypesMask == boundsType)
                 {
                     return false;
                 }
+                
+                Debug.Log($"ApplyBounds: {boundsType} vs {activatedBoundsTypesMask}");
                 activatedBoundsTypesMask = boundsType;
                 OnActivateChange?.Invoke(activatedBoundsTypesMask);
                 return true;
             }
             
-            public DisposableAction Acquire(BoundsType boundsTypeMask, Action<Transform, BoundsType> onReactivate = null)
+            public DisposableAction Acquire(FovBoundsType boundsTypeMask, TrackObjectHandler onReactivate = null)
             {
                 var boundsTypes = DecomposeBounds(boundsTypeMask);
                 acquireCount++;
@@ -103,7 +105,7 @@ namespace Metamatic.MicroBehaviours
                 BakeAcquiredBoundsTypes();
                 
                 /* If callback is provided */
-                Action<BoundsType> handler = null;
+                Action<FovBoundsType> handler = null;
                 if (onReactivate != null)
                 {
                     /* Compare to current activated mask and trigger reactivation */
@@ -137,13 +139,13 @@ namespace Metamatic.MicroBehaviours
                 });
             }
             
-            private static BoundsType[] DecomposeBounds(BoundsType bounds)
+            private static FovBoundsType[] DecomposeBounds(FovBoundsType bounds)
             {
-                List<BoundsType> result = new List<BoundsType>();
+                List<FovBoundsType> result = new List<FovBoundsType>();
 
-                foreach (BoundsType value in Enum.GetValues(typeof(BoundsType)))
+                foreach (FovBoundsType value in Enum.GetValues(typeof(FovBoundsType)))
                 {
-                    if (value != BoundsType.None && (bounds & value) == value)
+                    if (value != FovBoundsType.None && (bounds & value) == value)
                     {
                         result.Add(value);
                     }
@@ -219,6 +221,8 @@ namespace Metamatic.MicroBehaviours
             }
         }
         
+        public delegate void TrackObjectHandler(Transform t, FovBoundsType boundsType);
+        
         private Camera m_CustomCamera;
         private float m_InnerBuffer;
         private float m_OuterBuffer;
@@ -249,7 +253,7 @@ namespace Metamatic.MicroBehaviours
         #region Events
         public event Action<VirtualArea2d, Rect> OnAreaActivated;
         public event Action<VirtualArea2d> OnAreaDeactivated;
-        public event Action<Transform, BoundsType> OnObjectReactivate;
+        public event Action<Transform, FovBoundsType> OnObjectReactivate;
         public event Action OnPostTracking;
         
         public DisposableAction SubscribeOnAreaOverlapped(Action<VirtualArea2d, Rect> action)
@@ -262,7 +266,7 @@ namespace Metamatic.MicroBehaviours
             OnAreaDeactivated += action;
             return new DisposableAction(() => OnAreaDeactivated -= action);
         }
-        public DisposableAction SubscribeObjectReactivate(Action<Transform, BoundsType> action)
+        public DisposableAction SubscribeObjectReactivate(Action<Transform, FovBoundsType> action)
         {
             OnObjectReactivate += action;
             return new DisposableAction(() => OnObjectReactivate -= action);
@@ -385,7 +389,7 @@ namespace Metamatic.MicroBehaviours
             return m_TrackedObjects.Any(tracker => tracker.transform == t);
         }
         
-        public DisposableAction TrackObject(Transform t, BoundsType boundsType = BoundsType.All, Action<Transform, BoundsType> onActivate = null)
+        public DisposableAction TrackObject(Transform t, FovBoundsType boundsType = FovBoundsType.Full, TrackObjectHandler onActivate = null)
         {
             var executed = false;
             /* Create object tracker if not exists */
@@ -415,7 +419,7 @@ namespace Metamatic.MicroBehaviours
             });
         }
         
-        public DisposableAction TrackObjects(IEnumerable<Transform> transforms, BoundsType boundsType = BoundsType.All, Action<Transform, BoundsType> onActivate = null)
+        public DisposableAction TrackObjects(IEnumerable<Transform> transforms, FovBoundsType boundsType = FovBoundsType.Full, TrackObjectHandler onActivate = null)
         {
             var disposables = transforms.Select(t => TrackObject(t, boundsType, onActivate)).ToList();
             return new DisposableAction(() =>
@@ -449,7 +453,7 @@ namespace Metamatic.MicroBehaviours
         protected override async UniTask Main(CancellationToken cancellationToken)
         {
             var diceThrower = new UniqueDice(4);
-            Rect[] boundsTypesCache = new Rect[6];
+            Rect[] boundsTypesCache = new Rect[7];
             using var lifecycle = AsyncUtils.PlayerLoopAction(() =>
             {
                 m_IsTracking = true;
@@ -532,10 +536,9 @@ namespace Metamatic.MicroBehaviours
                     {
                         /* t.acquiredBoundsTypesBinaryMask is a binary mask of bounds types that are acquired. Step every possible boundsType and calculate overlapping */
                         var mask = t.acquiredBoundsTypesBinaryMask;
-                        BoundsType resultBoundsTypeMask = 0;
-                        for (var i = 1; i < 8; i++)
+                        FovBoundsType resultBoundsTypeMask = 0;
+                        foreach (FovBoundsType boundsType in Enum.GetValues(typeof(FovBoundsType)))
                         {
-                            var boundsType = (BoundsType)i;
                             if ((mask & boundsType) != 0)
                             {
                                 if (BoundsContainsPoint(boundsTypesCache, MapBoundsTypeToBoundsCacheIndex[boundsType], t))
