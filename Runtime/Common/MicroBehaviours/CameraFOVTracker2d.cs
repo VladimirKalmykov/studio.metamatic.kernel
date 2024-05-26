@@ -50,7 +50,7 @@ namespace Metamatic.MicroBehaviours
             OuterBottom = 128
         }
         
-        private static readonly Dictionary<FovBoundsType, int[]> MapBoundsTypeToBoundsCacheIndex = new()
+        private static readonly Dictionary<FovBoundsType, int[]> MapBoundsTypeToRectsIndex = new()
         {
             {FovBoundsType.Full, new[]{0}},
             {FovBoundsType.Fov, new[]{1}},
@@ -61,6 +61,61 @@ namespace Metamatic.MicroBehaviours
             {FovBoundsType.OuterTop, new[]{5}},
             {FovBoundsType.OuterBottom, new[]{6}}
         };
+        
+        private static FovBoundsType[] DecomposeBounds(FovBoundsType bounds)
+        {
+            List<FovBoundsType> result = new List<FovBoundsType>();
+
+            foreach (FovBoundsType value in Enum.GetValues(typeof(FovBoundsType)))
+            {
+                if (value != FovBoundsType.None && (bounds & value) == value)
+                {
+                    result.Add(value);
+                }
+            }
+
+            return result.ToArray();
+        }
+        
+        public class AreaIntersection
+        {
+            private readonly AreaTracker m_AreaTracker;
+            public readonly VirtualArea2d area;
+            public ulong intersectedRectsMask = 0;
+            public FovBoundsType boundsTypes = 0;
+            public bool isIntersected => intersectedRectsMask > 0;
+            private readonly List<Rect> m_IntersectedRects = new List<Rect>(7);
+            public event Action OnIntersectedRectsChange;
+            internal AreaIntersection(AreaTracker areaTracker, VirtualArea2d area)
+            {
+                this.m_AreaTracker = areaTracker;
+                this.area = area;
+            }
+            
+            public void SetIntersectedRectsMask(ulong mask)
+            {
+                if (intersectedRectsMask == mask)
+                {
+                    return;
+                }
+                intersectedRectsMask = mask;
+                OnIntersectedRectsChange?.Invoke();
+            }
+            
+            public List<Rect> GetIntersectedRects()
+            {
+                m_IntersectedRects.Clear();
+                for (int i = 0; i < 7; i++)
+                {
+                    if ((intersectedRectsMask & (1UL << i)) != 0)
+                    {
+                        m_IntersectedRects.Add(m_AreaTracker.masterTracker.allRects[i]);
+                    }
+                }
+
+                return m_IntersectedRects;
+            }
+        }
         
         private class ObjectTracker
         {
@@ -138,21 +193,6 @@ namespace Metamatic.MicroBehaviours
                     BakeAcquiredBoundsTypes();
                 });
             }
-            
-            private static FovBoundsType[] DecomposeBounds(FovBoundsType bounds)
-            {
-                List<FovBoundsType> result = new List<FovBoundsType>();
-
-                foreach (FovBoundsType value in Enum.GetValues(typeof(FovBoundsType)))
-                {
-                    if (value != FovBoundsType.None && (bounds & value) == value)
-                    {
-                        result.Add(value);
-                    }
-                }
-
-                return result.ToArray();
-            }
 
             private void BakeAcquiredBoundsTypes()
             {
@@ -166,62 +206,155 @@ namespace Metamatic.MicroBehaviours
                 }
             }
         }
-        private class AreaTracker
+        internal class AreaTracker : IDisposable
         {
+            internal readonly CameraFOVTracker2d masterTracker;
             public readonly VirtualArea2d area;
-            public int acquirings;
-            /// <summary>
-            /// Activator for the area (null if not activated)
-            /// </summary>
-            public VirtualArea2d.Activator activator { get; private set; }
-            /// <summary>
-            /// Refers to the active rect of camera FOV which is currently overlaps area
-            /// </summary>
-            public Rect activeRect { get; private set; }
+            public FovBoundsType activatedBoundsTypesMask { get; private set; } = 0;
+            private Dictionary<FovBoundsType, int> m_AcquiredBoundsTypeMap = new();
+            public FovBoundsType acquiredBoundsTypesBinaryMask { get; private set; } = 0;
+            private event Action<FovBoundsType, ulong> OnActivateChange;
+            public int acquireCount { get; private set; }
+            private ulong m_IntersectedRectsMask = 0;
+            private bool disposed = false;
 
-            private Action m_DisposeHandler;
-            private event Action<VirtualArea2d.Activator> OnAreaActivated;
-            public AreaTracker(VirtualArea2d area)
+            public AreaTracker(CameraFOVTracker2d masterTracker, VirtualArea2d area)
             {
+                this.masterTracker = masterTracker;
                 this.area = area;
             }
-            public void Activate(VirtualArea2d.Activator nextActivator)
-            {
-                this.activator = nextActivator;
-                nextActivator.SubscribeDeactivation(() =>
-                {
-                    this.activator = null;
-                });
-                OnAreaActivated?.Invoke(nextActivator);
-            }
-            public void Acquire(Action<VirtualArea2d.Activator> onAreaActivated = null)
-            {
-                acquirings++;
-                if (onAreaActivated != null)
-                {
-                    OnAreaActivated += onAreaActivated;
-                }
-            }
-            public void Release(Action<VirtualArea2d.Activator> onAreaActivated = null)
-            {
-                acquirings--;
-                if (onAreaActivated != null)
-                {
-                    OnAreaActivated -= onAreaActivated;
-                }
-            }
             
-            public void SetIntersection(Rect rect)
+            ~AreaTracker()
             {
-                if (activeRect != rect)
+                Dispose(false);
+            }
+
+            public bool ApplyBounds(FovBoundsType boundsType, ulong intersectedRectsMask)
+            {
+                if (activatedBoundsTypesMask == boundsType && m_IntersectedRectsMask == intersectedRectsMask)
                 {
-                    activeRect = rect;
-                    activator.TriggerIntersection();
+                    /* No changes */
+                    return false;
                 }
+
+                m_IntersectedRectsMask = intersectedRectsMask;
+                activatedBoundsTypesMask = boundsType;
+                OnActivateChange?.Invoke(activatedBoundsTypesMask, m_IntersectedRectsMask);
+                return true;
+            }
+
+            public DisposableAction Acquire(FovBoundsType boundsTypeMask, TrackAreaHandler onReactivate = null)
+            {
+                var boundsTypes = DecomposeBounds(boundsTypeMask);
+                acquireCount++;
+                foreach (var boundsType in boundsTypes)
+                {
+                    if (!m_AcquiredBoundsTypeMap.ContainsKey(boundsType))
+                    {
+                        m_AcquiredBoundsTypeMap.Add(boundsType, 0);
+                    }
+                    m_AcquiredBoundsTypeMap[boundsType]++;
+                }
+
+                /* Bake types to easily iterate over acquired bounds types in a loop */
+                BakeAcquiredBoundsTypes();
+
+                /* Compile boundsTypesMark to interested rect indexes mask */
+                ulong interestedRectIndexesMask = 0;
+                var interestedRectsCount = 0;
+                foreach (var boundsType in boundsTypes)
+                {
+                    var indexes = MapBoundsTypeToRectsIndex[boundsType];
+                    foreach (var index in indexes)
+                    {
+                        interestedRectIndexesMask |= 1UL << index;
+                        interestedRectsCount++;
+                    }
+                }
+
+                /* If callback is provided */
+                Action<FovBoundsType, ulong> handler = null;
+                if (onReactivate != null)
+                {
+                    var areaIntersection = new AreaIntersection(this, area);
+                    /* Compare to current activated mask and trigger reactivation */
+                    var intersection = activatedBoundsTypesMask & boundsTypeMask;
+                    areaIntersection.intersectedRectsMask = m_IntersectedRectsMask & interestedRectIndexesMask;
+                    areaIntersection.boundsTypes = intersection;
+                    onReactivate.Invoke(intersection != 0, areaIntersection);
+                    handler = (activeBounds, activeRectsMask) =>
+                    {
+                        var nextIntersection = activeBounds & boundsTypeMask;
+                        var nextIntersectedRectsMask = activeRectsMask & interestedRectIndexesMask;
+                        var rectsChanged = nextIntersectedRectsMask != areaIntersection.intersectedRectsMask;
+                        areaIntersection.SetIntersectedRectsMask(nextIntersectedRectsMask);
+                        areaIntersection.boundsTypes = nextIntersection;
+                        /* Compare if intersection is changed */
+                        if ((nextIntersection != 0) != (intersection != 0))
+                        {
+                            intersection = nextIntersection;
+                            onReactivate.Invoke(nextIntersection != 0, areaIntersection);
+                        }
+                        /* Get from activeRectsMask only those that are intersected */
+                        var intersectedRectsMask = activeRectsMask & interestedRectIndexesMask;
+                    };
+                    OnActivateChange += handler;
+                }
+
+                return new DisposableAction(() =>
+                {
+                    acquireCount--;
+                    OnActivateChange -= handler;
+                    foreach (var boundsType in boundsTypes)
+                    {
+                        if (m_AcquiredBoundsTypeMap.ContainsKey(boundsType))
+                        {
+                            m_AcquiredBoundsTypeMap[boundsType]--;
+                        }
+                    }
+                    BakeAcquiredBoundsTypes();
+                });
+            }
+
+            private void BakeAcquiredBoundsTypes()
+            {
+                acquiredBoundsTypesBinaryMask = 0;
+                foreach (var (boundsType, count) in m_AcquiredBoundsTypeMap)
+                {
+                    if (count > 0)
+                    {
+                        acquiredBoundsTypesBinaryMask |= boundsType;
+                    }
+                }
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!disposed)
+                {
+                    if (disposing)
+                    {
+                        // Освобождение управляемых ресурсов
+                        ApplyBounds(0, 0);
+                        OnActivateChange = null;
+                        m_AcquiredBoundsTypeMap.Clear();
+                    }
+
+                    // Освобождение неуправляемых ресурсов (если есть)
+                    disposed = true;
+                }
+            }
+
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this); // Подавляем финализацию, так как ресурсы уже освобождены
             }
         }
+
         
         public delegate void TrackObjectHandler(Transform t, FovBoundsType boundsType);
+        public delegate void TrackAreaHandler(bool intersected, AreaIntersection intersection);
         
         private Camera m_CustomCamera;
         private float m_InnerBuffer;
@@ -229,7 +362,8 @@ namespace Metamatic.MicroBehaviours
         private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreas;
         private List<ObjectTracker> m_TrackedObjects;
         private float m_ZDepth;
-        private Rect[] m_SideRects;
+        internal readonly Rect[] allRects = new Rect[7];
+        public IReadOnlyList<Rect> rects => Array.AsReadOnly(allRects);
 
         public float innerBuffer
         {
@@ -327,53 +461,37 @@ namespace Metamatic.MicroBehaviours
         /// Track area with optional callback on area activated
         /// </summary>
         /// <param name="area"></param>
-        /// <param name="onAreaActivated"></param>
+        /// <param name="onReactivate"></param>
         /// <returns></returns>
-        public DisposableAction TrackArea(VirtualArea2d area, Action<VirtualArea2d.Activator> onAreaActivated = null)
+        public DisposableAction TrackArea(VirtualArea2d area, FovBoundsType boundsType, TrackAreaHandler onReactivate = null)
         {
-            var executed = false;
-            SafeExecute(() =>
+            var cancelled = false;
+            
+            if (!m_TrackedAreas.TryGetValue(area, out var tracker))
             {
-                if (executed) return;
-                executed = true;
-                if (!m_TrackedAreas.TryGetValue(area, out var tracker))
+                tracker = new AreaTracker(this, area);
+                SafeExecute(() =>
                 {
-                    tracker = new AreaTracker(area);
+                    if (cancelled) return;
                     m_TrackedAreas.Add(area, tracker);
-                }
-                tracker.Acquire(onAreaActivated);
-                
-            });
+                });
+            }
+            var release = (Action)tracker.Acquire(boundsType, onReactivate);
 
             return new DisposableAction(() =>
             {
-                if (!executed)
+                cancelled = true;
+                release();
+                if (tracker.acquireCount == 0 && m_TrackedAreas.ContainsKey(area))
                 {
-                    executed = true;
-                    return;
+                    m_TrackedAreas.Remove(area);
                 }
-                UntrackArea(area, onAreaActivated);
             });
         }
         
-        public void UntrackArea(VirtualArea2d area, Action<VirtualArea2d.Activator> onAreaActivated = null)
+        public DisposableAction TrackAreas(IEnumerable<VirtualArea2d> areas, FovBoundsType boundsType, TrackAreaHandler onAreaActivated = null)
         {
-            if (m_TrackedAreas.TryGetValue(area, out var tracker))
-            {
-                SafeExecute(() =>
-                {
-                    tracker.Release(onAreaActivated);
-                    if (tracker.acquirings == 0)
-                    {
-                        m_TrackedAreas.Remove(area);
-                    }
-                });
-            }
-        }
-        
-        public DisposableAction TrackAreas(IEnumerable<VirtualArea2d> areas, Action<VirtualArea2d.Activator> onAreaActivated = null)
-        {
-            var disposables = areas.Select(area => TrackArea(area, onAreaActivated)).ToList();
+            var disposables = areas.Select(area => TrackArea(area, boundsType, onAreaActivated)).ToList();
             return new DisposableAction(() =>
             {
                 foreach (var disposable in disposables)
@@ -391,7 +509,7 @@ namespace Metamatic.MicroBehaviours
         
         public DisposableAction TrackObject(Transform t, FovBoundsType boundsType = FovBoundsType.Full, TrackObjectHandler onActivate = null)
         {
-            var executed = false;
+            var cancelled = false;
             /* Create object tracker if not exists */
             ObjectTracker tracker = m_TrackedObjects.FirstOrDefault(tracker => tracker.transform == t);
             if (tracker == null)
@@ -400,8 +518,7 @@ namespace Metamatic.MicroBehaviours
                 SafeExecute(() =>
                 {
                     
-                    if (executed) return;
-                    executed = true;
+                    if (cancelled) return;
                     m_TrackedObjects.Add(tracker);
                 });
             }
@@ -410,10 +527,10 @@ namespace Metamatic.MicroBehaviours
 
             return new DisposableAction(() =>
             {
+                cancelled = true;
                 release();
-                if (executed)
+                if (tracker.acquireCount == 0 && m_TrackedObjects.Contains(tracker))
                 {
-                    executed = true;
                     m_TrackedObjects.Remove(tracker);
                 }
             });
@@ -453,78 +570,60 @@ namespace Metamatic.MicroBehaviours
         protected override async UniTask Main(CancellationToken cancellationToken)
         {
             var diceThrower = new UniqueDice(4);
-            Rect[] boundsTypesCache = new Rect[7];
+            ulong intersectedRects = 0;
+            FovBoundsType resultBoundsTypeMask = 0;
+            var fovBoundsTypeArray = Enum.GetValues(typeof(FovBoundsType));
             using var lifecycle = AsyncUtils.PlayerLoopAction(() =>
             {
                 m_IsTracking = true;
                 var (fovBounds, allBounds, innerBufferBounds) = CalculateCameraBounds(this.camera, m_ZDepth, outerBuffer, innerBuffer);
                 
-                m_SideRects = new[]
-                {
-                    new Rect(allBounds.xMin, allBounds.yMin, innerBufferBounds.xMin - allBounds.xMin,
-                        allBounds.height), // lEFT
-                    new Rect(innerBufferBounds.xMax, allBounds.yMin, allBounds.xMax - innerBufferBounds.xMax,
-                        allBounds.height), // RIGHT
-                    new Rect(allBounds.xMin, innerBufferBounds.yMax, allBounds.width,
-                        allBounds.yMax - innerBufferBounds.yMax), // TOP
-                    new Rect(allBounds.xMin, allBounds.yMin, allBounds.width,
-                        innerBufferBounds.yMin - allBounds.yMin) // BOTTOM
-                };
-                
                 /* All */
-                boundsTypesCache[0] = allBounds;
+                allRects[0] = allBounds;
                 /* FOV */
-                boundsTypesCache[1] = fovBounds;
+                allRects[1] = fovBounds;
                 /* Inner buffer */
-                boundsTypesCache[2] = innerBufferBounds;
+                allRects[2] = innerBufferBounds;
                 /* Left */
-                boundsTypesCache[3] = new Rect(allBounds.xMin, allBounds.yMin, innerBufferBounds.xMin - allBounds.xMin,
+                allRects[3] = new Rect(allBounds.xMin, allBounds.yMin, innerBufferBounds.xMin - allBounds.xMin,
                     allBounds.height);
                 /* Right */
-                boundsTypesCache[4] = new Rect(innerBufferBounds.xMax, allBounds.yMin, allBounds.xMax - innerBufferBounds.xMax,
+                allRects[4] = new Rect(innerBufferBounds.xMax, allBounds.yMin, allBounds.xMax - innerBufferBounds.xMax,
                     allBounds.height);
                 /* Top */
-                boundsTypesCache[5] = new Rect(allBounds.xMin, innerBufferBounds.yMax, allBounds.width,
+                allRects[5] = new Rect(allBounds.xMin, innerBufferBounds.yMax, allBounds.width,
                     allBounds.yMax - innerBufferBounds.yMax);
                 /* Bottom */
-                boundsTypesCache[6] = new Rect(allBounds.xMin, allBounds.yMin, allBounds.width,
+                allRects[6] = new Rect(allBounds.xMin, allBounds.yMin, allBounds.width,
                     innerBufferBounds.yMin - allBounds.yMin);
                     
                 if (m_TrackedAreas != null) {
                     /* Track areas */
                     foreach (var (area, areaTrack) in m_TrackedAreas)
                     {
-                        diceThrower.Reset();
-                        int side = 0;
-                        bool overlaps = false;
-                        while((side = diceThrower.Next()) > -1)
+                        /* Clear intersected rects */
+                        intersectedRects = 0;
+                        resultBoundsTypeMask = 0;
+                        /* t.acquiredBoundsTypesBinaryMask is a binary mask of bounds types that are acquired. Step every possible boundsType and calculate overlapping */
+                        var mask = areaTrack.acquiredBoundsTypesBinaryMask;
+                        foreach (FovBoundsType boundsType in fovBoundsTypeArray)
                         {
-                            var sideRect = m_SideRects[side];
-                            overlaps = area.Overlaps(sideRect);
-                            if (overlaps)
+                            if ((mask & boundsType) != 0)
                             {
-                                if (areaTrack.activator == null)
+                                if (BoundsOverlapsArea(allRects, MapBoundsTypeToRectsIndex[boundsType], area, ref intersectedRects))
                                 {
-                                    areaTrack.Activate(new VirtualArea2d.Activator(area, (pos) => areaTrack.activeRect.Contains(pos)));
-                                    area.Activate(areaTrack.activator);
+                                    resultBoundsTypeMask |= boundsType;
                                 }
                                 else
                                 {
-                                    areaTrack.SetIntersection(sideRect);
+                                    resultBoundsTypeMask &= ~boundsType;
                                 }
-                                OnAreaActivated?.Invoke(area, sideRect);
-                                break;
                             }
                         }
 
-                        if (!overlaps)
+                        if (areaTrack.ApplyBounds(resultBoundsTypeMask, intersectedRects))
                         {
-                            if (areaTrack.activator != null)
-                            {
-                                area.Deactivate(areaTrack.activator);
-                                areaTrack.activator.Release();
-                            }
-                            OnAreaDeactivated?.Invoke(area);
+                            // Send intersection event
                         }
                     }
                 }
@@ -541,7 +640,7 @@ namespace Metamatic.MicroBehaviours
                         {
                             if ((mask & boundsType) != 0)
                             {
-                                if (BoundsContainsPoint(boundsTypesCache, MapBoundsTypeToBoundsCacheIndex[boundsType], t))
+                                if (BoundsContainsPoint(allRects, MapBoundsTypeToRectsIndex[boundsType], t))
                                 {
                                     resultBoundsTypeMask |= boundsType;
                                 }
@@ -564,14 +663,10 @@ namespace Metamatic.MicroBehaviours
             }, PlayerLoopTiming.FixedUpdate);
 
             await cancellationToken;
-            /* Deactivate all areas */
+            /* Deactivate all area trackers */
             foreach (var (area, areaTrack) in m_TrackedAreas)
             {
-                if (areaTrack.activator != null)
-                {
-                    areaTrack.activator.Release();
-                    area.Deactivate(areaTrack.activator);
-                }
+                areaTrack.Dispose();
             }
         }
         
@@ -585,6 +680,19 @@ namespace Metamatic.MicroBehaviours
                 }
             }
             return false;
+        }
+        
+        private bool BoundsOverlapsArea(Rect[] allRects, int[] boundsTypes, VirtualArea2d area, ref ulong intersectedRects)
+        {
+            for (int i = 0; i < boundsTypes.Length; i++)
+            {
+                var rectIndex = boundsTypes[i];
+                if (area.Overlaps(allRects[rectIndex]))
+                {
+                    intersectedRects |= 1UL << rectIndex;
+                }
+            }
+            return intersectedRects > 0;
         }
         
         private (Rect fovBounds, Rect mainBounds, Rect innerBufferBounds) CalculateCameraBounds(Camera camera, float zDepth, float outerBuffer, float innerBuffer)
@@ -643,10 +751,10 @@ namespace Metamatic.MicroBehaviours
                     Color.green,
                     Color.yellow
                 };
-                for (var i = 0; i < m_SideRects.Length; i++)
+                for (var i = 3; i < allRects.Length; i++)
                 {
-                    Gizmos.color = colors[i];
-                    var sideRect = m_SideRects[i];
+                    Gizmos.color = colors[i - 3];
+                    var sideRect = allRects[i];
                     Gizmos.DrawCube(new Vector3(sideRect.center.x, sideRect.center.y, zDepth), new Vector3(sideRect.width, sideRect.height, 0));
                 }
             }

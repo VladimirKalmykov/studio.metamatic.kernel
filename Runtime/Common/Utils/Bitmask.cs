@@ -44,5 +44,28 @@ namespace Metamatic
         {
             return Test(bitmask, new[] {n});
         }
+        
+        /// <summary>
+        /// Get set bits indices 
+        /// </summary>
+        /// <example>
+        /// For example, if you have a bitmask 00001010, this function will return a list of indices [1, 3]
+        /// </example>
+        /// <param name="mask"></param>
+        /// <returns></returns>
+        public static int[] ExtractSetBitIndices(ulong mask)
+        {
+            List<int> indices = new List<int>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                if ((mask & (1UL << i)) != 0)
+                {
+                    indices.Add(i);
+                }
+            }
+
+            return indices.ToArray();
+        }
     }
 }
