@@ -11,7 +11,7 @@ namespace Metamatic
     public class VirtualAreaRect2d: VirtualArea2d
     {
         [FormerlySerializedAs("rect")] [SerializeField] private Rect m_Rect;
-        public override float areaSize
+        public override float size
         {
             get
             {

@@ -115,6 +115,13 @@ namespace Metamatic.MicroBehaviours
 
                 return m_IntersectedRects;
             }
+            
+            public DisposableAction SubscribeRects(Action action)
+            {
+                OnIntersectedRectsChange += action;
+                action.Invoke();
+                return new DisposableAction(() => OnIntersectedRectsChange -= action);
+            }
         }
         
         private class ObjectTracker
@@ -122,6 +129,7 @@ namespace Metamatic.MicroBehaviours
             public readonly Transform transform;
             public FovBoundsType activatedBoundsTypesMask { get; private set; } = 0;
             private Dictionary<FovBoundsType, int> m_AcquiredBoundsTypeMap = new();
+            private bool m_Pristine = true;
             public FovBoundsType acquiredBoundsTypesBinaryMask { get; private set; }= 0;
             private event Action<FovBoundsType> OnActivateChange;
             public int acquireCount { get; private set; }
@@ -132,6 +140,7 @@ namespace Metamatic.MicroBehaviours
 
             public bool ApplyBounds(FovBoundsType boundsType)
             {
+                m_Pristine = false;
                 if (activatedBoundsTypesMask == boundsType)
                 {
                     return false;
@@ -165,7 +174,11 @@ namespace Metamatic.MicroBehaviours
                 {
                     /* Compare to current activated mask and trigger reactivation */
                     var intersection = activatedBoundsTypesMask & boundsTypeMask;
-                    onReactivate.Invoke(transform, intersection);
+                    if (!m_Pristine)
+                    {
+                        onReactivate.Invoke(transform, intersection);
+                    }
+                    
                     handler = (activeBounds) =>
                     {
                         var nextIntersection = activeBounds & boundsTypeMask;
@@ -359,8 +372,20 @@ namespace Metamatic.MicroBehaviours
         private Camera m_CustomCamera;
         private float m_InnerBuffer;
         private float m_OuterBuffer;
+        
+        private bool m_TrackedAreasAreSwapped = false;
         private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreas;
+        private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreasBuffer;
+        private Dictionary<VirtualArea2d, AreaTracker> iterableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreasBuffer : m_TrackedAreas;
+        private Dictionary<VirtualArea2d, AreaTracker> mutableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreas : m_TrackedAreasBuffer;
+        
+        private bool m_TrackedObjectsAreSwapped = false;
         private List<ObjectTracker> m_TrackedObjects;
+        private List<ObjectTracker> m_TrackedObjectsBuffer;
+        private List<ObjectTracker> iterableTrackedObjects => m_TrackedObjectsAreSwapped ? m_TrackedObjectsBuffer : m_TrackedObjects;
+        private List<ObjectTracker> mutableTrackedObjects => m_TrackedObjectsAreSwapped ? m_TrackedObjects : m_TrackedObjectsBuffer;
+        
+        
         private float m_ZDepth;
         internal readonly Rect[] allRects = new Rect[7];
         public IReadOnlyList<Rect> rects => Array.AsReadOnly(allRects);
@@ -443,7 +468,9 @@ namespace Metamatic.MicroBehaviours
             this.m_InnerBuffer = innerBuffer;
             this.m_OuterBuffer = outerBuffer;
             this.m_TrackedAreas = new Dictionary<VirtualArea2d, AreaTracker>();
+            this.m_TrackedAreasBuffer = new Dictionary<VirtualArea2d, AreaTracker>();
             this.m_TrackedObjects = new List<ObjectTracker>();
+            this.m_TrackedObjectsBuffer = new List<ObjectTracker>();
             this.m_ZDepth = zDepth;
 
             if (autoRun)
@@ -454,7 +481,7 @@ namespace Metamatic.MicroBehaviours
         
         public bool ContainsArea(VirtualArea2d area)
         {
-            return m_TrackedAreas.ContainsKey(area);
+            return mutableTrackedAreas.ContainsKey(area);
         }
         
         /// <summary>
@@ -465,26 +492,18 @@ namespace Metamatic.MicroBehaviours
         /// <returns></returns>
         public DisposableAction TrackArea(VirtualArea2d area, FovBoundsType boundsType, TrackAreaHandler onReactivate = null)
         {
-            var cancelled = false;
-            
-            if (!m_TrackedAreas.TryGetValue(area, out var tracker))
+            if (!mutableTrackedAreas.TryGetValue(area, out var tracker))
             {
                 tracker = new AreaTracker(this, area);
-                SafeExecute(() =>
-                {
-                    if (cancelled) return;
-                    m_TrackedAreas.Add(area, tracker);
-                });
+                mutableTrackedAreas.Add(area, tracker);
             }
             var release = (Action)tracker.Acquire(boundsType, onReactivate);
 
             return new DisposableAction(() =>
             {
-                cancelled = true;
-                release();
-                if (tracker.acquireCount == 0 && m_TrackedAreas.ContainsKey(area))
+                if (tracker.acquireCount == 0 && mutableTrackedAreas.ContainsKey(area))
                 {
-                    m_TrackedAreas.Remove(area);
+                    mutableTrackedAreas.Remove(area);
                 }
             });
         }
@@ -504,34 +523,27 @@ namespace Metamatic.MicroBehaviours
         public bool HasObject(Transform t)
         {
             /* Check if object is tracked, ensure that it has ObjectTracker with same transform  */
-            return m_TrackedObjects.Any(tracker => tracker.transform == t);
+            return mutableTrackedObjects.Any(tracker => tracker.transform == t);
         }
         
         public DisposableAction TrackObject(Transform t, FovBoundsType boundsType = FovBoundsType.Full, TrackObjectHandler onActivate = null)
         {
-            var cancelled = false;
             /* Create object tracker if not exists */
-            ObjectTracker tracker = m_TrackedObjects.FirstOrDefault(tracker => tracker.transform == t);
+            ObjectTracker tracker = mutableTrackedObjects.FirstOrDefault(tracker => tracker.transform == t);
             if (tracker == null)
             {
                 tracker = new ObjectTracker(t);
-                SafeExecute(() =>
-                {
-                    
-                    if (cancelled) return;
-                    m_TrackedObjects.Add(tracker);
-                });
+                mutableTrackedObjects.Add(tracker);
             }
                 
             var release = (Action)tracker.Acquire(boundsType, onActivate);
 
             return new DisposableAction(() =>
             {
-                cancelled = true;
                 release();
-                if (tracker.acquireCount == 0 && m_TrackedObjects.Contains(tracker))
+                if (tracker.acquireCount == 0 && mutableTrackedObjects.Contains(tracker))
                 {
-                    m_TrackedObjects.Remove(tracker);
+                    mutableTrackedObjects.Remove(tracker);
                 }
             });
         }
@@ -597,64 +609,62 @@ namespace Metamatic.MicroBehaviours
                 allRects[6] = new Rect(allBounds.xMin, allBounds.yMin, allBounds.width,
                     innerBufferBounds.yMin - allBounds.yMin);
                     
-                if (m_TrackedAreas != null) {
-                    /* Track areas */
-                    foreach (var (area, areaTrack) in m_TrackedAreas)
+                /* Track areas */
+                /* Swap tracked areas with buffer */
+                SwapTrackedAreas();
+                foreach (var (area, areaTrack) in iterableTrackedAreas)
+                {
+                    /* Clear intersected rects */
+                    intersectedRects = 0;
+                    resultBoundsTypeMask = 0;
+                    /* t.acquiredBoundsTypesBinaryMask is a binary mask of bounds types that are acquired. Step every possible boundsType and calculate overlapping */
+                    var mask = areaTrack.acquiredBoundsTypesBinaryMask;
+                    foreach (FovBoundsType boundsType in fovBoundsTypeArray)
                     {
-                        /* Clear intersected rects */
-                        intersectedRects = 0;
-                        resultBoundsTypeMask = 0;
-                        /* t.acquiredBoundsTypesBinaryMask is a binary mask of bounds types that are acquired. Step every possible boundsType and calculate overlapping */
-                        var mask = areaTrack.acquiredBoundsTypesBinaryMask;
-                        foreach (FovBoundsType boundsType in fovBoundsTypeArray)
+                        if ((mask & boundsType) != 0)
                         {
-                            if ((mask & boundsType) != 0)
+                            if (BoundsOverlapsArea(allRects, MapBoundsTypeToRectsIndex[boundsType], area, ref intersectedRects))
                             {
-                                if (BoundsOverlapsArea(allRects, MapBoundsTypeToRectsIndex[boundsType], area, ref intersectedRects))
-                                {
-                                    resultBoundsTypeMask |= boundsType;
-                                }
-                                else
-                                {
-                                    resultBoundsTypeMask &= ~boundsType;
-                                }
+                                resultBoundsTypeMask |= boundsType;
+                            }
+                            else
+                            {
+                                resultBoundsTypeMask &= ~boundsType;
                             }
                         }
+                    }
 
-                        if (areaTrack.ApplyBounds(resultBoundsTypeMask, intersectedRects))
-                        {
-                            // Send intersection event
-                        }
+                    if (areaTrack.ApplyBounds(resultBoundsTypeMask, intersectedRects))
+                    {
+                        // Send intersection event
                     }
                 }
                 
-                if (m_TrackedObjects != null)
+                /* Track transforms */
+                SwapTrackedObjects();
+                foreach (var t in iterableTrackedObjects)
                 {
-                    /* Track transforms */
-                    foreach (var t in m_TrackedObjects)
+                    /* t.acquiredBoundsTypesBinaryMask is a binary mask of bounds types that are acquired. Step every possible boundsType and calculate overlapping */
+                    var mask = t.acquiredBoundsTypesBinaryMask;
+                    FovBoundsType resultBoundsTypeMask = 0;
+                    foreach (FovBoundsType boundsType in Enum.GetValues(typeof(FovBoundsType)))
                     {
-                        /* t.acquiredBoundsTypesBinaryMask is a binary mask of bounds types that are acquired. Step every possible boundsType and calculate overlapping */
-                        var mask = t.acquiredBoundsTypesBinaryMask;
-                        FovBoundsType resultBoundsTypeMask = 0;
-                        foreach (FovBoundsType boundsType in Enum.GetValues(typeof(FovBoundsType)))
+                        if ((mask & boundsType) != 0)
                         {
-                            if ((mask & boundsType) != 0)
+                            if (BoundsContainsPoint(allRects, MapBoundsTypeToRectsIndex[boundsType], t))
                             {
-                                if (BoundsContainsPoint(allRects, MapBoundsTypeToRectsIndex[boundsType], t))
-                                {
-                                    resultBoundsTypeMask |= boundsType;
-                                }
-                                else
-                                {
-                                    resultBoundsTypeMask &= ~boundsType;
-                                }
+                                resultBoundsTypeMask |= boundsType;
+                            }
+                            else
+                            {
+                                resultBoundsTypeMask &= ~boundsType;
                             }
                         }
+                    }
 
-                        if (t.ApplyBounds(resultBoundsTypeMask))
-                        {
-                            OnObjectReactivate?.Invoke(t.transform, resultBoundsTypeMask);
-                        }
+                    if (t.ApplyBounds(resultBoundsTypeMask))
+                    {
+                        OnObjectReactivate?.Invoke(t.transform, resultBoundsTypeMask);
                     }
                 }
                 m_IsTracking = false;
@@ -723,6 +733,28 @@ namespace Metamatic.MicroBehaviours
 
             return (fovBounds, allBounds, innerBufferBounds);
         }
+
+        private void SwapTrackedAreas()
+        {
+            ( m_TrackedAreas, m_TrackedAreasBuffer ) = ( m_TrackedAreasBuffer, m_TrackedAreas );
+            mutableTrackedAreas.Clear();
+            foreach (var kvp in iterableTrackedAreas) 
+            {
+                mutableTrackedAreas.Add(kvp.Key, kvp.Value);
+            }
+            m_TrackedAreasAreSwapped = !m_TrackedAreasAreSwapped;
+        }
+
+        private void SwapTrackedObjects()
+        {
+            ( m_TrackedObjects, m_TrackedObjectsBuffer ) = ( m_TrackedObjectsBuffer, m_TrackedObjects );
+            mutableTrackedObjects.Clear();
+            foreach (var tracker in iterableTrackedObjects) 
+            {
+                mutableTrackedObjects.Add(tracker);
+            }
+            m_TrackedObjectsAreSwapped = !m_TrackedObjectsAreSwapped;
+        }
         #endregion
         
         #if UNITY_EDITOR
@@ -744,12 +776,14 @@ namespace Metamatic.MicroBehaviours
                 Gizmos.DrawLine(new Vector3(bufferBounds.xMin, bufferBounds.yMax, zDepth), new Vector3(bufferBounds.xMin, bufferBounds.yMin, zDepth));
             
                 /* Draw side rects as filled rectangles */
+                /* 0 - all, 1 - fov, 2 - inner buffer */
+                /* Colors should have alpha 0.5 */
                 var colors = new[]
                 {
-                    Color.red,
-                    Color.blue,
-                    Color.green,
-                    Color.yellow
+                    new Color(0, 1, 0, 0.5f),
+                    new Color(0, 0, 1, 0.5f),
+                    new Color(1, 0, 0, 0.5f),
+                    new Color(1, 0, 1, 0.5f),
                 };
                 for (var i = 3; i < allRects.Length; i++)
                 {
