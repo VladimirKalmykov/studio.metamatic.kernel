@@ -1,6 +1,4 @@
-using Metamatic;
 using Metamatic.Extensions;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Effects

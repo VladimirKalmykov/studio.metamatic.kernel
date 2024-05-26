@@ -1,98 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
-using Cysharp.Threading.Tasks;
+using System.Threading;
+using Metamatic.Actions;
+using Metamatic.DevTools;
+using Metamatic.MicroBehaviours;
+using Sirenix.OdinInspector;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace Metamatic
 {
     public abstract class VirtualArea2d: VirtualArea
     {
-        public class Activator: IDisposable
-        {
-            private event Action OnIntersection;
-            private event Action OnDeactivation;
-            private readonly Func<Vector2, bool> m_Contains;
-            public readonly VirtualArea2d area;
-            private UniTaskCompletionSource m_UniTaskCompletionSource;
-            private bool m_Disposed;
-            public Activator(VirtualArea2d area, Func<Vector2, bool> contains)
-            {
-                this.area = area;
-                m_Contains = contains;
-                m_UniTaskCompletionSource = new UniTaskCompletionSource();
-            }
-            ~Activator()
-            {
-                Release();
-            }
-
-            public DisposableAction SubscribeIntersections(Action action)
-            {
-                OnIntersection += action;
-                action();
-                return new DisposableAction(() =>
-                {
-                    OnIntersection -= action;
-                });
-            }
-
-            public void TriggerIntersection()
-            {
-                OnIntersection?.Invoke();
-            }
-            
-            /// <summary>
-            /// Returns if the position is inside the activator's area
-            /// </summary>
-            /// <param name="position"></param>
-            /// <returns></returns>
-            public bool Contains(Vector2 position)
-            {
-                return m_Contains(position);
-            }
-            
-            public DisposableAction SubscribeDeactivation(Action action)
-            {
-                OnDeactivation += action;
-                return new DisposableAction(() =>
-                {
-                    OnDeactivation -= action;
-                });
-            }
-            
-            public UniTask WaitDeactivation()
-            {
-                return m_UniTaskCompletionSource.Task;
-            }
-            
-            public void Dispose()
-            {
-                if (m_Disposed)
-                {
-                    throw new System.Exception("Activator is already disposed");
-                }
-                m_Disposed = true;
-                OnDeactivation?.Invoke();
-                OnDeactivation = null;
-                m_UniTaskCompletionSource.TrySetResult();
-                GC.SuppressFinalize(this);
-            }
-            
-            public void Release()
-            {
-                Dispose();
-            }
-            
-        }
-        public event Action<Activator> onActivated;
-        public event Action<Activator> onDeactivated;
         
-        private List<Activator> m_Activators = new List<Activator>();
-        public bool overlapped => m_Activators.Count > 0;
+        public enum GeneratePointsType
+        {
+            Random,
+            Strict
+        }
+        [SerializeField] public float gizmoSize = 0.05f;
+        [SerializeField] public List<Vector2> points;
+        public bool overlapped { get; set; }
         /// <summary>
         /// Area size of the shape of the area
         /// </summary>
-        public abstract float areaSize { get; }
+        public abstract float size { get; }
         /// <summary>
         /// Get random position on the area
         /// </summary>
@@ -105,48 +39,70 @@ namespace Metamatic
         /// <returns></returns>
         public abstract Vector2 GetRandomPosition(Rect otherRect);
         /// <summary>
+        /// Get random points inside the intersection of the area and the given rect
+        /// </summary>
+        /// <param name="rect"></param>
+        /// <param name="minDistance"></param>
+        /// <param name="maxCount"></param>
+        /// <param name="spawnedObjects"></param>
+        /// <returns></returns>
+        public abstract Vector2[] GetSpawnPoints(Rect rect, float minDistance, int maxCount, List<Vector2> spawnedObjects);
+        /// <summary>
         /// If the area overlaps with the given rect
         /// </summary>
         /// <param name="rect"></param>
         /// <returns></returns>
         public abstract bool Overlaps(Rect rect);
         public abstract float OverlapsAreaSize(Rect rect);
-        /// <summary>
-        /// Activate area with activator
-        /// </summary>
-        /// <param name="activator"></param>
-        /// <returns></returns>
-        public DisposableAction Activate(Activator activator)
+        public abstract Vector2[] GeneratePoints(int count, GeneratePointsType algorithm = GeneratePointsType.Random);
+        
+        public event CameraFOVTracker2d.TrackAreaHandler OnCameraFOVIntersectionChange = delegate { };
+        
+        #if UNITY_EDITOR
+        [Button]
+        public void PreparePoints(int count, GeneratePointsType algorithm = GeneratePointsType.Random)
         {
-            m_Activators.Add(activator);
-            onActivated?.Invoke(activator);
-            return new DisposableAction(() => Deactivate(activator));
+            if (points == null)
+            {
+                points = new List<Vector2>();
+            }
+            points.Clear();
+            var nextPoints = GeneratePoints(count, algorithm);
+            /* Convert world points to local points */
+            foreach (var point in nextPoints)
+            {
+                points.Add(transform.InverseTransformPoint(point));
+            }
         }
-        /// <summary>
-        /// Disable area with activator
-        /// </summary>
-        /// <param name="activator"></param>
-        public void Deactivate(Activator activator)
+        #endif
+
+        public virtual void OnDrawGizmos()
         {
             
-            #if DEBUG
-            if (!m_Activators.Contains(activator))
+        }
+
+
+        private CancellationTokenSource m_DisableCancellationTokenSource;
+        private async void OnEnable()
+        {
+            m_DisableCancellationTokenSource = new CancellationTokenSource();
+            var token = m_DisableCancellationTokenSource.Token;
+            if (autoTrack)
             {
-                throw new System.Exception("Activator is not activated for this area.");
+                var fovManager = await Dispatcher.global.WhenRegistered<FOVManager2d>(token);
+                using var tracker = fovManager.TrackArea(this, CameraFOVTracker2d.FovBoundsType.Full | CameraFOVTracker2d.FovBoundsType.Fov, (intersected, intersection) =>
+                {
+                    OnCameraFOVIntersectionChange(intersected, intersection);
+                });
             }
-            #endif
-            onDeactivated?.Invoke(activator);
-            m_Activators.Remove(activator);
+            
+            
+            await token;
         }
-        public DisposableAction SubscribeActivated(Action<Activator> action)
+
+        private void OnDisable()
         {
-            onActivated += action;
-            return new DisposableAction(() => onActivated -= action);
-        }
-        public DisposableAction SubscribeDeactivated(Action<Activator> action)
-        {
-            onDeactivated += action;
-            return new DisposableAction(() => onDeactivated -= action);
+            m_DisableCancellationTokenSource?.Cancel();
         }
     }
 }

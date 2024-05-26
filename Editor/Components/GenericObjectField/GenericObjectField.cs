@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Text;
-using Sirenix.Utilities.Editor;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 

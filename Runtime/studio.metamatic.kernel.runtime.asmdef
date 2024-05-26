@@ -8,7 +8,8 @@
         "Unity.InputSystem",
         "UniTask",
         "com.es3.runtime",
-        "Unity.Localization"
+        "Unity.Localization",
+        "Unity.Burst"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

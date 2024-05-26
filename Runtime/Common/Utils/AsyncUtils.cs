@@ -59,6 +59,32 @@ namespace Metamatic
             });
         }
         
+        public static DisposableAction PlayerLoopActionFps(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float fps = 60, CancellationToken cancellationToken = default)
+        {
+            /* Reduce fps to specified value */
+            var interval = 1f / fps;
+            var lastTime = Time.time;
+            var active = true;
+            UniTask.WaitUntil(() =>
+            {
+                if (!active) return true;
+                var currentTime = Time.time;
+                if (currentTime - lastTime >= interval)
+                {
+                    callback(currentTime - lastTime);
+                    lastTime = currentTime;
+                }
+                
+                return !active;
+
+            }, timing, cancellationToken).Forget();
+            
+            return new DisposableAction(() =>
+            {
+                active = false;
+            });
+        }
+        
         public static UniTask PlayerLoopAction(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, CancellationToken cancellationToken = default)
         {
             var startTime = Time.time;

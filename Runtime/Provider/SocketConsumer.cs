@@ -7,13 +7,13 @@ namespace Metamatic
     public class SocketConsumer<TSocketScheme>: Plug<TSocketScheme>
         where TSocketScheme: SocketScheme, new()
     {
-        private ExclusiveExecution<SocketProvider<TSocketScheme>> m_ProviderExecution;
+        private SequentialHandler<SocketProvider<TSocketScheme>> m_ProviderExecution;
         private CancellationTokenSource m_DisableCancellationTokenSource;
         protected sealed override void OnEnable()
         {
             base.OnEnable();
             m_DisableCancellationTokenSource = new CancellationTokenSource();
-            m_ProviderExecution = new ExclusiveExecution<SocketProvider<TSocketScheme>>(HandleProviderChange, m_DisableCancellationTokenSource.Token);
+            m_ProviderExecution = new SequentialHandler<SocketProvider<TSocketScheme>>(HandleProviderChange, m_DisableCancellationTokenSource.Token);
             m_DisableCancellationTokenSource.Token.Register(SocketProvider<TSocketScheme>.instance.Subscribe(m_ProviderExecution.Handle));
         }
 

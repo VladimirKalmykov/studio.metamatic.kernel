@@ -1,9 +1,7 @@
 using System;
 using System.Collections;
-using System.Threading.Tasks;
 using Metamatic;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Task = System.Threading.Tasks.Task;

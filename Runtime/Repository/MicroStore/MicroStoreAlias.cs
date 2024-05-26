@@ -8,12 +8,12 @@ namespace Metamatic
         where T : struct
     {
         private readonly MicroState<MicroStore<T>> m_MicroStore = new ();
-        private readonly ExclusiveExecution<string> m_IdExecution;
+        private readonly SequentialHandler<string> m_IdExecution;
         public MicroStore<T> store => m_MicroStore.value;
         public T value => m_MicroStore.value.value;
         public MicroStoreAlias(string id)
         {
-            m_IdExecution = new ExclusiveExecution<string>(HandleIdChange);
+            m_IdExecution = new SequentialHandler<string>(HandleIdChange);
             m_IdExecution.Handle(id);
         }
         private int m_AcquireCount;

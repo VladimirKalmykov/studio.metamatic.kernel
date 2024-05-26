@@ -1,12 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using Tests.EditMode.Database;
-using UnityEditor;
 
 namespace Metamatic
 {
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;

@@ -4,8 +4,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    [Obsolete("Use ExclusiveHandler instead", true)]
-    public abstract class SequentialHandler: IDisposable
+    public abstract class ExclusiveHandlerBase: IDisposable
     {
         protected CancellationToken externCancellationToken;
         protected CancellationTokenSource internalCancellationTokenSource;
@@ -21,52 +20,47 @@ namespace Metamatic
         public void Dispose()
         {
             disposed = true;
+            internalCancellationTokenSource?.Cancel();
             internalCancellationTokenSource?.Dispose();
             EraseProps();
         }
 
         protected abstract void EraseProps();
     }
-    [Obsolete("Use ExclusiveHandler instead", true)]
-    public class SequentialHandler<TContext>: SequentialHandler
+    public class SequentialHandler: ExclusiveHandlerBase
     {
-        public delegate void Handler(CancellationToken token, TContext context);
+        public delegate void Handler(CancellationToken token);
 
         private Handler m_Handler;
-        private TContext m_Context;
-        
-        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken, TContext context = default)
+    
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
-            m_Context = context;
             externCancellationToken = externalCancellationToken;
         }
         public void Handle()
         {
             Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            Debug.Assert(m_Handler != null, "Handler is null");
             CancelInternalToken();
             internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
-            m_Handler(internalCancellationTokenSource.Token, m_Context);
+            m_Handler(internalCancellationTokenSource.Token);
         }
 
         protected override void EraseProps()
         {
             m_Handler = default;
-            m_Context = default;
         }
     }
-    [Obsolete("Use ExclusiveHandler instead", true)]
-    public class SequentialHandler<T, TContext>: SequentialHandler
+    public class SequentialHandler<T>: ExclusiveHandlerBase
     {
-        public delegate void Handler(T value, CancellationToken token, TContext context);
+        public delegate void Handler(T value, CancellationToken token);
 
         private Handler m_Handler;
-        private TContext m_Context;
-        
-        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default, TContext context = default)
+    
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
-            m_Context = context;
             externCancellationToken = externalCancellationToken;
         }
         public void Handle(T value)
@@ -74,27 +68,23 @@ namespace Metamatic
             Debug.Assert(!disposed, "SequentialHandler disposed but still used");
             CancelInternalToken();
             internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
-            m_Handler(value, internalCancellationTokenSource.Token, m_Context);
+            m_Handler(value, internalCancellationTokenSource.Token);
         }
 
         protected override void EraseProps()
         {
             m_Handler = default;
-            m_Context = default;
         }
     }
-    [Obsolete("Use ExclusiveHandler instead", true)]
-    public class SequentialHandler<T1, T2, TContext>: SequentialHandler
+    public class SequentialHandler<T1, T2>: ExclusiveHandlerBase
     {
-        public delegate void Handler(T1 value1, T2 value2, CancellationToken token, TContext context);
+        public delegate void Handler(T1 value1, T2 value2, CancellationToken token);
 
         private Handler m_Handler;
-        private TContext m_Context;
-        
-        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken, TContext context = default)
+    
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
-            m_Context = context;
             externCancellationToken = externalCancellationToken;
         }
         public void Handle(T1 value1, T2 value2)
@@ -102,75 +92,115 @@ namespace Metamatic
             Debug.Assert(!disposed, "SequentialHandler disposed but still used");
             CancelInternalToken();
             internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
-            m_Handler(value1, value2, internalCancellationTokenSource.Token, m_Context);
+            m_Handler(value1, value2, internalCancellationTokenSource.Token);
         }
 
         protected override void EraseProps()
         {
             m_Handler = default;
-            m_Context = default;
         }
     }
-    [Obsolete("Use ExclusiveHandler instead", true)]
-    public class SequentialHandlerRef<T, TContext>: SequentialHandler
+
+    public class SequentialHandler<T1, T2, T3> : ExclusiveHandlerBase
     {
-        public delegate void Handler(ref T value, CancellationToken token, TContext context);
+        public delegate void Handler(T1 value1, T2 value2, T3 value3, CancellationToken token);
 
         private Handler m_Handler;
-        private TContext m_Context;
-        
-        public SequentialHandlerRef(Handler handler, CancellationToken externalCancellationToken, TContext context = default)
+
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
-            m_Context = context;
             externCancellationToken = externalCancellationToken;
         }
-        public SequentialHandlerRef(Handler handler, TContext context = default)
+
+        public void Handle(T1 value1, T2 value2, T3 value3)
+        {
+            Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            CancelInternalToken();
+            internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
+            m_Handler(value1, value2, value3, internalCancellationTokenSource.Token);
+        }
+
+        protected override void EraseProps()
+        {
+            m_Handler = default;
+        }
+    }
+    
+    public class SequentialHandler<T1, T2, T3, T4> : ExclusiveHandlerBase
+    {
+        public delegate void Handler(T1 value1, T2 value2, T3 value3, T4 value4, CancellationToken token);
+
+        private Handler m_Handler;
+
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
-            m_Context = context;
-            externCancellationToken = default;
+            externCancellationToken = externalCancellationToken;
+        }
+
+        public void Handle(T1 value1, T2 value2, T3 value3, T4 value4)
+        {
+            Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            CancelInternalToken();
+            internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
+            m_Handler(value1, value2, value3, value4, internalCancellationTokenSource.Token);
+        }
+
+        protected override void EraseProps()
+        {
+            m_Handler = default;
+        }
+    }
+    
+    public class SequentialHandler<T1, T2, T3, T4, T5> : ExclusiveHandlerBase
+    {
+        public delegate void Handler(T1 value1, T2 value2, T3 value3, T4 value4, T5 value5, CancellationToken token);
+
+        private Handler m_Handler;
+
+        public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
+        {
+            m_Handler = handler;
+            externCancellationToken = externalCancellationToken;
+        }
+
+        public void Handle(T1 value1, T2 value2, T3 value3, T4 value4, T5 value5)
+        {
+            Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            CancelInternalToken();
+            internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
+            m_Handler(value1, value2, value3, value4, value5, internalCancellationTokenSource.Token);
+        }
+
+        protected override void EraseProps()
+        {
+            m_Handler = default;
+        }
+    }
+    
+    public class SequentialHandlerRef<T>: ExclusiveHandlerBase
+    {
+        public delegate void Handler(ref T value, CancellationToken token);
+
+        private Handler m_Handler;
+    
+        public SequentialHandlerRef(Handler handler, CancellationToken externalCancellationToken = default)
+        {
+            m_Handler = handler;
+            externCancellationToken = externalCancellationToken;
         }
         public void Handle(ref T value)
         {
             Debug.Assert(!disposed, "SequentialHandler disposed but still used");
             CancelInternalToken();
             internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
-            m_Handler(ref value, internalCancellationTokenSource.Token, m_Context);
+            m_Handler(ref value, internalCancellationTokenSource.Token);
         }
 
         protected override void EraseProps()
         {
             m_Handler = default;
-            m_Context = default;
-        }
-    }
-    [Obsolete("Use ExclusiveHandler instead", true)]
-    public class SequentialHandlerRef<T1, T2, TContext>: SequentialHandler
-    {
-        public delegate void Handler(ref T1 value1, ref T2 value2, CancellationToken token, TContext context);
-
-        private Handler m_Handler;
-        private TContext m_Context;
-        
-        public SequentialHandlerRef(Handler handler, CancellationToken externalCancellationToken, TContext context = default)
-        {
-            m_Handler = handler;
-            m_Context = context;
-            externCancellationToken = externalCancellationToken;
-        }
-        public void Handle(ref T1 value1, ref T2 value2)
-        {
-            Debug.Assert(!disposed, "SequentialHandler disposed but still used");
-            CancelInternalToken();
-            internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
-            m_Handler(ref value1, ref value2, internalCancellationTokenSource.Token, m_Context);
-        }
-
-        protected override void EraseProps()
-        {
-            m_Handler = default;
-            m_Context = default;
         }
     }
 }

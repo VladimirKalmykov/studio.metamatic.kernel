@@ -1,8 +1,5 @@
-using System;
 using UnityEngine;
 using UnityEngine.UIElements;
-using UnityEditor;
-using Metamatic;
 
 namespace Metamatic {
     public class InspectorDescriptionEditorComponent: EditorComponent {

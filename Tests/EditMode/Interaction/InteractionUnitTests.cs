@@ -1,7 +1,5 @@
 using System;
 using NUnit.Framework;
-using Metamatic;
-using UnityEngine;
 
 namespace Metamatic
 {

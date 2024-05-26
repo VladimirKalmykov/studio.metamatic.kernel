@@ -8,25 +8,26 @@
     /// Exclusive handler for array of items. It allows to initialize (or some way process it) items and dispose them when they are not needed anymore.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class ExclusiveArrayExecution<T> : IDisposable where T : class
+    public class SequentialArrayHandler<T> : IDisposable where T : class
     {
-        private readonly Action<T, CancellationToken> m_Initializer;
+        public delegate void Handler(T value, CancellationToken cancellationToken);
+        private readonly Handler m_Initializer;
         private readonly CancellationTokenRegistration _cancellationTokenRegistration;
         private Dictionary<T, CancellationTokenSource> _items = new Dictionary<T, CancellationTokenSource>();
         private bool _disposed = false;
 
         public event Action<Exception> OnError;
 
-        public ExclusiveArrayExecution(Action<T, CancellationToken> initializer, CancellationToken cancellationToken = default)
+        public SequentialArrayHandler(Handler initializer, CancellationToken cancellationToken = default)
         {
-            m_Initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+            m_Initializer = initializer;
             _cancellationTokenRegistration = cancellationToken.Register(CancelAll);
         }
 
-        public void Handle(IEnumerable<T> newItems)
+        public void Handle(IEnumerable<T> newItems, Handler localInitializer = null)
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(ExclusiveArrayExecution<T>));
+                throw new ObjectDisposedException(nameof(SequentialArrayHandler<T>));
 
             var newItemsSet = new HashSet<T>(newItems);
             var oldItemsSet = new HashSet<T>(_items.Keys);
@@ -39,6 +40,13 @@
                     DisposeItem(oldItem);
                 }
             }
+            
+            var initializer = localInitializer ?? m_Initializer;
+            
+            #if DEBUG
+            if (m_Initializer == null)
+                throw new ArgumentNullException(nameof(m_Initializer), "Initializer is not set");
+            #endif
 
             // Инициализировать новые элементы
             foreach (var newItem in newItems)
@@ -48,7 +56,7 @@
                     try
                     {
                         var cancellationTokenSource = new CancellationTokenSource();
-                        m_Initializer(newItem, cancellationTokenSource.Token);
+                        initializer(newItem, cancellationTokenSource.Token);
                         _items[newItem] = cancellationTokenSource;
                     }
                     catch (Exception ex)

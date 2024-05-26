@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Threading; // Добавьте этот namespace
 using Metamatic;
-using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 public class RepositorySettingsProvider : SettingsProvider
@@ -15,7 +14,7 @@ public class RepositorySettingsProvider : SettingsProvider
     private static RepositorySettings settings;
     private VisualTreeAsset m_PlatformVisualTree;
     private ScrollView m_PlatformsScrollView;
-    private ExclusiveArrayExecution<PlatformSource> m_PlatformItemsInitializer;
+    private SequentialArrayHandler<PlatformSource> m_PlatformItemsInitializer;
     private CancellationTokenSource m_ActivationCancellationTokenSource;
     private Dictionary<RuntimePlatform, List<Type>> m_PlatformToSourcesMap;
     private SerializedObject m_SerializedSettings;
@@ -46,7 +45,7 @@ public class RepositorySettingsProvider : SettingsProvider
         m_PlatformToSourcesMap = FindCompatibleIOSourceClasses();
         
         /* Create platform items initializer */
-        using var platformItemsInitializer = m_PlatformItemsInitializer = new ExclusiveArrayExecution<PlatformSource>(RenderPlatformSource);
+        using var platformItemsInitializer = m_PlatformItemsInitializer = new SequentialArrayHandler<PlatformSource>(RenderPlatformSource);
         var root = CreateSettingsGUI();
         
         

@@ -11,13 +11,13 @@ namespace Metamatic
         public Plug<TSocketScheme> plug;
         [HideInEditorMode, ShowInInspector, ReadOnly]
         public SocketProviderRef<TSocketScheme> m_Provider { get; private set; }
-        private SequentialHandler<SocketProviderRef<TSocketScheme>, object> m_ProviderHandler;
+        private SequentialHandler<SocketProviderRef<TSocketScheme>> m_ProviderHandler;
         private CancellationTokenSource m_DisableCancellationTokenSource;
         protected sealed override void OnEnable()
         {
             base.OnEnable();
             m_DisableCancellationTokenSource = new CancellationTokenSource();
-            m_ProviderHandler = new SequentialHandler<SocketProviderRef<TSocketScheme>, object>(HandleProviderChange, m_DisableCancellationTokenSource.Token);
+            m_ProviderHandler = new SequentialHandler<SocketProviderRef<TSocketScheme>>(HandleProviderChange, m_DisableCancellationTokenSource.Token);
             m_DisableCancellationTokenSource.Token.Register(SocketProviderRef<TSocketScheme>.instance.Subscribe(m_ProviderHandler.Handle));
         }
 
@@ -32,7 +32,7 @@ namespace Metamatic
             
         }
 
-        private void HandleProviderChange(SocketProviderRef<TSocketScheme> provider, CancellationToken cancellationToken, object _)
+        private void HandleProviderChange(SocketProviderRef<TSocketScheme> provider, CancellationToken cancellationToken)
         {
             if (provider != null && provider.socket != null && plug != null)
             {

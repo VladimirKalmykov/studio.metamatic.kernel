@@ -1,0 +1,84 @@
+namespace Metamatic
+{
+    using System.Collections.Generic;
+using System.Threading;
+using Metamatic;
+using Metamatic.Actions;
+using Metamatic.MicroBehaviours;
+using UnityEngine;
+
+public class FOVManager2d : AsyncBehaviour
+{
+    [SerializeField] private float m_OuterBuffer = 1.0f;
+    [SerializeField] private float m_InnerBuffer = 1.0f;
+    
+    private CameraFOVTracker2d m_CameraFovTracker2d;
+    public CameraFOVTracker2d cameraFovTracker2d => m_CameraFovTracker2d;
+    
+    protected override async void RunAsync(CancellationToken cancellationToken)
+    {
+        /* Subscribe to camera controller */
+        await using var cameraFovTracker2d = m_CameraFovTracker2d = new CameraFOVTracker2d(null, m_InnerBuffer, m_OuterBuffer, transform.position.z);
+        using var validationListener = SubscribeValidate(() =>
+        {
+            m_CameraFovTracker2d.innerBuffer = m_InnerBuffer;
+            m_CameraFovTracker2d.outerBuffer = m_OuterBuffer;
+        });
+        #if UNITY_EDITOR
+        using var drawGizmosListener = SubscribeDrawGizmos(m_CameraFovTracker2d.DrawGizmos);
+        #endif
+        using var cameraControllerSubscription = Dispatcher.global.SubscribeRegistry<CameraAnchor>(
+            cameraController =>
+            {
+                cameraFovTracker2d.camera = cameraController.camera;
+            });
+        /* Check for already registered */
+        if (Dispatcher.global.HasRegistry<FOVManager2d>())
+        {
+            throw new System.Exception("FOVManager already registered");
+        }
+        /* Register this in Dispatcher */
+        using var registration = Dispatcher.global.Register(this);
+        await cancellationToken;
+    }
+    
+    public DisposableAction TrackArea(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
+    {
+        return cameraFovTracker2d.TrackArea(area, boundsType, onActivated);
+    }
+    
+    /// <summary>
+    /// Track specific areas in the FOV edges
+    /// </summary>
+    /// <param name="areas"></param>
+    /// <param name="onActivated"></param>
+    /// <returns></returns>
+    public DisposableAction TrackAreas(IEnumerable<VirtualArea2d> areas, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
+    {
+        return cameraFovTracker2d.TrackAreas(areas, boundsType, onActivated);
+    }
+    
+    /// <summary>
+    /// Track specific object in the FOV
+    /// </summary>
+    /// <param name="t"></param>
+    /// <param name="onOverlapped"></param>
+    /// <returns></returns>
+    public DisposableAction TrackObject(Transform t, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackObjectHandler onChange)
+    {
+        return cameraFovTracker2d.TrackObject(t, boundsType, onChange);
+    }
+    
+    /// <summary>
+    /// Track specific objects in the FOV
+    /// </summary>
+    /// <param name="ts"></param>
+    /// <param name="onOverlapped"></param>
+    /// <returns></returns>
+    public DisposableAction TrackObjects(IEnumerable<Transform> ts, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackObjectHandler onChange)
+    {
+        return cameraFovTracker2d.TrackObjects(ts, boundsType, onChange);
+    }
+}
+
+}

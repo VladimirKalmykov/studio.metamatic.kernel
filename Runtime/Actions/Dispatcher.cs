@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Metamatic.Actions
 {
-    public class Dispatcher : IDispatcher
+    public class Dispatcher
     {
         #region Global
         private static DispatcherComponent _globalDispatcher;
@@ -240,7 +240,7 @@ namespace Metamatic.Actions
             });
         }
 
-        public DisposableAction SubscribeRegistry<TKey, TValue>(TKey id, IDispatcher.EventHandler<TValue> handler) where TValue : notnull
+        public DisposableAction SubscribeRegistry<TKey, TValue>(TKey id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
         {
             var keyType = typeof(TKey);
             var valueType = typeof(TValue);
@@ -287,7 +287,7 @@ namespace Metamatic.Actions
                     Debug.LogError(e);
                 }
             };
-            var releaseSubscription = registry.Subscribe(handlerWrapper);
+            var releaseSubscription = registry.Subscribe(handlerWrapper, skipInitial);
             return new DisposableAction(() =>
             {
                 releaseSubscription();
@@ -311,11 +311,46 @@ namespace Metamatic.Actions
             return Register(this, source);
         }
 
-        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler) where TValue : notnull
+        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
         {
-            return SubscribeRegistry(this, handler);
+            return SubscribeRegistry(this, handler, skipInitial);
         }
-
+        
+        /// <summary>
+        /// Wait for registry for specific key and type to be changed
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
+        public UniTask<TValue> WhenRegistryChange<TKey, TValue>(TKey id, CancellationToken cancellationToken = default) where TValue : notnull
+        {
+            var tcs = new UniTaskCompletionSource<TValue>();
+            UniTask<TValue> task = tcs.Task;
+            System.Action releaseSubscription = null;
+            CancellationTokenRegistration cancellationTokenRegistration = cancellationToken.Register(() =>
+            {
+                releaseSubscription?.Invoke();
+                tcs.TrySetCanceled(cancellationToken);
+            });
+            releaseSubscription = SubscribeRegistry<TKey, TValue>(id, source =>
+            {
+                releaseSubscription?.Invoke();
+                cancellationTokenRegistration.Dispose();
+                tcs.TrySetResult(source);
+            }, true);
+            return task;
+        }
+        
+        /// <summary>
+        /// Wait for registry for specific key and type to be registered with not null value
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
         public UniTask<TValue> WhenRegistered<TKey, TValue>(TKey id, CancellationToken cancellationToken = default) where TValue : notnull
         {
             var tcs = new UniTaskCompletionSource<TValue>();
@@ -343,8 +378,38 @@ namespace Metamatic.Actions
         {
             return WhenRegistered<Dispatcher, TValue>(this, cancellationToken);
         }
+
+        public UniTask<TValue> WhenRegistryChange<TValue>(CancellationToken cancellationToken = default) where TValue : notnull
+        {
+            return WhenRegistryChange<Dispatcher, TValue>(this, cancellationToken);
+        }
         
-        public TValue GetRegistry<TKey, TValue>(TKey id) where TValue : notnull
+        public RegistrySource<TValue> GetRegistry<TKey, TValue>(TKey id) where TValue : notnull
+        {
+            var keyType = typeof(TKey);
+            var valueType = typeof(TValue);
+            if (!m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
+            {
+                m_RegistryTypesKeys[keyType] = keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
+            }
+            if (!keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
+            {
+                keyTypeDictionary[valueType] = valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
+            }
+            if (!valueTypeDictionary.TryGetValue(id, out var registry))
+            {
+                valueTypeDictionary[id] = registry = new RegistrySource<object>();
+            }
+
+            return registry as RegistrySource<TValue>;
+        }
+        
+        public RegistrySource<TValue> GetRegistry<TValue>() where TValue : class
+        {
+            return GetRegistry<Dispatcher, TValue>(this);
+        }
+        
+        public TValue GetRegisteredObject<TKey, TValue>(TKey id) where TValue : notnull
         {
             var keyType = typeof(TKey);
             var valueType = typeof(TValue);
@@ -362,9 +427,9 @@ namespace Metamatic.Actions
             return default;
         }
         
-        public T GetRegistry<T>() where T : notnull
+        public T GetRegisteredObject<T>() where T : notnull
         {
-            return GetRegistry<Dispatcher, T>(this);
+            return GetRegisteredObject<Dispatcher, T>(this);
         }
         
         public bool HasRegistry<TKey, TValue>(TKey id) where TValue : notnull

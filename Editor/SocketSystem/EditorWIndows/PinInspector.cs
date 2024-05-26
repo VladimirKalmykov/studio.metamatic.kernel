@@ -1,11 +1,6 @@
 ﻿using System;
-using Metamatic;
-using Metamatic.Extensions;
 using Metamatic.UI;
-using UnityEditor;
-using UnityEditor.Search;
 using UnityEngine;
-using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using ObjectField = UnityEditor.UIElements.ObjectField;
 

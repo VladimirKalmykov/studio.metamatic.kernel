@@ -6,7 +6,6 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 
 namespace Metamatic {
     public class MonoBehaviourPluginsEditorComponent: EditorComponent {

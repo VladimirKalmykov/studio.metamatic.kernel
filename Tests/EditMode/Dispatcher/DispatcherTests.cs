@@ -1,5 +1,4 @@
-﻿using System;
-using Metamatic.Actions;
+﻿using Metamatic.Actions;
 using NUnit.Framework;
 using UnityEngine;
 

@@ -1,12 +1,15 @@
 ﻿using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic.Actions
 {
     public class RegistrySource<T>: IDisposable
-    where T : class
+    where T : notnull
     {
         public class Token {}
-        public T value { get; private set; } = null;
+
+        public T value { get; private set; } = default;
         public event System.Action OnRelease;
         public event System.Action<T> OnChange;
         public Registry<T> Registry => new Registry<T>(this);
@@ -27,8 +30,8 @@ namespace Metamatic.Actions
         public bool Release(Token token)
         {
             if (m_ValueToken != token) return false;
-            value = null;
-            OnChange?.Invoke(null);
+            value = default;
+            OnChange?.Invoke(default);
             m_ValueToken = null;
             return true;
         }
@@ -47,22 +50,43 @@ namespace Metamatic.Actions
             Dispose();
         }
         
-        public System.Action Subscribe(System.Action<T> handler)
+        public System.Action Subscribe(System.Action<T> handler, bool skipInitial = false)
         {
             OnChange += handler;
-            if (value != null)
+            if (!skipInitial && value != null)
                 handler(value);
             return () =>
             {
                 OnChange -= handler;
             };
         }
+        
+        public UniTask<T> WhenNotNull(CancellationToken cancellationToken)
+        {
+            if (value != null) return UniTask.FromResult(value);
+            var tcs = new UniTaskCompletionSource<T>();
+            System.Action<T> handler = null;
+            CancellationTokenRegistration registration = default;
+            handler = (v) =>
+            {
+                registration.Dispose();
+                OnChange -= handler;
+                tcs.TrySetResult(v);
+            };
+            OnChange += handler;
+            registration = cancellationToken.Register(() =>
+            {
+                OnChange -= handler;
+                tcs.TrySetCanceled();
+            });
+            return tcs.Task;
+        }
 
         public void Dispose()
         {
             if (m_IsDisposed) return;
             m_IsDisposed = true;
-            OnChange?.Invoke(null);
+            OnChange?.Invoke(default);
             OnRelease?.Invoke();
             OnChange = null;
             OnRelease = null;
@@ -70,7 +94,7 @@ namespace Metamatic.Actions
         }
     }
     public struct Registry<T>: IDisposable
-    where T : class
+    where T : notnull
     {
         public T subject => m_Source == null ? default : m_Source.value;
         public bool isDisposed => m_Source == null;

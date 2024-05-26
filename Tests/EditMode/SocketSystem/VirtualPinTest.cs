@@ -1,7 +1,6 @@
 ﻿namespace Metamatic.EditModeTests
 {
-    using System.Linq;
-using NUnit.Framework;
+    using NUnit.Framework;
 using UnityEngine;
 using Metamatic;
 

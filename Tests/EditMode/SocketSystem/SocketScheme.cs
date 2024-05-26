@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using Metamatic;
+﻿using Metamatic;
 using NUnit.Framework;
-using UnityEditor.VersionControl;
 using UnityEngine;
 
 namespace Tests.EditMode.SocketSystem

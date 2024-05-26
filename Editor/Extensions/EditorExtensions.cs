@@ -1,9 +1,6 @@
-using System;
 using UnityEngine;
 using UnityEditor;
-using UnityEngine.UIElements;
 using System.IO;
-using System.Text.RegularExpressions;
 
 namespace Metamatic.Extensions {
     public static partial class ExtensionMethods {

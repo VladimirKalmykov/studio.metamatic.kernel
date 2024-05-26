@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using DevTools;
-using Metamatic;
 using UnityEngine;
 
 namespace Metamatic.DevTools

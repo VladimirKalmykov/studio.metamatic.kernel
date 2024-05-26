@@ -4,7 +4,7 @@ namespace Metamatic
 {
     public class UniqueDice
     {
-        private readonly int sides;
+        private int m_Sides;
         private int usedSidesMask;
         public int remainingSides { get; private set; }
 
@@ -14,9 +14,19 @@ namespace Metamatic
             {
                 throw new ArgumentOutOfRangeException(nameof(sides), "Maximum number of sides is 32.");
             }
-            this.sides = sides;
+            this.m_Sides = sides;
             this.usedSidesMask = 0;
             this.remainingSides = sides;
+        }
+
+        public void SetSides(int sides)
+        {
+            if (sides > 32)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sides), "Maximum number of sides is 32.");
+            }
+            this.m_Sides = sides;
+            Reset();
         }
 
         public int Next()
@@ -29,7 +39,7 @@ namespace Metamatic
             int side;
             do
             {
-                side = UnityEngine.Random.Range(0, sides);
+                side = UnityEngine.Random.Range(0, m_Sides);
             } while ((usedSidesMask & (1 << side)) != 0);
 
             usedSidesMask |= (1 << side);
@@ -41,7 +51,7 @@ namespace Metamatic
         public void Reset()
         {
             usedSidesMask = 0;
-            remainingSides = sides;
+            remainingSides = m_Sides;
         }
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using UnityEngine;
 using UnityEngine.TestTools;
 using Metamatic;
 using Metamatic.Effects;
