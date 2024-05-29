@@ -2,7 +2,7 @@
 
 namespace Metamatic
 {
-    public class UniqueDice
+    public class UniqueDice: IDisposable
     {
         private int m_Sides;
         private int usedSidesMask;
@@ -52,6 +52,11 @@ namespace Metamatic
         {
             usedSidesMask = 0;
             remainingSides = m_Sides;
+        }
+
+        public void Dispose()
+        {
+            Reset();
         }
     }
 }

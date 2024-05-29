@@ -1,3 +1,5 @@
+using Cysharp.Threading.Tasks;
+
 namespace Metamatic
 {
     using System.Collections.Generic;
@@ -45,6 +47,44 @@ public class FOVManager2d : AsyncBehaviour
     public DisposableAction TrackArea(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
     {
         return cameraFovTracker2d.TrackArea(area, boundsType, onActivated);
+    }
+    
+    /// <summary>
+    /// Track specific area once
+    /// </summary>
+    /// <param name="area"></param>
+    /// <param name="boundsType"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public UniTask<CameraFOVTracker2d.AreaIntersection> TrackAreaOneShot(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CancellationToken cancellationToken)
+    {
+        var tcs = new UniTaskCompletionSource<CameraFOVTracker2d.AreaIntersection>();
+        DisposableAction release = null;
+        CancellationTokenRegistration registration = cancellationToken.Register(() =>
+        {
+            tcs.TrySetCanceled();
+            release?.Dispose();
+        });
+        var shotWasTaken = false;
+        release = cameraFovTracker2d.TrackArea(area, boundsType, (intersected, intersection) =>
+        {
+            if (shotWasTaken)
+            {
+                return;
+            }
+            shotWasTaken = true;
+            
+            if (cancellationToken.IsCancellationRequested)
+            {
+                tcs.TrySetCanceled();
+                release?.Dispose();
+                return;
+            }
+            registration.Dispose();
+            tcs.TrySetResult(intersection);
+            release?.Dispose();
+        });
+        return tcs.Task;
     }
     
     /// <summary>

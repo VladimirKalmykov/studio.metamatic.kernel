@@ -28,7 +28,7 @@ namespace Metamatic
                 var worldRect = rectValues[1];
                 var minDistance = floatValues[0];
                 var maxCount = intValues[0];
-                if (!otherRect.Overlaps(worldRect))
+                if (!otherRect.Overlaps(worldRect, true))
                 {
                     throw new System.ArgumentException("Rectangles do not overlap.");
                 }

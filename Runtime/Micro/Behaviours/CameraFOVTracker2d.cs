@@ -358,7 +358,8 @@ namespace Metamatic.MicroBehaviours
             private event Action<FovBoundsType, ulong> OnActivateChange;
             public int acquireCount { get; private set; }
             private ulong m_IntersectedRectsMask = 0;
-            private bool disposed = false;
+            private bool m_Disposed = false;
+            private bool m_Pristine = true;
 
             public AreaTracker(CameraFOVTracker2d masterTracker, VirtualArea2d area)
             {
@@ -373,6 +374,7 @@ namespace Metamatic.MicroBehaviours
 
             public bool ApplyBounds(FovBoundsType boundsType, ulong intersectedRectsMask)
             {
+                m_Pristine = false;
                 if (activatedBoundsTypesMask == boundsType && m_IntersectedRectsMask == intersectedRectsMask)
                 {
                     return false;
@@ -417,7 +419,11 @@ namespace Metamatic.MicroBehaviours
                     var intersection = activatedBoundsTypesMask & boundsTypeMask;
                     areaIntersection.intersectedRectsMask = m_IntersectedRectsMask & interestedRectIndexesMask;
                     areaIntersection.boundsTypes = intersection;
-                    onReactivate.Invoke(intersection != 0, areaIntersection);
+                    if (!m_Pristine)
+                    {
+                        onReactivate.Invoke(intersection != 0, areaIntersection);
+                    }
+                    
                     handler = (activeBounds, activeRectsMask) =>
                     {
                         var nextIntersection = activeBounds & boundsTypeMask;
@@ -473,7 +479,7 @@ namespace Metamatic.MicroBehaviours
 
             protected virtual void Dispose(bool disposing)
             {
-                if (!disposed)
+                if (!m_Disposed)
                 {
                     if (disposing)
                     {
@@ -482,7 +488,7 @@ namespace Metamatic.MicroBehaviours
                         m_AcquiredBoundsTypeMap.Clear();
                     }
 
-                    disposed = true;
+                    m_Disposed = true;
                 }
             }
 
@@ -717,6 +723,7 @@ namespace Metamatic.MicroBehaviours
                 {
                     break;
                 }
+                var debugStartTime = Time.realtimeSinceStartup;
                 m_IsTracking = true;
                 var (fovBounds, allBounds, innerBufferBounds) = CalculateCameraBounds(this.camera, m_ZDepth, outerBuffer, innerBuffer);
 
@@ -730,32 +737,6 @@ namespace Metamatic.MicroBehaviours
 
                 SwapTrackedAreas();
                 SwapTrackedObjects();
-                
-                foreach (var (area, areaTrack) in iterableTrackedAreas)
-                {
-                    intersectedRects = 0;
-                    resultBoundsTypeMask = 0;
-                    var mask = areaTrack.acquiredBoundsTypesBinaryMask;
-                    foreach (FovBoundsType boundsType in fovBoundsTypeArray)
-                    {
-                        if ((mask & boundsType) != 0)
-                        {
-                            if (BoundsOverlapsArea(allRects, MapBoundsTypeToRectsIndex[boundsType], area, ref intersectedRects))
-                            {
-                                resultBoundsTypeMask |= boundsType;
-                            }
-                            else
-                            {
-                                resultBoundsTypeMask &= ~boundsType;
-                            }
-                        }
-                    }
-
-                    if (areaTrack.ApplyBounds(resultBoundsTypeMask, intersectedRects))
-                    {
-                        // Send intersection event
-                    }
-                }
                 
                 NativeArray<FovBoundsType> acquiredBoundsTypesBinaryMaskArray = new NativeArray<FovBoundsType>(iterableTrackedObjects.Count, Allocator.TempJob);
                 NativeArray<Vector2> trackedObjectPositions = new NativeArray<Vector2>(iterableTrackedObjects.Count, Allocator.TempJob);
@@ -784,6 +765,34 @@ namespace Metamatic.MicroBehaviours
                         mapBoundsTypesToRectIndexesBoundTypes = mapBoundsTypesToRectIndexesBoundTypes
                     };
                     var jobHandle = trackObjectsJob.Schedule(iterableTrackedObjects.Count, 64);
+                    
+                    /* Tracking areas */
+                    foreach (var (area, areaTrack) in iterableTrackedAreas)
+                    {
+                        intersectedRects = 0;
+                        resultBoundsTypeMask = 0;
+                        var mask = areaTrack.acquiredBoundsTypesBinaryMask;
+                        foreach (FovBoundsType boundsType in fovBoundsTypeArray)
+                        {
+                            if ((mask & boundsType) != 0)
+                            {
+                                if (BoundsOverlapsArea(allRects, MapBoundsTypeToRectsIndex[boundsType], area, ref intersectedRects))
+                                {
+                                    resultBoundsTypeMask |= boundsType;
+                                }
+                                else
+                                {
+                                    resultBoundsTypeMask &= ~boundsType;
+                                }
+                            }
+                        }
+
+                        if (areaTrack.ApplyBounds(resultBoundsTypeMask, intersectedRects))
+                        {
+                            // Send intersection event
+                        }
+                    }
+                    
                     await jobHandle;
                     cancellationToken.ThrowIfCancellationRequested();
 
@@ -817,6 +826,10 @@ namespace Metamatic.MicroBehaviours
                     resultBoundsTypeMaskArray.Dispose();
                 }
                 
+                
+                var performanceInMs = (Time.realtimeSinceStartup - debugStartTime) * 1000;
+                UILog.Add("Performance", "CameraFOVTracker2d", $"Spawned in {performanceInMs}");
+                
                 /* Await next fixed update */
                 await UniTask.Yield(PlayerLoopTiming.FixedUpdate);
                 
@@ -826,21 +839,22 @@ namespace Metamatic.MicroBehaviours
             }
 
             await cancellationToken;
-            allRects.Dispose();
-            mapBoundsTypesToRectIndexesBoundTypes.Dispose();
-            mapBoundsTypeToRectsStartIndex.Dispose();
-            mapBoundsTypeToRectsEndIndex.Dispose();
             foreach (var (area, areaTrack) in m_TrackedAreas)
             {
                 areaTrack.Dispose();
             }
+            allRects.Dispose();
+            mapBoundsTypesToRectIndexesBoundTypes.Dispose();
+            mapBoundsTypeToRectsStartIndex.Dispose();
+            mapBoundsTypeToRectsEndIndex.Dispose();
+            mapBoundsTypeToRectsRectIndexes.Dispose();
         }
 
-        private bool BoundsOverlapsArea(NativeArray<Rect> allRects, int[] boundsTypes, VirtualArea2d area, ref ulong intersectedRects)
+        private bool BoundsOverlapsArea(NativeArray<Rect> allRects, int[] rectIndexes, VirtualArea2d area, ref ulong intersectedRects)
         {
-            for (int i = 0; i < boundsTypes.Length; i++)
+            for (int i = 0; i < rectIndexes.Length; i++)
             {
-                var rectIndex = boundsTypes[i];
+                var rectIndex = rectIndexes[i];
                 if (area.Overlaps(allRects[rectIndex]))
                 {
                     intersectedRects |= 1UL << rectIndex;
@@ -849,8 +863,17 @@ namespace Metamatic.MicroBehaviours
             return intersectedRects > 0;
         }
 
+        private float m_CameraFieldOfView = 0;
+        private float m_CameraAspect = 0;
+        private Vector3 m_CameraPosition = Vector3.zero;
+        private (Rect fovBounds, Rect mainBounds, Rect innerBufferBounds) m_CameraBounds;
         private (Rect fovBounds, Rect mainBounds, Rect innerBufferBounds) CalculateCameraBounds(Camera camera, float zDepth, float outerBuffer, float innerBuffer)
         {
+            if (m_CameraFieldOfView == camera.fieldOfView && m_CameraAspect == camera.aspect && m_CameraPosition == camera.transform.position)
+            {
+                return m_CameraBounds;
+            }
+            camera.fieldOfView = 60;
             Vector3 bottomLeft = camera.ViewportToWorldPoint(new Vector3(0, 0, Mathf.Abs(camera.transform.position.z - zDepth)));
             Vector3 topRight = camera.ViewportToWorldPoint(new Vector3(1, 1, Mathf.Abs(camera.transform.position.z - zDepth)));
 
@@ -875,7 +898,8 @@ namespace Metamatic.MicroBehaviours
                 (topRight.y - bottomLeft.y) + innerBuffer * 2
             );
 
-            return (fovBounds, allBounds, innerBufferBounds);
+            m_CameraBounds = (fovBounds, allBounds, innerBufferBounds);
+            return m_CameraBounds;
         }
 
         private void SwapTrackedAreas()
