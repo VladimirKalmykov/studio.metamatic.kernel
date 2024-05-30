@@ -26,13 +26,21 @@ namespace Micro.Behaviours
         private List<DisposableAction> m_ObjectTracker = new List<DisposableAction>();
         private UniqueDice uniqueDice = new UniqueDice(2);
         private VirtualArea2d.GeneratePointsAlgorithm m_Algorithm;
+        private Action<Transform> m_OnObjectSpawned;
         private float m_TotalAreasSize = 0;
-        public BackstageObjectSpawner2d(IObjectPool<GameObject> pool, int maxObjectsCount, bool preWarm = false, VirtualArea2d.GeneratePointsAlgorithm algorithm = VirtualArea2d.GeneratePointsAlgorithm.Random)
+        public BackstageObjectSpawner2d(
+            IObjectPool<GameObject> pool,
+            int maxObjectsCount,
+            bool preWarm = false,
+            VirtualArea2d.GeneratePointsAlgorithm algorithm = VirtualArea2d.GeneratePointsAlgorithm.Random,
+            Action<Transform> onObjectSpawned = null
+        )
         {
             m_Pool = pool;
             m_MaxObjectsCount = maxObjectsCount;
             m_PreWarm = preWarm;
             m_Algorithm = algorithm;
+            m_OnObjectSpawned = onObjectSpawned;
             Run();
         }
         public void AddArea(VirtualArea2d area)
@@ -194,6 +202,7 @@ namespace Micro.Behaviours
                         obj.SetActive(true);
                         m_ObjectTracker.Add(TrackObject(intersection.area, obj));
                         successSpawned = true;
+                        m_OnObjectSpawned?.Invoke(obj.transform);
                     }
                 }
             }
