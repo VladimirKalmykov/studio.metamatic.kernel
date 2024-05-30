@@ -19,6 +19,7 @@ public class FOVManager2d : AsyncBehaviour
     
     protected override async void RunAsync(CancellationToken cancellationToken)
     {
+        Debug.Log("CameraFOVTracker2d RunAsync Started");
         /* Subscribe to camera controller */
         await using var cameraFovTracker2d = m_CameraFovTracker2d = new CameraFOVTracker2d(null, m_InnerBuffer, m_OuterBuffer, transform.position.z);
         using var validationListener = SubscribeValidate(() =>
@@ -32,6 +33,13 @@ public class FOVManager2d : AsyncBehaviour
         using var cameraControllerSubscription = Dispatcher.global.SubscribeRegistry<CameraAnchor>(
             cameraController =>
             {
+                if (cameraController == null || cameraController.camera == null)
+                {
+                    cameraFovTracker2d.Pause();
+                    cameraFovTracker2d.camera = null;
+                    return;
+                }
+                cameraFovTracker2d.Resume();
                 cameraFovTracker2d.camera = cameraController.camera;
             });
         /* Check for already registered */
@@ -43,7 +51,6 @@ public class FOVManager2d : AsyncBehaviour
         using var registration = Dispatcher.global.Register(this);
         await cancellationToken;
     }
-    
     public DisposableAction TrackArea(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
     {
         return cameraFovTracker2d.TrackArea(area, boundsType, onActivated);

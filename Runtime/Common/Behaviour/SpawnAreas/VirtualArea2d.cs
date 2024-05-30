@@ -15,7 +15,7 @@ namespace Metamatic
     public abstract class VirtualArea2d: VirtualArea
     {
         
-        public enum GeneratePointsType
+        public enum GeneratePointsAlgorithm
         {
             Random,
             Strict
@@ -27,6 +27,10 @@ namespace Metamatic
         /// Area size of the shape of the area
         /// </summary>
         public abstract float size { get; }
+        /// <summary>
+        /// Returns rectangle representation of the area regardless of its shape
+        /// </summary>
+        public abstract Rect rectRepresentation { get; }
         /// <summary>
         /// Get random position on the area
         /// </summary>
@@ -46,7 +50,7 @@ namespace Metamatic
         /// <param name="maxCount"></param>
         /// <param name="spawnedObjects"></param>
         /// <returns></returns>
-        public abstract Vector2[] GetSpawnPoints(Rect rect, float minDistance, int maxCount, List<Vector2> spawnedObjects);
+        public abstract Vector2[] GetSpawnPoints(Rect rect, float minDistance, int maxCount, List<Vector2> spawnedObjects, GeneratePointsAlgorithm algorithm = GeneratePointsAlgorithm.Random);
         /// <summary>
         /// If the area overlaps with the given rect
         /// </summary>
@@ -54,13 +58,13 @@ namespace Metamatic
         /// <returns></returns>
         public abstract bool Overlaps(Rect rect);
         public abstract float OverlapsAreaSize(Rect rect);
-        public abstract Vector2[] GeneratePoints(int count, GeneratePointsType algorithm = GeneratePointsType.Random);
+        public abstract Vector2[] GeneratePoints(int count, GeneratePointsAlgorithm algorithm = GeneratePointsAlgorithm.Random);
         
         public event CameraFOVTracker2d.TrackAreaHandler OnCameraFOVIntersectionChange = delegate { };
         
         #if UNITY_EDITOR
         [Button]
-        public void PreparePoints(int count, GeneratePointsType algorithm = GeneratePointsType.Random)
+        public void PreparePoints(int count, GeneratePointsAlgorithm algorithm = GeneratePointsAlgorithm.Random)
         {
             if (points == null)
             {

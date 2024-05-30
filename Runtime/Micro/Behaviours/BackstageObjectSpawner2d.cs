@@ -25,11 +25,14 @@ namespace Micro.Behaviours
         private Dictionary<VirtualArea2d, List<Transform>> m_SpawnedObjectsMap = new Dictionary<VirtualArea2d, List<Transform>>();
         private List<DisposableAction> m_ObjectTracker = new List<DisposableAction>();
         private UniqueDice uniqueDice = new UniqueDice(2);
-        public BackstageObjectSpawner2d(IObjectPool<GameObject> pool, int maxObjectsCount, bool preWarm = false)
+        private VirtualArea2d.GeneratePointsAlgorithm m_Algorithm;
+        private float m_TotalAreasSize = 0;
+        public BackstageObjectSpawner2d(IObjectPool<GameObject> pool, int maxObjectsCount, bool preWarm = false, VirtualArea2d.GeneratePointsAlgorithm algorithm = VirtualArea2d.GeneratePointsAlgorithm.Random)
         {
             m_Pool = pool;
             m_MaxObjectsCount = maxObjectsCount;
             m_PreWarm = preWarm;
+            m_Algorithm = algorithm;
             Run();
         }
         public void AddArea(VirtualArea2d area)
@@ -80,6 +83,7 @@ namespace Micro.Behaviours
 
         private async void HandleArea(VirtualArea2d area, CancellationToken token)
         {
+            m_TotalAreasSize += area.size;
             if (m_PreWarm)
             {
                 try
@@ -95,7 +99,8 @@ namespace Micro.Behaviours
                     }
                     /* Calculate the min distance between objects */
                     var minDistance = FindMinimumDistance(intersection.area.size, m_MaxObjectsCount);
-                    SpawnObjectsInIntersectedArea(intersection.area, intersection, spawnedObjects, (float)minDistance);
+                    var maxObjectsCountPerArea = (int)(m_MaxObjectsCount * (area.size / m_TotalAreasSize));
+                    SpawnObjectsInIntersectedArea(intersection.area, intersection, spawnedObjects, (float)minDistance, maxObjectsCountPerArea);
                 } catch (OperationCanceledException)
                 {
                     return;
@@ -108,6 +113,7 @@ namespace Micro.Behaviours
                     m_AreaIntersectionHandler.Handle(area, intersection);
                 });
             await token;
+            m_TotalAreasSize -= area.size;
         }
         
         private async void HandleAreaIntersection(VirtualArea2d area, CameraFOVTracker2d.AreaIntersection intersection, CancellationToken cancellationToken)
@@ -115,11 +121,13 @@ namespace Micro.Behaviours
             if (!intersection.isIntersected)
             {
                 Debug.Log("Area is not intersected");
+                area.overlapped = false;
                 return;
             }
             Debug.Log("Area is intersected");
+            area.overlapped = true;
             /* Calculate the min distance between objects */
-            var minDistance = FindMinimumDistance(intersection.area.size, m_MaxObjectsCount);
+            var minDistance = FindMinimumDistance(m_TotalAreasSize, m_MaxObjectsCount);
             /* Get currently spawned objects count */
             if (!m_SpawnedObjectsMap.TryGetValue(intersection.area, out var spawnedObjects))
             {
@@ -127,20 +135,20 @@ namespace Micro.Behaviours
                 m_SpawnedObjectsMap.Add(intersection.area, spawnedObjects);
             }
             /* Calculate objects count to spawn */
-            
+            var maxObjectsCountPerArea = (int)(m_MaxObjectsCount * (area.size / m_TotalAreasSize));
             using var loop = AsyncUtils.PlayerLoopAction(() =>
             {
                 UILog.Add("spawnedObjects", "Count", spawnedObjects.Count);
-                SpawnObjectsInIntersectedArea(intersection.area, intersection, spawnedObjects, (float)minDistance);
+                SpawnObjectsInIntersectedArea(intersection.area, intersection, spawnedObjects, (float)minDistance, maxObjectsCountPerArea);
 
             }, PlayerLoopTiming.FixedUpdate);
                 
             await cancellationToken;
         }
 
-        private void SpawnObjectsInIntersectedArea(VirtualArea2d area, CameraFOVTracker2d.AreaIntersection intersection, List<Transform> spawnedObjects, float minDistance)
+        private void SpawnObjectsInIntersectedArea(VirtualArea2d area, CameraFOVTracker2d.AreaIntersection intersection, List<Transform> spawnedObjects, float minDistance, int maxObjectsCountPerArea)
         {
-            if (spawnedObjects.Count >= m_MaxObjectsCount)
+            if (spawnedObjects.Count >= maxObjectsCountPerArea)
             {
                 return;
             }
@@ -154,17 +162,17 @@ namespace Micro.Behaviours
             var pointsGenerationDuration = 0f;
             
             var successSpawned = true;
-            while (successSpawned && spawnedObjects.Count < m_MaxObjectsCount)
+            while (successSpawned && spawnedObjects.Count < maxObjectsCountPerArea)
             {
                 debugCycles++;
                 successSpawned = false;
                 while (uniqueDice.remainingSides > 0)
                 {
-                    var maxCounts = m_MaxObjectsCount - spawnedObjects.Count;
+                    var maxCounts = maxObjectsCountPerArea - spawnedObjects.Count;
                     var index = uniqueDice.Next();
                     var rect = intersectedRects[index];
                     var startGenerateRandomPoints = Time.realtimeSinceStartup;
-                    var randomPoints = intersection.area.GetSpawnPoints(rect, minDistance, maxCounts, spawnedPoints);
+                    var randomPoints = intersection.area.GetSpawnPoints(rect, minDistance, maxCounts, spawnedPoints, algorithm: m_Algorithm);
                     pointsGenerationDuration += (Time.realtimeSinceStartup - startGenerateRandomPoints) * 1000;
                     UILog.Add("randomPoints", "Count", randomPoints.Length);
                     // var rp = intersection.area.GetRandomPosition(rect);

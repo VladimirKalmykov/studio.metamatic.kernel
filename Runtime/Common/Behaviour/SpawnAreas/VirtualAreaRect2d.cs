@@ -20,7 +20,8 @@ namespace Metamatic
             [ReadOnly] public NativeArray<Rect> rectValues;
             [ReadOnly] public NativeArray<float> floatValues;
             [ReadOnly] public NativeArray<Vector2> spawnedPoints;
-            public NativeArray<int> intValues;
+            [ReadOnly] public NativeArray<GeneratePointsAlgorithm> algorithm;
+            public NativeArray<uint> intValues;
             public NativeArray<Vector2> outputPoints;
             public void Execute()
             {
@@ -28,9 +29,11 @@ namespace Metamatic
                 var worldRect = rectValues[1];
                 var minDistance = floatValues[0];
                 var maxCount = intValues[0];
+                var seed = intValues[1];
+                var algorithm = this.algorithm[0];
                 if (!otherRect.Overlaps(worldRect, true))
                 {
-                    throw new System.ArgumentException("Rectangles do not overlap.");
+                    intValues[3] = 1; // Rectangles do not overlap.
                 }
 
                 Rect intersectRect = Rect.MinMaxRect(
@@ -44,34 +47,69 @@ namespace Metamatic
                 float startY = intersectRect.yMin + minDistance / 2;
                 float endX = intersectRect.xMax - minDistance / 2;
                 float endY = intersectRect.yMax - minDistance / 2;
-
+                
                 var index = 0;
-                for (float x = startX; x <= endX; x += minDistance)
+                var random = new Unity.Mathematics.Random(seed);
+                
+                /* Choose algorithm */
+                switch (algorithm)
                 {
-                    for (float y = startY; y <= endY; y += minDistance)
-                    {
-                        if (index >= maxCount - 1)
+                    case GeneratePointsAlgorithm.Random:
+                        for (int i = 0; i < maxCount; i++)
                         {
-                            return;
+                            if (index >= maxCount - 1)
+                            {
+                                break;
+                            }
+                            /* Get random x and y, but without using Random.Range, because it is not thread safe */
+                            var randomX = startX + ((endX - startX) * (float)random.NextDouble());
+                            var randomY = startY + ((endY - startY) * (float)random.NextDouble());
+                            if (!IfMaintainDistance(new Vector2(randomX, randomY), spawnedPoints, outputPoints, index, minDistance))
+                            {
+                                continue;
+                            }
+                            outputPoints[index] = new Vector2(randomX, randomY);
+                            index++;
                         }
-                        /* Ensure the minimum distance between objects */
-                        if (!IfMaintainDistance(new Vector2(x, y), spawnedPoints, minDistance))
+                        intValues[2] = (uint)index;
+                        return;
+                    case GeneratePointsAlgorithm.Strict:
+                        for (float x = startX; x <= endX; x += minDistance)
                         {
-                            continue;
-                        }
+                            for (float y = startY; y <= endY; y += minDistance)
+                            {
+                                if (index >= maxCount - 1)
+                                {
+                                    break;
+                                }
+                                /* Ensure the minimum distance between objects */
+                                if (!IfMaintainDistance(new Vector2(x, y), spawnedPoints, outputPoints, index, minDistance))
+                                {
+                                    continue;
+                                }
 
-                        outputPoints[index] = new Vector2(x, y);
-                        index++;
-                    }
+                                outputPoints[index] = new Vector2(x, y);
+                                index++;
+                            }
+                        }
+                        intValues[2] = (uint)index;
+                        return;
                 }
-                intValues[1] = index;
+                intValues[2] = (uint)index;
             }
             
-            private static bool IfMaintainDistance(Vector2 t, NativeArray<Vector2> points, float minDistance)
+            private static bool IfMaintainDistance(Vector2 t, NativeArray<Vector2> points, NativeArray<Vector2> outputPoints, int outputPointsLength, float minDistance)
             {
                 foreach (var point in points)
                 {
                     if (Vector2.Distance(t, point) < minDistance)
+                    {
+                        return false;
+                    }
+                }
+                for (int i = 0; i < outputPointsLength; i++)
+                {
+                    if (Vector2.Distance(t, outputPoints[i]) < minDistance)
                     {
                         return false;
                     }
@@ -88,6 +126,8 @@ namespace Metamatic
                 return worldRect.width * worldRect.height;
             }
         }
+
+        public override Rect rectRepresentation => rect;
 
         public Rect rect {
             get
@@ -130,34 +170,59 @@ namespace Metamatic
             return new Vector2(randomX, randomY);
         }
         
-        public override Vector2[] GetSpawnPoints(Rect otherRect, float minDistance, int maxCount, List<Vector2> spawnedObjects)
+        public override Vector2[] GetSpawnPoints(Rect otherRect, float minDistance, int maxCount, List<Vector2> spawnedObjects,  GeneratePointsAlgorithm algorithm = GeneratePointsAlgorithm.Random)
         {
             NativeArray<Vector2> outputPoints = new NativeArray<Vector2>(maxCount, Allocator.TempJob);
             NativeArray<Rect> rectValues = new NativeArray<Rect>(2, Allocator.TempJob);
             rectValues[0] = otherRect;
             rectValues[1] = rect;
-            NativeArray<int> intValues = new NativeArray<int>(2, Allocator.TempJob);
-            intValues[0] = maxCount;
+            NativeArray<uint> intValues = new NativeArray<uint>(4, Allocator.TempJob);
+            intValues[0] = (uint)maxCount;
+            intValues[1] = (uint)UnityEngine.Random.Range(1, 10000);
             NativeArray<float> floatValues = new NativeArray<float>(1, Allocator.TempJob);
             floatValues[0] = minDistance;
             NativeArray<Vector2> spawnedPoints = new NativeArray<Vector2>(spawnedObjects.ToArray(), Allocator.TempJob);
+            NativeArray<GeneratePointsAlgorithm> algorithms = new NativeArray<GeneratePointsAlgorithm>(1, Allocator.TempJob);
+            algorithms[0] = algorithm;
             var job = new GeneratePointsJob
             {
                 rectValues = rectValues,
                 intValues = intValues,
                 floatValues = floatValues,
                 spawnedPoints = spawnedPoints,
-                outputPoints = outputPoints
+                outputPoints = outputPoints,
+                algorithm = algorithms
             };
             var jobHandle = job.Schedule();
             jobHandle.Complete();
-            var totalCount = intValues[1];
-            var result = outputPoints.AsSpan().Slice(0, totalCount).ToArray();
+            var error = intValues[3];
+
+            Vector2[] result = null;
+            if (error != 0)
+            {
+                if (error == 1)
+                {
+                    Debug.LogWarning("Rectangles do not overlap.");
+                }
+                else
+                {
+                    Debug.LogWarning("Unknown error.");
+                }
+
+                result = Array.Empty<Vector2>();
+            }
+            else
+            {
+                var totalCount = (int)intValues[2];
+                result = outputPoints.AsSpan().Slice(0, totalCount).ToArray();
+            }
+            
             outputPoints.Dispose();
             rectValues.Dispose();
             intValues.Dispose();
             floatValues.Dispose();
             spawnedPoints.Dispose();
+            algorithms.Dispose();
             return result;
         }
         /* TODO: Move it to some static helper class */
@@ -215,11 +280,11 @@ namespace Metamatic
             return intersectRect.width * intersectRect.height;
         }
         
-        public override Vector2[] GeneratePoints(int count, GeneratePointsType algorithm = GeneratePointsType.Random)
+        public override Vector2[] GeneratePoints(int count, GeneratePointsAlgorithm algorithm = GeneratePointsAlgorithm.Random)
         {
             switch (algorithm)
             {
-                case GeneratePointsType.Random:
+                case GeneratePointsAlgorithm.Random:
                     var points = new List<Vector2>();
                     for (int i = 0; i < count; i++)
                     {
@@ -227,7 +292,7 @@ namespace Metamatic
                     }
 
                     return points.ToArray();
-                case GeneratePointsType.Strict:
+                case GeneratePointsAlgorithm.Strict:
                     return GeneratePointsStrict(count);
             }
 
