@@ -626,7 +626,7 @@ namespace Metamatic {
         }
 
         /// <summary>
-        /// Get combinig colliders bounding rect (renderers can be collected by method GetComponontsInChildren)
+        /// Get common bounding rect for colliders (renderers can be collected by method GetComponontsInChildren)
         /// </summary>
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
@@ -767,11 +767,13 @@ namespace Metamatic {
             return new Vector2Int(divisors[0], n / divisors[0]);
         }
         
+        
         /// <summary>
         /// Simulate of dropping game dice with one-in-count change to get true value
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
+        [Obsolete("Use UniqueDice class instead")]
         public static bool Dice(int count, bool negative = false)
         {
             return (UnityEngine.Random.Range(0, count + 1) == count) != negative;

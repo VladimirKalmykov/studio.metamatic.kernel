@@ -10,7 +10,8 @@
         "com.es3.runtime",
         "Unity.Localization",
         "Unity.Burst",
-        "Unity.Mathematics"
+        "Unity.Mathematics",
+        "Unity.2D.Animation.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
