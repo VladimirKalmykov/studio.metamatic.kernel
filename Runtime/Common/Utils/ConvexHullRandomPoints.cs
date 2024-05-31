@@ -6,38 +6,54 @@ namespace Metamatic
 {
     public class ConvexHullRandomPoints
     {
-        public static List<(Vector2, Vector2)> GenerateMatrixPointsInConvexHull(Vector2[] hull, Vector2 gridSize, Vector3[] deformedVertices, Vector2[] uvArray)
+        public static List<(Vector2, Vector2, Vector3Int, Vector3)> GenerateMatrixPointsInConvexHull(Vector2[] hull, Vector2 gridSize, Vector3[] deformedVertices, Vector2[] uvArray)
         {
-            List<(Vector2, Vector2)> points = new List<(Vector2, Vector2)>();
+            List<(Vector2, Vector2, Vector3Int, Vector3)> points = new List<(Vector2, Vector2, Vector3Int, Vector3)>();
 
             // Находим крайние точки выпуклой оболочки
-            float minX = hull[0].x;
-            float maxX = hull[0].x;
-            float minY = hull[0].y;
-            float maxY = hull[0].y;
+            float minX = hull.Min(p => p.x);
+            float maxX = hull.Max(p => p.x);
+            float minY = hull.Min(p => p.y);
+            float maxY = hull.Max(p => p.y);
 
-            foreach (var point in hull)
+            // Используем триангулятор для получения треугольников
+            Metamatic.Triangulator triangulator = new Metamatic.Triangulator(hull);
+            int[] indices = triangulator.Triangulate();
+
+            // Создаем список треугольников
+            List<(Vector2[] triangle, Vector3Int indices)> triangles = new List<(Vector2[] triangle, Vector3Int indices)>();
+            for (int i = 0; i < indices.Length; i += 3)
             {
-                if (point.x < minX) minX = point.x;
-                if (point.x > maxX) maxX = point.x;
-                if (point.y < minY) minY = point.y;
-                if (point.y > maxY) maxY = point.y;
+                Vector2[] triangle = new Vector2[3];
+                triangle[0] = hull[indices[i]];
+                triangle[1] = hull[indices[i + 1]];
+                triangle[2] = hull[indices[i + 2]];
+                triangles.Add((triangle, new Vector3Int(indices[i], indices[i + 1], indices[i + 2])));
             }
 
-            // Вычисляем размеры сетки
-            float stepX = (maxX - minX) / gridSize.x;
-            float stepY = (maxY - minY) / gridSize.y;
-
             // Генерируем точки внутри выпуклой оболочки
-            for (float x = minX; x <= maxX; x += stepX)
+            for (float x = minX; x <= maxX; x += gridSize.x)
             {
-                for (float y = minY; y <= maxY; y += stepY)
+                for (float y = minY; y <= maxY; y += gridSize.y)
                 {
                     Vector2 point = new Vector2(x, y);
                     if (IsPointInPolygon(hull, point))
                     {
-                        Vector2 uv = CalculateUV(point, hull, deformedVertices, uvArray);
-                        points.Add((point, uv));
+                        // Найти треугольник, в который попадает точка
+                        Vector2 uv = Vector2.zero;
+                        Vector3Int triangleIndices = new Vector3Int();
+                        Vector3 barycentricCoords = Vector3.zero;
+                        foreach (var triangle in triangles)
+                        {
+                            if (IsPointInTriangle(point, triangle.triangle))
+                            {
+                                uv = CalculateUV(point, triangle.triangle, deformedVertices, uvArray);
+                                triangleIndices = triangle.indices;
+                                barycentricCoords = CalculateBarycentricCoordinates(point, hull[triangle.indices.x], hull[triangle.indices.y], hull[triangle.indices.z]);
+                                break;
+                            }
+                        }
+                        points.Add((point, uv, triangleIndices, barycentricCoords));
                     }
                 }
             }
@@ -45,45 +61,22 @@ namespace Metamatic
             return points;
         }
 
-        private static bool IsPointInPolygon(Vector2[] polygon, Vector2 point)
+        public static List<(Vector2, Vector2, Vector3Int, Vector3)> GenerateRandomPointsInConvexHull(Vector2[] hull, int numPoints, Vector3[] deformedVertices, Vector2[] uvArray)
         {
-            int polygonLength = polygon.Length, i = 0;
-            bool inside = false;
-            float pointX = point.x, pointY = point.y;
-            float startX, startY, endX, endY;
-            Vector2 endPoint = polygon[polygonLength - 1];
-            endX = endPoint.x;
-            endY = endPoint.y;
-
-            while (i < polygonLength)
-            {
-                startX = endX;
-                startY = endY;
-                endPoint = polygon[i++];
-                endX = endPoint.x;
-                endY = endPoint.y;
-                inside ^= (endY > pointY ^ startY > pointY) && ((pointX - endX) < (pointY - endY) * (startX - endX) / (startY - endY));
-            }
-
-            return inside;
-        }
-
-        public static List<(Vector2, Vector2)> GenerateRandomPointsInConvexHull(Vector2[] hull, int numPoints, Vector3[] deformedVertices, Vector2[] uvArray)
-        {
-            List<(Vector2, Vector2)> points = new List<(Vector2, Vector2)>();
+            List<(Vector2, Vector2, Vector3Int, Vector3)> points = new List<(Vector2, Vector2, Vector3Int, Vector3)>();
 
             // Используем триангулятор для получения треугольников
             Metamatic.Triangulator triangulator = new Metamatic.Triangulator(hull);
             int[] indices = triangulator.Triangulate();
 
-            List<Vector2[]> triangles = new List<Vector2[]>();
+            List<(Vector2[] triangle, Vector3Int indices)> triangles = new List<(Vector2[] triangle, Vector3Int indices)>();
             for (int i = 0; i < indices.Length; i += 3)
             {
                 Vector2[] triangle = new Vector2[3];
                 triangle[0] = hull[indices[i]];
                 triangle[1] = hull[indices[i + 1]];
                 triangle[2] = hull[indices[i + 2]];
-                triangles.Add(triangle);
+                triangles.Add((triangle, new Vector3Int(indices[i], indices[i + 1], indices[i + 2])));
             }
 
             List<float> areas = new List<float>();
@@ -92,7 +85,7 @@ namespace Metamatic
             // Вычисляем площадь каждого треугольника и общий вес
             foreach (var triangle in triangles)
             {
-                float area = CalculateTriangleArea(triangle);
+                float area = CalculateTriangleArea(triangle.triangle);
                 areas.Add(area);
                 totalArea += area;
             }
@@ -102,7 +95,7 @@ namespace Metamatic
             {
                 float randomWeight = Random.Range(0f, totalArea);
                 float cumulativeWeight = 0f;
-                Vector2[] selectedTriangle = null;
+                (Vector2[] triangle, Vector3Int indices) selectedTriangle = (null, new Vector3Int());
 
                 for (int j = 0; j < triangles.Count; j++)
                 {
@@ -114,15 +107,30 @@ namespace Metamatic
                     }
                 }
 
-                if (selectedTriangle != null)
+                if (selectedTriangle.triangle != null)
                 {
-                    Vector2 randomPoint = GenerateRandomPointInTriangle(selectedTriangle);
-                    Vector2 uv = CalculateUV(randomPoint, selectedTriangle, deformedVertices, uvArray);
-                    points.Add((randomPoint, uv));
+                    Vector2 randomPoint = GenerateRandomPointInTriangle(selectedTriangle.triangle);
+                    Vector2 uv = CalculateUV(randomPoint, selectedTriangle.triangle, deformedVertices, uvArray);
+                    Vector3 barycentricCoords = CalculateBarycentricCoordinates(randomPoint, hull[selectedTriangle.indices.x], hull[selectedTriangle.indices.y], hull[selectedTriangle.indices.z]);
+                    points.Add((randomPoint, uv, selectedTriangle.indices, barycentricCoords));
                 }
             }
 
             return points;
+        }
+        
+        private static Vector3 CalculateBarycentricCoordinates(Vector2 point, Vector3 v0, Vector3 v1, Vector3 v2)
+        {
+            Vector3 u = v1 - v0;
+            Vector3 v = v2 - v0;
+            Vector3 w = new Vector3(point.x, point.y, 0) - v0;
+
+            float denominator = u.x * v.y - u.y * v.x;
+            float b1 = (w.x * v.y - w.y * v.x) / denominator;
+            float b2 = (u.x * w.y - u.y * w.x) / denominator;
+            float b3 = 1 - b1 - b2;
+
+            return new Vector3(b1, b2, b3);
         }
 
         public static List<Vector2> GenerateRandomPointsInConvexHull(Vector2[] hull, int numPoints)
@@ -179,6 +187,43 @@ namespace Metamatic
             }
 
             return points;
+        }
+        
+        private static bool IsPointInPolygon(Vector2[] polygon, Vector2 point)
+        {
+            int polygonLength = polygon.Length, i = 0;
+            bool inside = false;
+            float pointX = point.x, pointY = point.y;
+            float startX, startY, endX, endY;
+            Vector2 endPoint = polygon[polygonLength - 1];
+            endX = endPoint.x;
+            endY = endPoint.y;
+
+            while (i < polygonLength)
+            {
+                startX = endX;
+                startY = endY;
+                endPoint = polygon[i++];
+                endX = endPoint.x;
+                endY = endPoint.y;
+                inside ^= (endY > pointY ^ startY > pointY) && ((pointX - endX) < (pointY - endY) * (startX - endX) / (startY - endY));
+            }
+
+            return inside;
+        }
+        
+        private static bool IsPointInTriangle(Vector2 p, Vector2[] triangle)
+        {
+            Vector2 a = triangle[0];
+            Vector2 b = triangle[1];
+            Vector2 c = triangle[2];
+
+            float areaOrig = Mathf.Abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y));
+            float area1 = Mathf.Abs((a.x - p.x) * (b.y - p.y) - (b.x - p.x) * (a.y - p.y));
+            float area2 = Mathf.Abs((b.x - p.x) * (c.y - p.y) - (c.x - p.x) * (b.y - p.y));
+            float area3 = Mathf.Abs((c.x - p.x) * (a.y - p.y) - (a.x - p.x) * (c.y - p.y));
+
+            return Mathf.Approximately(areaOrig, area1 + area2 + area3);
         }
 
         private static Vector2 CalculateUV(Vector2 point, Vector2[] triangle, Vector3[] deformedVertices, Vector2[] uvArray)
