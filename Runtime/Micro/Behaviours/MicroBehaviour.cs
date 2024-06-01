@@ -8,6 +8,10 @@ namespace Metamatic
 {
     public abstract class MicroBehaviour: IAsyncDisposable, IDisposable
     {
+        protected MicroBehaviour()
+        {
+            
+        }
         ~MicroBehaviour()
         {
             Dispose();

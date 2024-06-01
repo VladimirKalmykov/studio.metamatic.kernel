@@ -1,30 +1,14 @@
-﻿using System;
+﻿using System.Threading;
 
 namespace Metamatic
 {
-    public abstract class Service: RunnableBehaviour {}
-    public abstract class Service<TSystem> : Service
-    where TSystem : ServiceSystem
+    public abstract class Service: AsyncBehaviour
     {
-        public TSystem serviceSystem { get; set; }
-
-        private void Awake()
+        protected sealed override void RunAsync(CancellationToken cancellationToken)
         {
-            serviceSystem = GetComponent<TSystem>();
-            if (serviceSystem == null)
-            {
-                throw new Exception("Service must belong to the GameObject wirh apoppriate service system");
-            }
-
-            serviceSystem.RegisterService(this);
-            OnServiceAwake();
-        }
-
-        private void OnDestroy()
-        {
-            serviceSystem.UnregisterSerive(this);
+            RunService(cancellationToken);
         }
         
-        protected virtual void OnServiceAwake() {}
+        protected abstract void RunService(CancellationToken cancellationToken);
     }
 }

@@ -128,11 +128,9 @@ namespace Micro.Behaviours
         {
             if (!intersection.isIntersected)
             {
-                Debug.Log("Area is not intersected");
                 area.overlapped = false;
                 return;
             }
-            Debug.Log("Area is intersected");
             area.overlapped = true;
             /* Calculate the min distance between objects */
             var minDistance = FindMinimumDistance(m_TotalAreasSize, m_MaxObjectsCount);

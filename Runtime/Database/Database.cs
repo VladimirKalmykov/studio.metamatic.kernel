@@ -33,16 +33,15 @@ namespace Metamatic
         public static event Action OnInitialize;
         public static DatabaseBranchSource currentBranchSource = new DatabaseBranchSource(masterBranchName);
         
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Initialize()
         {
-            OnInitialize?.Invoke();
-            Database.Log($"Initialize");
-            if (instance == null)
-            {
-                var go = new GameObject("__DATABASE__");
-                instance = go.AddComponent<Database>();
-            }
+            // OnInitialize?.Invoke();
+            // Database.Log($"Initialize");
+            // if (instance == null)
+            // {
+            //     var go = new GameObject("__DATABASE__");
+            //     instance = go.AddComponent<Database>();
+            // }
         }
 
         void LateUpdate()

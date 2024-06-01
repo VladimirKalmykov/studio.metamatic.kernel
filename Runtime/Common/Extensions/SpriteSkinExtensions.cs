@@ -53,8 +53,8 @@ namespace Metamatic.Extensions
                 Vector2 randomPoint2D = randomPointsWithUVs[i].Item1;
                 Vector2 uv = randomPointsWithUVs[i].Item2;
                 Vector3 randomPoint = new Vector3(randomPoint2D.x, randomPoint2D.y, 0);
-                
-                Color pixelColor = spriteTexture.GetPixelBilinear(uv.x, uv.y);
+
+                Color pixelColor = spriteTexture.GetPixelBilinear(uv.x, uv.y) * spriteRenderer.color;
                 var triangle = randomPointsWithUVs[i].Item3;
                 
                 /* Map triangle back to original deform vertices indices */

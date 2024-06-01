@@ -6,10 +6,10 @@ namespace Metamatic
     {
         public static void Release(GameObject gameObject)
         {
-            var releasable = gameObject.GetComponent<Releasable>();
-            if (releasable != null)
+            var ofp = gameObject.GetComponent<ObjectFromPool>();
+            if (ofp != null)
             {
-                releasable.Release();
+                ofp.Release();
             }
             else
             {
@@ -18,7 +18,7 @@ namespace Metamatic
         }
         public virtual void Release()
         {
-            Destroy(gameObject);
+            throw new System.NotImplementedException();
         }
     }
 }

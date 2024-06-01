@@ -4,9 +4,9 @@ namespace Metamatic
 {
     public abstract class ServiceSystem : PluggableMonoBehaviour
     {
-        private List<Service> m_Services = new List<Service>();
+        private List<ServiceLegacy> m_Services = new List<ServiceLegacy>();
 
-        public Service[] services
+        public ServiceLegacy[] services
         {
             get
             {
@@ -14,12 +14,12 @@ namespace Metamatic
             }
         }
 
-        public void RegisterService(Service service)
+        public void RegisterService(ServiceLegacy service)
         {
             m_Services.Add(service);
         }
 
-        public void UnregisterSerive(Service service)
+        public void UnregisterSerive(ServiceLegacy service)
         {
             m_Services.Remove(service);
         }

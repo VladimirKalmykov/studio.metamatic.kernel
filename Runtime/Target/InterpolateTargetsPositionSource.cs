@@ -114,6 +114,18 @@ namespace Metamatic
                 enabled = true;
             }
         }
+        
+        /// <summary>
+        /// Set immediate target without interpolation
+        /// </summary>
+        /// <param name="target"></param>
+        public void SetImmediateTarget(Transform target)
+        {
+            m_Points.Clear();
+            m_Points.Add(new WeightyPoint(target, 1f));
+            enabled = false;
+            m_SinglePoint = target;
+        }
 
         public override Transform GetTarget()
         {
