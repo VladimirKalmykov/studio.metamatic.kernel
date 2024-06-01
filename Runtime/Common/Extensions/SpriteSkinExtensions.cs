@@ -53,7 +53,6 @@ namespace Metamatic.Extensions
                 Vector2 randomPoint2D = randomPointsWithUVs[i].Item1;
                 Vector2 uv = randomPointsWithUVs[i].Item2;
                 Vector3 randomPoint = new Vector3(randomPoint2D.x, randomPoint2D.y, 0);
-                Vector3 worldPosition = spriteRenderer.transform.TransformPoint(randomPoint);
                 
                 Color pixelColor = spriteTexture.GetPixelBilinear(uv.x, uv.y);
                 var triangle = randomPointsWithUVs[i].Item3;
@@ -65,7 +64,7 @@ namespace Metamatic.Extensions
                     hullIndices[triangle.z]
                 );
                 
-                result.Add((worldPosition, pixelColor, mappedTriangle, randomPointsWithUVs[i].Item4, uv));
+                result.Add((randomPoint, pixelColor, mappedTriangle, randomPointsWithUVs[i].Item4, uv));
             }
 
             return (result.ToArray(), hullVertices);
