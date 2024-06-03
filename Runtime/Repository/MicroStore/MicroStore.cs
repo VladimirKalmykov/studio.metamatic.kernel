@@ -135,9 +135,13 @@ namespace Metamatic
         /// Set new dirty value
         /// </summary>
         /// <param name="nextValue"></param>
-        public void SetValue(T nextValue)
+        public void SetValue(T nextValue, bool commit = false)
         {
             m_CurrentBranch.value.SetValue(nextValue);
+            if (commit)
+            {
+                CommitChanges();
+            }
         }
 
         public void Mutate(IStore<T>.MutateHandler mutationHandler)

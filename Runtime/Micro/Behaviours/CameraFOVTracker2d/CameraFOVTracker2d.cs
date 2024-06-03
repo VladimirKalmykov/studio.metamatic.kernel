@@ -750,10 +750,6 @@ namespace Metamatic.MicroBehaviours
                 {
                     break;
                 }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                }
                 finally
                 {
                     /* Dispose all the arrays */

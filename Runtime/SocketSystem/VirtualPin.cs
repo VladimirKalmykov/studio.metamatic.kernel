@@ -55,6 +55,18 @@ namespace Metamatic
         private Wire<T> m_Wire;
         public IPin<T>[] outputPins => m_OutputPins.ToArray();
         public Wire<T> wire => m_Wire ??= new Wire<T>();
+        public VirtualPinWriter<T> CreateWriter(Component component)
+        {
+            // TODO: Implement
+            throw new NotImplementedException();
+        }
+
+        public VirtualPinReader<T> CreateReader(Component component)
+        {
+            // TODO: Implement
+            throw new NotImplementedException();
+        }
+
         public sealed override Type type => typeof(T);
 
         public VirtualPin(UnityEngine.Object component)

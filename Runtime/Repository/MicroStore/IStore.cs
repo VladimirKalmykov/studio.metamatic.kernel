@@ -106,7 +106,7 @@ namespace Metamatic
             }
         }
         public T value { get; }
-        public void SetValue(T nextValue);
+        public void SetValue(T nextValue, bool commit = false);
         public void Mutate(MutateHandler mutationHandler);
         public void Modify(Func<T, T> transformHandler, bool commit = false);
         public DisposableAction Subscribe(Action<T> handler);

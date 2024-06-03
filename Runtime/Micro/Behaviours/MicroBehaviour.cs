@@ -55,7 +55,7 @@ namespace Metamatic
             }
             catch (Exception e)
             {
-                Debug.LogError(e);
+                taskCompletionSource.TrySetException(e);
             }
             finally
             {

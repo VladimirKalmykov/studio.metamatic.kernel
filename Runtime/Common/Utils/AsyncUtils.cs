@@ -96,8 +96,13 @@ namespace Metamatic
                     callback(1f);
                     return true;
                 }
-
-                callback(ratio);
+                
+                try {
+                    callback(ratio);
+                } catch (Exception e) {
+                    Debug.LogException(e);
+                    return true;
+                }
                 
                 return false;
 

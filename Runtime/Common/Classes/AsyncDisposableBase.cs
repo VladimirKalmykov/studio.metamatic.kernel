@@ -5,6 +5,7 @@ using Cysharp.Threading.Tasks;
 namespace Metamatic
 {
     
+    [Obsolete("Use IAsyncDisposable pattern", false)]
     interface IMAsyncDisposable: IDisposable
     {
         public event Action OnAsyncDisposeCompleted;

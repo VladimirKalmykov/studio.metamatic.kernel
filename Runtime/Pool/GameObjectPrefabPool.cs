@@ -31,9 +31,11 @@ namespace Metamatic
                     });
                     return instance;
                 },
-                actionOnRelease: dialog =>
+                actionOnRelease: go =>
                 {
-                    dialog.gameObject.SetActive(false);
+                    if (go == null)
+                        return;
+                    go.SetActive(false);
                 },
                 actionOnDestroy: dialog =>
                 {

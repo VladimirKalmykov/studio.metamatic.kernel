@@ -182,9 +182,9 @@ namespace Metamatic
             throw new NotImplementedException();
         }
 
-        public void SetValue(T nextValue)
+        public void SetValue(T nextValue, bool commit = false)
         {
-            m_MicroStore.value.SetValue(nextValue);
+            m_MicroStore.value.SetValue(nextValue, commit);
         }
 
         public void Mutate(IStore<T>.MutateHandler mutationHandler)

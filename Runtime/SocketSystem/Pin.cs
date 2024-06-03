@@ -47,6 +47,8 @@ namespace Metamatic
         public void InternalRemoveOutputPin(IPin<T> pin);
         public Wire<T> InternalGetWire();
         public Wire<T> wire { get; }
+        public VirtualPinWriter<T> CreateWriter(Component component);
+        public VirtualPinReader<T> CreateReader(Component component);
     }
     public abstract class Pin: MonoBehaviour, IPin, ISerializationCallbackReceiver
     {
