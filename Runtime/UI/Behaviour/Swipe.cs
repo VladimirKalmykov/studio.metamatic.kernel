@@ -221,12 +221,10 @@ namespace Metamatic.UI {
 
             if (IsTouchScreenActive())
             {
-                UILog.Add("Pointer", "IsTouchScreen", "True");
                 UpdateMobileInput();
             }
             else
             {
-                UILog.Add("Pointer", "IsTouchScreen", "False");
                 UpdateStandAloneInput();
             }
 
@@ -358,14 +356,12 @@ namespace Metamatic.UI {
             {
 #if ENABLE_INPUT_SYSTEM
                 mouseStartPosition = (Vector2)Mouse.current.position.ReadValue();
-                UILog.Add("Pointer", "mouseStartPosition", mouseStartPosition);
 #else
                 mouseStartPosition = (Vector2)Input.mousePosition;
 #endif
                 prevPointerPosition = mouseStartPosition;
             }
             
-            UILog.Add("Pointer", "isPressed", isPressed);
             if (!isPressed)
             {
                 return;
@@ -373,7 +369,6 @@ namespace Metamatic.UI {
             
 #if ENABLE_INPUT_SYSTEM
             var mousePositon = (Vector2)Mouse.current.position.ReadValue();
-            UILog.Add("Pointer", "mousePositon", $"{mousePositon.x}, {mousePositon.y}");
 #else
                     var mousePositon = (Vector2) Input.mousePosition;
 #endif
@@ -484,8 +479,6 @@ namespace Metamatic.UI {
         public void OnPointerDown(PointerEventData eventData)
         {
             m_IsTouchPointer = eventData.pointerId != -1;
-            UILog.Add("Pointer", "pointerId", eventData.pointerId);
-            UILog.Add("Pointer", "Down", "True");
             m_PointerPressedCount++;
         }
 

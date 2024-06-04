@@ -213,7 +213,7 @@ namespace Metamatic
 
             return () =>
             {
-                subscription?.Invoke();
+                subscription.Invoke();
                 valueSubscription?.Invoke();
             };
         }
@@ -272,7 +272,7 @@ namespace Metamatic
 
             return () =>
             {
-                subscription?.Invoke();
+                subscription.Invoke();
                 valueSubscription?.Invoke();
             };
         }

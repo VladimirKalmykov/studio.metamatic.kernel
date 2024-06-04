@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
@@ -26,6 +28,15 @@ namespace Metamatic
         {
             get => GetValue();
             set => SetValue(value);
+        }
+
+        public TValue uniqValue
+        {
+            set {
+                /* Compare old value with new value */
+                if (GetValue().Equals(value)) return;
+                SetValue(value);
+            }
         }
         
         public abstract bool HasValue();
@@ -194,9 +205,10 @@ namespace Metamatic
     public class MicroState<TValue> : MicroStateReadOnly<TValue>
     {
         private TValue m_Value;
+        private readonly bool m_Unique = false;
         public delegate void MutateHandler(ref TValue value);
         
-        public MicroState(TValue initialValue = default)
+        public MicroState(TValue initialValue = default): base()
         {
             m_Value = initialValue;
         }
@@ -215,7 +227,9 @@ namespace Metamatic
                 RemoveListener(handler);
             });
         }
-
+        
+        // TODO: Do I need [MethodImpl(MethodImplOptions.AggressiveInlining)] here?
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override TValue GetValue()
         {
             return m_Value;
@@ -227,6 +241,7 @@ namespace Metamatic
         /// <param name="value"></param>
         public override void SetValue(TValue value)
         {
+            if (m_Unique && m_Value.Equals(value)) return;
             m_Value = value;
             EmitValue(value);
         }
@@ -302,7 +317,7 @@ namespace Metamatic
             return new DisposableAction(() =>
             {
                 releaseValueListener?.Invoke();
-                releaseProxyListener?.Invoke();
+                releaseProxyListener.Invoke();
                 releaseValueListener = null;
                 releaseProxyListener = null;
             });

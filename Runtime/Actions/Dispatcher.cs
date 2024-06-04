@@ -239,8 +239,13 @@ namespace Metamatic.Actions
                 }
             });
         }
+        
+        public IDisposable Register<TValue>(TValue source) where TValue : notnull
+        {
+            return Register(this, source);
+        }
 
-        public DisposableAction SubscribeRegistry<TKey, TValue>(TKey id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
+        public DisposableAction OnRegistered<TKey, TValue>(TKey id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
         {
             var keyType = typeof(TKey);
             var valueType = typeof(TValue);
@@ -306,14 +311,9 @@ namespace Metamatic.Actions
             });
         }
 
-        public IDisposable Register<TValue>(TValue source) where TValue : notnull
+        public DisposableAction OnRegistered<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
         {
-            return Register(this, source);
-        }
-
-        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
-        {
-            return SubscribeRegistry(this, handler, skipInitial);
+            return OnRegistered(this, handler, skipInitial);
         }
         
         /// <summary>
@@ -334,7 +334,7 @@ namespace Metamatic.Actions
                 releaseSubscription?.Invoke();
                 tcs.TrySetCanceled(cancellationToken);
             });
-            releaseSubscription = SubscribeRegistry<TKey, TValue>(id, source =>
+            releaseSubscription = OnRegistered<TKey, TValue>(id, source =>
             {
                 releaseSubscription?.Invoke();
                 cancellationTokenRegistration.Dispose();
@@ -361,7 +361,7 @@ namespace Metamatic.Actions
                 releaseSubscription?.Invoke();
                 tcs.TrySetCanceled(cancellationToken);
             });
-            releaseSubscription = SubscribeRegistry<TKey, TValue>(id, source =>
+            releaseSubscription = OnRegistered<TKey, TValue>(id, source =>
             {
                 if (cancellationToken.IsCancellationRequested || source == null)
                 {

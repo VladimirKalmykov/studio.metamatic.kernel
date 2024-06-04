@@ -259,7 +259,6 @@ namespace Metamatic {
             foreach (var fieldName in statful_EditorShowStateKeys)
             {
                 var field = stateType.GetField(fieldName);
-                UILog.Add(sectionName, fieldName, () => field.GetValue(state));
             }
 
             statful_cached_AddedEditorShowStateKeys = statful_EditorShowStateKeys.ToArray();

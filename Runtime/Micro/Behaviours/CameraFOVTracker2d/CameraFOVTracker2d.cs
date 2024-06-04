@@ -764,14 +764,13 @@ namespace Metamatic.MicroBehaviours
                 
                 
                 var performanceInMs = (Time.realtimeSinceStartup - debugStartTime) * 1000;
-                UILog.Add("Performance", "CameraFOVTracker2d", $"Spawned in {performanceInMs}");
+                UILog.Add("Performance", "CameraFOVTracker2d", $"{performanceInMs} ms");
                 
                 /* Await next fixed update */
                 await UniTask.Yield(PlayerLoopTiming.FixedUpdate);
                 
                 var frameDuration = Time.time - prevTime;
                 prevTime = Time.time;
-                UILog.Add("Tracker frame duration", frameDuration);
             }
             
             foreach (var (area, areaTrack) in m_TrackedAreas)
