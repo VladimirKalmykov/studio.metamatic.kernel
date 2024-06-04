@@ -57,15 +57,19 @@ namespace Metamatic.DevTools {
             var db = go.GetComponent<UILog>();
             db.InternalAdd(sectionName, key, message);
         }
-        public static void Add(string sectionNane, string key, Func<object> getter) {
-            if (!Application.isPlaying) {
-                return;
+        public static DisposableAction Add(string sectionNane, string key, Func<object> getter) {
+            if (!Application.isPlaying)
+            {
+                return DisposableAction.Empty;
             }
             var go = UILog.GetGo();
 
-            if (go == null) return;
+            if (go == null) return DisposableAction.Empty;
             var db = go.GetComponent<UILog>();
             db.InternalAdd(sectionNane, key, getter);
+            return DisposableAction.Create(() => {
+                db.InternalRemove(sectionNane, key);
+            });
         }
         public static void Add(string key, Func<object> getter) {
             if (!Application.isPlaying) {

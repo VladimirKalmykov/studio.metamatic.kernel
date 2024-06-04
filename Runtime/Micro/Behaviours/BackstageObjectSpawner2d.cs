@@ -68,7 +68,7 @@ namespace Micro.Behaviours
             using var areaIntersectionHandler = m_AreaIntersectionHandler = new SequentialMapHandler<VirtualArea2d, CameraFOVTracker2d.AreaIntersection>(HandleAreaIntersection);
             using var areasArrayHandler = m_AreasHandler = new SequentialArrayHandler<VirtualArea2d>(HandleArea);
             using var fovManagerHandler = new SequentialHandler<FOVManager2d>(HandleFOVManager);
-            using var fovManagerSubscription = Dispatcher.global.SubscribeRegistry<FOVManager2d>(fovManagerHandler.Handle);
+            using var fovManagerSubscription = Dispatcher.global.OnRegistered<FOVManager2d>(fovManagerHandler.Handle);
             
             await cancellationToken;
         }
@@ -180,7 +180,6 @@ namespace Micro.Behaviours
                     var startGenerateRandomPoints = Time.realtimeSinceStartup;
                     var randomPoints = intersection.area.GetSpawnPoints(rect, minDistance, maxCounts, spawnedPoints, algorithm: m_Algorithm);
                     pointsGenerationDuration += (Time.realtimeSinceStartup - startGenerateRandomPoints) * 1000;
-                    UILog.Add("randomPoints", "Count", randomPoints.Length);
                     // var rp = intersection.area.GetRandomPosition(rect);
                     /* Ensure the minimum distance between objects */
                     // var maintainDistance = IfMaintainDistance(rp, spawnedPoints, (float)minDistance);
@@ -205,20 +204,18 @@ namespace Micro.Behaviours
                 }
             }
             var performanceInMs = (Time.realtimeSinceStartup - debugStart) * 1000;
-            UILog.Add("Performance", "SpawnObjectsInIntersectedArea", $"Processed in {performanceInMs} ms with {debugCycles} cycles");
-            UILog.Add("Performance", "pointsGenerationDuration", $"{pointsGenerationDuration} ms");
         }
         
         private DisposableAction TrackObject(VirtualArea2d area, GameObject obj)
         {
             bool untrackNow = false;
-            DisposableAction untrack = null;
+            DisposableAction untrack = default;
             untrack = m_FOVManager2d.TrackObject(obj.transform, CameraFOVTracker2d.FovBoundsType.Full, (t, boundsType) =>
             {
                 if (boundsType == CameraFOVTracker2d.FovBoundsType.None)
                 {
                     untrackNow = true;
-                    untrack?.Dispose();
+                    untrack.Dispose();
                     m_Pool.Release(obj);
                     var objectIndex = m_SpawnedObjectsMap[area].FindIndex(t => t == obj.transform);
                     m_SpawnedObjectsMap[area].RemoveAt(objectIndex);
@@ -226,12 +223,12 @@ namespace Micro.Behaviours
             });
             if (untrackNow)
             {
-                untrack?.Dispose();
+                untrack.Dispose();
             }
             
             return new DisposableAction(() =>
             {
-                untrack?.Dispose();
+                untrack.Dispose();
             });
         }
     

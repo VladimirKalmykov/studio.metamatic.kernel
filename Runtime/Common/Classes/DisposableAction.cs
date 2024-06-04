@@ -2,8 +2,14 @@
 
 namespace Metamatic
 {
-    public class DisposableAction : IDisposable
+    // TODO: consider changing to struct
+    public struct DisposableAction : IDisposable
     {
+        public static DisposableAction Create(Action action)
+        {
+            return new DisposableAction(action);
+        }
+        public static readonly DisposableAction Empty = new DisposableAction(null);
         private Action _action;
 
         public DisposableAction(Action action)

@@ -45,11 +45,6 @@ namespace Metamatic.Effects
         }
         #endif
         
-        private void Start()
-        {
-            UILog.Add("Effector", "playbacks.Count", () => effectExecutions.Count);
-        }
-        
         private void OnDestroy()
         {
             OnBeforeDestroy?.Invoke();

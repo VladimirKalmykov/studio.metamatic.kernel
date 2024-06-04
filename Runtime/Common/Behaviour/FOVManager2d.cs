@@ -30,7 +30,7 @@ public class FOVManager2d : AsyncBehaviour
         #if UNITY_EDITOR
         using var drawGizmosListener = SubscribeDrawGizmos(m_CameraFovTracker2d.DrawGizmos);
         #endif
-        using var cameraControllerSubscription = Dispatcher.global.SubscribeRegistry<CameraAnchor>(
+        using var cameraControllerSubscription = Dispatcher.global.OnRegistered<CameraAnchor>(
             cameraController =>
             {
                 if (cameraController == null || cameraController.camera == null)
@@ -66,11 +66,11 @@ public class FOVManager2d : AsyncBehaviour
     public UniTask<CameraFOVTracker2d.AreaIntersection> TrackAreaOneShot(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CancellationToken cancellationToken)
     {
         var tcs = new UniTaskCompletionSource<CameraFOVTracker2d.AreaIntersection>();
-        DisposableAction release = null;
+        DisposableAction release = default;
         CancellationTokenRegistration registration = cancellationToken.Register(() =>
         {
             tcs.TrySetCanceled();
-            release?.Dispose();
+            release.Dispose();
         });
         var shotWasTaken = false;
         release = cameraFovTracker2d.TrackArea(area, boundsType, (intersected, intersection) =>
@@ -84,12 +84,12 @@ public class FOVManager2d : AsyncBehaviour
             if (cancellationToken.IsCancellationRequested)
             {
                 tcs.TrySetCanceled();
-                release?.Dispose();
+                release.Dispose();
                 return;
             }
             registration.Dispose();
             tcs.TrySetResult(intersection);
-            release?.Dispose();
+            release.Dispose();
         });
         return tcs.Task;
     }

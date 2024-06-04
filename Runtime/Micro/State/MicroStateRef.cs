@@ -137,7 +137,7 @@ namespace Metamatic
             return new DisposableAction(() =>
             {
                 releaseValueListener?.Invoke();
-                releaseProxyListener?.Invoke();
+                releaseProxyListener.Invoke();
                 releaseValueListener = null;
                 releaseProxyListener = null;
             });
