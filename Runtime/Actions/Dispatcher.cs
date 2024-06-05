@@ -48,6 +48,8 @@ namespace Metamatic.Actions
         private readonly Dictionary<Type, List<Delegate>> m_EventListeners = new();
         private readonly Dictionary<Type, List<object>> m_Announcements = new();
         private readonly Dictionary<Type, Dictionary<Type, Dictionary<object, RegistrySource<object>>>> m_RegistryTypesKeys = new();
+        
+        private readonly Dictionary<(object id, Type type), (object value, bool isActive, List<IDispatcher.EventHandler<object>> handlers1, List<IDispatcher.EventHandler<object>> handlers2)> m_Registry = new();
         #endregion
         
         #region Events
@@ -205,110 +207,97 @@ namespace Metamatic.Actions
 
         #endregion
         #region Registry
-        public IDisposable Register<TKey, TValue>(TKey id, TValue source) where TValue : notnull
+        public IDisposable Register<TValue>(object id, TValue source) where TValue : notnull
         {
-            var keyType = typeof(TKey);
             var valueType = typeof(TValue);
-            if (!m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
+            if (!m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                m_RegistryTypesKeys[keyType] = keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
+                registry = (default, false, new List<IDispatcher.EventHandler<object>>(), new List<IDispatcher.EventHandler<object>>());
             }
-            if (!keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
+            
+            registry.value = source;
+            registry.isActive = true;
+            (registry.handlers1, registry.handlers2) = (registry.handlers2, registry.handlers1);
+            registry.handlers1.Clear();
+            registry.handlers1.AddRange(registry.handlers2);
+            foreach (var handler in registry.handlers2)
             {
-                keyTypeDictionary[valueType] = valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
+                handler(source);
             }
-            if (!valueTypeDictionary.TryGetValue(id, out var registry))
-            {
-                valueTypeDictionary[id] = registry = new RegistrySource<object>();
-            }
-            var token = registry.Register(source);
+
+            m_Registry[(id, valueType)] = registry;
+            
             return new DisposableCallback(() =>
             {
-                registry.Release(token);
-                if (registry.isEmpty())
+                if (m_Registry.TryGetValue((id, valueType), out var reg))
                 {
-                    valueTypeDictionary.Remove(id);
-                    if (valueTypeDictionary.Count == 0)
+                    reg.value = default;
+                    reg.isActive = false;
+                    if (reg.handlers1.Count == 0)
                     {
-                        keyTypeDictionary.Remove(typeof(TValue));
-                        if (keyTypeDictionary.Count == 0)
-                        {
-                            m_RegistryTypesKeys.Remove(typeof(TKey));
-                        }
+                        m_Registry.Remove((id, valueType));
+                    }
+                    else
+                    {
+                        m_Registry[(id, valueType)] = reg;
                     }
                 }
+        #if DEBUG
+                else
+                {
+                    throw new System.Exception("Registry key not found: " + id);
+                }
+        #endif
             });
         }
-        
+
         public IDisposable Register<TValue>(TValue source) where TValue : notnull
         {
             return Register(this, source);
         }
 
-        public DisposableAction OnRegistered<TKey, TValue>(TKey id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
+        public DisposableAction OnRegistered<TValue>(object id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false)
         {
-            var keyType = typeof(TKey);
             var valueType = typeof(TValue);
-            if (!m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
+            if (!m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                m_RegistryTypesKeys[keyType] = keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
+                registry = (default, false, new List<IDispatcher.EventHandler<object>>(), new List<IDispatcher.EventHandler<object>>());
+                m_Registry[(id, valueType)] = registry;
             }
-            if (!keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
+            
+            IDispatcher.EventHandler<object> handlerWrapper = (source) =>
             {
-                keyTypeDictionary[valueType] = valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
-            }
-            if (!valueTypeDictionary.TryGetValue(id, out var registry))
-            {
-                valueTypeDictionary[id] = registry = new RegistrySource<object>();
-            }
-            System.Action<object> handlerWrapper = source =>
-            {
-                try
-                {
-                    #if DEBUG
-                    if (handler == null)
-                    {
-                        Debug.LogError("Handler is null");
-                        return;
-                    }
-                    #endif
-
-                    if (source == null)
-                    {
-                        Debug.LogWarning("Source is null, but trying to cast to " + typeof(TValue).Name);
-                        handler(default(TValue));
-                    }
-                    else
-                    {
-                        handler((TValue)source);
-                    }
-                }
-                catch (InvalidCastException e)
-                {
-                    Debug.LogError("Invalid cast from " + source.GetType().Name + " to " + typeof(TValue).Name + ": " + e);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                }
+                handler(source == null ? default : (TValue)source);
             };
-            var releaseSubscription = registry.Subscribe(handlerWrapper, skipInitial);
-            return new DisposableAction(() =>
+
+            if (!skipInitial)
             {
-                releaseSubscription();
-                if (registry.isEmpty())
+                handler(registry.value == null ? default : (TValue)registry.value);
+            }
+            registry.handlers1.Add(handlerWrapper);
+            
+            return DisposableAction.Create(() =>
+            {
+                if (m_Registry.TryGetValue((id, valueType), out var reg))
                 {
-                    valueTypeDictionary.Remove(id);
-                    if (valueTypeDictionary.Count == 0)
+                    reg.handlers1.Remove(handlerWrapper);
+                    if (!reg.isActive && reg.handlers1.Count == 0)
                     {
-                        keyTypeDictionary.Remove(typeof(TValue));
-                        if (keyTypeDictionary.Count == 0)
-                        {
-                            m_RegistryTypesKeys.Remove(typeof(TKey));
-                        }
+                        m_Registry.Remove((id, valueType));
                     }
                 }
+        #if DEBUG
+                else
+                {
+                    throw new System.Exception("Registry key not found: " + id);
+                }
+        #endif
             });
+        }
+        
+        public int GetRegistrySize()
+        {
+            return m_Registry.Count;
         }
 
         public DisposableAction OnRegistered<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
@@ -334,7 +323,7 @@ namespace Metamatic.Actions
                 releaseSubscription?.Invoke();
                 tcs.TrySetCanceled(cancellationToken);
             });
-            releaseSubscription = OnRegistered<TKey, TValue>(id, source =>
+            releaseSubscription = OnRegistered<TValue>(id, source =>
             {
                 releaseSubscription?.Invoke();
                 cancellationTokenRegistration.Dispose();
@@ -361,7 +350,7 @@ namespace Metamatic.Actions
                 releaseSubscription?.Invoke();
                 tcs.TrySetCanceled(cancellationToken);
             });
-            releaseSubscription = OnRegistered<TKey, TValue>(id, source =>
+            releaseSubscription = OnRegistered<TValue>(id, source =>
             {
                 if (cancellationToken.IsCancellationRequested || source == null)
                 {
@@ -384,44 +373,12 @@ namespace Metamatic.Actions
             return WhenRegistryChange<Dispatcher, TValue>(this, cancellationToken);
         }
         
-        public RegistrySource<TValue> GetRegistry<TKey, TValue>(TKey id) where TValue : notnull
-        {
-            var keyType = typeof(TKey);
-            var valueType = typeof(TValue);
-            if (!m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
-            {
-                m_RegistryTypesKeys[keyType] = keyTypeDictionary = new Dictionary<Type, Dictionary<object, RegistrySource<object>>>();
-            }
-            if (!keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
-            {
-                keyTypeDictionary[valueType] = valueTypeDictionary = new SimplyObservableDictionary<object, RegistrySource<object>>();
-            }
-            if (!valueTypeDictionary.TryGetValue(id, out var registry))
-            {
-                valueTypeDictionary[id] = registry = new RegistrySource<object>();
-            }
-
-            return registry as RegistrySource<TValue>;
-        }
-        
-        public RegistrySource<TValue> GetRegistry<TValue>() where TValue : class
-        {
-            return GetRegistry<Dispatcher, TValue>(this);
-        }
-        
         public TValue GetRegisteredObject<TKey, TValue>(TKey id) where TValue : notnull
         {
-            var keyType = typeof(TKey);
             var valueType = typeof(TValue);
-            if (m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
+            if (m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                if (keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
-                {
-                    if (valueTypeDictionary.TryGetValue(id, out var registry))
-                    {
-                        return (TValue)registry.value;
-                    }
-                }
+                return (TValue)registry.Item1;
             }
             
             return default;
@@ -434,17 +391,11 @@ namespace Metamatic.Actions
         
         public bool HasRegistry<TKey, TValue>(TKey id) where TValue : notnull
         {
-            var keyType = typeof(TKey);
             var valueType = typeof(TValue);
-            if (m_RegistryTypesKeys.TryGetValue(keyType, out var keyTypeDictionary))
+            
+            if (m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                if (keyTypeDictionary.TryGetValue(valueType, out var valueTypeDictionary))
-                {
-                    if (valueTypeDictionary.TryGetValue(id, out var registry))
-                    {
-                        return registry.value != null;
-                    }
-                }
+                return registry.Item1 != null;
             }
             
             return false;
