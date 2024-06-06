@@ -159,6 +159,7 @@ namespace Metamatic.MicroBehaviours
             }
             ~ObjectTracker()
             {
+                throw new Exception("ObjectTracker should be disposed manually!");
                 Dispose();
             }
 
@@ -601,11 +602,14 @@ namespace Metamatic.MicroBehaviours
         protected override async UniTask Main(CancellationToken cancellationToken)
         {
             /* Initialize native arrays */
-            mapBoundsTypesToRectIndexesBoundTypes = new NativeArray<FovBoundsType>(MapBoundsTypeToRectsIndex.Count, Allocator.Persistent);
-            mapBoundsTypeToRectsStartIndex = new NativeArray<int>(MapBoundsTypeToRectsIndex.Count, Allocator.Persistent);
+            mapBoundsTypesToRectIndexesBoundTypes =
+                new NativeArray<FovBoundsType>(MapBoundsTypeToRectsIndex.Count, Allocator.Persistent);
+            mapBoundsTypeToRectsStartIndex =
+                new NativeArray<int>(MapBoundsTypeToRectsIndex.Count, Allocator.Persistent);
             mapBoundsTypeToRectsEndIndex = new NativeArray<int>(MapBoundsTypeToRectsIndex.Count, Allocator.Persistent);
             var rectIndexesLength = MapBoundsTypeToRectsIndex.Values.Sum(arr => arr.Length);
-            NativeArray<int> mapBoundsTypeToRectsRectIndexes = new NativeArray<int>(rectIndexesLength, Allocator.Persistent);
+            NativeArray<int> mapBoundsTypeToRectsRectIndexes =
+                new NativeArray<int>(rectIndexesLength, Allocator.Persistent);
             var index = 0;
             for (var i = 0; i < MapBoundsTypeToRectsIndex.Count; i++)
             {
@@ -617,13 +621,14 @@ namespace Metamatic.MicroBehaviours
                     mapBoundsTypeToRectsRectIndexes[index] = subArr;
                     index++;
                 }
+
                 mapBoundsTypeToRectsEndIndex[i] = index - 1;
             }
-            
+
             ulong intersectedRects = 0;
             FovBoundsType resultBoundsTypeMask = 0;
             var fovBoundsTypeArray = Enum.GetValues(typeof(FovBoundsType));
-            
+
             float prevTime = Time.time;
             while (true)
             {
@@ -631,36 +636,49 @@ namespace Metamatic.MicroBehaviours
                 {
                     break;
                 }
+
                 if (m_Paused == true || m_CustomCamera == null)
                 {
                     await UniTask.Yield(PlayerLoopTiming.Update);
                     continue;
                 }
+
                 var debugStartTime = Time.realtimeSinceStartup;
                 m_IsTracking = true;
-                var (fovBounds, allBounds, innerBufferBounds) = CalculateCameraBounds(this.camera, m_ZDepth, outerBuffer, innerBuffer);
+                var (fovBounds, allBounds, innerBufferBounds) =
+                    CalculateCameraBounds(this.camera, m_ZDepth, outerBuffer, innerBuffer);
 
                 allRects[0] = allBounds;
                 allRects[1] = fovBounds;
                 allRects[2] = innerBufferBounds;
-                allRects[3] = new Rect(allBounds.xMin, allBounds.yMin, innerBufferBounds.xMin - allBounds.xMin, allBounds.height);
-                allRects[4] = new Rect(innerBufferBounds.xMax, allBounds.yMin, allBounds.xMax - innerBufferBounds.xMax, allBounds.height);
-                allRects[5] = new Rect(allBounds.xMin, innerBufferBounds.yMax, allBounds.width, allBounds.yMax - innerBufferBounds.yMax);
-                allRects[6] = new Rect(allBounds.xMin, allBounds.yMin, allBounds.width, innerBufferBounds.yMin - allBounds.yMin);
+                allRects[3] = new Rect(allBounds.xMin, allBounds.yMin, innerBufferBounds.xMin - allBounds.xMin,
+                    allBounds.height);
+                allRects[4] = new Rect(innerBufferBounds.xMax, allBounds.yMin, allBounds.xMax - innerBufferBounds.xMax,
+                    allBounds.height);
+                allRects[5] = new Rect(allBounds.xMin, innerBufferBounds.yMax, allBounds.width,
+                    allBounds.yMax - innerBufferBounds.yMax);
+                allRects[6] = new Rect(allBounds.xMin, allBounds.yMin, allBounds.width,
+                    innerBufferBounds.yMin - allBounds.yMin);
 
                 SwapTrackedAreas();
                 SwapTrackedObjects();
-                
-                NativeArray<FovBoundsType> objectsAcquiredBoundsTypesBinaryMaskArray = new NativeArray<FovBoundsType>(iterableTrackedObjects.Count, Allocator.TempJob);
-                NativeArray<Vector2> trackedObjectPositions = new NativeArray<Vector2>(iterableTrackedObjects.Count, Allocator.TempJob);
-                NativeArray<FovBoundsType> objectsResults = new NativeArray<FovBoundsType>(iterableTrackedObjects.Count, Allocator.TempJob);
-                
+
+                NativeArray<FovBoundsType> objectsAcquiredBoundsTypesBinaryMaskArray =
+                    new NativeArray<FovBoundsType>(iterableTrackedObjects.Count, Allocator.TempJob);
+                NativeArray<Vector2> trackedObjectPositions =
+                    new NativeArray<Vector2>(iterableTrackedObjects.Count, Allocator.TempJob);
+                NativeArray<FovBoundsType> objectsResults =
+                    new NativeArray<FovBoundsType>(iterableTrackedObjects.Count, Allocator.TempJob);
+
                 /* Native arrays for areas */
-                NativeArray<FovBoundsType> areaAcquiredBoundsTypesBinaryMaskArray = new NativeArray<FovBoundsType>(iterableTrackedAreas.Count, Allocator.TempJob);
+                NativeArray<FovBoundsType> areaAcquiredBoundsTypesBinaryMaskArray =
+                    new NativeArray<FovBoundsType>(iterableTrackedAreas.Count, Allocator.TempJob);
                 NativeArray<Rect> areaRects = new NativeArray<Rect>(iterableTrackedAreas.Count, Allocator.TempJob);
-                NativeArray<ulong> intersectedRectsResult = new NativeArray<ulong>(iterableTrackedAreas.Count, Allocator.TempJob);
-                NativeArray<FovBoundsType> areasResults = new NativeArray<FovBoundsType>(iterableTrackedAreas.Count, Allocator.TempJob);
-                
+                NativeArray<ulong> intersectedRectsResult =
+                    new NativeArray<ulong>(iterableTrackedAreas.Count, Allocator.TempJob);
+                NativeArray<FovBoundsType> areasResults =
+                    new NativeArray<FovBoundsType>(iterableTrackedAreas.Count, Allocator.TempJob);
+
                 try
                 {
 
@@ -683,7 +701,7 @@ namespace Metamatic.MicroBehaviours
                         mapBoundsTypesToRectIndexesBoundTypes = mapBoundsTypesToRectIndexesBoundTypes
                     };
                     var objectsJobHandle = trackObjectsJob.Schedule(iterableTrackedObjects.Count, 64);
-                    
+
                     /* Tracking areas */
                     for (var i = 0; i < iterableTrackedAreas.Count; i++)
                     {
@@ -691,7 +709,7 @@ namespace Metamatic.MicroBehaviours
                         areaRects[i] = area.rectRepresentation;
                         areaAcquiredBoundsTypesBinaryMaskArray[i] = areaTrack.acquiredBoundsTypesBinaryMask;
                     }
-                    
+
                     var trackAreasJob = new TrackAreasJob
                     {
                         allRects = allRects,
@@ -705,13 +723,14 @@ namespace Metamatic.MicroBehaviours
                         intersectedRectsResult = intersectedRectsResult
                     };
                     var areasJobHandle = trackAreasJob.Schedule(iterableTrackedAreas.Count, 64, objectsJobHandle);
-                    
+
                     /* Wait for jobs to complete */
-                    await UniTask.WaitUntil(() => areasJobHandle.IsCompleted && objectsJobHandle.IsCompleted, PlayerLoopTiming.Update, cancellationToken);
+                    await UniTask.WaitUntil(() => areasJobHandle.IsCompleted && objectsJobHandle.IsCompleted,
+                        PlayerLoopTiming.Update, cancellationToken);
                     areasJobHandle.Complete();
                     objectsJobHandle.Complete();
                     cancellationToken.ThrowIfCancellationRequested();
-                    
+
                     /* Parse objects job result */
                     for (var i = 0; i < iterableTrackedObjects.Count; i++)
                     {
@@ -722,7 +741,7 @@ namespace Metamatic.MicroBehaviours
                             OnObjectReactivate?.Invoke(trackedObject.transform, hresultBoundsTypeMask);
                         }
                     }
-                    
+
                     /* Parse areas job result */
                     for (var i = 0; i < iterableTrackedAreas.Count; i++)
                     {
@@ -761,40 +780,28 @@ namespace Metamatic.MicroBehaviours
                     intersectedRectsResult.Dispose();
                     areasResults.Dispose();
                 }
-                
-                
+
+
                 var performanceInMs = (Time.realtimeSinceStartup - debugStartTime) * 1000;
                 UILog.Add("Performance", "CameraFOVTracker2d", $"{performanceInMs} ms");
-                
+
                 /* Await next fixed update */
                 await UniTask.Yield(PlayerLoopTiming.FixedUpdate);
-                
+
                 var frameDuration = Time.time - prevTime;
                 prevTime = Time.time;
             }
-            
+
             foreach (var (area, areaTrack) in m_TrackedAreas)
             {
                 areaTrack.Dispose();
             }
+
             allRects.Dispose();
             mapBoundsTypesToRectIndexesBoundTypes.Dispose();
             mapBoundsTypeToRectsStartIndex.Dispose();
             mapBoundsTypeToRectsEndIndex.Dispose();
             mapBoundsTypeToRectsRectIndexes.Dispose();
-        }
-
-        private bool BoundsOverlapsArea(NativeArray<Rect> allRects, int[] rectIndexes, VirtualArea2d area, ref ulong intersectedRects)
-        {
-            for (int i = 0; i < rectIndexes.Length; i++)
-            {
-                var rectIndex = rectIndexes[i];
-                if (area.Overlaps(allRects[rectIndex]))
-                {
-                    intersectedRects |= 1UL << rectIndex;
-                }
-            }
-            return intersectedRects > 0;
         }
 
         private float m_CameraFieldOfView = 0;
@@ -855,6 +862,20 @@ namespace Metamatic.MicroBehaviours
                 mutableTrackedObjects.Add(tracker);
             }
             m_TrackedObjectsAreSwapped = !m_TrackedObjectsAreSwapped;
+        }
+        
+        private void OnDestroy()
+        {
+            /* Call dispose on all tracked areas and all tracked objects */
+            foreach (var (area, areaTrack) in m_TrackedAreas)
+            {
+                areaTrack.Dispose();
+            }
+            
+            foreach (var tracker in m_TrackedObjects)
+            {
+                tracker.Dispose();
+            }
         }
 
 #if UNITY_EDITOR

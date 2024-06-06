@@ -933,5 +933,34 @@ namespace Metamatic {
                 color1.a * color2.a
             );
         }
+        
+        /// <summary>
+        /// Reduces array count to specified length by selecting values with equal intervals
+        /// </summary>
+        /// <param name="l"></param>
+        /// <param name="maxLength"></param>
+        /// <returns></returns>
+        public static T[] ReduceArrayLength<T>(List<T> l, int maxLength)
+        {
+            int inputLength = l.Count;
+
+            if (inputLength <= maxLength)
+            {
+                return l.ToArray();
+            }
+
+            T[] result = new T[maxLength];
+            result[0] = l[0];
+            result[maxLength - 1] = l[inputLength - 1];
+
+            double interval = (double)(inputLength - 1) / (maxLength - 1);
+
+            for (int i = 1; i < maxLength - 1; i++)
+            {
+                result[i] = l[(int)Math.Round(i * interval)];
+            }
+
+            return result;
+        }
     }
 }

@@ -48,8 +48,9 @@ namespace Metamatic.Actions
         private readonly Dictionary<Type, List<Delegate>> m_EventListeners = new();
         private readonly Dictionary<Type, List<object>> m_Announcements = new();
         private readonly Dictionary<Type, Dictionary<Type, Dictionary<object, RegistrySource<object>>>> m_RegistryTypesKeys = new();
-        
         private readonly Dictionary<(object id, Type type), (object value, bool isActive, List<IDispatcher.EventHandler<object>> handlers1, List<IDispatcher.EventHandler<object>> handlers2)> m_Registry = new();
+        private bool m_IsRegistrationProcessing = false;
+        private DeferLock m_RegistrationLock = new();
         #endregion
         
         #region Events
@@ -209,46 +210,50 @@ namespace Metamatic.Actions
         #region Registry
         public IDisposable Register<TValue>(object id, TValue source) where TValue : notnull
         {
-            var valueType = typeof(TValue);
-            if (!m_Registry.TryGetValue((id, valueType), out var registry))
+            using (m_RegistrationLock.Lock())
             {
-                registry = (default, false, new List<IDispatcher.EventHandler<object>>(), new List<IDispatcher.EventHandler<object>>());
-            }
-            
-            registry.value = source;
-            registry.isActive = true;
-            (registry.handlers1, registry.handlers2) = (registry.handlers2, registry.handlers1);
-            registry.handlers1.Clear();
-            registry.handlers1.AddRange(registry.handlers2);
-            foreach (var handler in registry.handlers2)
-            {
-                handler(source);
-            }
-
-            m_Registry[(id, valueType)] = registry;
-            
-            return new DisposableCallback(() =>
-            {
-                if (m_Registry.TryGetValue((id, valueType), out var reg))
+                var valueType = typeof(TValue);
+                if (!m_Registry.TryGetValue((id, valueType), out var registry))
                 {
-                    reg.value = default;
-                    reg.isActive = false;
-                    if (reg.handlers1.Count == 0)
+                    registry = (default, false, new List<IDispatcher.EventHandler<object>>(),
+                        new List<IDispatcher.EventHandler<object>>());
+                }
+
+                registry.value = source;
+                registry.isActive = true;
+                (registry.handlers1, registry.handlers2) = (registry.handlers2, registry.handlers1);
+                registry.handlers1.Clear();
+                registry.handlers1.AddRange(registry.handlers2);
+                foreach (var handler in registry.handlers2)
+                {
+                    handler(source);
+                }
+
+                m_Registry[(id, valueType)] = registry;
+                
+                return new DisposableCallback(() =>
+                {
+                    if (m_Registry.TryGetValue((id, valueType), out var reg))
                     {
-                        m_Registry.Remove((id, valueType));
+                        reg.value = default;
+                        reg.isActive = false;
+                        if (reg.handlers1.Count == 0)
+                        {
+                            m_Registry.Remove((id, valueType));
+                        }
+                        else
+                        {
+                            m_Registry[(id, valueType)] = reg;
+                        }
                     }
+#if DEBUG
                     else
                     {
-                        m_Registry[(id, valueType)] = reg;
+                        throw new System.Exception("Registry key not found: " + id);
                     }
-                }
-        #if DEBUG
-                else
-                {
-                    throw new System.Exception("Registry key not found: " + id);
-                }
-        #endif
-            });
+#endif
+                });
+            }
         }
 
         public IDisposable Register<TValue>(TValue source) where TValue : notnull
@@ -258,41 +263,64 @@ namespace Metamatic.Actions
 
         public DisposableAction OnRegistered<TValue>(object id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false)
         {
-            var valueType = typeof(TValue);
-            if (!m_Registry.TryGetValue((id, valueType), out var registry))
-            {
-                registry = (default, false, new List<IDispatcher.EventHandler<object>>(), new List<IDispatcher.EventHandler<object>>());
-                m_Registry[(id, valueType)] = registry;
-            }
-            
-            IDispatcher.EventHandler<object> handlerWrapper = (source) =>
-            {
-                handler(source == null ? default : (TValue)source);
-            };
+            var cancellationTokenSource = new CancellationTokenSource();
+            OnRegisteredInternal(id, handler, skipInitial, cancellationTokenSource.Token).Forget();
 
-            if (!skipInitial)
+            return new DisposableAction(() =>
             {
-                handler(registry.value == null ? default : (TValue)registry.value);
-            }
-            registry.handlers1.Add(handlerWrapper);
-            
-            return DisposableAction.Create(() =>
-            {
-                if (m_Registry.TryGetValue((id, valueType), out var reg))
-                {
-                    reg.handlers1.Remove(handlerWrapper);
-                    if (!reg.isActive && reg.handlers1.Count == 0)
-                    {
-                        m_Registry.Remove((id, valueType));
-                    }
-                }
-        #if DEBUG
-                else
-                {
-                    throw new System.Exception("Registry key not found: " + id);
-                }
-        #endif
+                cancellationTokenSource.Cancel();
             });
+        }
+
+        private async UniTaskVoid OnRegisteredInternal<TValue>(object id, IDispatcher.EventHandler<TValue> handler,
+            bool skipInitial = false, CancellationToken cancellationToken = default)
+        {
+            await m_RegistrationLock;
+            if (cancellationToken.IsCancellationRequested) return;
+            try
+            {
+                var valueType = typeof(TValue);
+                if (!m_Registry.TryGetValue((id, valueType), out var registry))
+                {
+                    registry = (default, false, new List<IDispatcher.EventHandler<object>>(),
+                        new List<IDispatcher.EventHandler<object>>());
+                    m_Registry[(id, valueType)] = registry;
+                }
+
+                IDispatcher.EventHandler<object> handlerWrapper = (source) =>
+                {
+                    handler(source == null ? default : (TValue)source);
+                };
+
+                if (!skipInitial)
+                {
+                    handler(registry.value == null ? default : (TValue)registry.value);
+                }
+
+                registry.handlers1.Add(handlerWrapper);
+
+                cancellationToken.Register(() =>
+                {
+                    if (m_Registry.TryGetValue((id, valueType), out var reg))
+                    {
+                        reg.handlers1.Remove(handlerWrapper);
+                        if (!reg.isActive && reg.handlers1.Count == 0)
+                        {
+                            m_Registry.Remove((id, valueType));
+                        }
+                    }
+#if DEBUG
+                    else
+                    {
+                        throw new System.Exception("Registry key not found: " + id);
+                    }
+#endif
+                });
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
         }
         
         public int GetRegistrySize()
