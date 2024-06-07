@@ -5,7 +5,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    [Obsolete("use MicroBehaviour instead")]
+    [Obsolete("use MicroBehaviour or MicroPromise instead")]
     public class AsyncDisposableBehavior: IAsyncDisposable, IDisposable
     {
         public delegate UniTask ProcessHandler(Action resolve, Action<Exception> reject, CancellationToken token);
@@ -53,6 +53,7 @@ namespace Metamatic
             m_TaskCompletionSource.TrySetCanceled();
         }
     }
+    [Obsolete("use MicroBehaviour or MicroPromise instead")]
     public class AsyncDisposableBehavior<T>: IAsyncDisposable, IDisposable
     {
         public delegate UniTask ProcessHandler(Action<T> resolve, Action<Exception> reject, CancellationToken token);

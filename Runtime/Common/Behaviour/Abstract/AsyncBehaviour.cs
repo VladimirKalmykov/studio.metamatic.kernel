@@ -14,6 +14,9 @@ namespace Metamatic
         
         private event Action OnValidateEvent;
         private event Action OnDrawGizmosEvent;
+        
+        protected bool isAboutToDestroy { get; private set; }
+        
 
         public CancellationToken componentDisableToken
         {
@@ -55,6 +58,11 @@ namespace Metamatic
         {
             m_IsDisabled = true;
             OnDisabled?.Invoke();
+        }
+
+        protected void OnDestroy()
+        {
+            isAboutToDestroy = true;
         }
 
         protected abstract void RunAsync(CancellationToken cancellationToken);

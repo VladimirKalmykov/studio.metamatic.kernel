@@ -7,4 +7,9 @@ namespace Metamatic
     {
         public UniTask result { get; }
     }
+    
+    public interface IAsyncDisposableResultable<T>: IAsyncDisposable
+    {
+        public new UniTask<T> result { get; }
+    }
 }
