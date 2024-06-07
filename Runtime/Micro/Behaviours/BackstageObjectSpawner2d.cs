@@ -20,7 +20,7 @@ namespace Micro.Behaviours
         private bool m_Ready;
         private SequentialArrayHandler<VirtualArea2d> m_AreasHandler;
         private SequentialMapHandler<VirtualArea2d, CameraFOVTracker2d.AreaIntersection> m_AreaIntersectionHandler;
-        private FOVManager2d m_FOVManager2d;
+        private FOV2DService m_FOV2DService;
         private event System.Action OnFovManagerReady;
         private Dictionary<VirtualArea2d, List<Transform>> m_SpawnedObjectsMap = new Dictionary<VirtualArea2d, List<Transform>>();
         private List<DisposableAction> m_ObjectTracker = new List<DisposableAction>();
@@ -46,7 +46,7 @@ namespace Micro.Behaviours
         public void AddArea(VirtualArea2d area)
         {
             m_Areas.Add(area);
-            if (m_FOVManager2d != null)
+            if (m_FOV2DService != null)
             {
                 m_AreasHandler.Handle(m_Areas);
                 return;
@@ -56,7 +56,7 @@ namespace Micro.Behaviours
         public void RemoveArea(VirtualArea2d area)
         {
             m_Areas.Remove(area);
-            if (m_FOVManager2d != null)
+            if (m_FOV2DService != null)
             {
                 m_AreasHandler.Handle(m_Areas);
                 return;
@@ -67,25 +67,25 @@ namespace Micro.Behaviours
         {
             using var areaIntersectionHandler = m_AreaIntersectionHandler = new SequentialMapHandler<VirtualArea2d, CameraFOVTracker2d.AreaIntersection>(HandleAreaIntersection);
             using var areasArrayHandler = m_AreasHandler = new SequentialArrayHandler<VirtualArea2d>(HandleArea);
-            using var fovManagerHandler = new SequentialHandler<FOVManager2d>(HandleFOVManager);
-            using var fovManagerSubscription = Dispatcher.global.OnRegistered<FOVManager2d>(fovManagerHandler.Handle);
+            using var fovManagerHandler = new SequentialHandler<FOV2DService>(HandleFOVManager);
+            using var fovManagerSubscription = Dispatcher.global.OnRegistered<FOV2DService>(fovManagerHandler.Handle);
             
             await cancellationToken;
         }
         
-        private async void HandleFOVManager(FOVManager2d fovManager, CancellationToken cancellationToken)
+        private async void HandleFOVManager(FOV2DService fovManager, CancellationToken cancellationToken)
         {
             if (fovManager == null)
             {
                 return;
             }
-            m_FOVManager2d = fovManager;
+            m_FOV2DService = fovManager;
             OnFovManagerReady?.Invoke();
             m_AreasHandler.Handle(m_Areas);
             /* Stack all areas */
             await cancellationToken;
             m_AreasHandler.Reset();
-            m_FOVManager2d = null;
+            m_FOV2DService = null;
             m_ObjectTracker.ForEach(t => t.Dispose());
         }
 
@@ -98,7 +98,7 @@ namespace Micro.Behaviours
                 {
                     /* Track the area within the FOV bounds first frame */
                     var intersection =
-                        await m_FOVManager2d.TrackAreaOneShot(area, CameraFOVTracker2d.FovBoundsType.Fov, token);
+                        await m_FOV2DService.TrackAreaOneShot(area, CameraFOVTracker2d.FovBoundsType.Fov, token);
                     /* Get currently spawned objects count */
                     if (!m_SpawnedObjectsMap.TryGetValue(intersection.area, out var spawnedObjects))
                     {
@@ -115,7 +115,7 @@ namespace Micro.Behaviours
                 }
             }
 
-            using var tracker = m_FOVManager2d.TrackArea(area, CameraFOVTracker2d.FovBoundsType.OuterBufferOnly,
+            using var tracker = m_FOV2DService.TrackArea(area, CameraFOVTracker2d.FovBoundsType.OuterBufferOnly,
                 (intersected, intersection) =>
                 {
                     m_AreaIntersectionHandler.Handle(area, intersection);
@@ -210,7 +210,7 @@ namespace Micro.Behaviours
         {
             bool untrackNow = false;
             DisposableAction untrack = default;
-            untrack = m_FOVManager2d.TrackObject(obj.transform, CameraFOVTracker2d.FovBoundsType.Full, (t, boundsType) =>
+            untrack = m_FOV2DService.TrackObject(obj.transform, CameraFOVTracker2d.FovBoundsType.Full, (t, boundsType) =>
             {
                 if (boundsType == CameraFOVTracker2d.FovBoundsType.None)
                 {

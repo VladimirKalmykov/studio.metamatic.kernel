@@ -93,7 +93,7 @@ namespace Metamatic
             var token = m_DisableCancellationTokenSource.Token;
             if (autoTrack)
             {
-                var fovManager = await Dispatcher.global.WhenRegistered<FOVManager2d>(token);
+                var fovManager = await Dispatcher.global.WhenRegistered<FOV2DService>(token);
                 using var tracker = fovManager.TrackArea(this, CameraFOVTracker2d.FovBoundsType.Full | CameraFOVTracker2d.FovBoundsType.Fov, (intersected, intersection) =>
                 {
                     OnCameraFOVIntersectionChange(intersected, intersection);
