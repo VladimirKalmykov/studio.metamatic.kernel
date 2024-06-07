@@ -1,3 +1,4 @@
+using System;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
@@ -16,7 +17,8 @@ public class FOVManager2d : AsyncBehaviour
     
     private CameraFOVTracker2d m_CameraFovTracker2d;
     public CameraFOVTracker2d cameraFovTracker2d => m_CameraFovTracker2d;
-    
+    private List<DisposableAction> m_Trackers = new List<DisposableAction>(100);
+
     protected override async void RunAsync(CancellationToken cancellationToken)
     {
         Debug.Log("CameraFOVTracker2d RunAsync Started");
@@ -50,10 +52,18 @@ public class FOVManager2d : AsyncBehaviour
         /* Register this in Dispatcher */
         using var registration = Dispatcher.global.Register(this);
         await cancellationToken;
+        /* Untrack all */
+        m_Trackers.ForEach(t => t.Dispose());
     }
     public DisposableAction TrackArea(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
     {
-        return cameraFovTracker2d.TrackArea(area, boundsType, onActivated);
+        var untrack = cameraFovTracker2d.TrackArea(area, boundsType, onActivated);
+        m_Trackers.Add(untrack);
+        return DisposableAction.Create(() =>
+        {
+            m_Trackers.Remove(untrack);
+            untrack.Dispose();
+        });
     }
     
     /// <summary>
@@ -102,7 +112,13 @@ public class FOVManager2d : AsyncBehaviour
     /// <returns></returns>
     public DisposableAction TrackAreas(IEnumerable<VirtualArea2d> areas, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
     {
-        return cameraFovTracker2d.TrackAreas(areas, boundsType, onActivated);
+        var untrack = cameraFovTracker2d.TrackAreas(areas, boundsType, onActivated);
+        m_Trackers.Add(untrack);
+        return DisposableAction.Create(() =>
+        {
+            m_Trackers.Remove(untrack);
+            untrack.Dispose();
+        });
     }
     
     /// <summary>
@@ -113,7 +129,13 @@ public class FOVManager2d : AsyncBehaviour
     /// <returns></returns>
     public DisposableAction TrackObject(Transform t, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackObjectHandler onChange)
     {
-        return cameraFovTracker2d.TrackObject(t, boundsType, onChange);
+        var untrack = cameraFovTracker2d.TrackObject(t, boundsType, onChange);
+        m_Trackers.Add(untrack);
+        return DisposableAction.Create(() =>
+        {
+            m_Trackers.Remove(untrack);
+            untrack.Dispose();
+        });
     }
     
     /// <summary>

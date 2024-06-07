@@ -58,10 +58,24 @@ namespace Metamatic
         }
 
         protected abstract void RunAsync(CancellationToken cancellationToken);
-
-        public UniTask RunAsync(RunAsyncHandler handler)
+        
+        /// <summary>
+        /// IDisposable object will be disposed on component disable
+        /// </summary>
+        /// <param name="disposable"></param>
+        public IDisposable WithinLifecycle(IDisposable disposable)
         {
-            return handler(componentDisableToken);
+            if (m_IsDisabled)
+            {
+                disposable.Dispose();
+                return VoidDisposable.None;
+            }
+            OnDisabled += disposable.Dispose;
+            return DisposableAction.Create(() =>
+            {
+                disposable.Dispose();
+                OnDisabled -= disposable.Dispose;
+            });
         }
         
         protected DisposableAction SubscribeValidate(Action action)
