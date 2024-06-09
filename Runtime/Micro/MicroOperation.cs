@@ -10,6 +10,8 @@ namespace Metamatic
 {
     public class MicroOperation: IDisposable, IAsyncDisposable
     {
+        public delegate UniTask AsyncAction(CancellationToken cancellationToken);
+        public delegate UniTask AsyncOperationAction(MicroOperation operation);
         private static Queue<MicroOperation> _Pool = new ();
         public static MicroOperation Run(AsyncAction action)
         {
@@ -22,16 +24,34 @@ namespace Metamatic
             return new MicroOperation(action);
         }
         
+        public static MicroOperation Run(AsyncOperationAction action)
+        {
+            if (_Pool.Count > 0)
+            {
+                var operation = _Pool.Dequeue();
+                operation.InternalRun(action);
+                return operation;
+            }
+            return new MicroOperation(action);
+        }
+        
         private CancellationTokenSource m_DisposeCancellationTokenSource;
+        public CancellationToken cancellationToken => m_DisposeCancellationTokenSource.Token;
         private UniTask? m_Task;
+        private bool m_SyncDisposed = false;
+        public bool syncDisposed => m_SyncDisposed;
         
         private MicroOperation()
         {
             
         }
         
-        public delegate UniTask AsyncAction(CancellationToken cancellationToken);
+        
         protected MicroOperation(AsyncAction action): this()
+        {
+            InternalRun(action);
+        }
+        protected MicroOperation(AsyncOperationAction action): this()
         {
             InternalRun(action);
         }
@@ -57,6 +77,7 @@ namespace Metamatic
                 {
                     m_Task = null;
                     m_Disposed = false;
+                    m_SyncDisposed = false;
                     m_DisposeCancellationTokenSource.Dispose();
                     m_DisposeCancellationTokenSource = null;
                     if (_Pool.Count < 100) {
@@ -68,10 +89,10 @@ namespace Metamatic
         
         public void Dispose()
         {
-            Dispose(false);
+            Dispose(false, true);
         }
 
-        private void Dispose(bool isFromFinalizer = false)
+        private void Dispose(bool isFromFinalizer = false, bool isSync = false)
         {
             if (isFromFinalizer)
             {
@@ -81,6 +102,7 @@ namespace Metamatic
             {
                 return;
             }
+            m_SyncDisposed = isSync;
             m_Disposed = true;
             m_DisposeCancellationTokenSource?.Cancel();
             GC.SuppressFinalize(this);
@@ -109,5 +131,27 @@ namespace Metamatic
             }
         }
         
+        private async void InternalRun(AsyncOperationAction action)
+        {
+            if (m_Task.HasValue)
+            {
+                throw new InvalidOperationException("Task is already running");
+            }
+            var taskCompletionSource = new UniTaskCompletionSource();
+            m_Task = taskCompletionSource.Task;
+            m_DisposeCancellationTokenSource = new CancellationTokenSource();
+            var task = action(this);
+            try
+            {
+                await task;
+            } catch (OperationCanceledException)
+            {
+                // Skip
+            }
+            finally
+            {
+                taskCompletionSource.TrySetResult();
+            }
+        }
     }
 }

@@ -33,13 +33,14 @@ namespace Metamatic
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static UniTask<T> Resolve<T>(CancellationToken cancellationToken = default) where T : Service
+        public static UniTask<T> Resolve<T>(CancellationToken cancellationToken = default, float timeout = 0f) where T : Service
         {
             if (_Services.TryGetValue(typeof(T), out var service))
             {
                 return UniTask.FromResult((T) service);
             }
             var tcs = new UniTaskCompletionSource<T>();
+            var task = tcs.Task;
             Action<Service> handler = null;
             handler = s =>
             {
@@ -55,11 +56,25 @@ namespace Metamatic
                 }
             };
             _HandleServiceAdded += handler;
-            cancellationToken.Register(() =>
+            var cancellationTokenRegistration = cancellationToken.Register(() =>
             {
                 _HandleServiceAdded -= handler;
                 tcs.TrySetCanceled();
             });
+            
+            if (timeout > 0f)
+            {
+                UniTask.Delay(TimeSpan.FromSeconds(timeout), cancellationToken: cancellationToken).ContinueWith(() =>
+                {
+                    if (!task.Status.IsCompleted())
+                    {
+                        _HandleServiceAdded -= handler;
+                        cancellationTokenRegistration.Dispose();
+                        tcs.TrySetException(new TimeoutException("Operation timed out."));
+                    }
+                }).Forget();
+            }
+            
             return tcs.Task;
         }
 

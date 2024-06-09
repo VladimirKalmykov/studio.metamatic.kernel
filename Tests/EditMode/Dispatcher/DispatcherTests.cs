@@ -48,7 +48,7 @@ namespace Metamatic
         {
             var dispatcher = new Dispatcher();
             var x = 0;
-            using var subscription = dispatcher.OnRegistered<int>(value => x = value);
+            using var subscription = dispatcher.SubscribeRegistry<int>(value => x = value);
             dispatcher.Register(1);
             Assert.AreEqual(1, x);
         }
@@ -59,7 +59,7 @@ namespace Metamatic
             var dispatcher = new Dispatcher();
             var x = 0;
             var release = dispatcher.Register(2);
-            var subscription = dispatcher.OnRegistered<int>(value => x = value);
+            var subscription = dispatcher.SubscribeRegistry<int>(value => x = value);
             Assert.AreEqual(2, x);
             Assert.AreEqual(1, dispatcher.GetRegistrySize());
             subscription.Dispose();
@@ -136,7 +136,7 @@ namespace Metamatic
             var randomInt = new System.Random();
             for (var i = 0; i < COUNTS; i++)
             {
-                dispatcher.OnRegistered(i, stub);
+                dispatcher.SubscribeRegistry(i, stub);
             }
             
             watch.Stop();

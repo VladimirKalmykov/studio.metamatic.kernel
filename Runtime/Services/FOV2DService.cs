@@ -32,7 +32,7 @@ public class FOV2DService : AsyncBehaviour
         #if UNITY_EDITOR
         using var drawGizmosListener = SubscribeDrawGizmos(m_CameraFovTracker2d.DrawGizmos);
         #endif
-        using var cameraControllerSubscription = Dispatcher.global.OnRegistered<CameraAnchor>(
+        using var cameraControllerSubscription = Dispatcher.global.SubscribeRegistry<CameraAnchor>(
             cameraController =>
             {
                 if (cameraController == null || cameraController.camera == null)

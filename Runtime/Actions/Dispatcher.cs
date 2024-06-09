@@ -261,7 +261,7 @@ namespace Metamatic.Actions
             return Register(this, source);
         }
 
-        public DisposableAction OnRegistered<TValue>(object id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false)
+        public DisposableAction SubscribeRegistry<TValue>(object id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false)
         {
             var cancellationTokenSource = new CancellationTokenSource();
             OnRegisteredInternal(id, handler, skipInitial, cancellationTokenSource.Token).Forget();
@@ -328,9 +328,9 @@ namespace Metamatic.Actions
             return m_Registry.Count;
         }
 
-        public DisposableAction OnRegistered<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
+        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
         {
-            return OnRegistered(this, handler, skipInitial);
+            return SubscribeRegistry(this, handler, skipInitial);
         }
         
         /// <summary>
@@ -351,7 +351,7 @@ namespace Metamatic.Actions
                 releaseSubscription?.Invoke();
                 tcs.TrySetCanceled(cancellationToken);
             });
-            releaseSubscription = OnRegistered<TValue>(id, source =>
+            releaseSubscription = SubscribeRegistry<TValue>(id, source =>
             {
                 releaseSubscription?.Invoke();
                 cancellationTokenRegistration.Dispose();
@@ -368,18 +368,22 @@ namespace Metamatic.Actions
         /// <typeparam name="TKey"></typeparam>
         /// <typeparam name="TValue"></typeparam>
         /// <returns></returns>
-        public UniTask<TValue> WhenRegistered<TKey, TValue>(TKey id, CancellationToken cancellationToken = default) where TValue : notnull
+        public UniTask<TValue> WhenRegistered<TKey, TValue>(TKey id, CancellationToken cancellationToken = default, float timeout = 0f) where TValue : notnull
         {
             var tcs = new UniTaskCompletionSource<TValue>();
             UniTask<TValue> task = tcs.Task;
             System.Action releaseSubscription = null;
+            CancellationTokenSource timeoutCancellationTokenSource = null;
             CancellationTokenRegistration cancellationTokenRegistration = cancellationToken.Register(() =>
             {
+                timeoutCancellationTokenSource?.Cancel();
                 releaseSubscription?.Invoke();
                 tcs.TrySetCanceled(cancellationToken);
             });
-            releaseSubscription = OnRegistered<TValue>(id, source =>
+
+            releaseSubscription = SubscribeRegistry<TValue>(id, source =>
             {
+                timeoutCancellationTokenSource?.Cancel();
                 if (cancellationToken.IsCancellationRequested || source == null)
                 {
                     return;
@@ -388,12 +392,27 @@ namespace Metamatic.Actions
                 cancellationTokenRegistration.Dispose();
                 tcs.TrySetResult(source);
             });
+
+            // Добавляем таймаут
+            if (timeout > 0f)
+            {
+                UniTask.Delay(TimeSpan.FromSeconds(timeout), cancellationToken: cancellationToken).ContinueWith(() =>
+                {
+                    if (!task.Status.IsCompleted())
+                    {
+                        releaseSubscription?.Invoke();
+                        cancellationTokenRegistration.Dispose();
+                        tcs.TrySetException(new TimeoutException("Operation timed out."));
+                    }
+                }).Forget();
+            }
+
             return task;
         }
 
-        public UniTask<TValue> WhenRegistered<TValue>(CancellationToken cancellationToken = default) where TValue : notnull
+        public UniTask<TValue> WhenRegistered<TValue>(CancellationToken cancellationToken = default, float timeout = 0f) where TValue : notnull
         {
-            return WhenRegistered<Dispatcher, TValue>(this, cancellationToken);
+            return WhenRegistered<Dispatcher, TValue>(this, cancellationToken, timeout);
         }
 
         public UniTask<TValue> WhenRegistryChange<TValue>(CancellationToken cancellationToken = default) where TValue : notnull

@@ -32,11 +32,12 @@ namespace Metamatic
         }
         
         private CancellationTokenSource m_DisposeCancellationTokenSource;
+        public CancellationToken cancellationToken => m_DisposeCancellationTokenSource.Token;
         private UniTask? m_Task;
         
         protected delegate UniTask AsyncAction(CancellationToken cancellationToken);
 
-        protected async void Run()
+        protected async void Run(CancellationToken cancellationToken = default)
         {
             if (m_Task.HasValue)
             {
@@ -44,7 +45,7 @@ namespace Metamatic
             }
             var taskCompletionSource = new UniTaskCompletionSource();
             m_Task = taskCompletionSource.Task;
-            m_DisposeCancellationTokenSource = new CancellationTokenSource();
+            m_DisposeCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var task = Main(m_DisposeCancellationTokenSource.Token);
             try
             {

@@ -68,7 +68,7 @@ namespace Micro.Behaviours
             using var areaIntersectionHandler = m_AreaIntersectionHandler = new SequentialMapHandler<VirtualArea2d, CameraFOVTracker2d.AreaIntersection>(HandleAreaIntersection);
             using var areasArrayHandler = m_AreasHandler = new SequentialArrayHandler<VirtualArea2d>(HandleArea);
             using var fovManagerHandler = new SequentialHandler<FOV2DService>(HandleFOVManager);
-            using var fovManagerSubscription = Dispatcher.global.OnRegistered<FOV2DService>(fovManagerHandler.Handle);
+            using var fovManagerSubscription = Dispatcher.global.SubscribeRegistry<FOV2DService>(fovManagerHandler.Handle);
             
             await cancellationToken;
         }
