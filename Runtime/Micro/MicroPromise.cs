@@ -17,6 +17,7 @@ namespace Metamatic
             if (_Pool.Count > 0)
             {
                 var operation = _Pool.Dequeue();
+                operation.m_Disposed = false;
                 operation.InternalRun(action, cancellationToken);
                 return operation;
             }
@@ -26,6 +27,9 @@ namespace Metamatic
         private CancellationTokenSource m_DisposeCancellationTokenSource;
         private UniTask? m_ResultTask;
         private UniTask? m_ReleaseTask;
+        private bool m_IsSyncDisposed = false;
+        public bool isSyncDisposed => m_IsSyncDisposed;
+        public bool isAsyncDisposed => !m_IsSyncDisposed;
         
         public UniTask result => m_ResultTask ?? UniTask.CompletedTask;
         
@@ -50,7 +54,7 @@ namespace Metamatic
             {
                 return;
             }
-            Dispose();
+            Dispose(false);
             if (m_ReleaseTask.HasValue)
             {
                 try
@@ -61,7 +65,6 @@ namespace Metamatic
                 {
                     m_ReleaseTask = null;
                     m_ResultTask = null;
-                    m_Disposed = false;
                     m_DisposeCancellationTokenSource.Dispose();
                     m_DisposeCancellationTokenSource = null;
                     if (_Pool.Count < 100) {
@@ -73,10 +76,10 @@ namespace Metamatic
         
         public void Dispose()
         {
-            Dispose(false);
+            Dispose(false, true);
         }
 
-        private void Dispose(bool isFromFinalizer = false)
+        private void Dispose(bool isFromFinalizer = false, bool isSync = false)
         {
             if (isFromFinalizer)
             {
@@ -87,7 +90,18 @@ namespace Metamatic
                 return;
             }
             m_Disposed = true;
+            m_IsSyncDisposed = isSync;
             m_DisposeCancellationTokenSource?.Cancel();
+            if (isSync)
+            {
+                m_ReleaseTask = null;
+                m_ResultTask = null;
+                m_IsSyncDisposed = false;
+                m_DisposeCancellationTokenSource = null;
+                if (_Pool.Count < 100) {
+                    _Pool.Enqueue(this);
+                }
+            }
             GC.SuppressFinalize(this);
         }
 

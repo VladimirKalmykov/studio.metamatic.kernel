@@ -8,25 +8,48 @@ namespace Metamatic
 {
     public abstract class MicroBehaviour: IAsyncDisposable, IDisposable
     {
+        private bool m_IsSyncDisposed = false;
+        public bool isSyncDisposed => m_IsSyncDisposed;
+        public bool isAsyncDisposed => !m_IsSyncDisposed;
+        private bool m_Disposed = false;
         protected MicroBehaviour()
         {
             
         }
         ~MicroBehaviour()
         {
-            Dispose();
+            Dispose(true);
         }
         public async ValueTask DisposeAsync()
         {
-            Dispose();
+            if (m_Disposed)
+            {
+                return;
+            }
+            Dispose(false);
             if (m_Task.HasValue)
             {
                 await m_Task.Value;
             }
         }
 
-        public virtual void Dispose()
+        public void Dispose()
         {
+            Dispose(false, true);
+        }
+        
+        private void Dispose(bool isFromFinalizer = false, bool isSync = false)
+        {
+            if (isFromFinalizer)
+            {
+                Debug.LogWarning("You should dispose MicroOperation manually");
+            }
+            if (m_Disposed)
+            {
+                return;
+            }
+            m_IsSyncDisposed = isSync;
+            m_Disposed = true;
             m_DisposeCancellationTokenSource?.Cancel();
             GC.SuppressFinalize(this);
         }
