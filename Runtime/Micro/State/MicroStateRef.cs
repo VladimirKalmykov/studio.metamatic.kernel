@@ -138,8 +138,6 @@ namespace Metamatic
             {
                 releaseValueListener?.Invoke();
                 releaseProxyListener.Invoke();
-                releaseValueListener = null;
-                releaseProxyListener = null;
             });
         }
 

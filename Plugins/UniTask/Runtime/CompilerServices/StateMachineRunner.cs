@@ -96,8 +96,8 @@ namespace Cysharp.Threading.Tasks.CompilerServices
             pool.TryPush(this);
         }
 
-        [DebuggerHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // [DebuggerHidden]
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Run()
         {
             stateMachine.MoveNext();

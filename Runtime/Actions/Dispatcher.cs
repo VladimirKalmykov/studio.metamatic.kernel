@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
+using UnityEditor.VersionControl;
 using UnityEngine;
 
 namespace Metamatic.Actions
@@ -45,10 +46,10 @@ namespace Metamatic.Actions
             }
         }
        
-        private readonly Dictionary<Type, List<Delegate>> m_EventListeners = new();
+        private readonly Dictionary<Type, LockedList<Delegate>> m_EventListeners = new();
         private readonly Dictionary<Type, List<object>> m_Announcements = new();
-        private readonly Dictionary<Type, Dictionary<Type, Dictionary<object, RegistrySource<object>>>> m_RegistryTypesKeys = new();
-        private readonly Dictionary<(object id, Type type), (object value, bool isActive, List<IDispatcher.EventHandler<object>> handlers1, List<IDispatcher.EventHandler<object>> handlers2)> m_Registry = new();
+        private readonly Dictionary<(object id, Type type), (object value, bool isActive, LockedList<IDispatcher.EventHandler<object>> handlers)> m_Registry = new();
+        private readonly Dictionary<object, (object value, bool isActive, LockedList<IDispatcher.EventHandler<object>> handlers)> m_RegistryLite = new();
         private bool m_IsRegistrationProcessing = false;
         private DeferLock m_RegistrationLock = new();
         #endregion
@@ -57,14 +58,16 @@ namespace Metamatic.Actions
         public void Emit<T>(T source) where T : notnull
         {
             Type eventType = typeof(T);
-            List<Delegate> handlers;
+            LockedList<Delegate> handlers;
 
             if (m_EventListeners.TryGetValue(eventType, out handlers))
             {
-                var safeHandlers = handlers.ToArray();
-                foreach (var handler in safeHandlers)
+                using (handlers.Lock())
                 {
-                    ((IDispatcher.EventHandler<T>)handler).Invoke(source);
+                    foreach (var handler in handlers)
+                    {
+                        ((IDispatcher.EventHandler<T>)handler).Invoke(source);
+                    }
                 }
             }
         }
@@ -72,30 +75,59 @@ namespace Metamatic.Actions
         public DisposableAction Subscribe<T>(IDispatcher.EventHandler<T> handler) where T : notnull
         {
             Type eventType = typeof(T);
-            List<Delegate> handlers;
+            LockedList<Delegate> handlers;
             if (!m_EventListeners.TryGetValue(eventType, out handlers))
             {
-                handlers = new List<Delegate>();
+                handlers = new LockedList<Delegate>();
                 m_EventListeners[eventType] = handlers;
             }
 
+            if (handlers.isLocked)
+            {
+                var cancellationTokenSource = new CancellationTokenSource();
+                // Здесь мне нужно дождаться когда handlers будет освобождeн (await handlers) и только потом вносить в него изменения
+                // handlers содержит GetAwaiter() и OnCompleted(Action continuation), так что я могу его ожидать
+                // Но явно использовать тут await handlers не получится, так как это не async метод
+                // Поэтому мне нужно каким то образом дождаться handlers, но и не превращать Subscribe в async метод
+                Subscribe_Deferred(handlers, handler, cancellationTokenSource.Token);
+                return new DisposableAction(() => cancellationTokenSource.Cancel());
+            }
             handlers.Add(handler);
 
             return new DisposableAction(() => Unsubscribe(handler));
         }
+        
+        private async void Subscribe_Deferred<T>(LockedList<Delegate> handlers, IDispatcher.EventHandler<T> handler, CancellationToken token) where T : notnull
+        {
+            await handlers;
+            if (token.IsCancellationRequested) return;
+            var dispose = Subscribe(handler);
+            token.Register(() => dispose.Dispose());
+        }
 
-        public void Unsubscribe<T>(IDispatcher.EventHandler<T> handler) where T : notnull
+        private void Unsubscribe<T>(IDispatcher.EventHandler<T> handler) where T : notnull
         {
             Type eventType = typeof(T);
-            List<Delegate> handlers;
+            LockedList<Delegate> handlers;
             if (m_EventListeners.TryGetValue(eventType, out handlers))
             {
+                if (handlers.isLocked)
+                {
+                    Unsubscribe_Deferred(handlers, handler);
+                    return;
+                }
                 handlers.Remove(handler);
                 if (handlers.Count == 0)
                 {
                     m_EventListeners.Remove(eventType);
                 }
             }
+        }
+        
+        private async void Unsubscribe_Deferred<T>(LockedList<Delegate> handlers, IDispatcher.EventHandler<T> handler) where T : notnull
+        {
+            await handlers;
+            Unsubscribe(handler);
         }
 
         public UniTask<T> WhenEmitted<T>(IDispatcher.Condition<T> condition, CancellationToken cancellationToken) where T : notnull
@@ -210,50 +242,82 @@ namespace Metamatic.Actions
         #region Registry
         public IDisposable Register<TValue>(object id, TValue source) where TValue : notnull
         {
-            using (m_RegistrationLock.Lock())
+            var valueType = typeof(TValue);
+            if (!m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                var valueType = typeof(TValue);
-                if (!m_Registry.TryGetValue((id, valueType), out var registry))
+                registry = (source, true, new LockedList<IDispatcher.EventHandler<object>>());
+            }
+            else
+            {
+                if (registry.handlers.isLocked)
                 {
-                    registry = (default, false, new List<IDispatcher.EventHandler<object>>(),
-                        new List<IDispatcher.EventHandler<object>>());
+                    var cancellationTokenSource = new CancellationTokenSource();
+                    Register_Deferred(registry.handlers, id, source, cancellationTokenSource.Token);
+                    return new DisposableAction(() => cancellationTokenSource.Cancel());
                 }
-
+                if (registry.isActive)
+                {
+                    throw new System.Exception("Registry key already registered: " + id);
+                }
                 registry.value = source;
                 registry.isActive = true;
-                (registry.handlers1, registry.handlers2) = (registry.handlers2, registry.handlers1);
-                registry.handlers1.Clear();
-                registry.handlers1.AddRange(registry.handlers2);
-                foreach (var handler in registry.handlers2)
+            }
+            
+            using (registry.handlers.Lock())
+            {
+                foreach (var handler in registry.handlers)
                 {
                     handler(source);
                 }
-
                 m_Registry[(id, valueType)] = registry;
-                
-                return new DisposableCallback(() =>
-                {
-                    if (m_Registry.TryGetValue((id, valueType), out var reg))
-                    {
-                        reg.value = default;
-                        reg.isActive = false;
-                        if (reg.handlers1.Count == 0)
-                        {
-                            m_Registry.Remove((id, valueType));
-                        }
-                        else
-                        {
-                            m_Registry[(id, valueType)] = reg;
-                        }
-                    }
-#if DEBUG
-                    else
-                    {
-                        throw new System.Exception("Registry key not found: " + id);
-                    }
-#endif
-                });
             }
+                
+            return new DisposableAction(() =>
+            {
+                Unregister(id, source);
+            });
+        }
+        
+        private async void Register_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, object id, TValue source, CancellationToken token) where TValue : notnull
+        {
+            await handlers;
+            if (token.IsCancellationRequested) return;
+            Register(id, source);
+        }
+
+        private void Unregister<TValue>(object id, TValue source) where TValue : notnull
+        {
+            var valueType = typeof(TValue);
+            if (m_Registry.TryGetValue((id, valueType), out var reg))
+            {
+                if (reg.handlers.isLocked)
+                {
+                    Unregister_Deferred(reg.handlers, id, source);
+                    return;
+                }
+                reg.value = default;
+                reg.isActive = false;
+                if (reg.handlers.Count == 0)
+                {
+                    m_Registry.Remove((id, valueType));
+                }
+                else
+                {
+                    m_Registry[(id, valueType)] = reg;
+                }
+            }
+#if DEBUG
+            else
+            {
+                throw new System.Exception("Registry key not found: " + id);
+            }
+#endif
+        }
+        
+        private async void Unregister_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, object id, TValue source) where TValue : notnull
+        {
+            await handlers;
+            Unregister(id, source);
         }
 
         public IDisposable Register<TValue>(TValue source) where TValue : notnull
@@ -261,66 +325,82 @@ namespace Metamatic.Actions
             return Register(this, source);
         }
 
+        
+
         public DisposableAction SubscribeRegistry<TValue>(object id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false)
         {
-            var cancellationTokenSource = new CancellationTokenSource();
-            OnRegisteredInternal(id, handler, skipInitial, cancellationTokenSource.Token).Forget();
+            var valueType = typeof(TValue);
+            if (!m_Registry.TryGetValue((id, valueType), out var registry))
+            {
+                registry = (default, false, new LockedList<IDispatcher.EventHandler<object>>());
+                m_Registry[(id, valueType)] = registry;
+            }
+
+            IDispatcher.EventHandler<object> handlerWrapper = (source) =>
+            {
+                handler(source == null ? default : (TValue)source);
+            };
+
+            if (!skipInitial)
+            {
+                handler(registry.value == null ? default : (TValue)registry.value);
+            }
+                
+            if (registry.handlers.isLocked)
+            {
+                var cancellationTokenSource = new CancellationTokenSource();
+                SubscribeRegistry_Deferred<TValue>(registry.handlers, handler, cancellationTokenSource.Token);
+                return new DisposableAction(() => cancellationTokenSource.Cancel());
+            }
+
+            using (registry.handlers.Lock())
+            {
+                registry.handlers.Add(handlerWrapper);
+            }
+            
 
             return new DisposableAction(() =>
             {
-                cancellationTokenSource.Cancel();
+                UnsubscribeRegistry<TValue>(id, handlerWrapper);
             });
         }
-
-        private async UniTaskVoid OnRegisteredInternal<TValue>(object id, IDispatcher.EventHandler<TValue> handler,
-            bool skipInitial = false, CancellationToken cancellationToken = default)
+        
+        private void UnsubscribeRegistry<TValue>(object id, IDispatcher.EventHandler<object> handlerWrapper)
         {
-            await m_RegistrationLock;
-            if (cancellationToken.IsCancellationRequested) return;
-            try
+            var valueType = typeof(TValue);
+            if (m_Registry.TryGetValue((id, valueType), out var reg))
             {
-                var valueType = typeof(TValue);
-                if (!m_Registry.TryGetValue((id, valueType), out var registry))
+                if (reg.handlers.isLocked)
                 {
-                    registry = (default, false, new List<IDispatcher.EventHandler<object>>(),
-                        new List<IDispatcher.EventHandler<object>>());
-                    m_Registry[(id, valueType)] = registry;
+                    UnsubscribeRegistry_Deferred<TValue>(reg.handlers, id, handlerWrapper);
+                    return;
                 }
-
-                IDispatcher.EventHandler<object> handlerWrapper = (source) =>
+                reg.handlers.Remove(handlerWrapper);
+                if (!reg.isActive && reg.handlers.Count == 0)
                 {
-                    handler(source == null ? default : (TValue)source);
-                };
-
-                if (!skipInitial)
-                {
-                    handler(registry.value == null ? default : (TValue)registry.value);
+                    m_Registry.Remove((id, valueType));
                 }
-
-                registry.handlers1.Add(handlerWrapper);
-
-                cancellationToken.Register(() =>
-                {
-                    if (m_Registry.TryGetValue((id, valueType), out var reg))
-                    {
-                        reg.handlers1.Remove(handlerWrapper);
-                        if (!reg.isActive && reg.handlers1.Count == 0)
-                        {
-                            m_Registry.Remove((id, valueType));
-                        }
-                    }
+            }
 #if DEBUG
-                    else
-                    {
-                        throw new System.Exception("Registry key not found: " + id);
-                    }
-#endif
-                });
-            }
-            catch (Exception e)
+            else
             {
-                Debug.LogError(e);
+                throw new System.Exception("Registry key not found: " + id);
             }
+#endif
+        }
+        
+        private async void UnsubscribeRegistry_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, object id, IDispatcher.EventHandler<object> handlerWrapper)
+        {
+            await handlers;
+            UnsubscribeRegistry<TValue>(id, handlerWrapper);
+        }
+        
+        private async void SubscribeRegistry_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, IDispatcher.EventHandler<TValue> handler, CancellationToken token)
+        {
+            await handlers;
+            if (token.IsCancellationRequested) return;
+            var dispose = SubscribeRegistry<TValue>(handler);
+            token.Register(() => dispose.Dispose());
         }
         
         public int GetRegistrySize()

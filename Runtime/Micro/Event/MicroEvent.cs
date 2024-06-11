@@ -63,9 +63,10 @@ namespace Metamatic
     
     public class MicroEvent<T>
     {
-        private List<Action<T>> m_EventHandlers = new List<Action<T>>();
+        public delegate void Handler(T arg);
+        private List<Handler> m_EventHandlers = new List<Handler>();
         
-        public DisposableAction Subscribe(Action<T> handler)
+        public DisposableAction Subscribe(Handler handler)
         {
             m_EventHandlers.Add(handler);
             return new DisposableAction(() =>
@@ -86,7 +87,7 @@ namespace Metamatic
         public UniTask<T> WaitUntilEmitted(CancellationToken cancellationToken)
         {
             var tcs = new UniTaskCompletionSource<T>();
-            Action<T> handler = null;
+            Handler handler = null;
             handler = arg =>
             {
                 tcs.TrySetResult(arg);

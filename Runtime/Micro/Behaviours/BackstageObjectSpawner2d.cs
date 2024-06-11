@@ -195,7 +195,6 @@ namespace Micro.Behaviours
                         obj.transform.position = rp;
                         spawnedObjects.Add(obj.transform);
                         spawnedPoints.Add(rp);
-                        DisposableAction untrack = null;
                         obj.SetActive(true);
                         m_ObjectTracker.Add(TrackObject(intersection.area, obj));
                         successSpawned = true;

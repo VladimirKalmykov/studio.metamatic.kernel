@@ -1,4 +1,6 @@
-﻿namespace Metamatic
+﻿using System.Collections.Generic;
+
+namespace Metamatic
     {
         using System;
         using System.Collections.Concurrent;
@@ -10,13 +12,7 @@
         {
             private int _lockCount;
             private bool _isDisposed;
-            private readonly ConcurrentQueue<Action> _waiters = new ConcurrentQueue<Action>();
-
-            public DeferLock()
-            {
-                _lockCount = 0;
-                _isDisposed = false;
-            }
+            public event Action OnUnlock;
 
             public DisposableAction Lock()
             {
@@ -32,10 +28,7 @@
 
                 if (_lockCount == 0)
                 {
-                    while (_waiters.TryDequeue(out var waiter))
-                    {
-                        waiter();
-                    }
+                    OnUnlock?.Invoke();
                 }
             }
 
@@ -55,7 +48,7 @@
             {
                 if (_lockCount > 0)
                 {
-                    _waiters.Enqueue(continuation);
+                    OnUnlock += continuation;
                 }
                 else
                 {
@@ -67,11 +60,12 @@
             {
                 _isDisposed = true;
                 _lockCount = 0;
-
-                while (_waiters.TryDequeue(out var waiter))
-                {
-                    waiter();
-                }
+                
+                OnUnlock?.Invoke();
+                OnUnlock = null;
             }
+            
+            /* Support casting to bool */
+            public static implicit operator bool(DeferLock d) => d.IsLocked;
         }
     }
