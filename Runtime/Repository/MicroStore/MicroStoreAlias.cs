@@ -18,6 +18,7 @@ namespace Metamatic
         }
         private int m_AcquireCount;
         public event Action OnDidDispose;
+        
         private void HandleIdChange(string id, CancellationToken token)
         {
             var store = MicroStore<T>.Id(id);
@@ -31,6 +32,11 @@ namespace Metamatic
         public void SetId(string id)
         {
             m_IdExecution.Handle(id);
+        }
+        
+        public DisposableAction SubscribeSource(Action<MicroStore<T>> handler)
+        {
+            return m_MicroStore.Subscribe(handler);
         }
 
         public async UniTask WithStoreCycled(Func<MicroStore<T>, CancellationToken, UniTask> action, CancellationToken cancellationToken = default)
