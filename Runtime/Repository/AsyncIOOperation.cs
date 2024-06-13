@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
@@ -54,6 +55,18 @@ namespace Metamatic
         }
 
         public AsyncReadOperation<T> GetAwaiter() => this;
+        
+        public UniTask<T> GetTask()
+        {
+            if (IsCompleted)
+            {
+                return UniTask.FromResult(GetResult());
+            }
+            var source = new UniTaskCompletionSource<T>();
+            var self = this;
+            OnCompleted(() => source.TrySetResult(self.GetResult()));
+            return source.Task;
+        }
     }
     public struct AsyncWriteOperation<T>: INotifyCompletion {
         public AsyncIOOperationSource.Status status => m_Source.status.value;

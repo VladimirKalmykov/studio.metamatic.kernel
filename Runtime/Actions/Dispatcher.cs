@@ -494,6 +494,11 @@ namespace Metamatic.Actions
         {
             return WhenRegistered<Dispatcher, TValue>(this, cancellationToken, timeout);
         }
+        
+        public UniTask<TValue> WhenRegistered<TKey,TValue>(object key, CancellationToken cancellationToken = default, float timeout = 0f) where TValue : notnull
+        {
+            return WhenRegistered<Dispatcher, TValue>(key, cancellationToken, timeout);
+        }
 
         public UniTask<TValue> WhenRegistryChange<TValue>(CancellationToken cancellationToken = default) where TValue : notnull
         {

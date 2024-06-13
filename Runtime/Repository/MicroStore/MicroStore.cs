@@ -2,135 +2,147 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
 
 namespace Metamatic
 {
-    public class MicroStore<T>: IDisposable, IAcquirable, IStore<T>
-        where T : struct
+    public class MicroStore<T>: IDisposable
+    where T : notnull
     {
-        #region Static
-        private static Dictionary<string, MicroStore<T>> m_Scopes = new();
-        private static Dictionary<string, string> m_AliasValues = new();
-        private static Dictionary<string, MicroStoreAlias<T>> m_Aliases = new();
-        private static event Action<string, string> m_OnAliasChanged;
-        /// <summary>
-        /// Returns store for the specified scope name
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        public static MicroStore<T> Id(string name, T defaultValue = default)
-        {
-            if (!m_Scopes.TryGetValue(name, out var store))
-            {
-                store = new MicroStore<T>(name, defaultValue, () =>
-                {
-                    ReleaseScope(name);
-                });
-                m_Scopes[name] = store;
-            }
-
-            store.Acquire();
-
-            return store;
-        }
-
-        public static IStore<T> Alias(string name)
-        {
-            if (!m_Aliases.TryGetValue(name, out var alias))
-            {
-                string id;
-                if (!m_AliasValues.TryGetValue(name, out id))
-                {
-                    id = "default";
-                }
-                alias = new MicroStoreAlias<T>(id);
-                m_Aliases[name] = alias;
-                Action<string, string> aliasChangedHandler = (aliasName, id) =>
-                {
-                    if (aliasName == name)
-                    {
-                        alias.SetId(id);
-                    }
-                };
-                m_OnAliasChanged += aliasChangedHandler;
-                alias.OnDidDispose += () =>
-                {
-                    m_OnAliasChanged -= aliasChangedHandler;
-                    m_Aliases.Remove(name);
-                };
-            }
-            alias.Acquire();
-            return alias;
-        }
+        #region Subclasses
         
-        private static void ReleaseScope(string name)
-        {
-            if (m_Scopes.TryGetValue(name, out var store))
-            {
-                m_Scopes.Remove(name);
-            }
-        }
-        
-        public static MicroStore<T> Default => Id("default");
-        /// <summary>
-        /// Set alias for the store
-        /// </summary>
-        /// <param name="alias"></param>
-        /// <param name="id"></param>
-        public static void SetAlias(string alias, string id)
-        {
-            m_AliasValues[alias] = id;
-            m_OnAliasChanged?.Invoke(alias, id);
-        }
-        /// <summary>
-        /// Release aliases
-        /// </summary>
-        /// <param name="alias"></param>
-        public static void ReleaseAlias(string alias)
-        {
-            m_AliasValues.Remove(alias);
-            m_OnAliasChanged?.Invoke(alias, null);
-        }
-        #endregion
         public enum IOStatuses
         {
             Idle,
             Synchronizing,
         }
         
-        private Dictionary<string, IStore<T>.Branch> m_Branches = new ();
-        private MicroState<IStore<T>.Branch> m_CurrentBranch = new();
-        /// <summary>
-        /// Determines that store is synchronized with the persistent storage
-        /// </summary>
-        private MicroState<bool> m_IsSynchronized = new(false);
-        private MicroState<IStore.DataSource> m_DataSource = new(IStore.DataSource.Default);
-        public IStore.DataSource dataSource => m_DataSource.value;
-        private MicroState<IOStatuses> m_IOStatus = new(IOStatuses.Idle);
-        public MicroStateReadOnly<IOStatuses> IOStatus => m_IOStatus;
-        private int m_ReferenceCount;
-        public readonly string name;
-        private T m_PersistentValue;
-        public T persistentValue => m_PersistentValue;
-        private Action m_ReleaseHandler;
-
-        public T value
+        public struct Metadata
         {
-            get => m_CurrentBranch.value.value;
-            set => SetValue(value);
+            public readonly bool isSynchronized;
+            public readonly MicroRepository<T>.DataSource dataSource;
+            public readonly bool isDirty;
+            public Metadata(bool isSynchronized, MicroRepository<T>.DataSource dataSource, bool isDirty)
+            {
+                this.isSynchronized = isSynchronized;
+                this.dataSource = dataSource;
+                this.isDirty = isDirty;
+            }
         }
         
-        public MicroStore(string name, T defaultValue, Action onRelease)
+        public delegate void MutateHandler(ref T value);
+        public class Branch: IAcquirable, IDisposable
         {
-            this.name = name;
-            this.m_ReleaseHandler = onRelease;
-            var defaultBranch = new IStore<T>.Branch(this, InternalRemoveBranch, "default", defaultValue);
+            private readonly MicroStore<T> m_Store;
+            public readonly string name;
+            private readonly MicroState<T> m_Value = new();
+            private int m_ReferenceCount;
+            public bool isAcquired => m_ReferenceCount > 0;
+            public bool isDirty { get; private set; }
+            private Action<Branch> m_OnRemoveBranch;
+
+            public T value
+            {
+                get => m_Value.value;
+                set => SetValue(value);
+            }
+            public Branch(MicroStore<T> store, Action<Branch> onRemoveBranch, string name, T value, bool locked = false)
+            {
+                this.m_Store = store;
+                this.name = name;
+                m_Value.value = value;
+            }
+            
+            public void SetValue(T nextValue)
+            {
+                isDirty = true;
+                m_Value.value = nextValue;
+            }
+            
+            public void Mutate(MutateHandler mutationHandler)
+            {
+                isDirty = true;
+                m_Value.Mutate((ref T val) => mutationHandler(ref val));
+            }
+
+            public void Reset()
+            {
+                isDirty = false;
+                m_Value.value = m_Store.persistentValue;
+            }
+            
+            public DisposableAction Subscribe(Action<T> handler)
+            {
+                return m_Value.Subscribe(handler);
+            }
+
+            public void Acquire()
+            {
+                m_ReferenceCount++;
+            }
+
+            public void Release()
+            {
+                m_ReferenceCount--;
+                if (m_ReferenceCount == 0)
+                {
+                    m_Store?.Dispose();
+                    m_Value?.Dispose();
+                    m_OnRemoveBranch?.Invoke(this);
+                }
+            }
+
+            public void Dispose()
+            {
+                Release();
+            }
+        }
+        #endregion
+        
+        private Dictionary<string, Branch> m_Branches = new ();
+        private MicroState<Branch> m_CurrentBranch = new();
+        
+        private MicroState<bool> m_IsSynchronized = new(false);
+        
+        private MicroState<MicroRepository<T>.DataSource> m_DataSource = new(MicroRepository<T>.DataSource.Default);
+        public MicroRepository<T>.DataSource dataSource => m_DataSource.value;
+        
+        private MicroState<IOStatuses> m_IOStatus = new(IOStatuses.Idle);
+        public MicroStateReadOnly<IOStatuses> IOStatus => m_IOStatus;
+        
+        /// <summary>
+        /// Represents the value that is stored in the persistent storage
+        /// </summary>
+        private T m_PersistentValue;
+        
+        private DeferLock m_Lock = new();
+        private MicroRepository<T> m_Repository;
+        
+        public MicroStore(MicroRepository<T> repository, T defaultValue = default)
+        {
+            m_Repository = repository;
+            var defaultBranch = new Branch(this, InternalRemoveBranch, "default", defaultValue);
             m_Branches["default"] = defaultBranch;
             m_CurrentBranch.value = defaultBranch;
             m_PersistentValue = defaultValue;
         }
         
+        public MicroStore(T defaultValue = default): this(new MicroRepository<T>("default"), defaultValue)
+        {
+            
+        }
+        
+        public MicroStore(string persistentName, T defaultValue = default): this(new MicroRepository<T>(persistentName), defaultValue)
+        {
+            
+        }
+        
+        #region Public API
+        public T value
+        {
+            get => m_CurrentBranch.value.value;
+            set => SetValue(value);
+        }
+        public T persistentValue => m_PersistentValue;
         /// <summary>
         /// Set new dirty value
         /// </summary>
@@ -143,12 +155,16 @@ namespace Metamatic
                 CommitChanges();
             }
         }
-
-        public void Mutate(IStore<T>.MutateHandler mutationHandler)
+        
+        /// <summary>
+        /// Change dirty without copying (useful for large structs)
+        /// </summary>
+        /// <param name="mutationHandler"></param>
+        public void Mutate(MutateHandler mutationHandler)
         {
             m_CurrentBranch.value.Mutate(mutationHandler);
         }
-
+        
         /// <summary>
         /// Transform dirty value
         /// </summary>
@@ -169,41 +185,6 @@ namespace Metamatic
         /// <returns></returns>
         public DisposableAction Subscribe(Action<T> handler)
         {
-            Action releaseSubscription = null;
-            if (m_IOStatus.value != IOStatuses.Idle)
-            {
-                var cancellationTokenSource = new CancellationTokenSource();
-                releaseSubscription = () =>
-                {
-                    cancellationTokenSource.Cancel();
-                };
-                m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, cancellationTokenSource.Token).ContinueWith((IOStatuses status) =>
-                {
-                    if (cancellationTokenSource.IsCancellationRequested)
-                    {
-                        return;
-                    }
-                    releaseSubscription = SubscribeBranchAndValue_Internally(handler);
-                }).Forget();
-            }
-            else
-            {
-                releaseSubscription = SubscribeBranchAndValue_Internally(handler);
-            }
-
-            return new DisposableAction(() =>
-            {
-                releaseSubscription?.Invoke();
-            });
-        }
-        
-        /// <summary>
-        /// Subscribe to both branch and value changes internally (it is used for subscribe method)
-        /// </summary>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        private Action SubscribeBranchAndValue_Internally(Action<T> handler)
-        {
             Action valueSubscription = null;
             var subscription =  m_CurrentBranch.Subscribe((branch) =>
             {
@@ -211,54 +192,15 @@ namespace Metamatic
                 valueSubscription = branch.Subscribe(handler);
             });
 
-            return () =>
-            {
-                subscription.Invoke();
-                valueSubscription?.Invoke();
-            };
-        }
-        
-        /// <summary>
-        /// Subscribe to the store changes
-        /// </summary>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public Action SubscribeMetadata(Action<T, IStore.Metadata> handler)
-        {
-            Action releaseSubscription = null;
-            if (m_IOStatus.value != IOStatuses.Idle)
-            {
-                var cancellationTokenSource = new CancellationTokenSource();
-                releaseSubscription = () =>
-                {
-                    cancellationTokenSource.Cancel();
-                };
-                m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, cancellationTokenSource.Token).ContinueWith((IOStatuses status) =>
-                {
-                    if (cancellationTokenSource.IsCancellationRequested)
-                    {
-                        return;
-                    }
-                    releaseSubscription = SubscribeBranchAndValueMetadata_Internally(handler);
-                }).Forget();
-            }
-            else
-            {
-                releaseSubscription = SubscribeBranchAndValueMetadata_Internally(handler);
-            }
 
-            return () =>
+            return new DisposableAction(() =>
             {
-                releaseSubscription?.Invoke();
-            };
+                subscription.Dispose();
+                valueSubscription?.Invoke();
+            });
         }
         
-        /// <summary>
-        /// Subscribe to both branch and value with metadata changes internally (it is used for subscribe method)
-        /// </summary>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        private Action SubscribeBranchAndValueMetadata_Internally(Action<T, IStore.Metadata> handler)
+        public DisposableAction SubscribeMetadata(Action<T, Metadata> handler)
         {
             Action valueSubscription = null;
             var subscription =  m_CurrentBranch.Subscribe((branch) =>
@@ -266,15 +208,15 @@ namespace Metamatic
                 valueSubscription?.Invoke();
                 valueSubscription = branch.Subscribe(nextData =>
                 {
-                    handler(nextData, new IStore.Metadata(m_IsSynchronized.value, dataSource, branch.isDirty));
+                    handler(nextData, new Metadata(m_IsSynchronized.value, dataSource, branch.isDirty));
                 });
             });
 
-            return () =>
+            return new DisposableAction(() =>
             {
                 subscription.Invoke();
                 valueSubscription?.Invoke();
-            };
+            });
         }
         
         /// <summary>
@@ -283,87 +225,96 @@ namespace Metamatic
         /// <param name="token"></param>
         public async UniTask Pull(CancellationToken token = default)
         {
-            await Read(token: token);
+            await InternalReadFromPersistentStorage(token: token);
         }
         
-        public async UniTask Pull(Func<T> getDefaultValue, CancellationToken token = default)
+        public async UniTask LoadFromPersistentStorage(Func<T> getDefaultValue, CancellationToken token = default)
         {
-            await Read(getDefaultValue: getDefaultValue, token: token);
+            await InternalReadFromPersistentStorage(getFallbackValue: getDefaultValue, token: token);
         }
-
+        
         /// <summary>
         /// Pull from persistent storage
         /// </summary>
         /// <param name="populate"></param>
         /// <param name="token"></param>
-        public async UniTask Pull(bool populate = false, CancellationToken token = default, T defaultValue = default)
+        public async UniTask Pull(bool populate = false, CancellationToken token = default, Func<T> getFallbackValue = null)
         {
-            await Read(populate: populate, token: token, defaultValue: defaultValue);
+            await InternalReadFromPersistentStorage(populate: populate, token: token, getFallbackValue: getFallbackValue);
         }
-
+        
         /// <summary>
-        /// Read from persistent storage
+        /// 
         /// </summary>
-        /// <param name="populate"></param>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        private async UniTask<T> Read(bool populate = false, CancellationToken token = default, T defaultValue = default, Func<T> getDefaultValue = null)
+        /// <param name="populate">Apply fetched data to the all branches</param>
+        /// <param name="fallbackValue">Default value for a case of throwing NotFoundException</param>
+        /// <param name="getFallbackValue">Default value factory for a case of throwing NotFoundException</param>
+        /// <param name="timeout">Request timeout in ms</param>
+        /// <param name="token">Cancellation token</param>
+        /// <exception cref="ReadRepositoryException"></exception>
+        private async UniTask<MicroRepository<T>.DataSource> InternalReadFromPersistentStorage(bool populate = false, Func<T> getFallbackValue = null, float timeout = 0f, CancellationToken token = default)
         {
-            T nextValue = defaultValue;
-            bool isCancelled = false;
-            bool isError = false;
-            try
+            using (await Lock(token))
             {
-                await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, token);
-                m_IOStatus.value = IOStatuses.Synchronizing;
-                nextValue = await Repository.Global.Read<T>(name, token);
-                m_DataSource.value = IStore<T>.DataSource.Persistent;
-                return value;
-            }
-            catch (OperationCanceledException)
-            {
-                isCancelled = true;
-                m_IsSynchronized.value = false;
-            }
-            catch (IOSource.NotFoundException nfe)
-            {
-                /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
-                nextValue = getDefaultValue?.Invoke() ?? defaultValue;
-                m_IsSynchronized.value = true;
-                m_DataSource.value = IStore.DataSource.Fallback;
-                Debug.LogWarning(nfe);
-            }
-            catch (System.Exception e)
-            {
-                isError = true;
-                m_IsSynchronized.value = false;
-                m_DataSource.value = IStore.DataSource.Fallback;
-                Debug.LogWarning(new ReadRepositoryException(uri: name, innerException: e, message: $"Internal store fetch error: {e.Message}"));
-            }
-            finally
-            {
-                if (!isError && !isCancelled)
+                var isErrored = false;
+                try
                 {
-                    m_PersistentValue = nextValue;
-                    /* Apply new value to all branches if populate option is truly */
-                    if (populate)
-                    {
-                        foreach (var branch in m_Branches.Values)
-                        {
-                            branch.Reset();
-                        }
-                    } else if (!m_CurrentBranch.value.isDirty)
-                    {
-                        /* Reset current branch if it is not dirty */
-                        m_CurrentBranch.value.Reset();
-                    }
-                    m_IsSynchronized.value = true;
+                    m_IOStatus.value = IOStatuses.Synchronizing;
+                    var readTask = m_Repository.Read(timeout, token: token);
+                    var nextValue = await readTask;
                     m_IOStatus.value = IOStatuses.Idle;
+                    m_IsSynchronized.value = true;
+                    m_DataSource.value = MicroRepository<T>.DataSource.Persistent;
+                    m_PersistentValue = nextValue;
                 }
-            }
+                catch (IOSource.NotFoundException nfe)
+                {
+                    /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
+                    m_IOStatus.value = IOStatuses.Idle;
+                   
+                    if (getFallbackValue != null)
+                    {
+                        m_IsSynchronized.value = true;
+                        m_PersistentValue = getFallbackValue();
+                        m_DataSource.value = MicroRepository<T>.DataSource.Fallback;
+                    }
+                    else
+                    {
+                        m_IsSynchronized.value = false;
+                        m_DataSource.value = MicroRepository<T>.DataSource.Default;
+                        throw nfe;
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    isErrored = true;
+                    throw new ReadRepositoryException(uri: m_Repository.address, innerException: e,
+                        message: $"Internal store fetch error: {e.Message}");
+                }
+                finally
+                {
+                    if (!isErrored)
+                    {;
+                        if (populate)
+                        {
+                            foreach (var branch in m_Branches.Values)
+                            {
+                                if (!branch.isDirty)
+                                {
+                                    branch.Reset();
+                                }
+                            }
+                        }
+                        else if (!m_CurrentBranch.value.isDirty)
+                        {
+                            /* Reset current branch if it is not dirty */
+                            m_CurrentBranch.value.Reset();
+                        }
+                    }
+                }
 
-            return default;
+                return m_DataSource.value;
+            }
         }
 
         /// <summary>
@@ -372,57 +323,28 @@ namespace Metamatic
         /// <returns></returns>
         public async UniTask Push(CancellationToken token = default)
         {
-            try
+            using (await Lock(token))
             {
-                await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, token);
-                m_IOStatus.value = IOStatuses.Synchronizing;
-                await Repository.Global.Write<T>(name, m_PersistentValue, token);
-                m_IsSynchronized.value = true;
-            }
-            catch (System.Exception e)
-            {
-                throw e;
-            }
-            finally
-            {
-                m_IOStatus.value = IOStatuses.Idle;
-            }
-        }
-        
-        /// <summary>
-        /// Wait until the store value satisfies the condition
-        /// </summary>
-        /// <param name="condition"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async UniTask<T> WaitUntilValueIs(Func<T, bool> condition, CancellationToken cancellationToken = default)
-        {
-            await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, cancellationToken);
-            var taskCompletionSource = new UniTaskCompletionSource<T>();
-            var releaseSubscription = Subscribe(obj =>
-            {
-                if (condition(obj))
+                try
                 {
-                    taskCompletionSource.TrySetResult(obj);
+                    m_IOStatus.value = IOStatuses.Synchronizing;
+                    var writeTask = m_Repository.Write(m_PersistentValue, token: token);
+                    await writeTask;
+                    m_IOStatus.value = IOStatuses.Idle;
+                    m_IsSynchronized.value = true;
+                    m_DataSource.value = MicroRepository<T>.DataSource.Persistent;
                 }
-            });
-            cancellationToken.Register(releaseSubscription);
-            return await taskCompletionSource.Task;
+                catch (System.Exception e)
+                {
+                    throw new WriteRepositoryException(uri: m_Repository.address, innerException: e,
+                        message: $"Internal store push error: {e.Message}");
+                }
+            }
         }
         
-        public async UniTask WaitUntilIdle(CancellationToken cancellationToken = default)
+        public async UniTask Push(T value, CancellationToken token = default)
         {
-            await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, cancellationToken);
-        }
-        
-        /// <summary>
-        /// Wait until the store synchronized with the persistent storage
-        /// </summary>
-        /// <param name="cancellationToken"></param>
-        public async UniTask WaitUntilSynchronized(CancellationToken cancellationToken = default)
-        {
-            await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, cancellationToken);
-            await m_IsSynchronized.WaitUntilValueIs(true, cancellationToken);
+            Populate(value);
         }
         
         /// <summary>
@@ -479,40 +401,47 @@ namespace Metamatic
             }
         }
         
-        /// <summary>
-        /// Dispose store and release resources (it will not be actually disposed if it has still acquired)
-        /// </summary>
-        public void Dispose()
+        public async UniTask Populate(T data, bool save = false, CancellationToken token = default)
         {
-            Release();
+            m_PersistentValue = data;
+            foreach(var branch in m_Branches.Values)
+            {
+                branch.Reset();
+            }
+            if (save)
+            {
+                await Push(token);
+            }
         }
         
         /// <summary>
-        /// Prevent store from being disposed
+        /// Wait until the store value satisfies the condition
         /// </summary>
-        public void Acquire()
+        /// <param name="condition"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async UniTask<T> WaitUntilValueIs(Func<T, bool> condition, CancellationToken cancellationToken = default)
         {
-            m_ReferenceCount++;
+            await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, cancellationToken);
+            var taskCompletionSource = new UniTaskCompletionSource<T>();
+            var releaseSubscription = Subscribe(obj =>
+            {
+                if (condition(obj))
+                {
+                    taskCompletionSource.TrySetResult(obj);
+                }
+            });
+            cancellationToken.Register(releaseSubscription);
+            return await taskCompletionSource.Task;
         }
         
+        
         /// <summary>
-        /// Release previously acquired store (do not call it without acquire)
+        /// Make specified branch active (if it doesn't exist, it will be created)
         /// </summary>
-        /// <exception cref="Exception"></exception>
-        public void Release()
-        {
-            if (m_ReferenceCount < 0)
-            {
-                throw new Exception("Reference count is negative. MicroStore is already released");
-            }
-            m_ReferenceCount--;
-            if (m_ReferenceCount == 0)
-            {
-                this.m_ReleaseHandler?.Invoke();
-                this.m_ReleaseHandler = null;
-            }
-        }
-
+        /// <param name="branchName"></param>
+        /// <param name="locked"></param>
+        /// <returns></returns>
         public IDisposable Checkout(string branchName = "default", bool locked = false)
         {
             if (m_Branches.TryGetValue(branchName, out var branch))
@@ -524,7 +453,7 @@ namespace Metamatic
             }
             else
             {
-                var newBranch = new IStore<T>.Branch(this, InternalRemoveBranch, branchName, m_PersistentValue, locked);
+                var newBranch = new Branch(this, InternalRemoveBranch, branchName, m_PersistentValue, locked);
                 m_Branches[branchName] = newBranch;
                 m_CurrentBranch.value = newBranch;
             }
@@ -532,11 +461,16 @@ namespace Metamatic
             return m_CurrentBranch.value;
         }
         
+        public UniTask WhenLoaded(CancellationToken token = default)
+        {
+            return m_IOStatus.WaitUntilValueIs(IOStatuses.Idle, token);
+        }
+        
         /// <summary>
         /// Remove branch from the store
         /// </summary>
         /// <param name="branch"></param>
-        private void InternalRemoveBranch(IStore<T>.Branch branch)
+        private void InternalRemoveBranch(Branch branch)
         {
             if (branch.isAcquired)
             {
@@ -546,42 +480,33 @@ namespace Metamatic
             Checkout();
         }
         
-        private MicroState<bool> m_Locked = new(false);
-        private Queue<(UniTaskCompletionSource<IDisposable>, CancellationToken)> m_LockQueue = new ();
         /// <summary>
-        /// Lock store to avoid simultaneously read/write operations
+        /// Lock store
         /// </summary>
-        /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public UniTask<IDisposable> Lock(CancellationToken cancellationToken)
-        {
-            var taskCompletionSource = new UniTaskCompletionSource<IDisposable>();
-            m_LockQueue.Enqueue((taskCompletionSource, cancellationToken));
-            _NextLock();
-            return taskCompletionSource.Task;
-        }
-
-        private async void _NextLock()
-        {
-            if (m_LockQueue.Count > 0)
+        public DisposableAction Lock() => m_Lock.Lock();
+        public async UniTask<DisposableAction> Lock(CancellationToken token = default) {
+            await m_Lock;
+            if (token.IsCancellationRequested)
             {
-                /* What for IO operations to complete */
-                await m_IOStatus.WaitUntilValueIs(IOStatuses.Idle);
-                var (tcs, token) = m_LockQueue.Dequeue();
-                if (token.IsCancellationRequested)
-                {
-                    tcs.TrySetCanceled();
-                    _NextLock();
-                    return;
-                }
-
-                var dispose = new DisposableCallback(() =>
-                {
-                    m_Locked.value = false;
-                    _NextLock();
-                });
-                tcs.TrySetResult(dispose);
+                return new DisposableAction(() => { });
             }
+            return m_Lock.Lock();
+        }
+        public UniTask WhenUnlocked(CancellationToken token = default) => m_Lock.WhenUnlocked(token);
+        #endregion
+        
+        /// <summary>
+        /// Dispose store and release resources (it will not be actually disposed if it has still acquired)
+        /// </summary>
+        public void Dispose()
+        {
+            m_Lock.Dispose();
+            foreach (var branch in m_Branches)
+            {
+                branch.Value.Dispose();
+            }
+            m_Branches.Clear();
         }
     }
 }

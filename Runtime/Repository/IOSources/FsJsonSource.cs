@@ -1,8 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UniTask = Cysharp.Threading.Tasks.UniTask;
 
 namespace Metamatic
 {
@@ -10,14 +11,14 @@ namespace Metamatic
     [PlatformCompatible(RuntimePlatform.WindowsEditor)]
     public class FsJsonSource: IOSource
     {
-        public override AsyncReadOperation<T> Read<T>(string name, CancellationToken token)
+        public override UniTask<T> Read<T>(string name, CancellationToken token)
         {
-            
-            var operationSource = new AsyncReadOperationSource<T>();
+            var taskCompletionSource = new UniTaskCompletionSource<T>();
+            var ioOperation = new IOOperation();
             var uri = GetUriAddress<T>(name);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
             // Запускаем асинхронную операцию чтения файла
-            UniTask.Run(async delegate ()
+            UniTask.RunOnThreadPool(async delegate ()
             {
                 try
                 {
@@ -31,39 +32,39 @@ namespace Metamatic
                     }
 
                     await UniTask.SwitchToMainThread();
-                    operationSource.SetRawValue(fileContent);
+                    ioOperation.progress = 1f;
+                    taskCompletionSource.TrySetResult(IOSource.Deserialize<T>(fileContent));
                 }
                 catch (DirectoryNotFoundException)
                 {
                     /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
                     await UniTask.SwitchToMainThread();
-                    operationSource.SetError(new IOSource.NotFoundException("Directory not found"));
+                    taskCompletionSource.TrySetException(new IOSource.NotFoundException("Directory not found"));
                 }
                 catch (FileNotFoundException)
                 {
                     /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
                     await UniTask.SwitchToMainThread();
-                    operationSource.SetError(new IOSource.NotFoundException("File not found"));
+                    taskCompletionSource.TrySetException(new IOSource.NotFoundException("File not found"));
                 }
                 catch (Exception e)
                 {
-                    Debug.Log($"[DEBUG] Read file error");
                     await UniTask.SwitchToMainThread();
-                    operationSource.SetError(e);
+                    taskCompletionSource.TrySetException(e);
                 }
             }, cancellationToken: token);
 
-            return operationSource.Operation;
+            return taskCompletionSource.Task;
         }
 
-        public override AsyncWriteOperation<T> Write<T>(string name, T value, CancellationToken token)
+        public override UniTask Write<T>(string name, T value, CancellationToken token)
         {
-            var operationSource = new AsyncWriteOperationSource<T>();
+            var taskCompletionSource = new UniTaskCompletionSource();
+            var ioOperation = new IOOperation();
             var uri = GetUriAddress<T>(name);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
-            string json = operationSource.PrepareValue(value);
-            operationSource.SetProgress(0);
-            UniTask.Run(async () =>
+            string json = Serialize(value);
+            UniTask.RunOnThreadPool(async () =>
             {
                 try
                 {
@@ -85,15 +86,16 @@ namespace Metamatic
                     token.ThrowIfCancellationRequested();
                 
                     await UniTask.SwitchToMainThread();
-                    operationSource.SetCompleted();
+                    ioOperation.progress = 1f;
+                    taskCompletionSource.TrySetResult();
                 }
                 catch (Exception e)
                 {
                     await UniTask.SwitchToMainThread();
-                    operationSource.SetError(e);
+                    taskCompletionSource.TrySetException(e);
                 }
             });
-            return operationSource.Operation;
+            return taskCompletionSource.Task;
         }
         
         /// <summary>

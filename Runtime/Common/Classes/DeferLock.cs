@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic
     {
@@ -37,6 +39,29 @@ namespace Metamatic
                 if (_isDisposed) throw new ObjectDisposedException(nameof(DeferLock));
                 return this;
             }
+            
+            public UniTask WhenUnlocked(CancellationToken cancellationToken = default)
+            {
+                if (_isDisposed) throw new ObjectDisposedException(nameof(DeferLock));
+                if (_lockCount == 0)
+                {
+                    return UniTask.CompletedTask;
+                }
+
+                var tcs = new UniTaskCompletionSource();
+                OnUnlock += () =>
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        tcs.TrySetCanceled(cancellationToken);
+                    }
+                    else
+                    {
+                        tcs.TrySetResult();
+                    }
+                };
+                return tcs.Task;
+            }
 
             public bool IsLocked => _lockCount > 0;
 
@@ -49,6 +74,26 @@ namespace Metamatic
                 if (_lockCount > 0)
                 {
                     OnUnlock += continuation;
+                }
+                else
+                {
+                    continuation();
+                }
+            }
+            
+            public void ContinueAfterUnlock(Action continuation, CancellationToken cancellationToken = default)
+            {
+                if (_isDisposed) throw new ObjectDisposedException(nameof(DeferLock));
+                if (_lockCount > 0)
+                {
+                    OnUnlock += () =>
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                        continuation();
+                    };
                 }
                 else
                 {

@@ -3,6 +3,7 @@ using System.Threading;
 using UnityEngine;
 using UnityEngine.Networking;
 using UniTask = Cysharp.Threading.Tasks.UniTask;
+using UniTaskCompletionSource = Cysharp.Threading.Tasks.UniTaskCompletionSource;
 
 namespace Metamatic
 {
@@ -10,84 +11,46 @@ namespace Metamatic
     [PlatformCompatible(RuntimePlatform.WebGLPlayer)]
     public class HttpSource: IOSource
     {
-        public override AsyncReadOperation<T> Read<T>(string name, CancellationToken token)
+        public override Cysharp.Threading.Tasks.UniTask<T> Read<T>(string name, CancellationToken token)
         {
-            var operationSource = new AsyncReadOperationSource<T>();
-            UniTask.Run(async delegate () 
+            var taskCompletionSource = new Cysharp.Threading.Tasks.UniTaskCompletionSource<T>();
+            var ioOperation = new IOOperation();
+            UniTask.RunOnThreadPool(async delegate () 
             {
                 try
                 {
                     using (UnityWebRequest webRequest = UnityWebRequest.Get(name))
                     {
-                        operationSource.SetProgress(0);
+                        ioOperation.progress = 0f;
                         await webRequest.SendWebRequest();
                         if (token.IsCancellationRequested)
                         {
-                            operationSource.SetError(new OperationCanceledException());
+                            taskCompletionSource.TrySetException(new OperationCanceledException());
                             return;
                         }
 
                         if (webRequest.result != UnityWebRequest.Result.Success)
                         {
-                            operationSource.SetError(new Exception(webRequest.error));
+                            taskCompletionSource.TrySetException(new Exception(webRequest.error));
                         }
                         else
                         {
                             string fileContent = webRequest.downloadHandler.text;
-                            operationSource.SetRawValue(fileContent);
+                            taskCompletionSource.TrySetResult(Deserialize<T>(fileContent));
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    operationSource.SetError(e);
+                    taskCompletionSource.TrySetException(e);
                 }
             });
-            return operationSource.Operation;
+            return taskCompletionSource.Task;
         }
 
-        public override AsyncWriteOperation<T> Write<T>(string uri, T value, CancellationToken token)
+        public override UniTask Write<T>(string name, T value, CancellationToken token)
         {
-            var operationSource = new AsyncWriteOperationSource<T>();
-            SaveFile(value, operationSource, uri, token);
-            return operationSource.Operation;
-        }
-
-        private async void SaveFile<T>(T value, AsyncWriteOperationSource<T> operationSource, string uri, CancellationToken token)
-        {
-            var package = new SerializableDataPackage<T>(value);
-            string json = JsonUtility.ToJson(package);
-            try
-            {
-                using (UnityWebRequest webRequest = new UnityWebRequest(uri, "PUT"))
-                {
-                    byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
-                    webRequest.uploadHandler = (UploadHandler)new UploadHandlerRaw(bodyRaw);
-                    webRequest.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
-                    webRequest.SetRequestHeader("Content-Type", "application/json");
-                    operationSource.SetProgress(0);
-                    await webRequest.SendWebRequest();
-                    if (token.IsCancellationRequested)
-                    {
-                        operationSource.SetError(new OperationCanceledException());
-                    }
-                    else
-                    {
-                        if (webRequest.result != UnityWebRequest.Result.Success)
-                        {
-                            operationSource.SetError(new Exception(webRequest.error));
-                        }
-                        else
-                        {
-                            operationSource.SetCompleted();
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                operationSource.SetError(e);
-            }
+            throw new NotImplementedException();
         }
     }
 }
