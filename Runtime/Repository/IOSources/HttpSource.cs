@@ -14,34 +14,36 @@ namespace Metamatic
         public override Cysharp.Threading.Tasks.UniTask<T> Read<T>(string name, CancellationToken token)
         {
             var taskCompletionSource = new Cysharp.Threading.Tasks.UniTaskCompletionSource<T>();
-            var ioOperation = new IOOperation();
             UniTask.RunOnThreadPool(async delegate () 
             {
                 try
                 {
                     using (UnityWebRequest webRequest = UnityWebRequest.Get(name))
                     {
-                        ioOperation.progress = 0f;
                         await webRequest.SendWebRequest();
                         if (token.IsCancellationRequested)
                         {
+                            await UniTask.SwitchToMainThread();
                             taskCompletionSource.TrySetException(new OperationCanceledException());
                             return;
                         }
 
                         if (webRequest.result != UnityWebRequest.Result.Success)
                         {
+                            await UniTask.SwitchToMainThread();
                             taskCompletionSource.TrySetException(new Exception(webRequest.error));
                         }
                         else
                         {
                             string fileContent = webRequest.downloadHandler.text;
+                            await UniTask.SwitchToMainThread();
                             taskCompletionSource.TrySetResult(Deserialize<T>(fileContent));
                         }
                     }
                 }
                 catch (Exception e)
                 {
+                    await UniTask.SwitchToMainThread();
                     taskCompletionSource.TrySetException(e);
                 }
             });

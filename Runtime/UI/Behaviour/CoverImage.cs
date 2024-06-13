@@ -305,7 +305,6 @@ namespace Metamatic.UI {
 
         void Update() {
             if (m_CachedSprite != sprite) {
-                Debug.Log("Sprite changed");
                 m_CachedSprite = sprite;
                 SetAllDirty();
             }

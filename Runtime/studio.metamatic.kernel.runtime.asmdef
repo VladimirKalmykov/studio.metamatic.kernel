@@ -7,12 +7,12 @@
         "Unity.ResourceManager",
         "Unity.InputSystem",
         "UniTask",
-        "com.es3.runtime",
         "Unity.Localization",
         "Unity.Burst",
         "Unity.Mathematics",
         "Unity.2D.Animation.Runtime",
-        "Animancer"
+        "Animancer",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

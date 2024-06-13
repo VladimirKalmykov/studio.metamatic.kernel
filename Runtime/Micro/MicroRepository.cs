@@ -29,20 +29,14 @@ namespace Metamatic
             this.address = address;
         }
         
-        public UniTask<T> Read(float timeout = 0f, CancellationToken token = default)
+        public UniTask<T> Read(CancellationToken token = default)
         {
-            return source.Read<T>(new Repository.IOOperationConfig(
-                address: address,
-                timeout: timeout
-            ), token);
+            return source.Read<T>(address, token);
         }
         
         public UniTask Write(T value, float timeout = 0f, CancellationToken token = default)
         {
-            return source.Write(new Repository.IOOperationConfig(
-                address: address,
-                timeout: timeout
-            ), value, token);
+            return source.Write(address, value, token);
         }
 
         public void Dispose()

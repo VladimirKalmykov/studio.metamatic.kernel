@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -260,7 +261,7 @@ namespace Metamatic
                 try
                 {
                     m_IOStatus.value = IOStatuses.Synchronizing;
-                    var readTask = m_Repository.Read(timeout, token: token);
+                    var readTask = m_Repository.Read(token: token);
                     var nextValue = await readTask;
                     m_IOStatus.value = IOStatuses.Idle;
                     m_IsSynchronized.value = true;
@@ -288,6 +289,7 @@ namespace Metamatic
                 catch (System.Exception e)
                 {
                     isErrored = true;
+                    Debug.LogError(e);
                     throw new ReadRepositoryException(uri: m_Repository.address, innerException: e,
                         message: $"Internal store fetch error: {e.Message}");
                 }

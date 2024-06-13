@@ -14,7 +14,6 @@ namespace Metamatic
         public override UniTask<T> Read<T>(string name, CancellationToken token)
         {
             var taskCompletionSource = new UniTaskCompletionSource<T>();
-            var ioOperation = new IOOperation();
             var uri = GetUriAddress<T>(name);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
             // Запускаем асинхронную операцию чтения файла
@@ -32,7 +31,6 @@ namespace Metamatic
                     }
 
                     await UniTask.SwitchToMainThread();
-                    ioOperation.progress = 1f;
                     taskCompletionSource.TrySetResult(IOSource.Deserialize<T>(fileContent));
                 }
                 catch (DirectoryNotFoundException)
@@ -52,6 +50,11 @@ namespace Metamatic
                     await UniTask.SwitchToMainThread();
                     taskCompletionSource.TrySetException(e);
                 }
+                finally
+                {
+                    
+                    await UniTask.SwitchToMainThread();
+                }
             }, cancellationToken: token);
 
             return taskCompletionSource.Task;
@@ -60,7 +63,6 @@ namespace Metamatic
         public override UniTask Write<T>(string name, T value, CancellationToken token)
         {
             var taskCompletionSource = new UniTaskCompletionSource();
-            var ioOperation = new IOOperation();
             var uri = GetUriAddress<T>(name);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
             string json = Serialize(value);
@@ -86,7 +88,6 @@ namespace Metamatic
                     token.ThrowIfCancellationRequested();
                 
                     await UniTask.SwitchToMainThread();
-                    ioOperation.progress = 1f;
                     taskCompletionSource.TrySetResult();
                 }
                 catch (Exception e)
