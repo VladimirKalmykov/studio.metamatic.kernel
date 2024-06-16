@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
@@ -9,12 +11,12 @@ namespace Metamatic
 {
     [PlatformCompatible(RuntimePlatform.WindowsPlayer)]
     [PlatformCompatible(RuntimePlatform.WindowsEditor)]
-    public class FsJsonSource: IOSource
+    public class FsJsonStorage: Storage
     {
-        public override UniTask<T> Read<T>(string name, CancellationToken token)
+        public override UniTask<(T, Storage.Metadata)> Get<T>(string address, CancellationToken token)
         {
-            var taskCompletionSource = new UniTaskCompletionSource<T>();
-            var uri = GetUriAddress<T>(name);
+            var taskCompletionSource = new UniTaskCompletionSource<(T, Storage.Metadata)>();
+            var uri = GetUriAddress<T>(address);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
             // Запускаем асинхронную операцию чтения файла
             UniTask.RunOnThreadPool(async delegate ()
@@ -31,22 +33,11 @@ namespace Metamatic
                     }
 
                     await UniTask.SwitchToMainThread();
-                    taskCompletionSource.TrySetResult(IOSource.Deserialize<T>(fileContent));
+                    taskCompletionSource.TrySetResult(Storage.Deserialize<T>(fileContent));
                 }
-                catch (DirectoryNotFoundException)
+                catch (DirectoryNotFoundException e)
                 {
                     /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
-                    await UniTask.SwitchToMainThread();
-                    taskCompletionSource.TrySetException(new IOSource.NotFoundException("Directory not found"));
-                }
-                catch (FileNotFoundException)
-                {
-                    /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
-                    await UniTask.SwitchToMainThread();
-                    taskCompletionSource.TrySetException(new IOSource.NotFoundException("File not found"));
-                }
-                catch (Exception e)
-                {
                     await UniTask.SwitchToMainThread();
                     taskCompletionSource.TrySetException(e);
                 }
@@ -60,10 +51,10 @@ namespace Metamatic
             return taskCompletionSource.Task;
         }
 
-        public override UniTask Write<T>(string name, T value, CancellationToken token)
+        public override UniTask Set<T>(string address, T value, CancellationToken token)
         {
             var taskCompletionSource = new UniTaskCompletionSource();
-            var uri = GetUriAddress<T>(name);
+            var uri = GetUriAddress<T>(address);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
             string json = Serialize(value);
             UniTask.RunOnThreadPool(async () =>
@@ -107,8 +98,23 @@ namespace Metamatic
         /// <returns></returns>
         public static string GetUriAddress<T>(string uri)
         {
-            var typeName = typeof(T).FullName;
-            return $"{typeName}/{uri}.json";
+            /* var typeName = typeof(T).FullName;
+            return $"{typeName}/{uri}.json"; */
+            string typeName = typeof(T).FullName;
+            string input = $"{typeName}:{uri}";
+
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                byte[] data = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
+
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < data.Length; i++)
+                {
+                    sb.Append(data[i].ToString("x2"));
+                }
+
+                return sb.ToString();
+            }
         }
 
     }

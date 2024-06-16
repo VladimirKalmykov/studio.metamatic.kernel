@@ -9,16 +9,16 @@ namespace Metamatic
 {
     [PlatformCompatible(RuntimePlatform.WindowsPlayer)]
     [PlatformCompatible(RuntimePlatform.WebGLPlayer)]
-    public class HttpSource: IOSource
+    public class HttpStorage: Storage
     {
-        public override Cysharp.Threading.Tasks.UniTask<T> Read<T>(string name, CancellationToken token)
+        public override Cysharp.Threading.Tasks.UniTask<(T, Storage.Metadata)> Get<T>(string address, CancellationToken token)
         {
-            var taskCompletionSource = new Cysharp.Threading.Tasks.UniTaskCompletionSource<T>();
+            var taskCompletionSource = new Cysharp.Threading.Tasks.UniTaskCompletionSource<(T, Storage.Metadata)>();
             UniTask.RunOnThreadPool(async delegate () 
             {
                 try
                 {
-                    using (UnityWebRequest webRequest = UnityWebRequest.Get(name))
+                    using (UnityWebRequest webRequest = UnityWebRequest.Get(address))
                     {
                         await webRequest.SendWebRequest();
                         if (token.IsCancellationRequested)
@@ -50,7 +50,7 @@ namespace Metamatic
             return taskCompletionSource.Task;
         }
 
-        public override UniTask Write<T>(string name, T value, CancellationToken token)
+        public override UniTask Set<T>(string address, T value, CancellationToken token)
         {
             throw new NotImplementedException();
         }

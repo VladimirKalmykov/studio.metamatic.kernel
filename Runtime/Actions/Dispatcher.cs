@@ -384,7 +384,7 @@ namespace Metamatic.Actions
 #if DEBUG
             else
             {
-                throw new System.Exception("Registry key not found: " + id);
+                throw new System.Exception($"Registry key '{id}' not found for type {valueType}");
             }
 #endif
         }

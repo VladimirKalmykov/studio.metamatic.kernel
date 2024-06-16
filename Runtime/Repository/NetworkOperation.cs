@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public class IOOperation: IDisposable
+    public class NetworkOperation: IDisposable
     {
         public Type type = default;
         public enum Status
@@ -17,7 +17,9 @@ namespace Metamatic
             Retrying,
             Rejected
         }
-        public readonly IOOperationConfig config;
+        
+        public readonly Storage source;
+        public readonly StorageRequestConfig config;
         public MicroState<Status> m_Status = new MicroState<Status>(Status.Idle);
         protected bool m_IsDisposed { get; private set; }
 
@@ -27,8 +29,9 @@ namespace Metamatic
             set => m_Status.value = value;
         }
             
-        public IOOperation(IOOperationConfig config)
+        public NetworkOperation(Storage source, StorageRequestConfig config)
         {
+            this.source = source;
             this.config = config.Retry();
         }
 
@@ -38,10 +41,10 @@ namespace Metamatic
         }
     }
     
-    public class IOReadOperation<T> : IOOperation
+    public class NetworkReadOperation<T> : NetworkOperation
     {
-        public UniTask<T> task;
-        public IOReadOperation(IOOperationConfig config) : base(config)
+        public UniTask<(T, Storage.Metadata)> task;
+        public NetworkReadOperation(Storage source, StorageRequestConfig config) : base(source, config)
         {
             type = typeof(T);
         }
@@ -54,11 +57,11 @@ namespace Metamatic
         }
     }
     
-    public class IOWriteOperation<T> : IOOperation
+    public class NetworkWriteOperation<T> : NetworkOperation
     {
         public readonly T data;
         public UniTask task;
-        public IOWriteOperation(IOOperationConfig config, T data) : base(config)
+        public NetworkWriteOperation(Storage source, StorageRequestConfig config, T data) : base(source, config)
         {
             type = typeof(T);
             this.data = data;

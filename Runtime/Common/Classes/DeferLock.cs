@@ -22,6 +22,15 @@ namespace Metamatic
                 _lockCount++;
                 return new DisposableAction(Unlock);
             }
+            
+            public async UniTask<DisposableAction> Lock(CancellationToken token = default) {
+                await this;
+                if (token.IsCancellationRequested)
+                {
+                    return new DisposableAction(() => { });
+                }
+                return Lock();
+            }
 
             private void Unlock()
             {
@@ -73,7 +82,14 @@ namespace Metamatic
             {
                 if (_lockCount > 0)
                 {
-                    OnUnlock += continuation;
+                    Action callbackWrapper = null;
+                    callbackWrapper = () =>
+                    {
+                        OnUnlock -= callbackWrapper;
+                        if (_isDisposed) throw new ObjectDisposedException(nameof(DeferLock));
+                        continuation();
+                    };
+                    OnUnlock += callbackWrapper;
                 }
                 else
                 {

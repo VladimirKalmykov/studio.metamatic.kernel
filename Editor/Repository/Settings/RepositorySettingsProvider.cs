@@ -25,19 +25,19 @@ public class RepositorySettingsProvider : SettingsProvider
     {
         Debug.Log("Activete RepositorySettingsProvider");
         m_ActivationCancellationTokenSource = new CancellationTokenSource();
-        string directoryPath = Path.GetDirectoryName(Repository.SettingsPath);
+        string directoryPath = Path.GetDirectoryName(RepositoryLegacy.SettingsPath);
         
         if (!Directory.Exists(directoryPath))
         {
             Directory.CreateDirectory(directoryPath);
         }
 
-        settings = AssetDatabase.LoadAssetAtPath<RepositorySettings>(Repository.SettingsPath);
+        settings = AssetDatabase.LoadAssetAtPath<RepositorySettings>(RepositoryLegacy.SettingsPath);
         if (settings == null)
         {
             settings = ScriptableObject.CreateInstance<RepositorySettings>();
             settings.platforms = new PlatformSource[] { };
-            AssetDatabase.CreateAsset(settings, Repository.SettingsPath);
+            AssetDatabase.CreateAsset(settings, RepositoryLegacy.SettingsPath);
             AssetDatabase.SaveAssets();
         }
         
@@ -184,7 +184,7 @@ public class RepositorySettingsProvider : SettingsProvider
         var result = new Dictionary<RuntimePlatform, List<Type>>();
         var allTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => typeof(IOSource).IsAssignableFrom(type) && !type.IsAbstract);
+            .Where(type => typeof(Storage).IsAssignableFrom(type) && !type.IsAbstract);
 
         foreach (var type in allTypes)
         {
