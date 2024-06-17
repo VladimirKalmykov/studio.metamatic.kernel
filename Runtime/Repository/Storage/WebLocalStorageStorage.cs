@@ -7,12 +7,12 @@ namespace Metamatic
     [PlatformCompatible(RuntimePlatform.WebGLPlayer)]
     public class WebLocalStorage: Storage
     {
-        public override UniTask<(T, Storage.Metadata)> Get<T>(string address, CancellationToken token)
+        public override UniTask<(TData data, Metadata metadata, TMetadata customMetadata)> Get<TData, TMetadata>(string address, CancellationToken token)
         {
             throw new System.NotImplementedException();
         }
 
-        public override UniTask Set<T>(string address, T value, CancellationToken token)
+        public override UniTask Set<TData, TMetadata>(string address, TData value, TMetadata metadata, CancellationToken token)
         {
             throw new System.NotImplementedException();
         }

@@ -18,8 +18,17 @@ namespace Metamatic.StorageDriver
             m_Storage = storage;
         }
 
-        public abstract UniTask<(T, Storage.Metadata)> Get<T>(string address, CancellationToken cancellationToken);
-        public abstract UniTask Set<T>(string address, T value, CancellationToken cancellationToken);
-        
+        public abstract UniTask<(T, Storage.Metadata, TMetadata)> Get<T, TMetadata>(string address, CancellationToken cancellationToken);
+        public async UniTask<(TData data, Storage.Metadata metadata)> Get<TData>(string address, CancellationToken token)
+        {
+            var (data, metadata, customMetadata) = await Get<TData, object>(address, token);
+            return (data, metadata);
+        }
+
+        public abstract UniTask Set<T, TMetadata>(string address, T value, TMetadata metadata, CancellationToken cancellationToken);
+        public UniTask Set<TData>(string address, TData value, CancellationToken token)
+        {
+            return Set<TData, object>(address, value, null, token);
+        }
     }
 }

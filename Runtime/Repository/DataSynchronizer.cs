@@ -56,7 +56,7 @@ namespace DuckJumper2024
             TimeControl
         }
         
-        private readonly List<IVersionControlStorageDriver> drivers = new();
+        private readonly List<VersionControlStorageDriver> drivers = new();
         public readonly Repository repository;
         
         public DataSynchronizer(Repository repository, Storage[] storages)
@@ -78,7 +78,7 @@ namespace DuckJumper2024
         }
         
         
-        public IVersionControlStorageDriver WrapStorage(Storage storage)
+        public VersionControlStorageDriver WrapStorage(Storage storage)
         {
             return new VersionControlStorageDriver(repository, storage);
         }
@@ -93,13 +93,13 @@ namespace DuckJumper2024
             drivers.Add(storage);
         }
 
-        public async UniTask<VersionedData<T>> Sync<T>(string address, CancellationToken token)
+        public async UniTask<(T data, Storage.Metadata metadata, long version)> Sync<T>(string address, CancellationToken token)
         {
             /* Get StorageSynchronizer.UseStrategy attribute */
             var strategy = UseStrategyAttribute.GetStrategy<T>();
             
             var tasks = drivers.Select(driver => GetData<T>(driver, address, token));
-            var results = await UniTask.WhenAll((IEnumerable<UniTask<(IVersionControlStorageDriver Driver, VersionedData<T> Data, Storage.Metadata Metadata, bool Success, Exception Exception)>>)tasks);
+            var results = await UniTask.WhenAll((IEnumerable<UniTask<(VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, Storage.Metadata Metadata, bool Success, Exception Exception)>>)tasks);
 
             // Фильтрация NotFound и исключение других ошибок
             var validResults = results.Where(result => result.Success).ToList();
@@ -112,8 +112,8 @@ namespace DuckJumper2024
                 throw new InvalidOperationException("No valid data found.");
             }
 
-            VersionedData<T> bestData = default;
-            (IVersionControlStorageDriver Driver, VersionedData<T> Data, Storage.Metadata Metadata, bool Success,
+            (T data, Storage.Metadata metadata, long version) bestData = default;
+            (VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, Storage.Metadata Metadata, bool Success,
                 Exception Exception) bestSource = default;
             switch (strategy)
             {
@@ -174,20 +174,20 @@ namespace DuckJumper2024
             return bestData;
         }
 
-        private async UniTask<(IVersionControlStorageDriver Driver, VersionedData<T> Data, Storage.Metadata Metadata, bool Success, Exception Exception)> GetData<T>(IVersionControlStorageDriver driver, string address, CancellationToken token)
+        private async UniTask<(VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, bool Success, Exception Exception)> GetData<T>(VersionControlStorageDriver driver, string address, CancellationToken token)
         {
             try
             {
-                var (data, metadata) = await driver.Get<T>(address, token);
-                return (driver, data, metadata, true, null);
+                var result = await driver.Get<T>(address, token);
+                return (driver, result, true, null);
             }
             catch (Exception ex)
             {
-                return (driver, default, default, false, ex);
+                return (driver, default, false, ex);
             }
         }
 
-        private async UniTask UpdateData<T>(IVersionControlStorageDriver driver, string address, VersionedData<T> data, CancellationToken token)
+        private async UniTask UpdateData<T>(VersionControlStorageDriver driver, string address, (T data, Storage.Metadata metadata, long version) data, CancellationToken token)
         {
             try
             {

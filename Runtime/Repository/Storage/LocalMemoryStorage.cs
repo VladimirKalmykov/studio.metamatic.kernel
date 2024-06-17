@@ -8,13 +8,15 @@ namespace Metamatic
     public class LocalMemoryStorage: Storage
     {
         private Dictionary<(Type, string), (object, Storage.Metadata)> m_Memory = new ();
-        public override UniTask<(T, Storage.Metadata)> Get<T>(string address, CancellationToken token)
+        public override UniTask<(T, Metadata, TMetadata)> Get<T, TMetadata>(string address, CancellationToken token)
         {
-            var taskCompletionSource = new UniTaskCompletionSource<(T, Storage.Metadata)>();
+            var taskCompletionSource = new UniTaskCompletionSource<(T, Metadata, TMetadata)>();
             var type = typeof(T);
             if (m_Memory.TryGetValue((type, address), out var value))
             {
-                taskCompletionSource.TrySetResult(((T)value.Item1, value.Item2));
+                var metadataWithCustom = (Metadata<TMetadata>)value.Item2;
+                var customMetadata = metadataWithCustom.custom;
+                taskCompletionSource.TrySetResult(((T)value.Item1, (Metadata)value.Item2, customMetadata));
             }
             else
             {
@@ -24,11 +26,11 @@ namespace Metamatic
             return taskCompletionSource.Task;
         }
 
-        public override UniTask Set<T>(string address, T value, CancellationToken token)
+        public override UniTask Set<T, TMetadata>(string address, T value, TMetadata customMetadata, CancellationToken token)
         {
             var taskCompletionSource = new UniTaskCompletionSource();
             var type = typeof(T);
-            var metadata = SerializableDataPackage<T>.GetMetadata(value);
+            var metadata = SerializableDataPackage<T, TMetadata>.GetMetadata(value, customMetadata);
             
             m_Memory[(type, address)] = (value, metadata);
             taskCompletionSource.TrySetResult();

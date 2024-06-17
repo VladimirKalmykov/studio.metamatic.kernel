@@ -101,7 +101,7 @@ namespace Metamatic
             {
                 if (platform.platform == Application.platform)
                 {
-                    var sourceType = Type.GetType(platform.sourceClassName);
+                    var sourceType = Type.GetType(platform.remoteStorage);
                     if (sourceType != null)
                     {
                         m_Storages.Add(new VersionControlStorageDriver(this, (Storage)Activator.CreateInstance(sourceType)));

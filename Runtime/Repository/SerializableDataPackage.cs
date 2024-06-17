@@ -12,21 +12,21 @@ namespace Metamatic
         
     }
     [Serializable]
-    public class SerializableDataPackage<T>: SerializableDataPackage
+    public class SerializableDataPackage<T, TMetadata>: SerializableDataPackage
     {
-        public readonly Storage.Metadata metadata;
+        public readonly Storage.Metadata<TMetadata> metadata;
         public T value;
-        public SerializableDataPackage(T value) {
+        public SerializableDataPackage(T value, TMetadata customMetadata) {
             this.value = value;
             /* Read version from VersionAttribute of T, if exists. Or use default version: 0.0 */
             var version = VersionAttribute.GetVersion<T>();
-            metadata = new Storage.Metadata(version, DateTime.UtcNow.Ticks);
+            metadata = new Storage.Metadata<TMetadata>(version, DateTime.UtcNow.Ticks, customMetadata);
         }
 
-        public static Storage.Metadata GetMetadata(T value)
+        public static Storage.Metadata GetMetadata(T value, TMetadata customMetadata)
         {
             var version = VersionAttribute.GetVersion<T>();
-            return new Storage.Metadata(version, DateTime.UtcNow.Ticks); 
+            return new Storage.Metadata<TMetadata>(version, DateTime.UtcNow.Ticks, customMetadata); 
         }
     }
 }

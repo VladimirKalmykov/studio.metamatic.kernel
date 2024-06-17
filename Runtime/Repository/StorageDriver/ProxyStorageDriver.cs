@@ -9,14 +9,14 @@ namespace Metamatic.StorageDriver
         {
         }
 
-        public override UniTask<(T, Storage.Metadata)> Get<T>(string address, CancellationToken cancellationToken)
+        public override UniTask<(T, Storage.Metadata, TMetadata)> Get<T, TMetadata>(string address, CancellationToken cancellationToken)
         {
-            return m_Storage.Get<T>(address, cancellationToken);
+            return m_Storage.Get<T, TMetadata>(address, cancellationToken);
         }
 
-        public override UniTask Set<T>(string address, T value, CancellationToken cancellationToken)
+        public override UniTask Set<T, TMetadata>(string address, T value, TMetadata metadata, CancellationToken cancellationToken)
         {
-            return m_Storage.Set<T>(address, value, cancellationToken);
+            return m_Storage.Set(address, value, metadata, cancellationToken);
         }
     }
 }

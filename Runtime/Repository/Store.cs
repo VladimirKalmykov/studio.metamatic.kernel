@@ -211,20 +211,20 @@ namespace Metamatic
         {
             using (await m_DeferLock.Lock(cancellationToken))
             {
-                var (versionedData, metadata) = await repository.localStorage.Get<T>(address, CancellationToken.None);
+                var (data, metadata, version) = await repository.localStorage.Get<T>(address, CancellationToken.None);
                 if (populate)
                 {
                     /* Apply value to all branches */
                     foreach (var branch in m_Branches.Values)
                     {
-                        branch.value = versionedData.data;
+                        branch.value = data;
                     }
                 }
                 else
                 {
-                    m_CurrentBranch.value.value = versionedData.data;
+                    m_CurrentBranch.value.value = data;
                 }
-                version = versionedData.version;
+                this.version = version;
             }
         }
         

@@ -13,10 +13,10 @@ namespace Metamatic
     [PlatformCompatible(RuntimePlatform.WindowsEditor)]
     public class FsJsonStorage: Storage
     {
-        public override UniTask<(T, Storage.Metadata)> Get<T>(string address, CancellationToken token)
+        public override UniTask<(TData, Metadata, TMetadata)> Get<TData, TMetadata>(string address, CancellationToken token)
         {
-            var taskCompletionSource = new UniTaskCompletionSource<(T, Storage.Metadata)>();
-            var uri = GetUriAddress<T>(address);
+            var taskCompletionSource = new UniTaskCompletionSource<(TData, Storage.Metadata, TMetadata)>();
+            var uri = GetUriAddress<TData>(address);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
             // Запускаем асинхронную операцию чтения файла
             UniTask.RunOnThreadPool(async delegate ()
@@ -33,7 +33,7 @@ namespace Metamatic
                     }
 
                     await UniTask.SwitchToMainThread();
-                    taskCompletionSource.TrySetResult(Storage.Deserialize<T>(fileContent));
+                    taskCompletionSource.TrySetResult(Storage.Deserialize<TData, TMetadata>(fileContent));
                 }
                 catch (DirectoryNotFoundException e)
                 {
@@ -51,12 +51,12 @@ namespace Metamatic
             return taskCompletionSource.Task;
         }
 
-        public override UniTask Set<T>(string address, T value, CancellationToken token)
+        public override UniTask Set<TData, TMetadata>(string address, TData value, TMetadata customMetadata, CancellationToken token)
         {
             var taskCompletionSource = new UniTaskCompletionSource();
-            var uri = GetUriAddress<T>(address);
+            var uri = GetUriAddress<TData>(address);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
-            string json = Serialize(value);
+            string json = Serialize(value, customMetadata);
             UniTask.RunOnThreadPool(async () =>
             {
                 try

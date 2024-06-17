@@ -12,11 +12,6 @@ namespace Metamatic
         {
         }
     }
-    [Serializable]
-    public abstract class IOSourceSettings
-    {
-        
-    }
     
     /// <summary>
     /// Base class for all storage types. Storages are used to store data in different sources, like local memory, file system, network, etc.
@@ -89,7 +84,7 @@ namespace Metamatic
         }
         
         [Serializable]
-        public readonly struct Metadata
+        public class Metadata
         {
             public readonly string typeVersion;
             public readonly long updateTime;
@@ -100,25 +95,46 @@ namespace Metamatic
                 this.updateTime = updateTime;
             }
         }
+
+        public class Metadata<TCustom> : Metadata
+        {
+            public readonly TCustom custom;
+            public Metadata(string typeVersion, long updateTime, TCustom custom) : base(typeVersion, updateTime)
+            {
+                this.custom = custom;
+            }
+        }
         public readonly UriLockerManager lockerManager = new UriLockerManager();
-        public abstract UniTask<(T data, Metadata metadata)> Get<T>(string address, CancellationToken token);
-        public abstract UniTask Set<T>(string address, T value, CancellationToken token);
+        public abstract UniTask<(TData data, Metadata metadata, TMetadata customMetadata)> Get<TData, TMetadata>(string address, CancellationToken token);
+
+        public async UniTask<(TData data, Metadata metadata)> Get<TData>(string address, CancellationToken token)
+        {
+             var (data, metadata, customMetadata) = await Get<TData, object>(address, token);
+             return (data, metadata);
+        }
+        public abstract UniTask Set<TData, TMetadata>(string address, TData value, TMetadata metadata, CancellationToken token);
+
+        public UniTask Set<TData>(string address, TData value, CancellationToken token)
+        {
+            return Set<TData, object>(address, value, null, token);
+        }
         /// <summary>
         /// Location type determines where the data is stored. It can be local or remote (local by default).
         /// Set LocationType.Remote to apply possible synchronization logic for remote storages.
         /// </summary>
         public LocationType locationType = LocationType.Local;
-        
-        
+
+
         /// <summary>
         /// Serialize object to packed data serialized to string. The packed data contains information about object's class version, that helps to migrate data after deserialization.
         /// </summary>
         /// <param name="value"></param>
         /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TMetadata"></typeparam>
         /// <returns></returns>
-        public static string Serialize<T>(T value)
+        public static string Serialize<T, TMetadata>(T value, TMetadata metadata)
         {
-            var package = new SerializableDataPackage<T>(value);
+            var package = new SerializableDataPackage<T, TMetadata>(value, metadata);
             return JsonUtility.ToJson(package);
         }
         
@@ -128,9 +144,9 @@ namespace Metamatic
         /// </summary>
         /// <param name="rawResult"></param>
         /// <typeparam name="T"></typeparam>
-        public static (T, Metadata) Deserialize<T>(string rawResult)
+        public static (T, Metadata, TMetadata) Deserialize<T, TMetadata>(string rawResult)
         {
-            var data = JsonUtility.FromJson<SerializableDataPackage<T>>(rawResult);
+            var data = JsonUtility.FromJson<SerializableDataPackage<T, TMetadata>>(rawResult);
             
             if (data.metadata.typeVersion != VersionAttribute.GetVersion<T>())
             {
@@ -140,15 +156,15 @@ namespace Metamatic
                 Debug.Assert(oldVersionType != null, "Old version type is not supported");
                 if (oldVersionType != null)
                 {
-                    Type genericType = typeof(SerializableDataPackage<>);
-                    Type constructedType = genericType.MakeGenericType(oldVersionType);
+                    Type genericType = typeof(SerializableDataPackage<,>);
+                    Type constructedType = genericType.MakeGenericType(oldVersionType, typeof(TMetadata));
                     var oldData = JsonUtility.FromJson(rawResult, constructedType);
                     var valueProperty = oldData.GetType().GetField("value");
                     if (valueProperty != null)
                     {
                         object value = valueProperty.GetValue(oldData);
                         
-                        return (Migrate<T>(data.metadata.typeVersion, value), data.metadata);
+                        return (Migrate<T>(data.metadata.typeVersion, value), data.metadata, data.metadata.custom);
                     }
 
                     throw new DataTypeMigrationException($"Data of type {typeof(T).Name}:{data.metadata.typeVersion} is corrupted or does not match the represented type");
@@ -160,7 +176,7 @@ namespace Metamatic
             }
             else
             {
-                return (data.value, data.metadata);
+                return (data.value, data.metadata, data.metadata.custom);
             }
         }
         

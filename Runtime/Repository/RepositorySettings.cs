@@ -3,13 +3,23 @@
 namespace Metamatic
 {
     [System.Serializable]
+    public abstract class IOSourceSettings
+    {
+        
+    }
+    
+    [System.Serializable]
     public class PlatformSource
     {
         public RuntimePlatform platform;
+        public bool enableRemoteStorage;
+        public bool enableLocalStorage;
         /// <summary>
         /// Class name of the source
         /// </summary>
-        public string sourceClassName;
+        public string remoteStorage;
+
+        public string localStorage;
         public IOSourceSettings settings;
     }
     
