@@ -16,5 +16,10 @@ namespace Metamatic
         {
             throw new System.NotImplementedException();
         }
+
+        public override UniTask Delete<TData>(string address, CancellationToken token)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

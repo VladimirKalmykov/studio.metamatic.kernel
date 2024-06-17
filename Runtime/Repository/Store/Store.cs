@@ -26,7 +26,7 @@ namespace Metamatic
             m_DisposeCancellationTokenSource.Cancel();
         }
     }
-    public class Store<T>: Store
+    public class Store<T>: Store, IStore<T>
     {
         private class Branch
         {
@@ -57,10 +57,11 @@ namespace Metamatic
         private readonly Dictionary<string, Branch> m_Branches = new();
         private readonly MicroState<Branch> m_CurrentBranch = new();
         private readonly DeferLock m_DeferLock = new DeferLock();
-        public UniTask initializationTask;
+        public bool synchronized { get; private set; } = false;
+        public UniTask synchronizationTask { get; private set; }
         public long version { get; private set; } = 0;
         /* Here will be property that will be increased when Inquire method will be called */
-        public int inquired { get; private set; } = 0;
+        private List<object> m_Inquiriences = new();
         
         
         internal Store(Repository repository, string address)
@@ -69,44 +70,60 @@ namespace Metamatic
             this.address = address;
             m_Branches["default"] = new Branch(this, "default", default);
             m_CurrentBranch.value = m_Branches["default"];
-            initializationTask = Initialization();
+            synchronizationTask = Synchronization();
+            PostInitialization();
         }
         
-        public Store(string address): this(Repository.global, address)
+        internal Store(string address): this(Repository.global, address)
         {
-        }
-        
-        private async UniTask Initialization()
-        {
-            using (await m_DeferLock.Lock(CancellationToken.None))
-            {
-                var versionedData = await repository.synchronizer.Sync<T>(address, disposeCancellationToken);
-                m_CurrentBranch.value.value = versionedData.data;
-                version = versionedData.version;
-            }
-        }
-        
-        public void Inquire()
-        {
-            if (m_Disposed)
-            {
-                throw new System.Exception("Store is disposed");
-            }
-            inquired++;
             
         }
         
-        public void Release()
+        private async UniTask Synchronization()
         {
-            if (m_Disposed)
+            using (await m_DeferLock.Lock(CancellationToken.None))
             {
-                throw new System.Exception("Store is disposed");
+                try
+                {
+                    var versionedData = await repository.synchronizer.Sync<T>(address, disposeCancellationToken);
+                    m_CurrentBranch.value.value = versionedData.data;
+                    version = versionedData.version;
+                    synchronized = true;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Ignore
+                }
+                catch (Exception e)
+                {
+                    throw;
+                }
             }
-            inquired--;
-            if (inquired == 0)
+        }
+        
+        private async void PostInitialization()
+        {
+            await disposeCancellationToken;
+            /* Clear all branches */
+            m_Branches.Clear();
+            m_CurrentBranch.value = null;
+            m_Inquiriences.Clear();
+            /* Remote data for current address and type in repository's local memory */
+            await repository.localStorage.Delete<T>(address, CancellationToken.None);
+        }
+        
+        public DisposableAction Inquire()
+        {
+            var inquireince = new object();
+            m_Inquiriences.Add(inquireince);
+            return new DisposableAction(() =>
             {
-                Dispose();
-            }
+                m_Inquiriences.Remove(inquireince);
+                if (m_Inquiriences.Count == 0)
+                {
+                    Dispose();
+                }
+            });
         }
         
         /// <summary>

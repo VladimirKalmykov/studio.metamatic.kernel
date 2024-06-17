@@ -118,6 +118,8 @@ namespace Metamatic
         {
             return Set<TData, object>(address, value, null, token);
         }
+
+        public abstract UniTask Delete<TData>(string address, CancellationToken token);
         /// <summary>
         /// Location type determines where the data is stored. It can be local or remote (local by default).
         /// Set LocationType.Remote to apply possible synchronization logic for remote storages.

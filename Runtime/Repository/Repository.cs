@@ -18,7 +18,111 @@ namespace Metamatic
     /// </summary>
     public class Repository
     {
+        #region Exceptions
+
+        /// <summary>
+        /// This exception means that current request should be retrying
+        /// </summary>
+        public class RetryRequiredException : Exception
+        {
+            public readonly int retryCount;
+            public RetryRequiredException(int retryCount)
+            {
+                this.retryCount = retryCount;
+            }
+        }
+        #endregion
+        
+        #region Structs
+        public enum NetworkOperationStatus
+        {
+            Pending,
+            Cancelled,
+            Completed,
+            Retry,
+            Failed
+        }
+        
+        /// <summary>
+        /// TODO: Make MonitoredRequest class to be created from pool
+        /// </summary>
+        public class RequestMonitor : IDisposable
+        {
+            public enum RequestType
+            {
+                Get,
+                Set
+            }
+            public struct Stats
+            {
+                public float startTime;
+                public float responseDuration;
+                public NetworkOperationStatus status;
+                public Exception exception;
+                public int retryCount;
+            }
+            public Repository repository { get; private set; }
+            public Storage storage { get; private set; }
+            public Stats stats { get; private set; }
+            public RequestType requestType { get; private set; }
+            public string address { get; private set; }
+            public Type dataType { get; private set; }
+            
+            private event Action OnDispose;
+            private event Action OnUpdate;
+            private bool m_Disposed = false;
+
+            public static RequestMonitor Create(Repository repository, Storage storage, RequestType type, string address, Type dataType, Stats initialStats)
+            {
+                return new RequestMonitor(repository, storage, type, address, dataType, initialStats);
+            }
+            
+            public RequestMonitor(Repository repository, Storage storage, RequestType type, string address, Type dataType, Stats initialStats)
+            {
+                this.repository = repository;
+                this.storage = storage;
+                requestType = type;
+                this.address = address;
+                this.dataType = dataType;
+                this.stats = initialStats;
+                
+#if METAMATIC_TERMINAL
+                using var terminalLog = Terminal.CreateUpdatableLog(
+                $"<b>Repository</b>: {dataType} <color=#00e6e6>{address}</color> <{dataType.Name}> to <color=#00e6e6>{storage.GetType().Name}</color>: {{0}} (retry: {initialStats.retryCount})", true);
+                Action updateHandler = () => {
+                    terminalLog.Update(stats.status.ToString());
+                };
+                OnUpdate += updateHandler;
+                OnDispose += () => {
+                    OnUpdate -= updateHandler;
+                    terminalLog.Persist();    
+                };
+#endif
+            }
+
+            public void Update(Stats stats)
+            {
+                this.stats = stats;
+                OnUpdate?.Invoke();
+            }
+
+            public void Release(Stats stats)
+            {
+                this.stats = stats;
+                Dispose();
+            }
+
+            public void Dispose()
+            {
+                if (m_Disposed) return;
+                m_Disposed = true;
+                OnDispose?.Invoke();
+            }
+        }
+        #endregion
+        
         #region Global
+        public static readonly string SettingsPath = "Assets/Metamatic/Resources/Settings/Repository.asset";
         private static Repository _instance;
         public static Repository global
         {
@@ -26,7 +130,7 @@ namespace Metamatic
             {
                 if (_instance == null)
                 {
-                    _instance = new Repository();
+                    _instance = new Repository(true);
                 }
                 return _instance;
             }
@@ -41,16 +145,19 @@ namespace Metamatic
         #endregion
         
         #region Private properties
-        private ObservableCollection<NetworkOperation> m_Operations = new ();
+
+        private readonly bool m_IsGlobalInstance;
+        private Dictionary<(string address, Type dataType, Type metadataType), (float time, float responseDuration, int retryCount, NetworkOperationStatus status, Exception exception)> m_ActiveRequests = new();
         private readonly Dictionary<(Type, string), Store> m_Stores = new ();
-        private readonly List<VersionControlStorageDriver> m_Storages = new List<VersionControlStorageDriver>(null);
+        private readonly List<VersionControlStorageDriver> m_Storages = new (null);
         private CancellationTokenSource m_DisposeCancellationTokenSource = new ();
         public readonly VersionControlStorageDriver localStorage;
         public DataSynchronizer synchronizer { get; private set; }
         #endregion
         
-        public Repository()
+        public Repository(bool isGlobal = false)
         {
+            m_IsGlobalInstance = isGlobal;
             /* Initialize memory storage */
             localStorage = new VersionControlStorageDriver(this, new LocalMemoryStorage());
             Initialization(m_DisposeCancellationTokenSource.Token);
@@ -71,25 +178,14 @@ namespace Metamatic
             /* Add memory storage to the list of storages */
             m_Storages.Add(localStorage);
             /* Load additional storages from project settings  */
-            LoadStoragesFromProjectSettings();
+            if (m_IsGlobalInstance)
+            {
+                LoadStoragesFromProjectSettings();
+            }
             
             /* Add storages synchronizer */
             synchronizer = new DataSynchronizer(this, m_Storages.ToArray());
-            
-            /* Track all operations in Terminal (only in DEBUG mode) */
-            #if DEBUG
-            var operationsHandler = new SequentialArrayHandler<NetworkOperation>(OnOperationInit);
-            System.Collections.Specialized.NotifyCollectionChangedEventHandler HandleCollectionChange = (sender, args) =>
-            {
-                operationsHandler.Handle(m_Operations);
-            };
-            m_Operations.CollectionChanged += HandleCollectionChange;
-            #endif
-            
             await token;
-            #if DEBUG
-            m_Operations.CollectionChanged -= HandleCollectionChange;
-            #endif
         }
         
         private void LoadStoragesFromProjectSettings()
@@ -99,13 +195,32 @@ namespace Metamatic
             var platforms = settings != null ? settings.platforms : new PlatformSource[] { };
             foreach (var platform in platforms)
             {
-                if (platform.platform == Application.platform)
+                /* Add remote storage */
+                if (platform.platform == Application.platform && platform.enableRemoteStorage)
                 {
                     var sourceType = Type.GetType(platform.remoteStorage);
                     if (sourceType != null)
                     {
-                        m_Storages.Add(new VersionControlStorageDriver(this, (Storage)Activator.CreateInstance(sourceType)));
-                        // source.Initialize(platform.settings);
+                        var storage = (Storage)Activator.CreateInstance(sourceType);
+                        storage.locationType = Storage.LocationType.Remote;
+                        m_Storages.Add(new VersionControlStorageDriver(this, storage));
+                        break;
+                    }
+                    else
+                    {
+                        Debug.LogError("Source class not found");
+                    }
+                }
+                
+                /* Add local storage */
+                if (platform.platform == Application.platform && platform.enableLocalStorage)
+                {
+                    var sourceType = Type.GetType(platform.localStorage);
+                    if (sourceType != null)
+                    {
+                        var storage = (Storage)Activator.CreateInstance(sourceType);
+                        storage.locationType = Storage.LocationType.Local;
+                        m_Storages.Add(new VersionControlStorageDriver(this, storage));
                         break;
                     }
                     else
@@ -121,25 +236,67 @@ namespace Metamatic
             m_DisposeCancellationTokenSource.Cancel();
         }
         
-        public void ReleaseOperation(NetworkOperation operation)
+        /// <summary>
+        /// The method is responsible for logging and requests retrying
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="task"></param>
+        /// <param name="retryCount"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TMetadata"></typeparam>
+        /// <returns></returns>
+        /// tryRequiredException"></exception>
+        public async UniTask<(T, Storage.Metadata, TMetadata)> ManageRequest<T, TMetadata>(Storage storage, string address, UniTask<(T, Storage.Metadata, TMetadata)> task, int retryCount = 0)
         {
-            operation.Dispose();
-            m_Operations.Remove(operation);
-        }
-        
-        #if DEBUG
-        private async void OnOperationInit(NetworkOperation operation, CancellationToken token)
-        {
-            var methodText = operation.config.method == StorageRequestConfig.Method.Read ? "Read" : "Write";
-            using var terminalLog = Terminal.CreateUpdatableLog(
-                $"<b>Repository</b>: {methodText} <color=#00e6e6>{operation.type.Name}@{operation.config.address}</color> to <color=#00e6e6>{operation.source.GetType().Name}</color>: {{0}} (retry: {operation.config.retryCount})", true);
-            using var statusSubscription = operation.m_Status.Subscribe(status =>
+            var startTime = Time.realtimeSinceStartup;
+            var requestStats = new RequestMonitor.Stats()
             {
-                terminalLog.Update(status.ToString());
-            });
-            await token;
-            terminalLog.Persist();
+                responseDuration = 0f,
+                retryCount = retryCount,
+                startTime = startTime,
+                status = NetworkOperationStatus.Pending,
+                exception = null
+            };
+            
+            var requestMonitor = RequestMonitor.Create(this, storage, RequestMonitor.RequestType.Get, address, typeof(T), requestStats);
+            requestMonitor.Release(requestStats);
+            
+            try
+            {
+                var result = await task;
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Completed;
+                requestMonitor.Update(requestStats);
+                return result;
+            }
+            catch (Storage.TimeoutException e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Retry;
+                requestStats.exception = e;
+                requestMonitor.Release(requestStats);
+                if (retryCount < 3) // TODO: Use some global configuration about max retry count
+                {
+                    throw new RetryRequiredException(requestStats.retryCount);
+                }
+
+                throw e;
+            }
+            catch (OperationCanceledException e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Cancelled;
+                requestMonitor.Release(requestStats);
+                throw;
+            }
+            catch (Exception e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Failed;
+                requestStats.exception = e;
+                requestMonitor.Release(requestStats);
+                throw;
+            }
         }
-        #endif
     }
 }

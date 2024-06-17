@@ -36,5 +36,21 @@ namespace Metamatic
             taskCompletionSource.TrySetResult();
             return taskCompletionSource.Task;
         }
+
+        public override UniTask Delete<TData>(string address, CancellationToken token)
+        {
+            var taskCompletionSource = new UniTaskCompletionSource();
+            var type = typeof(TData);
+            if (m_Memory.Remove((type, address)))
+            {
+                taskCompletionSource.TrySetResult();
+            }
+            else
+            {
+                taskCompletionSource.TrySetException(new Storage.NotFoundException("Key not found"));
+            }
+
+            return taskCompletionSource.Task;
+        }
     }
 }

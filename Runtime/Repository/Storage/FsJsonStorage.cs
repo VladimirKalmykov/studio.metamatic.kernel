@@ -33,6 +33,7 @@ namespace Metamatic
                     }
 
                     await UniTask.SwitchToMainThread();
+                    token.ThrowIfCancellationRequested();
                     taskCompletionSource.TrySetResult(Storage.Deserialize<TData, TMetadata>(fileContent));
                 }
                 catch (DirectoryNotFoundException e)
@@ -77,8 +78,35 @@ namespace Metamatic
                         await writer.WriteAsync(json);
                     }
                     token.ThrowIfCancellationRequested();
-                
                     await UniTask.SwitchToMainThread();
+                    token.ThrowIfCancellationRequested();
+                    taskCompletionSource.TrySetResult();
+                }
+                catch (Exception e)
+                {
+                    await UniTask.SwitchToMainThread();
+                    taskCompletionSource.TrySetException(e);
+                }
+            });
+            return taskCompletionSource.Task;
+        }
+
+        public override UniTask Delete<TData>(string address, CancellationToken token)
+        {
+            var taskCompletionSource = new UniTaskCompletionSource();
+            var uri = GetUriAddress<TData>(address);
+            string fullPath = Path.Combine(Application.persistentDataPath, uri);
+            UniTask.RunOnThreadPool(async () =>
+            {
+                try
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (File.Exists(fullPath))
+                    {
+                        File.Delete(fullPath);
+                    }
+                    await UniTask.SwitchToMainThread();
+                    token.ThrowIfCancellationRequested();
                     taskCompletionSource.TrySetResult();
                 }
                 catch (Exception e)

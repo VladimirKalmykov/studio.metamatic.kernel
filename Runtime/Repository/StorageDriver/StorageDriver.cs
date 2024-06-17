@@ -30,5 +30,7 @@ namespace Metamatic.StorageDriver
         {
             return Set<TData, object>(address, value, null, token);
         }
+        
+        public abstract UniTask Delete<T>(string address, CancellationToken cancellationToken);
     }
 }

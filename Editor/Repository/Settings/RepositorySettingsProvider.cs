@@ -25,19 +25,19 @@ public class RepositorySettingsProvider : SettingsProvider
     {
         Debug.Log("Activete RepositorySettingsProvider");
         m_ActivationCancellationTokenSource = new CancellationTokenSource();
-        string directoryPath = Path.GetDirectoryName(RepositoryLegacy.SettingsPath);
+        string directoryPath = Path.GetDirectoryName(Repository.SettingsPath);
         
         if (!Directory.Exists(directoryPath))
         {
             Directory.CreateDirectory(directoryPath);
         }
 
-        settings = AssetDatabase.LoadAssetAtPath<RepositorySettings>(RepositoryLegacy.SettingsPath);
+        settings = AssetDatabase.LoadAssetAtPath<RepositorySettings>(Repository.SettingsPath);
         if (settings == null)
         {
             settings = ScriptableObject.CreateInstance<RepositorySettings>();
             settings.platforms = new PlatformSource[] { };
-            AssetDatabase.CreateAsset(settings, RepositoryLegacy.SettingsPath);
+            AssetDatabase.CreateAsset(settings, Repository.SettingsPath);
             AssetDatabase.SaveAssets();
         }
         
@@ -140,10 +140,10 @@ public class RepositorySettingsProvider : SettingsProvider
         sourcesDropdown.choices = m_PlatformToSourcesMap.ContainsKey(platformSource.platform)
             ? m_PlatformToSourcesMap[platformSource.platform].Select(x => x.FullName).ToList()
             : new List<string>();
-        sourcesDropdown.SetValueWithoutNotify(platformSource.sourceClassName);
+        sourcesDropdown.SetValueWithoutNotify(platformSource.remoteStorage);
         sourcesDropdown.RegisterValueChangedCallback(evt =>
         {
-            platformSource.sourceClassName = evt.newValue;
+            platformSource.remoteStorage = evt.newValue;
             SaveSettings();
         });
         /* Select RemoveButton */
