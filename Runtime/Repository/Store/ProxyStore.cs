@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
@@ -15,15 +16,17 @@ namespace Metamatic
             this.store = store;
             OnDispose += store.Inquire();
         }
-
-        public void Dispose()
-        {
-            if (m_Disposed) return;
-            m_Disposed = true;
-            OnDispose?.Invoke();
-            
-        }
         
+        ~ProxyStore()
+        {
+            Dispose(true, false);
+        }
+
+        public UniTask WhenSynchronized(CancellationToken cancellationToken)
+        {
+            return store.WhenSynchronized(cancellationToken);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public DisposableAction AddBranch(string name, bool makeCurrent = false)
         {
@@ -47,7 +50,12 @@ namespace Metamatic
         {
             return store.Get();
         }
-        
+
+        public DisposableAction Subscribe(Action<T> action)
+        {
+            return store.Subscribe(action);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UniTask Commit(string branchName, CancellationToken cancellationToken)
         {
@@ -77,5 +85,31 @@ namespace Metamatic
         {
             return store.Reset(cancellationToken);
         }
+        
+        public void Dispose()
+        {
+            Dispose(false, false);
+        }
+        
+        public void Dispose(bool isCalledFromFinalizer, bool isAsync)
+        {
+            if (isCalledFromFinalizer)
+            {
+                throw new InvalidOperationException("Dispose should be called explicitly, not from finalizer.");
+            }
+            if (m_Disposed) return;
+            m_Disposed = true;
+            OnDispose?.Invoke();
+            GC.SuppressFinalize(this);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (m_Disposed) return;
+            Dispose(false, true);
+            if (store.isDisposed) await store.asyncDisposingTask;
+        }
+
+        
     }
 }

@@ -142,6 +142,7 @@ namespace Metamatic
         /// Default timeout for network operations
         /// </summary>
         public float timeout { get; set; } = 10f;
+        public readonly VersionControlStorageDriver inMemoryStorage;
         #endregion
         
         #region Private properties
@@ -151,7 +152,6 @@ namespace Metamatic
         private readonly Dictionary<(Type, string), Store> m_Stores = new ();
         private readonly List<VersionControlStorageDriver> m_Storages = new (null);
         private CancellationTokenSource m_DisposeCancellationTokenSource = new ();
-        public readonly VersionControlStorageDriver localStorage;
         public DataSynchronizer synchronizer { get; private set; }
         #endregion
         
@@ -159,24 +159,48 @@ namespace Metamatic
         {
             m_IsGlobalInstance = isGlobal;
             /* Initialize memory storage */
-            localStorage = new VersionControlStorageDriver(this, new LocalMemoryStorage());
+            inMemoryStorage = new VersionControlStorageDriver(this, new LocalMemoryStorage());
             Initialization(m_DisposeCancellationTokenSource.Token);
         }
-        
-        public Store<T> GetStore<T>(string name)
+
+        /// <summary>
+        /// Get store for specific type and address
+        /// </summary>
+        /// <param name="address"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public IStore<T> GetStore<T>(string address)
         {
-            var key = (typeof(T), name);
+            var key = (typeof(T), address);
             if (!m_Stores.ContainsKey(key))
             {
-                m_Stores[key] = new Store<T>(this, name);
+                m_Stores[key] = new Store<T>(this, address);
             }
-            return (Store<T>)m_Stores[key];
+
+            return new ProxyStore<T>((Store<T>)m_Stores[key]);
+        }
+        
+        public void AddStorage(VersionControlStorageDriver storage)
+        {
+            m_Storages.Add(storage);
+        }
+        
+        public void RemoveStorage(VersionControlStorageDriver storage)
+        {
+            m_Storages.Remove(storage);
+        }
+
+        public async UniTask<IStore<T>> GetStore<T>(string address, CancellationToken cancellationToken)
+        {
+            var store = GetStore<T>(address);
+            await store.WhenSynchronized(cancellationToken);
+            return store;
         }
         
         private async void Initialization(CancellationToken token)
         {
             /* Add memory storage to the list of storages */
-            m_Storages.Add(localStorage);
+            m_Storages.Add(inMemoryStorage);
             /* Load additional storages from project settings  */
             if (m_IsGlobalInstance)
             {
@@ -279,7 +303,7 @@ namespace Metamatic
                 {
                     throw new RetryRequiredException(requestStats.retryCount);
                 }
-
+                
                 throw e;
             }
             catch (OperationCanceledException e)
