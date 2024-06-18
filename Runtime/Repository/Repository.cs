@@ -153,6 +153,8 @@ namespace Metamatic
         private readonly List<VersionControlStorageDriver> m_Storages = new (null);
         private CancellationTokenSource m_DisposeCancellationTokenSource = new ();
         public DataSynchronizer synchronizer { get; private set; }
+        private event Action<Store> OnAddStore;
+        private event Action<Store> OnRemoveStore;
         #endregion
         
         public Repository(bool isGlobal = false)
@@ -169,15 +171,73 @@ namespace Metamatic
         /// <param name="address"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public IStore<T> GetStore<T>(string address)
+        public IStore<T> CreateStore<T>(string address, Store<T>.GetDefaultValue getDefaultValue)
         {
             var key = (typeof(T), address);
-            if (!m_Stores.ContainsKey(key))
+            if (m_Stores.ContainsKey(key))
             {
-                m_Stores[key] = new Store<T>(this, address);
+                throw new Exception($"Store for {typeof(T)} with address {address} already exists");
             }
+            m_Stores[key] = new Store<T>(this, address, getDefaultValue);
 
             return new ProxyStore<T>((Store<T>)m_Stores[key]);
+        }
+
+        public async UniTask<IStore<T>> CreateStore<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationToken cancellationToken)
+        {
+            var store = CreateStore<T>(address, getDefaultValue);
+            await store.WhenSynchronized(cancellationToken);
+            return store;
+        }
+        
+        /// <summary>
+        /// Get store asynchronously. It will wait until store will be created and synchronized. To create store use CreateStore method.
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public async UniTask<IStore<T>> GetStore<T>(string address, CancellationToken cancellationToken)
+        {
+            var store = await GetStoreInternal<T>(address, cancellationToken);
+            await store.WhenSynchronized(cancellationToken);
+            return store;
+        }
+        
+        /// <summary>
+        /// TODO: Consider refactoring of subscription mechanism, it may be more efficient if it will use Dictionary (Type, string) key
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        private UniTask<IStore<T>> GetStoreInternal<T>(string address, CancellationToken cancellationToken)
+        {
+            if (m_Stores.TryGetValue((typeof(T), address), out var store))
+            {
+                return new UniTask<IStore<T>>(new ProxyStore<T>((Store<T>)store));
+            }
+            var taskCompletionSource = new UniTaskCompletionSource<IStore<T>>();
+            Action<Store> handler = null;
+            handler = store =>
+            {
+                if (store is Store<T> typedStore && typedStore.address == address)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    OnAddStore -= handler;
+                    taskCompletionSource.TrySetResult(new ProxyStore<T>(typedStore));
+                }
+            };
+            OnAddStore += handler;
+            cancellationToken.Register(() =>
+            {
+                OnAddStore -= handler;
+                taskCompletionSource.TrySetCanceled();
+            });
+            return taskCompletionSource.Task;
         }
         
         public void AddStorage(VersionControlStorageDriver storage)
@@ -188,13 +248,6 @@ namespace Metamatic
         public void RemoveStorage(VersionControlStorageDriver storage)
         {
             m_Storages.Remove(storage);
-        }
-
-        public async UniTask<IStore<T>> GetStore<T>(string address, CancellationToken cancellationToken)
-        {
-            var store = GetStore<T>(address);
-            await store.WhenSynchronized(cancellationToken);
-            return store;
         }
         
         private async void Initialization(CancellationToken token)

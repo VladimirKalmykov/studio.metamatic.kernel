@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
+using Cysharp.Threading.Tasks;
 using UnityEngine.TestTools;
 using Metamatic;
 using Metamatic.Effects;
+using Metamatic.StorageDriver;
 using NUnit.Framework;
 
 namespace Tests.EditMode
@@ -14,40 +16,26 @@ namespace Tests.EditMode
         {
             public int a;
             public string b;
-            public string[] c;
-            public AssetReferenceScriptableEffect d;
         }
         [UnityTest]
-        public IEnumerator SaveAndLoadData()
+        public async UniTask CreateRepositoryAndAddStorages()
         {
-            BinaryFileSystemStorage.Save<TestData>("unittesting/simplesaveload", new TestData()
+            var repository = new Repository();
+            var storageA = new VersionControlStorageDriver(repository, new LocalMemoryStorage());
+            var storageB = new VersionControlStorageDriver(repository, new LocalMemoryStorage());
+            repository.AddStorage(storageA);
+            repository.AddStorage(storageB);
+            
+            /* Add data to storage A */
+            await storageA.Set<TestData>("key", new TestData
             {
-                a = 2,
-                b = "hello world",
-                c = new string[] { "one", "two", "three", "four", "five" },
-            });
-            var loadedData = BinaryFileSystemStorage.Load<TestData>("unittesting/simplesaveload");
-            Assert.AreEqual(2, loadedData.a);
-            Assert.AreEqual("hello world", loadedData.b);
-            Assert.True(loadedData.c != null && loadedData.c.Length == 5 && loadedData.c[0] == "one", "Array should be equal");
-            yield return null;
-        }
-        
-        [UnityTest]
-        public IEnumerator SaveAndLoadFileWithNestedFolders()
-        {
-            var address = "unittesting/sub1/sub2/data1";
-            BinaryFileSystemStorage.Save<TestData>(address, new TestData()
-            {
-                a = 2,
-                b = "hello world",
-                c = new string[] { "one", "two", "three", "four", "five" },
-            });
-            var loadedData = BinaryFileSystemStorage.Load<TestData>(address);
-            Assert.AreEqual(2, loadedData.a);
-            Assert.AreEqual("hello world", loadedData.b);
-            Assert.True(loadedData.c != null && loadedData.c.Length == 5 && loadedData.c[0] == "one", "Array should be equal");
-            yield return null;
+                a = 1,
+                b = "Hello",
+            }, 1, default);
+            /* Read data from storage A */
+            var (data, metadata, version) = await storageA.Get<TestData>("key", default);
+            Assert.AreEqual(1, data.a);
+            Assert.AreEqual("Hello", data.b);
         }
     }
 }

@@ -192,6 +192,7 @@ namespace Metamatic
         }
 
         public abstract TValue GetValue();
+        public abstract ref TValue GetRef();
 
         public abstract void SetValue(TValue value);
         
@@ -234,6 +235,11 @@ namespace Metamatic
         {
             return m_Value;
         }
+        
+        public override ref TValue GetRef()
+        {
+            return ref m_Value;
+        }
 
         /// <summary>
         /// Set value. This action will automatically unsubscribe plugin
@@ -273,6 +279,12 @@ namespace Metamatic
         public override TValue GetValue()
         {
             return m_Getter != null ? m_Getter.Invoke() : default;
+        }
+
+        public override ref TValue GetRef()
+        {
+            /* Get by reference is not supported for this type of state */
+            throw new Exception("Not supported");
         }
 
         public override void SetValue(TValue value)
@@ -333,6 +345,16 @@ namespace Metamatic
                 throw new NullReferenceException("Proxy value is null. Check HasValue() before calling GetValue()");
             }
             return m_Proxy.value.GetValue();
+        }
+
+        public override ref TValue GetRef()
+        {
+            if (m_Proxy == null)
+            {
+                throw new NullReferenceException("Proxy value is null. Check HasValue() before calling GetValue()");
+            }
+            ref var r = ref m_Proxy.value.GetRef();
+            return ref r;
         }
 
         public override void SetValue(TValue value)

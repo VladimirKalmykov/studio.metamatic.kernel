@@ -16,6 +16,11 @@ namespace Metamatic
             this.store = store;
             OnDispose += store.Inquire();
         }
+        public T value
+        {
+            get => store.value;
+            set => store.value = value;
+        }
         
         ~ProxyStore()
         {

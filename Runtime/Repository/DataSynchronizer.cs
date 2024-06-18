@@ -93,7 +93,7 @@ namespace DuckJumper2024
             drivers.Add(storage);
         }
 
-        public async UniTask<(T data, Storage.Metadata metadata, long version)> Sync<T>(string address, CancellationToken token)
+        public async UniTask<(T data, Storage.Metadata metadata, long version)> Sync<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationToken token)
         {
             /* Get StorageSynchronizer.UseStrategy attribute */
             var strategy = UseStrategyAttribute.GetStrategy<T>();
@@ -105,7 +105,7 @@ namespace DuckJumper2024
             var validResults = results.Where(result => result.Success).ToList();
             var notFoundDrivers = results.Where(result => result.Exception is Storage.NotFoundException).Select(result => result.Driver).ToList();
             var successfulDrivers = validResults.Select(result => result.Driver).ToList();
-
+            
             // Если нет успешных результатов, выбрасываем исключение
             if (!validResults.Any())
             {
@@ -114,41 +114,54 @@ namespace DuckJumper2024
 
             (T data, Storage.Metadata metadata, long version) bestData = default;
             (VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, Storage.Metadata Metadata, bool Success,
-                Exception Exception) bestSource = default;
-            switch (strategy)
+                Exception Exception)? bestSource = default;
+            if (notFoundDrivers.Count == validResults.Count)
             {
-                case BiDirectionalStrategy.GreaterVersionWins:
-                    bestSource = validResults.OrderByDescending(result => result.Data.version).First();
-                    bestData = bestSource.Data;
-                    break;
-                case BiDirectionalStrategy.RemoteWins:
-                    /* Find driver with storage marked at server */
-                    var remote = validResults.FirstOrDefault(result => result.Driver.storage.locationType == Storage.LocationType.Remote);
-                    if (remote.Driver != null)
-                    {
-                        bestSource = remote;
-                        bestData = remote.Data;
+                /* If there are only NotFound drivers, get default value */
+                var defaultValue = await getDefaultValue(address, token);
+                bestData = (defaultValue, default, 0);
+            }
+            else
+            {
+                switch (strategy)
+                {
+                    case BiDirectionalStrategy.GreaterVersionWins:
+                        bestSource = validResults.OrderByDescending(result => result.Data.version).First();
+                        bestData = bestSource.Value.Data;
                         break;
-                    }
-                    /* If there is no server storage, find driver with the greatest version */
-                    bestSource = validResults.OrderByDescending(result => result.Data.version).First();
-                    bestData = bestSource.Data;
-                    break;
-                case BiDirectionalStrategy.LocalWins:
-                    /* Find driver with storage marked as local */
-                    var local = validResults.FirstOrDefault(result => result.Driver.storage.locationType == Storage.LocationType.Local);
-                    if (local.Driver != null)
-                    {
-                        bestSource = local;
-                        bestData = local.Data;
+                    case BiDirectionalStrategy.RemoteWins:
+                        /* Find driver with storage marked at server */
+                        var remote = validResults.FirstOrDefault(result =>
+                            result.Driver.storage.locationType == Storage.LocationType.Remote);
+                        if (remote.Driver != null)
+                        {
+                            bestSource = remote;
+                            bestData = remote.Data;
+                            break;
+                        }
+
+                        /* If there is no server storage, find driver with the greatest version */
+                        bestSource = validResults.OrderByDescending(result => result.Data.version).First();
+                        bestData = bestSource.Value.Data;
                         break;
-                    }
-                    /* If there is no local storage, find driver with the greatest version */
-                    bestSource = validResults.OrderByDescending(result => result.Data.version).First();
-                    bestData = bestSource.Data;
-                    break;
-                case BiDirectionalStrategy.TimeControl:
-                    throw new NotImplementedException();
+                    case BiDirectionalStrategy.LocalWins:
+                        /* Find driver with storage marked as local */
+                        var local = validResults.FirstOrDefault(result =>
+                            result.Driver.storage.locationType == Storage.LocationType.Local);
+                        if (local.Driver != null)
+                        {
+                            bestSource = local;
+                            bestData = local.Data;
+                            break;
+                        }
+
+                        /* If there is no local storage, find driver with the greatest version */
+                        bestSource = validResults.OrderByDescending(result => result.Data.version).First();
+                        bestData = bestSource.Value.Data;
+                        break;
+                    case BiDirectionalStrategy.TimeControl:
+                        throw new NotImplementedException();
+                }
             }
             // Найти данные с наибольшей версией
             
@@ -157,7 +170,7 @@ namespace DuckJumper2024
             var updateTasks = new List<UniTask>(successfulDrivers.Count - 1 + notFoundDrivers.Count);
             foreach (var driver in successfulDrivers)
             {
-                if (driver == bestSource.Driver)
+                if (bestSource.HasValue && driver == bestSource.Value.Driver)
                 {
                     continue;
                 }

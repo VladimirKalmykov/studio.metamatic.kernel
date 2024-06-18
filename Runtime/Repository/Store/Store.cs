@@ -9,7 +9,7 @@ using UnityEngine.PlayerLoop;
 
 namespace Metamatic
 {
-    public class Store: IDisposable
+    public class Store: IStore
     {
         protected CancellationTokenSource m_DisposeCancellationTokenSource = new ();
         public CancellationToken disposeCancellationToken => m_DisposeCancellationTokenSource.Token;
@@ -35,7 +35,7 @@ namespace Metamatic
         /// When store is async disposing, it will be added to this dictionary until it will be disposed
         /// If next instance of the same type will be created, it will be disposed immediately
         /// </summary>
-        protected Dictionary<(Type, string), CancellationTokenSource> m_AsyncDisposingCancellationTokens = new();
+        protected static Dictionary<(Type, string), CancellationTokenSource> m_AsyncDisposingCancellationTokens = new();
         private class Branch
         {
             private readonly Store<T> m_Store;
@@ -57,6 +57,11 @@ namespace Metamatic
                 m_Store = store;
             }
             
+            public ref T GetRef()
+            {
+                return ref m_Value;
+            }
+            
             public void SetValue(T value)
             {
                 m_Value = value;
@@ -73,7 +78,7 @@ namespace Metamatic
                 });
             }
         }
-
+        public delegate UniTask<T> GetDefaultValue(string address, CancellationToken cancellationToken);
         public readonly string address;
         public readonly Repository repository;
         private readonly Dictionary<string, Branch> m_Branches = new();
@@ -85,9 +90,15 @@ namespace Metamatic
         /* Here will be property that will be increased when Inquire method will be called */
         private List<object> m_Inquiriences = new();
         private UniTaskCompletionSource m_SynchronizedTaskCompletionSource = new();
+        private readonly GetDefaultValue getDefaultValue;
         
+        public T value
+        {
+            get => Get();
+            set => Set(value);
+        }
         
-        internal Store(Repository repository, string address)
+        internal Store(Repository repository, string address, GetDefaultValue getDefaultValue)
         {
             this.repository = repository;
             this.address = address;
@@ -96,7 +107,7 @@ namespace Metamatic
             asyncDisposingTask = PostInitialization();
         }
         
-        internal Store(string address): this(Repository.global, address)
+        internal Store(string address, GetDefaultValue getDefaultValue): this(Repository.global, address, getDefaultValue)
         {
             
         }
@@ -215,6 +226,32 @@ namespace Metamatic
         }
         
         /// <summary>
+        /// Get value
+        /// </summary>
+        /// <returns></returns>
+        public T Get()
+        {
+#if DEBUG
+            if (!synchronized)
+            {
+                throw new System.Exception("Store is not synchronized yet");
+            }
+#endif
+            return m_CurrentBranch.value.value;
+        }
+        
+        public ref T GetByRef()
+        {
+#if DEBUG
+            if (!synchronized)
+            {
+                throw new System.Exception("Store is not synchronized yet");
+            }
+#endif
+            return ref m_CurrentBranch.value.GetRef();
+        }
+        
+        /// <summary>
         /// Set value
         /// </summary>
         /// <param name="value"></param>
@@ -228,20 +265,16 @@ namespace Metamatic
 #endif
             m_CurrentBranch.value.value = value;
         }
-        
-        /// <summary>
-        /// Get value
-        /// </summary>
-        /// <returns></returns>
-        public T Get()
+
+        public void Modify(IStore<T>.Modifier action)
         {
-#if DEBUG
-            if (!synchronized)
-            {
-                throw new System.Exception("Store is not synchronized yet");
-            }
-#endif
-            return m_CurrentBranch.value.value;
+            Set(action(Get()));
+        }
+
+        public void ModifyRef(IStore<T>.ModifierRef action)
+        {
+            ref T r = ref m_CurrentBranch.value.GetRef();
+            action(ref r);
         }
         
         /// <summary>
@@ -310,7 +343,8 @@ namespace Metamatic
                     {
                         m_SynchronizedTaskCompletionSource = new UniTaskCompletionSource();
                     }
-                    var versionedData = await repository.synchronizer.Sync<T>(address, combinedCancellationToken);
+
+                    var versionedData = await repository.synchronizer.Sync<T>(address, getDefaultValue, combinedCancellationToken);
                     m_CurrentBranch.value.value = versionedData.data;
                     version = versionedData.version;
                     synchronized = true;
