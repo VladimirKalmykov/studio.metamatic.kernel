@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DuckJumper2024;
+using Metamatic.Actions;
+using Metamatic.Events;
 using Metamatic.StorageDriver;
 using UnityEngine;
 using UnityEngine.PlayerLoop;
@@ -130,7 +132,7 @@ namespace Metamatic
             {
                 if (_instance == null)
                 {
-                    _instance = new Repository(true);
+                    _instance = new Repository(true, true);
                 }
                 return _instance;
             }
@@ -148,21 +150,54 @@ namespace Metamatic
         #region Private properties
 
         private readonly bool m_IsGlobalInstance;
+        private readonly bool m_AutoSync;
         private Dictionary<(string address, Type dataType, Type metadataType), (float time, float responseDuration, int retryCount, NetworkOperationStatus status, Exception exception)> m_ActiveRequests = new();
         private readonly Dictionary<(Type, string), Store> m_Stores = new ();
-        private readonly List<VersionControlStorageDriver> m_Storages = new (null);
+        private readonly List<VersionControlStorageDriver> m_Drivers = new ();
+        public IReadOnlyList<VersionControlStorageDriver> drivers => m_Drivers.AsReadOnly();
         private CancellationTokenSource m_DisposeCancellationTokenSource = new ();
         public DataSynchronizer synchronizer { get; private set; }
         private event Action<Store> OnAddStore;
         private event Action<Store> OnRemoveStore;
         #endregion
         
-        public Repository(bool isGlobal = false)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="isGlobal">Indicates that this repository is singleton</param>
+        /// <param name="autoSync">Auto sync all stores on Dispatcher's SystemEvent.Savepoint event</param>
+        public Repository(bool isGlobal = false, bool autoSync = false)
         {
             m_IsGlobalInstance = isGlobal;
+            m_AutoSync = autoSync;
             /* Initialize memory storage */
             inMemoryStorage = new VersionControlStorageDriver(this, new LocalMemoryStorage());
             Initialization(m_DisposeCancellationTokenSource.Token);
+        }
+        
+        private async void Initialization(CancellationToken token)
+        {
+            /* Add memory storage to the list of storages */
+            m_Drivers.Add(inMemoryStorage);
+            /* Load additional storages from project settings  */
+            if (m_IsGlobalInstance)
+            {
+                LoadStoragesFromProjectSettings();
+            }
+            
+            /* Add storages synchronizer */
+            synchronizer = new DataSynchronizer(this);
+            /* Subscribe to events */
+            using var savepointEvent = m_AutoSync
+                ? Dispatcher.global.Subscribe<SystemEvent>(evt =>
+                {
+                    if (evt == SystemEvent.Savepoint)
+                    {
+                        SyncAll();
+                    }
+                })
+                : DisposableAction.Empty;
+            await token;
         }
 
         /// <summary>
@@ -242,27 +277,26 @@ namespace Metamatic
         
         public void AddStorage(VersionControlStorageDriver storage)
         {
-            m_Storages.Add(storage);
+            m_Drivers.Add(storage);
         }
         
         public void RemoveStorage(VersionControlStorageDriver storage)
         {
-            m_Storages.Remove(storage);
+            m_Drivers.Remove(storage);
         }
         
-        private async void Initialization(CancellationToken token)
+        /// <summary>
+        /// Sync all stores
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        public void SyncAll(CancellationToken cancellationToken = default)
         {
-            /* Add memory storage to the list of storages */
-            m_Storages.Add(inMemoryStorage);
-            /* Load additional storages from project settings  */
-            if (m_IsGlobalInstance)
+            Logger.Log("Sync all stores");
+            var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(m_DisposeCancellationTokenSource.Token, cancellationToken);
+            foreach (var store in m_Stores.Values)
             {
-                LoadStoragesFromProjectSettings();
+                store.Sync(combinedCancellation.Token).Forget();
             }
-            
-            /* Add storages synchronizer */
-            synchronizer = new DataSynchronizer(this, m_Storages.ToArray());
-            await token;
         }
         
         private void LoadStoragesFromProjectSettings()
@@ -280,7 +314,7 @@ namespace Metamatic
                     {
                         var storage = (Storage)Activator.CreateInstance(sourceType);
                         storage.locationType = Storage.LocationType.Remote;
-                        m_Storages.Add(new VersionControlStorageDriver(this, storage));
+                        m_Drivers.Add(new VersionControlStorageDriver(this, storage));
                         break;
                     }
                     else
@@ -297,7 +331,7 @@ namespace Metamatic
                     {
                         var storage = (Storage)Activator.CreateInstance(sourceType);
                         storage.locationType = Storage.LocationType.Local;
-                        m_Storages.Add(new VersionControlStorageDriver(this, storage));
+                        m_Drivers.Add(new VersionControlStorageDriver(this, storage));
                         break;
                     }
                     else

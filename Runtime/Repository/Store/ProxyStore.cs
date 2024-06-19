@@ -31,17 +31,11 @@ namespace Metamatic
         {
             return store.WhenSynchronized(cancellationToken);
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public DisposableAction AddBranch(string name, bool makeCurrent = false)
-        {
-            return store.AddBranch(name, makeCurrent);
-        }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void CheckoutBranch(string name)
+        public DisposableAction Checkout(string branchName, bool createIfNotExists = false, bool removeAfterDispose = true)
         {
-            store.CheckoutBranch(name);
+            return store.Checkout(branchName, createIfNotExists, removeAfterDispose);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -49,7 +43,32 @@ namespace Metamatic
         {
             store.Set(value);
         }
-        
+
+        public UniTask<T> GetPristineValue(CancellationToken cancellationToken)
+        {
+            return store.GetPristineValue(cancellationToken);
+        }
+
+        public void Modify(IStore<T>.Modifier action)
+        {
+            store.Modify(action);
+        }
+
+        public void ModifyRef(IStore<T>.ModifierRef action)
+        {
+            store.ModifyRef(action);
+        }
+
+        public void Populate(T value)
+        {
+            store.Populate(value);
+        }
+
+        public void Populate(IStore<T>.Modifier modifier)
+        {
+            store.Populate(modifier);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Get()
         {
@@ -90,13 +109,14 @@ namespace Metamatic
         {
             return store.Reset(cancellationToken);
         }
-        
-        public void Dispose()
+    
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public UniTask<IDisposable> Lock(CancellationToken cancellationToken)
         {
-            Dispose(false, false);
+            return store.Lock(cancellationToken);
         }
-        
-        public void Dispose(bool isCalledFromFinalizer, bool isAsync)
+
+        public void Dispose(bool isCalledFromFinalizer = false, bool isAsync = false)
         {
             if (isCalledFromFinalizer)
             {

@@ -36,6 +36,12 @@ namespace DuckJumper2024
                 return attributes[0].strategy;
             }
         }
+        private enum GetDataResult
+        {
+            Success,
+            NotFound,
+            Error
+        }
         public enum BiDirectionalStrategy
         {
             /// <summary>
@@ -56,25 +62,11 @@ namespace DuckJumper2024
             TimeControl
         }
         
-        private readonly List<VersionControlStorageDriver> drivers = new();
         public readonly Repository repository;
         
-        public DataSynchronizer(Repository repository, Storage[] storages)
+        public DataSynchronizer(Repository repository)
         {
             this.repository = repository;
-            foreach (var storage in storages)
-            {
-                RegisterStorage(storage);
-            }
-        }
-        
-        public DataSynchronizer(Repository repository, VersionControlStorageDriver[] storages)
-        {
-            this.repository = repository;
-            foreach (var storage in storages)
-            {
-                RegisterStorage(storage);
-            }
         }
         
         
@@ -82,28 +74,18 @@ namespace DuckJumper2024
         {
             return new VersionControlStorageDriver(repository, storage);
         }
-
-        public void RegisterStorage(Storage storage)
-        {
-            drivers.Add(WrapStorage(storage));
-        }
         
-        public void RegisterStorage(VersionControlStorageDriver storage)
-        {
-            drivers.Add(storage);
-        }
-
         public async UniTask<(T data, Storage.Metadata metadata, long version)> Sync<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationToken token)
         {
             /* Get StorageSynchronizer.UseStrategy attribute */
             var strategy = UseStrategyAttribute.GetStrategy<T>();
             
-            var tasks = drivers.Select(driver => GetData<T>(driver, address, token));
-            var results = await UniTask.WhenAll((IEnumerable<UniTask<(VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, Storage.Metadata Metadata, bool Success, Exception Exception)>>)tasks);
+            var tasks = repository.drivers.Select(driver => GetData<T>(driver, address, token));
+            var results = await UniTask.WhenAll(tasks);
 
             // Фильтрация NotFound и исключение других ошибок
-            var validResults = results.Where(result => result.Success).ToList();
-            var notFoundDrivers = results.Where(result => result.Exception is Storage.NotFoundException).Select(result => result.Driver).ToList();
+            var validResults = results.Where(result => result.Result != GetDataResult.Error).ToList();
+            var notFoundDrivers = results.Where(result => result.Result == GetDataResult.NotFound).Select(result => result.Driver).ToList();
             var successfulDrivers = validResults.Select(result => result.Driver).ToList();
             
             // Если нет успешных результатов, выбрасываем исключение
@@ -113,19 +95,26 @@ namespace DuckJumper2024
             }
 
             (T data, Storage.Metadata metadata, long version) bestData = default;
-            (VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, Storage.Metadata Metadata, bool Success,
+            (VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, GetDataResult Result,
                 Exception Exception)? bestSource = default;
             if (notFoundDrivers.Count == validResults.Count)
             {
                 /* If there are only NotFound drivers, get default value */
                 var defaultValue = await getDefaultValue(address, token);
-                bestData = (defaultValue, default, 0);
+                bestData = (defaultValue, default, 1);
             }
             else
             {
                 switch (strategy)
                 {
                     case BiDirectionalStrategy.GreaterVersionWins:
+                        /* Check versions are equal */
+                        if (validResults.Select(result => result.Data.version).Distinct().Count() == 1)
+                        {
+                            /* Do not specify best source. Storages are the same. Update is not required */
+                            bestData = bestSource.Value.Data;
+                            break;
+                        }
                         bestSource = validResults.OrderByDescending(result => result.Data.version).First();
                         bestData = bestSource.Value.Data;
                         break;
@@ -163,40 +152,41 @@ namespace DuckJumper2024
                         throw new NotImplementedException();
                 }
             }
-            // Найти данные с наибольшей версией
-            
 
             // Обновить все драйверы до наибольшей версии
-            var updateTasks = new List<UniTask>(successfulDrivers.Count - 1 + notFoundDrivers.Count);
-            foreach (var driver in successfulDrivers)
+            if (bestSource.HasValue)
             {
-                if (bestSource.HasValue && driver == bestSource.Value.Driver)
+                var updateTasks = new List<UniTask>(successfulDrivers.Count);
+                foreach (var driver in successfulDrivers)
                 {
-                    continue;
+                    if (driver == bestSource.Value.Driver)
+                    {
+                        continue;
+                    }
+
+                    updateTasks.Add(UpdateData(driver, address, bestData, token));
                 }
-
-                updateTasks.Add(UpdateData(driver, address, bestData, token));
+            
+                await UniTask.WhenAll(updateTasks);
             }
-
-            foreach (var notFoundDriver in notFoundDrivers)
-            {
-                updateTasks.Add(UpdateData(notFoundDriver, address, bestData, token));
-            }
-            await UniTask.WhenAll(updateTasks);
 
             return bestData;
         }
 
-        private async UniTask<(VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, bool Success, Exception Exception)> GetData<T>(VersionControlStorageDriver driver, string address, CancellationToken token)
+        private async UniTask<(VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, GetDataResult Result, Exception Exception)> GetData<T>(VersionControlStorageDriver driver, string address, CancellationToken token)
         {
             try
             {
                 var result = await driver.Get<T>(address, token);
-                return (driver, result, true, null);
+                return (driver, result, GetDataResult.Success, null);
+            }
+            catch (Storage.NotFoundException ex)
+            {
+                return (driver, default, GetDataResult.NotFound, ex);
             }
             catch (Exception ex)
             {
-                return (driver, default, false, ex);
+                return (driver, default, GetDataResult.Error, ex);
             }
         }
 

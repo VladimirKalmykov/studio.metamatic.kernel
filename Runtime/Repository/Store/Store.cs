@@ -9,16 +9,21 @@ using UnityEngine.PlayerLoop;
 
 namespace Metamatic
 {
-    public class Store: IStore
+    public abstract class Store: IStore
     {
+        protected const string MASTER_BRANCH_NAME = "master";
         protected CancellationTokenSource m_DisposeCancellationTokenSource = new ();
         public CancellationToken disposeCancellationToken => m_DisposeCancellationTokenSource.Token;
         public bool isDisposed { get; private set; }
         public UniTask asyncDisposingTask { get; protected set; }
-        protected Store()
+        public readonly string address;
+        public readonly Type type;
+        protected Store(string address, Type type)
         {
-            
+            this.address = address;
+            this.type = type;
         }
+        public abstract UniTask Sync(CancellationToken cancellationToken);
         public void Dispose()
         {
             if (isDisposed)
@@ -79,11 +84,11 @@ namespace Metamatic
             }
         }
         public delegate UniTask<T> GetDefaultValue(string address, CancellationToken cancellationToken);
-        public readonly string address;
         public readonly Repository repository;
         private readonly Dictionary<string, Branch> m_Branches = new();
         private readonly MicroState<Branch> m_CurrentBranch = new();
-        private readonly DeferLock m_DeferLock = new DeferLock();
+        private readonly DeferLock m_SyncLock = new ();
+        private readonly DeferLock m_CheckoutBranchLock = new ();
         public bool synchronized { get; private set; } = false;
         public UniTask synchronizationTask { get; private set; }
         public long version { get; private set; } = 0;
@@ -98,13 +103,12 @@ namespace Metamatic
             set => Set(value);
         }
         
-        internal Store(Repository repository, string address, GetDefaultValue getDefaultValue)
+        internal Store(Repository repository, string address, GetDefaultValue getDefaultValue): base(address, typeof(T))
         {
             this.repository = repository;
-            this.address = address;
-            m_Branches["default"] = new Branch(this, "default", default, true);
-            m_CurrentBranch.value = m_Branches["default"];
-            asyncDisposingTask = PostInitialization();
+            m_Branches[MASTER_BRANCH_NAME] = new Branch(this, MASTER_BRANCH_NAME, default, true);
+            m_CurrentBranch.value = m_Branches[MASTER_BRANCH_NAME];
+            asyncDisposingTask = PostInitialization().Preserve();
         }
         
         internal Store(string address, GetDefaultValue getDefaultValue): this(Repository.global, address, getDefaultValue)
@@ -182,10 +186,10 @@ namespace Metamatic
         /// <summary>
         /// Add new branch
         /// </summary>
-        /// <param name="name"></param>
-        /// <param name="makeCurrent"></param>
+        /// <param name="name">Branch name</param>
+        /// <param name="checkout">Make branch current</param>
         /// <returns></returns>
-        public DisposableAction AddBranch(string name, bool makeCurrent = false)
+        private void InternalCreateBranch(string name, bool checkout = false)
         {
 #if DEBUG
             if (!synchronized)
@@ -199,18 +203,20 @@ namespace Metamatic
             }
             var currentBranch = m_CurrentBranch.value;
             var newBranch = m_Branches[name] = new Branch(this, name, currentBranch.value, currentBranch.isDirty);
-            if (makeCurrent)
+            if (checkout)
             {
                 m_CurrentBranch.value = newBranch;
             }
-            return new DisposableAction(() =>
-            {
-                m_CurrentBranch.value = m_Branches["default"];
-                m_Branches.Remove(name);
-            });
         }
-        
-        public void CheckoutBranch(string name)
+
+        /// <summary>
+        /// Make branch with name current
+        /// </summary>
+        /// <param name="branchName"></param>
+        /// <param name="createIfNotExists"></param>
+        /// <param name="removeAfterDispose"></param>
+        /// <exception cref="Exception"></exception>
+        public DisposableAction Checkout(string branchName, bool createIfNotExists = false, bool removeAfterDispose = true)
         {
 #if DEBUG
             if (!synchronized)
@@ -218,11 +224,42 @@ namespace Metamatic
                 throw new System.Exception("Store is not synchronized yet");
             }
 #endif
-            if (!m_Branches.ContainsKey(name))
+            if (m_CheckoutBranchLock.IsLocked)
             {
-                throw new System.Exception($"Branch with name {name} not found");
+                throw new System.Exception($"Checkout operation is locked by branch {m_CurrentBranch.value.name}. Dispose previous checkout operation first");
             }
-            m_CurrentBranch.value = m_Branches[name];
+            if (!m_Branches.ContainsKey(branchName))
+            {
+                if (createIfNotExists)
+                {
+                    InternalCreateBranch(branchName);
+                }
+                else
+                {
+                    throw new System.Exception($"Branch with name {branchName} not found");
+                }
+            }
+            var previousBranchName = m_CurrentBranch.value.name;
+            var unlock = m_CheckoutBranchLock.Lock();
+            m_CurrentBranch.value = m_Branches[branchName];
+            return DisposableAction.Create(() =>
+            {
+                unlock.Dispose();
+                if (m_Branches.ContainsKey(previousBranchName))
+                {
+                    m_CurrentBranch.value = m_Branches[previousBranchName];
+                }
+                else
+                {
+                    m_CurrentBranch.value = m_Branches[MASTER_BRANCH_NAME];
+                }
+
+                if (removeAfterDispose && createIfNotExists)
+                {
+                    /* Remove created branch */
+                    m_Branches.Remove(branchName);
+                }
+            });
         }
         
         /// <summary>
@@ -266,6 +303,13 @@ namespace Metamatic
             m_CurrentBranch.value.value = value;
         }
 
+        public async UniTask<T> GetPristineValue(CancellationToken cancellationToken)
+        {
+            /* Read value from the in-memory storage */
+            var (data, metadata, version) = await repository.inMemoryStorage.Get<T>(address, cancellationToken);
+            return data;
+        }
+
         public void Modify(IStore<T>.Modifier action)
         {
             Set(action(Get()));
@@ -276,7 +320,25 @@ namespace Metamatic
             ref T r = ref m_CurrentBranch.value.GetRef();
             action(ref r);
         }
-        
+
+        public void Populate(T value)
+        {
+            /* Modify every branch */
+            foreach (var branch in m_Branches.Values)
+            {
+                branch.value = value;
+            }
+        }
+
+        public void Populate(IStore<T>.Modifier modifier)
+        {
+            /* Modify every branch */
+            foreach (var branch in m_Branches.Values)
+            {
+                branch.value = modifier(branch.value);
+            }
+        }
+
         /// <summary>
         /// Immediately get current current branch value and subscribe to value changes.
         /// If current branch will be changed, subscription will be updated.
@@ -301,7 +363,7 @@ namespace Metamatic
         }
 
         /// <summary>
-        /// Commit branch changes
+        /// Commit branch changes to the in-memory storage
         /// </summary>
         /// <param name="branchName"></param>
         /// <param name="cancellationToken"></param>
@@ -313,14 +375,14 @@ namespace Metamatic
                 throw new System.Exception($"Branch with name {branchName} not found");
             }
             var branch = m_Branches[branchName];
-            using (await m_DeferLock.Lock(cancellationToken))
+            using (await m_SyncLock.Lock(cancellationToken))
             {
                 await this.repository.inMemoryStorage.Set(address, branch.value, version + 1, cancellationToken);
             }
         }
         
         /// <summary>
-        /// Commit current branch changes
+        /// Commit current branch changes to the in-memory storage
         /// </summary>
         /// <param name="cancellationToken"></param>
         public UniTask Commit(CancellationToken cancellationToken)
@@ -332,10 +394,10 @@ namespace Metamatic
         /// Sync current branch with remote storages
         /// </summary>
         /// <param name="cancellationToken"></param>
-        public async UniTask Sync(CancellationToken cancellationToken)
+        public override async UniTask Sync(CancellationToken cancellationToken)
         {
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, disposeCancellationToken).Token;
-            using (await m_DeferLock.Lock(combinedCancellationToken))
+            using (await m_SyncLock.Lock(combinedCancellationToken))
             {
                 try
                 {
@@ -378,7 +440,7 @@ namespace Metamatic
                 throw new System.Exception("Store is not synchronized yet");
             }
 #endif
-            using (await m_DeferLock.Lock(cancellationToken))
+            using (await m_SyncLock.Lock(cancellationToken))
             {
                 var (data, metadata, version) = await repository.inMemoryStorage.Get<T>(address, CancellationToken.None);
                 if (populate)
@@ -404,6 +466,16 @@ namespace Metamatic
         public async UniTask Reset(CancellationToken cancellationToken)
         {
             await Reset(false, cancellationToken);
+        }
+
+        public async UniTask<IDisposable> Lock(CancellationToken cancellationToken)
+        {
+           var disposeLock = await m_SyncLock.Lock(cancellationToken);
+
+           return new DisposableAction(() =>
+           {
+               disposeLock.Dispose();
+           });
         }
 
         public async ValueTask DisposeAsync()
