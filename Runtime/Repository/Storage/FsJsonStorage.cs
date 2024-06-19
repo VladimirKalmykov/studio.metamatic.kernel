@@ -15,6 +15,11 @@ namespace Metamatic
     {
         public override UniTask<(TData, Metadata, TMetadata)> Get<TData, TMetadata>(string address, CancellationToken token)
         {
+            if (!enabled)
+            {
+                throw new Storage.DisabledException();
+            }
+            
             var taskCompletionSource = new UniTaskCompletionSource<(TData, Storage.Metadata, TMetadata)>();
             var uri = GetUriAddress<TData>(address);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
@@ -54,6 +59,10 @@ namespace Metamatic
 
         public override UniTask Set<TData, TMetadata>(string address, TData value, TMetadata customMetadata, CancellationToken token)
         {
+            if (!enabled)
+            {
+                throw new Storage.DisabledException();
+            }
             var taskCompletionSource = new UniTaskCompletionSource();
             var uri = GetUriAddress<TData>(address);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);
@@ -93,6 +102,10 @@ namespace Metamatic
 
         public override UniTask Delete<TData>(string address, CancellationToken token)
         {
+            if (!enabled)
+            {
+                throw new Storage.DisabledException();
+            }
             var taskCompletionSource = new UniTaskCompletionSource();
             var uri = GetUriAddress<TData>(address);
             string fullPath = Path.Combine(Application.persistentDataPath, uri);

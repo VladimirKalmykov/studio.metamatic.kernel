@@ -66,6 +66,17 @@ namespace Metamatic
         }
         
         /// <summary>
+        /// Storage is disabled
+        /// </summary>
+        public class DisabledException: UnreachableException
+        {
+            public DisabledException(): base("Storage is disabled")
+            {
+                
+            }
+        }
+        
+        /// <summary>
         /// Connection refused for some reasons
         /// </summary>
         public class ConnectionRefusedException: UnreachableException
@@ -77,6 +88,7 @@ namespace Metamatic
         }
         #endregion
         
+        #region Structures and classes
         public enum LocationType
         {
             Local,
@@ -104,6 +116,10 @@ namespace Metamatic
                 this.custom = custom;
             }
         }
+        #endregion
+        
+        public bool enabled = true;
+        
         public readonly UriLockerManager lockerManager = new UriLockerManager();
         public abstract UniTask<(TData data, Metadata metadata, TMetadata customMetadata)> Get<TData, TMetadata>(string address, CancellationToken token);
 

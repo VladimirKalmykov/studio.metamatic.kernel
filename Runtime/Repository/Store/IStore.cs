@@ -12,8 +12,12 @@ namespace Metamatic
     {
         public delegate T Modifier(T value);
         public delegate ref T ModifierRef(ref T value);
+        public delegate T Merger(T valueFrom, T valueTo);
         public T value { get; set; }
+        public long version { get; }
+        public bool isDirty { get; }
         public UniTask WhenSynchronized(CancellationToken cancellationToken);
+        public DisposableAction Checkout(string branchName, string sourceBranchName, bool createIfNotExists = false, bool removeAfterDispose = true);
         public DisposableAction Checkout(string branchName, bool createIfNotExists = false, bool removeAfterDispose = true);
         public T Get();
         public void Set(T value);
@@ -23,7 +27,9 @@ namespace Metamatic
         public void Populate(T value);
         public void Populate(Modifier modifier);
         public DisposableAction Subscribe(Action<T> action);
-        public UniTask Commit(string branchName, CancellationToken cancellationToken);
+        public void Merge(string fromBranch, string toBranch, Merger merger);
+        public void Merge(string fromBranch, Merger merger);
+        public void Merge(Merger merger);
         public UniTask Commit(CancellationToken cancellationToken);
         public UniTask Sync(CancellationToken cancellationToken);
         public UniTask Reset(bool populate, CancellationToken cancellationToken);

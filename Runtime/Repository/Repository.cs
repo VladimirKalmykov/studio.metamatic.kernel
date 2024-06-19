@@ -18,19 +18,30 @@ namespace Metamatic
     /// Storage agent can implement logic for handling network operations, like timeouts, retries, etc.
     /// Otherwise, it can be used as a simple wrapper for storage operations and, for example, logging.
     /// </summary>
-    public class Repository
+    public class Repository: IDisposable
     {
         #region Exceptions
 
         /// <summary>
         /// This exception means that current request should be retrying
         /// </summary>
-        public class RetryRequiredException : Exception
+        public class RetryIsRequiredException : Exception
         {
-            public readonly int retryCount;
-            public RetryRequiredException(int retryCount)
+            public readonly float delay;
+            public RetryIsRequiredException(float delay)
             {
-                this.retryCount = retryCount;
+                this.delay = delay;
+            }
+        }
+        
+        public class DisableStorageIsRequiredException : Exception
+        {
+            public readonly float duration;
+            public readonly Exception causeException;
+            public DisableStorageIsRequiredException(float duration, Exception causeException) : base("Disable storage for " + duration + " seconds")
+            {
+                this.duration = duration;
+                this.causeException = causeException;
             }
         }
         #endregion
@@ -53,7 +64,8 @@ namespace Metamatic
             public enum RequestType
             {
                 Get,
-                Set
+                Set,
+                Delete
             }
             public struct Stats
             {
@@ -144,7 +156,20 @@ namespace Metamatic
         /// Default timeout for network operations
         /// </summary>
         public float timeout { get; set; } = 10f;
+        /// <summary>
+        /// Maximum retry count for network operations
+        /// </summary>
+        public int maxRetryCount { get; set; } = 2;
+        /// <summary>
+        /// Delay before retrying the request
+        /// </summary>
+        public float retryDelay { get; set; } = 1f;
+        /// <summary>
+        /// Disable storage for some time if the request is failed
+        /// </summary>
+        public float disableStorageDuration { get; set; } = 60f;
         public readonly VersionControlStorageDriver inMemoryStorage;
+        public CancellationToken disposeToken => m_DisposeCancellationTokenSource.Token;
         #endregion
         
         #region Private properties
@@ -159,6 +184,7 @@ namespace Metamatic
         public DataSynchronizer synchronizer { get; private set; }
         private event Action<Store> OnAddStore;
         private event Action<Store> OnRemoveStore;
+        private bool m_Disposed = false;
         #endregion
         
         /// <summary>
@@ -172,7 +198,7 @@ namespace Metamatic
             m_AutoSync = autoSync;
             /* Initialize memory storage */
             inMemoryStorage = new VersionControlStorageDriver(this, new LocalMemoryStorage());
-            Initialization(m_DisposeCancellationTokenSource.Token);
+            Initialization(disposeToken);
         }
         
         private async void Initialization(CancellationToken token)
@@ -292,7 +318,7 @@ namespace Metamatic
         public void SyncAll(CancellationToken cancellationToken = default)
         {
             Logger.Log("Sync all stores");
-            var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(m_DisposeCancellationTokenSource.Token, cancellationToken);
+            var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(disposeToken, cancellationToken);
             foreach (var store in m_Stores.Values)
             {
                 store.Sync(combinedCancellation.Token).Forget();
@@ -344,11 +370,19 @@ namespace Metamatic
         
         ~Repository()
         {
-            m_DisposeCancellationTokenSource.Cancel();
+            Dispose();
         }
-        
+
+        public void Dispose()
+        {
+            if (m_Disposed) return;
+            m_Disposed = true;
+            m_DisposeCancellationTokenSource.Cancel();
+            GC.SuppressFinalize(this);
+        }
+
         /// <summary>
-        /// The method is responsible for logging and requests retrying
+        /// The method is responsible for logging and requests retrying of get requests
         /// </summary>
         /// <param name="address"></param>
         /// <param name="task"></param>
@@ -357,7 +391,7 @@ namespace Metamatic
         /// <typeparam name="TMetadata"></typeparam>
         /// <returns></returns>
         /// tryRequiredException"></exception>
-        public async UniTask<(T, Storage.Metadata, TMetadata)> ManageRequest<T, TMetadata>(Storage storage, string address, UniTask<(T, Storage.Metadata, TMetadata)> task, int retryCount = 0)
+        public async UniTask<(T, Storage.Metadata, TMetadata)> ManageGetRequest<T, TMetadata>(Storage storage, string address, UniTask<(T, Storage.Metadata, TMetadata)> task, int retryCount = 0)
         {
             var startTime = Time.realtimeSinceStartup;
             var requestStats = new RequestMonitor.Stats()
@@ -370,14 +404,15 @@ namespace Metamatic
             };
             
             var requestMonitor = RequestMonitor.Create(this, storage, RequestMonitor.RequestType.Get, address, typeof(T), requestStats);
-            requestMonitor.Release(requestStats);
+            requestMonitor.Update(requestStats);
             
             try
             {
+                
                 var result = await task;
                 requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
                 requestStats.status = NetworkOperationStatus.Completed;
-                requestMonitor.Update(requestStats);
+                requestMonitor.Release(requestStats);
                 return result;
             }
             catch (Storage.TimeoutException e)
@@ -386,12 +421,13 @@ namespace Metamatic
                 requestStats.status = NetworkOperationStatus.Retry;
                 requestStats.exception = e;
                 requestMonitor.Release(requestStats);
-                if (retryCount < 3) // TODO: Use some global configuration about max retry count
+                if (retryCount < maxRetryCount)
                 {
-                    throw new RetryRequiredException(requestStats.retryCount);
+                    throw new RetryIsRequiredException(retryDelay);
                 }
                 
-                throw e;
+                // TODO: Consider increase the time of disabling storage on each retry
+                throw new DisableStorageIsRequiredException(disableStorageDuration, e);
             }
             catch (OperationCanceledException e)
             {
@@ -406,6 +442,133 @@ namespace Metamatic
                 requestStats.status = NetworkOperationStatus.Failed;
                 requestStats.exception = e;
                 requestMonitor.Release(requestStats);
+
+                if (e is not Storage.DisabledException && e is not Storage.NotFoundException)
+                {
+                    // TODO: Consider increase the time of disabling storage on each retry
+                    throw new DisableStorageIsRequiredException(disableStorageDuration, e);
+                }
+
+                throw;
+            }
+        }
+        
+        public async UniTask ManageSetRequest<T, TMetadata>(Storage storage, string address, UniTask task, int retryCount = 0)
+        {
+            var startTime = Time.realtimeSinceStartup;
+            var requestStats = new RequestMonitor.Stats()
+            {
+                responseDuration = 0f,
+                retryCount = retryCount,
+                startTime = startTime,
+                status = NetworkOperationStatus.Pending,
+                exception = null
+            };
+            
+            var requestMonitor = RequestMonitor.Create(this, storage, RequestMonitor.RequestType.Set, address, typeof(T), requestStats);
+            requestMonitor.Update(requestStats);
+            
+            try
+            {
+                await task;
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Completed;
+                requestMonitor.Release(requestStats);
+            }
+            catch (Storage.TimeoutException e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Retry;
+                requestStats.exception = e;
+                requestMonitor.Release(requestStats);
+                if (retryCount < maxRetryCount)
+                {
+                    throw new RetryIsRequiredException(retryDelay);
+                }
+                
+                // TODO: Consider increase the time of disabling storage on each retry
+                throw new DisableStorageIsRequiredException(disableStorageDuration, e);
+            }
+            catch (OperationCanceledException e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Cancelled;
+                requestMonitor.Release(requestStats);
+                throw;
+            }
+            catch (Exception e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Failed;
+                requestStats.exception = e;
+                requestMonitor.Release(requestStats);
+                
+                if (e is not Storage.DisabledException && e is not Storage.NotFoundException)
+                {
+                    // TODO: Consider increase the time of disabling storage on each retry
+                    throw new DisableStorageIsRequiredException(disableStorageDuration, e);
+                }
+
+                throw;
+            }
+        }
+        
+        public async UniTask ManageDeleteRequest<T>(Storage storage, string address, UniTask task, int retryCount = 0)
+        {
+            var startTime = Time.realtimeSinceStartup;
+            var requestStats = new RequestMonitor.Stats()
+            {
+                responseDuration = 0f,
+                retryCount = retryCount,
+                startTime = startTime,
+                status = NetworkOperationStatus.Pending,
+                exception = null
+            };
+            
+            var requestMonitor = RequestMonitor.Create(this, storage, RequestMonitor.RequestType.Delete, address, typeof(T), requestStats);
+            requestMonitor.Update(requestStats);
+            
+            try
+            {
+                await task;
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Completed;
+                requestMonitor.Release(requestStats);
+            }
+            catch (Storage.TimeoutException e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Retry;
+                requestStats.exception = e;
+                requestMonitor.Release(requestStats);
+                if (retryCount < maxRetryCount) // TODO: Use some global configuration about max retry count
+                {
+                    throw new RetryIsRequiredException(retryDelay);
+                }
+                
+                // TODO: Consider increase the time of disabling storage on each retry
+                throw new DisableStorageIsRequiredException(disableStorageDuration, e);
+            }
+            catch (OperationCanceledException e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Cancelled;
+                requestMonitor.Release(requestStats);
+                throw;
+            }
+            catch (Exception e)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.Failed;
+                requestStats.exception = e;
+                requestMonitor.Release(requestStats);
+                
+                if (e is not Storage.DisabledException && e is not Storage.NotFoundException)
+                {
+                    // TODO: Consider increase the time of disabling storage on each retry
+                    throw new DisableStorageIsRequiredException(disableStorageDuration, e);
+                }
+
                 throw;
             }
         }

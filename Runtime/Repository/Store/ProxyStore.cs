@@ -27,17 +27,25 @@ namespace Metamatic
             Dispose(true, false);
         }
 
+        public long version => store.version;
+        public bool isDirty => store.isDirty;
+
         public UniTask WhenSynchronized(CancellationToken cancellationToken)
         {
             return store.WhenSynchronized(cancellationToken);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public DisposableAction Checkout(string branchName, string sourceBranchName, bool createIfNotExists = false, bool removeAfterDispose = true)
+        {
+            return store.Checkout(branchName, sourceBranchName, createIfNotExists, removeAfterDispose);
+        }
+
         public DisposableAction Checkout(string branchName, bool createIfNotExists = false, bool removeAfterDispose = true)
         {
             return store.Checkout(branchName, createIfNotExists, removeAfterDispose);
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Set(T value)
         {
@@ -78,6 +86,21 @@ namespace Metamatic
         public DisposableAction Subscribe(Action<T> action)
         {
             return store.Subscribe(action);
+        }
+
+        public void Merge(string fromBranch, string toBranch, IStore<T>.Merger merger)
+        {
+            store.Merge(fromBranch, toBranch, merger);
+        }
+
+        public void Merge(string fromBranch, IStore<T>.Merger merger)
+        {
+            store.Merge(fromBranch, merger);
+        }
+
+        public void Merge(IStore<T>.Merger merger)
+        {
+            store.Merge(merger);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

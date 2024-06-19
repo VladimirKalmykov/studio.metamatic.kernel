@@ -10,6 +10,10 @@ namespace Metamatic
         private Dictionary<(Type, string), (object, Storage.Metadata)> m_Memory = new ();
         public override UniTask<(T, Metadata, TMetadata)> Get<T, TMetadata>(string address, CancellationToken token)
         {
+            if (!enabled)
+            {
+                throw new Storage.DisabledException();
+            }
             var taskCompletionSource = new UniTaskCompletionSource<(T, Metadata, TMetadata)>();
             var type = typeof(T);
             if (m_Memory.TryGetValue((type, address), out var value))
@@ -28,6 +32,10 @@ namespace Metamatic
 
         public override UniTask Set<T, TMetadata>(string address, T value, TMetadata customMetadata, CancellationToken token)
         {
+            if (!enabled)
+            {
+                throw new Storage.DisabledException();
+            }
             var taskCompletionSource = new UniTaskCompletionSource();
             var type = typeof(T);
             var metadata = SerializableDataPackage<T, TMetadata>.GetMetadata(value, customMetadata);
@@ -39,6 +47,10 @@ namespace Metamatic
 
         public override UniTask Delete<TData>(string address, CancellationToken token)
         {
+            if (!enabled)
+            {
+                throw new Storage.DisabledException();
+            }
             var taskCompletionSource = new UniTaskCompletionSource();
             var type = typeof(TData);
             if (m_Memory.Remove((type, address)))

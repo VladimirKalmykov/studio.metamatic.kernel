@@ -7,6 +7,10 @@ using Metamatic;
 using Metamatic.StorageDriver;
 using UnityEngine;
 using System.Linq;
+using Metamatic.Actions;
+using Metamatic.Events;
+using Metamtic.Exceptions;
+using Logger = UnityEngine.Logger;
 
 namespace DuckJumper2024
 {
@@ -91,9 +95,11 @@ namespace DuckJumper2024
             // Если нет успешных результатов, выбрасываем исключение
             if (!validResults.Any())
             {
-                throw new InvalidOperationException("No valid data found.");
+                Dispatcher.global.Emit(new UnreachableStoragesFatalError("Data synchronization failed because of unreachable storages"));
+                throw new Storage.UnreachableException("Every driver returned error");
             }
-
+            
+            bool isDefault = false;
             (T data, Storage.Metadata metadata, long version) bestData = default;
             (VersionControlStorageDriver Driver, (T data, Storage.Metadata metadata, long version) Data, GetDataResult Result,
                 Exception Exception)? bestSource = default;
@@ -102,6 +108,7 @@ namespace DuckJumper2024
                 /* If there are only NotFound drivers, get default value */
                 var defaultValue = await getDefaultValue(address, token);
                 bestData = (defaultValue, default, 1);
+                isDefault = true;
             }
             else
             {
@@ -113,6 +120,7 @@ namespace DuckJumper2024
                         {
                             /* Do not specify best source. Storages are the same. Update is not required */
                             bestData = bestSource.Value.Data;
+                            isDefault = true;
                             break;
                         }
                         bestSource = validResults.OrderByDescending(result => result.Data.version).First();
@@ -154,12 +162,12 @@ namespace DuckJumper2024
             }
 
             // Обновить все драйверы до наибольшей версии
-            if (bestSource.HasValue)
+            if (bestSource.HasValue || isDefault)
             {
                 var updateTasks = new List<UniTask>(successfulDrivers.Count);
                 foreach (var driver in successfulDrivers)
                 {
-                    if (driver == bestSource.Value.Driver)
+                    if (bestSource.HasValue && driver == bestSource.Value.Driver)
                     {
                         continue;
                     }
