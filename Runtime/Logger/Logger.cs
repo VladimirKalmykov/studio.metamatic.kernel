@@ -38,5 +38,13 @@ namespace Metamatic
             Terminal.LogError(message);
             #endif
         }
+        
+        public static void LogError(System.Exception e)
+        {
+            #if METAMATIC_TERMINAL
+            Debug.LogError("<b>Logger</b>: " + e.Message);
+            Terminal.LogError(e.Message);
+            #endif
+        }
     }
 }

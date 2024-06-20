@@ -160,8 +160,9 @@ namespace Metamatic
         /// <returns></returns>
         public static string GetUriAddress<T>(string uri)
         {
-            /* var typeName = typeof(T).FullName;
-            return $"{typeName}/{uri}.json"; */
+            var typeName = typeof(T).FullName;
+            return $"{typeName}/{uri}.json";
+            /*
             string typeName = typeof(T).FullName;
             string input = $"{typeName}:{uri}";
 
@@ -177,6 +178,7 @@ namespace Metamatic
 
                 return sb.ToString();
             }
+            */
         }
 
     }

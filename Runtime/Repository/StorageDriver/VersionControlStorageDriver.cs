@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic.StorageDriver
@@ -8,6 +9,7 @@ namespace Metamatic.StorageDriver
     /// </summary>
     public class VersionControlStorageDriver: ProxyStorageDriver
     {
+        [Serializable]
         public class DataVersionMetadata
         {
             public long version;
@@ -16,6 +18,7 @@ namespace Metamatic.StorageDriver
                 this.version = version;
             }
         }
+        [Serializable]
         public class DataVersionMetadata<TCustom>: DataVersionMetadata
         {
             public TCustom custom;

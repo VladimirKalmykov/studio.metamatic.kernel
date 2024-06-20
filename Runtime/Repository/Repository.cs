@@ -51,7 +51,8 @@ namespace Metamatic
             Cancelled,
             Completed,
             Retry,
-            Failed
+            Failed,
+            NotFound
         }
         
         /// <summary>
@@ -99,8 +100,8 @@ namespace Metamatic
                 this.stats = initialStats;
                 
 #if METAMATIC_TERMINAL
-                using var terminalLog = Terminal.CreateUpdatableLog(
-                $"<b>Repository</b>: {dataType} <color=#00e6e6>{address}</color> <{dataType.Name}> to <color=#00e6e6>{storage.GetType().Name}</color>: {{0}} (retry: {initialStats.retryCount})", true);
+                var terminalLog = Terminal.CreateUpdatableLog(
+                $"<b>Repository</b>: {type} <color=#00e6e6>{address}</color> <{dataType.Name}> to <color=#00e6e6>{storage.GetType().Name}</color>: {{0}} (retry: {initialStats.retryCount})", true);
                 Action updateHandler = () => {
                     terminalLog.Update(stats.status.ToString());
                 };
@@ -121,6 +122,7 @@ namespace Metamatic
             public void Release(Stats nextStats)
             {
                 stats = nextStats;
+                OnUpdate?.Invoke();
                 Dispose();
             }
 
@@ -142,7 +144,7 @@ namespace Metamatic
             {
                 if (_Instance == null)
                 {
-                    _Instance = new Repository(true, true);
+                    _Instance = new Repository(true);
                 }
                 return _Instance;
             }
@@ -416,10 +418,10 @@ namespace Metamatic
             
             var requestMonitor = RequestMonitor.Create(this, storage, RequestMonitor.RequestType.Get, address, typeof(T), requestStats);
             requestMonitor.Update(requestStats);
-            
+
             try
             {
-                
+
                 var result = await task;
                 requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
                 requestStats.status = NetworkOperationStatus.Completed;
@@ -436,7 +438,7 @@ namespace Metamatic
                 {
                     throw new RetryIsRequiredException(retryDelay);
                 }
-                
+
                 // TODO: Consider increase the time of disabling storage on each retry
                 throw new DisableStorageIsRequiredException(disableStorageDuration, e);
             }
@@ -444,6 +446,13 @@ namespace Metamatic
             {
                 requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
                 requestStats.status = NetworkOperationStatus.Cancelled;
+                requestMonitor.Release(requestStats);
+                throw;
+            }
+            catch (Storage.NotFoundException)
+            {
+                requestStats.responseDuration = Time.realtimeSinceStartup - startTime;
+                requestStats.status = NetworkOperationStatus.NotFound;
                 requestMonitor.Release(requestStats);
                 throw;
             }

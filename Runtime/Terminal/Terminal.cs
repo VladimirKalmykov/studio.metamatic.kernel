@@ -46,6 +46,7 @@ namespace Metamatic
             
             private void Update(string[] values)
             {
+                
                 if (m_IsDisposed) return;
                 m_Args = values;
                 NeedsUpdate();
@@ -72,11 +73,16 @@ namespace Metamatic
                 {
                     m_UpdateInProgress.value = true;
                     var row = await m_TextRow.WaitUntilValueIsNotNull(m_LifecycleTokenSource.Token);
+                    Debug.Log($"Set new text: {GetFormattedText()}");
                     row.SetText(GetFormattedText());
                 }
                 catch (OperationCanceledException)
                 {
                     // Skip
+                }
+                catch (Exception e)
+                {
+                    LogError(e.Message);
                 }
                 finally
                 {

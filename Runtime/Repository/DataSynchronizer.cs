@@ -115,6 +115,7 @@ namespace DuckJumper2024
                         if (validResults.Select(result => result.Data.version).Distinct().Count() == 1)
                         {
                             /* Do not specify best source. Storages are the same. Update is not required */
+                            bestData = validResults.First().Data;
                             isDefault = false;
                             break;
                         }

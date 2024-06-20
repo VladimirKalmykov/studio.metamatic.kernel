@@ -14,10 +14,6 @@ namespace Metamatic
         {
             return false; // TODO: Implement
         }
-        public void Dispose()
-        {
-            // TODO: Implement
-        }
         
         #if DEBUG
         public void debug_SetRelatedObject(UnityEngine.Object relatedObject)

@@ -12,6 +12,9 @@ namespace Metamatic
         public bool isSyncDisposed => m_IsSyncDisposed;
         public bool isAsyncDisposed => !m_IsSyncDisposed;
         private bool m_Disposed;
+        private CancellationTokenSource m_DisposeCancellationTokenSource;
+        public CancellationToken cancellationToken => m_DisposeCancellationTokenSource.Token;
+        private UniTask? m_Task;
         protected MicroBehaviour()
         {
             
@@ -53,10 +56,6 @@ namespace Metamatic
             m_DisposeCancellationTokenSource?.Cancel();
             GC.SuppressFinalize(this);
         }
-        
-        private CancellationTokenSource m_DisposeCancellationTokenSource;
-        public CancellationToken cancellationToken => m_DisposeCancellationTokenSource.Token;
-        private UniTask? m_Task;
         
         protected delegate UniTask AsyncAction(CancellationToken cancellationToken);
 
