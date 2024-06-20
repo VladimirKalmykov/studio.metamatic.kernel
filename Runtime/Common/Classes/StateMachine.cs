@@ -14,8 +14,8 @@ namespace Metamatic
         public delegate void StateModifier(ref TState state);
         public TState prevState;
         public TState state;
-        private bool m_ShouldUpdate = false;
-        private bool m_UpdateInProcess = false;
+        private bool m_ShouldUpdate;
+        private bool m_UpdateInProcess;
         private event StateModifier m_PostUpdateModifiying = delegate {};
        
         public event StateChangeHandler stateListeners;

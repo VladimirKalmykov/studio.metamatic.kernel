@@ -18,7 +18,7 @@ namespace Metamatic.UI
         private static MicroState<UIOverlay> _Instance = new();
         public static MicroStateReadOnly<UIOverlay> Instance => _Instance;
         [ShowInInspector, LabelText("Acquire count")]
-        private int m_AcquireCount = 0;
+        private int m_AcquireCount;
         private CancellationTokenSource m_ReleaseCancellationTokenSource;
         private CancellationTokenSource m_RequireCancellationTokenSource;
         private CanvasGroup m_CanvasGroup;

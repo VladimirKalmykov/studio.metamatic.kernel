@@ -14,7 +14,7 @@ namespace Metamatic {
         [MultiLineProperty(2)]
         public string description = "";
         [Tooltip("Can contains only one record")]
-        public bool single = false;
+        public bool single;
         [ShowInInspector, ReadOnly]
         public List<T> items {
             get; protected set;

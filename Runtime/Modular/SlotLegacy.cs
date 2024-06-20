@@ -15,11 +15,11 @@ namespace Metamatic {
             ModuleDisable,
         }
         [Tooltip("Can have only one module")]
-        public bool single = false;
+        public bool single;
         [Tooltip("Attached modules will be attached to the slot without changing their parent"), LabelText("Virtual")]
-        public bool virtualSlot = false;
+        public bool virtualSlot;
         [FormerlySerializedAs("fallbackModule")] public ModuleLegacy fallbackModuleLegacy;
-        public bool designMode = false;
+        public bool designMode;
         [ShowIf("designMode"), BoxGroup("Design")]
         public Color gizmosColor = Color.cyan;
         [ShowIf("designMode"), BoxGroup("Design")]
@@ -28,7 +28,7 @@ namespace Metamatic {
         public float gizmosLineLength = 8f;
         
         private List<ModuleAttachment> m_Attachments = new List<ModuleAttachment>();
-        private ModuleAttachment m_FallbackAttachement = null;
+        private ModuleAttachment m_FallbackAttachement;
 
         private void Start()
         {

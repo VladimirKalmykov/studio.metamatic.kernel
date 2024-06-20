@@ -6,7 +6,7 @@ namespace Metamatic
 {
     public interface IStore : IDisposable
     {
-        
+        public DisposableAction SubscribeDispose(Action action);
     }
     public interface IStore<T>: IAsyncDisposable
     {

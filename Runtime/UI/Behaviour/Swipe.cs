@@ -36,12 +36,12 @@ namespace Metamatic.UI {
         /// <summary>
         /// Swipe event user use pointer outside the container
         /// </summary>
-        public bool useGlobalInput = false;
+        public bool useGlobalInput;
         public Orientation orientation = Orientation.BOTH;
         /// <summary>
         /// Prevent handling pointer of the parent Swipe components when this one have non-zero magnitude
         /// </summary>
-        public float stopPropagationMagnitude = 0f;
+        public float stopPropagationMagnitude;
         #endregion
 
         #region program api
@@ -102,7 +102,7 @@ namespace Metamatic.UI {
         #endregion
 
         #region internal
-        public bool m_Disabled = false;
+        public bool m_Disabled;
         public bool disabled {
             get {
                 return m_Disabled;
@@ -136,7 +136,7 @@ namespace Metamatic.UI {
         /// User can use pointer
         /// </summary>
         private bool allowInteractPointer = true;
-        private bool m_StopPropagation = false;
+        private bool m_StopPropagation;
         private Swipe[] disabledSwipeParents = new Swipe[0];
 
         #if ODIN_INSPECTOR_3
@@ -166,8 +166,8 @@ namespace Metamatic.UI {
 
         private RectTransform rectTransform;
         private RectTransform movableRectTransform;
-        private int m_PointerEnteredCount = 0;
-        private int m_PointerPressedCount = 0;
+        private int m_PointerEnteredCount;
+        private int m_PointerPressedCount;
         private bool m_IsTouchPointer;
         private bool m_TouchPointerActiveOnElement = false;
         #endregion

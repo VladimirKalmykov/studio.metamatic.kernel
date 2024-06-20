@@ -30,7 +30,7 @@ namespace Metamatic
             }
         }
         
-        public bool isFinalised { get; private set; } = false;
+        public bool isFinalised { get; private set; }
 
         public delegate void InitializeHandler(Action<T> resolve, Action<Exception> reject, Promise<T> self);
 
@@ -38,7 +38,7 @@ namespace Metamatic
         public event Action<Exception> OnError;
         public event Action OnFinally;
         public event Action OnCancel;
-        private bool m_Cancelled = false;
+        private bool m_Cancelled;
         private CancellationTokenRegistration cancellationTokenRegistration;
         private CancellationTokenSource m_InternalExecutionCancellationTokenSource;
 
@@ -142,7 +142,7 @@ namespace Metamatic
             }
         }
         
-        public bool isFinalised { get; private set; } = false;
+        public bool isFinalised { get; private set; }
 
         public delegate void InitializeHandler(Action resolve, Action<Exception> reject, UniPromise self);
 
@@ -150,7 +150,7 @@ namespace Metamatic
         public event Action<Exception> OnError;
         public event Action OnFinally;
         public event Action OnCancel;
-        private bool m_Cancelled = false;
+        private bool m_Cancelled;
         private CancellationTokenRegistration cancellationTokenRegistration;
         private CancellationTokenSource m_InternalExecutionCancellationTokenSource;
 

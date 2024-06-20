@@ -12,7 +12,7 @@ namespace Metamatic{
                 public event Action OnStart;
                 public event Action<float> OnUpdate;
                 public event Action OnEnd;
-                bool hasStarted = false;
+                bool hasStarted;
                 public Range(Runtime runtime, float fromTime, float toTime) {
                     if (fromTime >= toTime) {
                         throw new Exception("Start time can be grater or equal to end time");
@@ -118,7 +118,7 @@ namespace Metamatic{
             }
             public bool hasBeenStarted {
                 get; private set;
-            } = false;
+            }
             TaskCompletionSource<object> taskCompletionSource;
             CancellationTokenSource cancellationTokenSource;
             private Config m_Config;

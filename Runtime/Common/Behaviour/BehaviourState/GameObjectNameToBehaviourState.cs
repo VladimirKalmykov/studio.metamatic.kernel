@@ -5,7 +5,7 @@ namespace Metamatic {
     public class GameObjectNameToBehaviourState: MonoBehaviour {
         BehaviourState behaviourState;
         public string keyName = "name";
-        public bool realtime = false;
+        public bool realtime;
         BehaviourState.StateValue<string> stateValue;
 
         void Start() {

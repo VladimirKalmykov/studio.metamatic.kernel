@@ -18,7 +18,7 @@ namespace Metamatic {
         public UnityEvent OnAfterPlay {
             get; private set;
         } = new UnityEvent();
-        private CancellationTokenSource cancellationTokenSource = null;
+        private CancellationTokenSource cancellationTokenSource;
 
         [Button("Play")]
         public void PlayForCallback() {

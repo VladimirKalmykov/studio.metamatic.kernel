@@ -14,7 +14,7 @@
         private readonly Handler m_Initializer;
         private readonly CancellationTokenRegistration _cancellationTokenRegistration;
         private Dictionary<T, CancellationTokenSource> _items = new Dictionary<T, CancellationTokenSource>();
-        private bool _disposed = false;
+        private bool _disposed;
 
         public event Action<Exception> OnError;
 

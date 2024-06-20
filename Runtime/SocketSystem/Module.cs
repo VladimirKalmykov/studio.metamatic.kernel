@@ -27,7 +27,7 @@ namespace Metamatic
         /// </summary>
         [SerializeField] protected Quaternion relativeRotation;
         public Slot connectedSlot { get; protected set; }
-        private bool m_Destroyed = false;
+        private bool m_Destroyed;
         public Action Connect(Slot slot)
         {
 #if DEBUG

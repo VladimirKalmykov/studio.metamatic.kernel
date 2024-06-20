@@ -11,7 +11,7 @@ namespace Metamatic.UI {
         [Range(0f, 1f)]
         public float inertness = 0.5f;
         public float magnetism = 5f;
-        [SerializeField] int startIndex = 0;
+        [SerializeField] int startIndex;
         #endregion
         
         #region Events
@@ -24,8 +24,8 @@ namespace Metamatic.UI {
         private Swipe swipe;
         private Vector2 magnitudeRatio;
         private Vector2 positionRatio = Vector2.zero;
-        private int m_Index = 0;
-        private int m_UnclampedIndex = 0;
+        private int m_Index;
+        private int m_UnclampedIndex;
         #endregion
 
         void Awake()

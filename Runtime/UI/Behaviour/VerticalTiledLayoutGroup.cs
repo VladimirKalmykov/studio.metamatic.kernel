@@ -7,18 +7,18 @@ namespace Metamatic.UI {
     public class VerticalTiledLayoutGroup : UIBehaviour
     {
         public bool fitContent = true;
-        public bool fitContentWidth = false;
-        public float paddingTop = 0f;
-        public float paddingBottom = 0f;
-        public float paddingLeft = 0f;
-        public float paddingRight = 0f;
-        public float spacing = 0;
+        public bool fitContentWidth;
+        public float paddingTop;
+        public float paddingBottom;
+        public float paddingLeft;
+        public float paddingRight;
+        public float spacing;
         /// <summary>
         /// Update size each frame
         /// </summary>
-        public bool updateEachFrame = false;
+        public bool updateEachFrame;
         private float m_UpdateInterval = 0.1f; // 10 раз в секунду (1 секунда / 10)
-        private float m_NextUpdateTime = 0.0f;
+        private float m_NextUpdateTime;
         private RectTransform m_Rect;
         RectTransform rect => m_Rect ??= GetComponent<RectTransform>();
         DrivenRectTransformTracker dt;

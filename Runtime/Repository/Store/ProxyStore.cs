@@ -132,6 +132,12 @@ namespace Metamatic
         {
             return store.Lock(cancellationToken);
         }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public DisposableAction SubscribeDispose(Action action)
+        {
+            return store.SubscribeDispose(action);
+        }
 
         public void Dispose(bool isCalledFromFinalizer = false, bool isAsync = false)
         {

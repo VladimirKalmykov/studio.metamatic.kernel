@@ -1,7 +1,6 @@
 ﻿namespace Metamatic
 {
     using UnityEngine.Events;
-    using System;
 
     public static class UnityEventExtensions
     {

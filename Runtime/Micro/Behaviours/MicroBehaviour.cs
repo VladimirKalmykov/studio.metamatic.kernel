@@ -8,10 +8,10 @@ namespace Metamatic
 {
     public abstract class MicroBehaviour: IAsyncDisposable, IDisposable
     {
-        private bool m_IsSyncDisposed = false;
+        private bool m_IsSyncDisposed;
         public bool isSyncDisposed => m_IsSyncDisposed;
         public bool isAsyncDisposed => !m_IsSyncDisposed;
-        private bool m_Disposed = false;
+        private bool m_Disposed;
         protected MicroBehaviour()
         {
             

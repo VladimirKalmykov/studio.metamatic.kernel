@@ -27,7 +27,7 @@ namespace Micro.Behaviours
         private UniqueDice uniqueDice = new UniqueDice(2);
         private VirtualArea2d.GeneratePointsAlgorithm m_Algorithm;
         private Action<Transform> m_OnObjectSpawned;
-        private float m_TotalAreasSize = 0;
+        private float m_TotalAreasSize;
         public BackstageObjectSpawner2d(
             IObjectPool<GameObject> pool,
             int maxObjectsCount,

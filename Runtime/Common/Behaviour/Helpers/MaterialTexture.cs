@@ -5,9 +5,9 @@ namespace Metamatic
     [RequireComponent(typeof(MaterialInstance))]
     public class MaterialTexture : MonoBehaviour
     {
-        public int materialIndex = 0;
+        public int materialIndex;
         public string key = "_MainTex";
-        public Texture2D texture = default;
+        public Texture2D texture;
         private new Renderer renderer;
         private MaterialInstance m_MaterialInstance;
         // Start is called before the first frame update

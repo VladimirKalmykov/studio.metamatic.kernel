@@ -13,16 +13,16 @@ namespace Metamatic.UI {
         [BoxGroup("Movement")]
         public Vector2 movementmMultiplier = Vector2.one;
         [BoxGroup("Movement")]
-        public bool movementLimit = false;
+        public bool movementLimit;
         [BoxGroup("Movement"), ShowIf("movementLimit")]
         public Vector2 movementNegativeLimit = new Vector2(-999999f, -999999f);
         [BoxGroup("Movement"), ShowIf("movementLimit")]
         public Vector2 movementPositiveLimit = new Vector2(999999f, 999999f);
         [BoxGroup("Movement")]
-        public float movementSpring = 0f;
+        public float movementSpring;
         [BoxGroup("Movement")]
         [Tooltip("Reset movement when user releases button")]
-        public bool resetOnRelease = false;
+        public bool resetOnRelease;
         [BoxGroup("Scale")]
         public float maxScale = 4f;
         [BoxGroup("Scale")]
@@ -33,7 +33,7 @@ namespace Metamatic.UI {
         [Tooltip("Set value greater then zero to smooth reset scale")]
         public float scaleSpring = 1f;
         [BoxGroup("Scale")]
-        public bool invertScale = false;
+        public bool invertScale;
         
         /* Public properties */
         [ShowInInspector, ReadOnly, HideInEditorMode, System.NonSerialized]
@@ -52,7 +52,7 @@ namespace Metamatic.UI {
         /// </summary>
         private Vector2 m_TotalDelta = Vector2.zero;
         private PointerEvents areaPointerEvents;
-        private bool m_PointerIsPressed = false;
+        private bool m_PointerIsPressed;
 
         /* */
         public void OnBeforeSerialize() { }

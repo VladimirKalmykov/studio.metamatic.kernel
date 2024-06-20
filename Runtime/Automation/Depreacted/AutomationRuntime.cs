@@ -71,7 +71,7 @@ namespace Metamatic {
         }
         public bool hasBeenStarted {
             get; private set;
-        } = false;
+        }
         TaskCompletionSource<object> taskCompletionSource;
         CancellationTokenSource cancellationTokenSource;
         

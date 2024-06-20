@@ -9,12 +9,12 @@ namespace Metamatic.Actions
     {
         public class Token {}
 
-        public T value { get; private set; } = default;
+        public T value { get; private set; }
         public event System.Action OnRelease;
         public event System.Action<T> OnChange;
         public Registry<T> Registry => new Registry<T>(this);
         private bool m_IsDisposed;
-        private Token m_ValueToken = null;
+        private Token m_ValueToken;
         public RegistrySource()
         {
         }

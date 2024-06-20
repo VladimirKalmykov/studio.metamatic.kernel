@@ -20,7 +20,7 @@ namespace Metamatic
             }
         }
         [BoxGroup("Entity"), PropertyOrder(1)]
-        [SerializeField] private bool useObjectName = false;
+        [SerializeField] private bool useObjectName;
         [BoxGroup("Entity"), PropertyOrder(1)]
         [HideIf("useObjectName"), SerializeField] private bool useObjectNameAsSub = true;
         [BoxGroup("Entity")]
@@ -30,7 +30,7 @@ namespace Metamatic
         [BoxGroup("Entity")]
         [SerializeField, PropertyOrder(3)] private EntityClass entityClass;
 
-        private MicroStateReadOnly<string> n_ObservableValue = null;
+        private MicroStateReadOnly<string> n_ObservableValue;
         public MicroStateReadOnly<string> observableName => n_ObservableValue ??= new MicroStateGetter<string>(() => this.fullname);
     }
 }

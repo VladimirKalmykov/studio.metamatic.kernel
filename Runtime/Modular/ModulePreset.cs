@@ -3,7 +3,7 @@ namespace Metamatic {
 
     [System.Serializable]
     public class ModulePreset {
-        public ModuleDescriptor s_ModuleDescriptor = null;
+        public ModuleDescriptor s_ModuleDescriptor;
         public event Action<ModulePreset> OnChange;
         public ModuleDescriptor moduleDescriptor {
             get {

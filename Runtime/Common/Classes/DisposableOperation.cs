@@ -10,8 +10,8 @@ namespace Metamatic
         public delegate void DisposableProcedure(Action<T> resolve, Action<Exception> reject, CancellationToken cancellationToken);
 
         private CancellationTokenSource m_CancellationTokenSource;
-        private bool m_Resolved = false;
-        private bool m_Rejected = false;
+        private bool m_Resolved;
+        private bool m_Rejected;
         private  CancellationTokenRegistration cancellationTokenRegistration;
         public T Result { get; private set; }
         public Exception Exception { get; private set; }
@@ -105,8 +105,8 @@ namespace Metamatic
 
         private CancellationTokenSource m_CancellationTokenSource;
         private UniTaskCompletionSource<T> m_UniTaskCompletionSource = new UniTaskCompletionSource<T>();
-        private bool m_Resolved = false;
-        private bool m_Rejected = false;
+        private bool m_Resolved;
+        private bool m_Rejected;
         public UniTask<T> Task => m_UniTaskCompletionSource.Task;
         public T Result { get; private set; }
         public Exception Exception { get; private set; }
@@ -196,8 +196,8 @@ namespace Metamatic
 
         private CancellationTokenSource m_CancellationTokenSource;
         private UniTaskCompletionSource m_UniTaskCompletionSource = new UniTaskCompletionSource();
-        private bool m_Resolved = false;
-        private bool m_Rejected = false;
+        private bool m_Resolved;
+        private bool m_Rejected;
         public UniTask task => m_UniTaskCompletionSource.Task;
         public Exception Exception { get; private set; }
         public event Action<Exception> OnError;

@@ -146,8 +146,8 @@ namespace Metamatic
         public static readonly TInputBundle inputBundle = new TInputBundle();
         private bool loopbackMode { get; set; }
         private List<SocketScheme<TOutputBundle, TInputBundle>> m_ConnectedOutSchemes = new List<SocketScheme<TOutputBundle, TInputBundle>>();
-        private SocketScheme<TOutputBundle, TInputBundle> m_ConnectedInScheme = null;
-        private bool m_IsVirtual = false;
+        private SocketScheme<TOutputBundle, TInputBundle> m_ConnectedInScheme;
+        private bool m_IsVirtual;
         
 #if DEBUG
         public override SocketScheme[] debug_GetConnectedOutSchemes()

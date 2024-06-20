@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
-using Metamatic.StorageDriver;
 using UnityEngine;
-using UnityEngine.PlayerLoop;
 
 namespace Metamatic
 {
@@ -15,6 +13,7 @@ namespace Metamatic
         protected CancellationTokenSource m_DisposeCancellationTokenSource = new ();
         public CancellationToken disposeCancellationToken => m_DisposeCancellationTokenSource.Token;
         public bool isDisposed { get; private set; }
+        protected event Action OnDispose;
         public UniTask asyncDisposingTask { get; protected set; }
         public readonly string address;
         public readonly Type type;
@@ -32,6 +31,15 @@ namespace Metamatic
             }
             isDisposed = true;
             m_DisposeCancellationTokenSource.Cancel();
+            OnDispose?.Invoke();
+        }
+        public DisposableAction SubscribeDispose(Action action)
+        {
+            OnDispose += action;
+            return new DisposableAction(() =>
+            {
+                OnDispose -= action;
+            });
         }
     }
     public class Store<T>: Store, IStore<T>
@@ -112,7 +120,7 @@ namespace Metamatic
         private readonly MicroState<Branch> m_CurrentBranch = new();
         private readonly DeferLock m_SyncLock = new ();
         private readonly DeferLock m_CheckoutBranchLock = new ();
-        public bool synchronized { get; private set; } = false;
+        public bool synchronized { get; private set; }
         public UniTask synchronizationTask { get; private set; }
 
         public long version => m_CurrentBranch.value.version;

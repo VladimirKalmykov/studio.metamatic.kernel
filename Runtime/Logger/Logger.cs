@@ -1,13 +1,12 @@
 ﻿using Metamatic.Actions;
 using Metamtic.Exceptions;
 using UnityEngine;
-using UnityEngine.PlayerLoop;
 
 namespace Metamatic
 {
     public class Logger
     {
-        private static bool _Initialized = false;
+        private static bool _Initialized;
         /* Run this method in the beginning of the game */
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static async void Initialization()

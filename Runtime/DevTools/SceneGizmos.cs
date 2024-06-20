@@ -34,7 +34,7 @@ namespace Metamatic.DevTools
             public float duration = 1f;
             public float startTime;
             public float ratio;
-            public float elapsed = 0f;
+            public float elapsed;
 
             public Gizmo(Drawer drawer, Color color = default, float duration = 1f)
             {

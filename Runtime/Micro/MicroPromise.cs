@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Pool;
 
 namespace Metamatic
 {
@@ -27,7 +26,7 @@ namespace Metamatic
         private CancellationTokenSource m_DisposeCancellationTokenSource;
         private UniTask? m_ResultTask;
         private UniTask? m_ReleaseTask;
-        private bool m_IsSyncDisposed = false;
+        private bool m_IsSyncDisposed;
         public bool isSyncDisposed => m_IsSyncDisposed;
         public bool isAsyncDisposed => !m_IsSyncDisposed;
         
@@ -47,7 +46,7 @@ namespace Metamatic
         {
             Dispose();
         }
-        private bool m_Disposed = false;
+        private bool m_Disposed;
         public async ValueTask DisposeAsync()
         {
             if (m_Disposed)
@@ -170,7 +169,7 @@ namespace Metamatic
         {
             Dispose();
         }
-        private bool m_Disposed = false;
+        private bool m_Disposed;
         public async ValueTask DisposeAsync()
         {
             if (m_Disposed)

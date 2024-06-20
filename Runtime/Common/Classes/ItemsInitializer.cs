@@ -22,7 +22,7 @@
         private readonly Func<T, IDisposable> m_Initializer;
         private readonly CancellationTokenRegistration _cancellationTokenRegistration;
         private Dictionary<T, IDisposable> _items = new Dictionary<T, IDisposable>();
-        private bool _disposed = false;
+        private bool _disposed;
 
         public event Action<Exception> OnError;
         public event Action<T, IDisposable> OnHandleItem;

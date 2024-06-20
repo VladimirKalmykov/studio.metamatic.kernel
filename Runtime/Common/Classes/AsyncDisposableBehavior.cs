@@ -13,7 +13,7 @@ namespace Metamatic
         private UniTaskCompletionSource m_TaskCompletionSource;
         private UniTask m_DisposeTask;
         public UniTask Result => m_TaskCompletionSource.Task;
-        private bool isAsyncDisposeRequested = false;
+        private bool isAsyncDisposeRequested;
 
         public AsyncDisposableBehavior(ProcessHandler handler, CancellationToken cancellationToken = default)
         {
@@ -61,7 +61,7 @@ namespace Metamatic
         private UniTaskCompletionSource<T> m_TaskCompletionSource;
         private UniTask m_DisposeTask;
         public UniTask<T> Result => m_TaskCompletionSource.Task;
-        private bool isAsyncDisposeRequested = false;
+        private bool isAsyncDisposeRequested;
 
         public AsyncDisposableBehavior(ProcessHandler handler, CancellationToken cancellationToken = default)
         {

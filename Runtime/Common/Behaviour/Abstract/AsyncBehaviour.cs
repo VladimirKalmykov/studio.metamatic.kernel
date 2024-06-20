@@ -8,7 +8,7 @@ namespace Metamatic
     public abstract class AsyncBehaviour: MonoBehaviour
     {
         private CancellationTokenSource m_DisableCancellationTokenSource;
-        private bool m_IsDisabled = false;
+        private bool m_IsDisabled;
         public delegate UniTask RunAsyncHandler(CancellationToken cancellationToken);
         public CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource.Token;
         

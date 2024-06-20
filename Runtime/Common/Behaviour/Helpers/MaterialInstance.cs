@@ -5,7 +5,7 @@ namespace Metamatic {
     [ExecuteAlways]
     public class MaterialInstance : MonoBehaviour
     {
-        public int materialIndex = 0;
+        public int materialIndex;
         public Material defaultMaterial;
         private Material m_CachedDefaultMaterial;
         /* Once instantiate material instead of creating several instances will reduce GC work */

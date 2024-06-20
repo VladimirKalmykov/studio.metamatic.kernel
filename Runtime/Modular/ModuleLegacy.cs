@@ -34,7 +34,7 @@ namespace Metamatic {
             return null;
         }
 
-        public ModuleAttachment attachment { get; protected set; } = null;
+        public ModuleAttachment attachment { get; protected set; }
 
         public ModuleAttachment PlugIn(SlotLegacy slotLegacy)
         {

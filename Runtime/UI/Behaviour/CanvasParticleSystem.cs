@@ -12,7 +12,7 @@
         public UIParticlesSortMode sortMode;
         public CanvasParticleSystemRenderMode renderMode;
 
-        public float speedScale = 0f;
+        public float speedScale;
         public float lengthScale = 1f;
 
         public Vector3 pivot = Vector3.zero;

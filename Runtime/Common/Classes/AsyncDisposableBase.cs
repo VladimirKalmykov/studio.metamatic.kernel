@@ -30,7 +30,7 @@ namespace Metamatic
     /// [Obsolete("Use IAsyncDisposable pattern", true)]
     public abstract class ImAsyncDisposableBase: IMAsyncDisposable
     {
-        private bool m_AsyncDisposeRequested = false;
+        private bool m_AsyncDisposeRequested;
         private CancellationTokenSource m_AsyncDisposeCancellationTokenSource;
         public event Action OnAsyncDisposeCompleted;
         private UniTaskCompletionSource m_AsyncDisposeCompleted = new UniTaskCompletionSource();

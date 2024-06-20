@@ -17,7 +17,7 @@ namespace Metamatic{
             } = 1f;
             public bool durationIsLocked {
                 get; set;
-            } = false;
+            }
             public object defaultProps {
                 get; set;
             } = null;
@@ -28,7 +28,7 @@ namespace Metamatic{
             public Automation.TimingMode timingMode = Automation.TimingMode.Autocomplete;
             public bool realTime {
                 get; set;
-            } = false;
+            }
 
             /* Public events */
             public delegate void ActionRuntime(Automation.Runtime runtime);
@@ -36,8 +36,8 @@ namespace Metamatic{
             public event ActionRuntime OnRuntimeRelease;
 
             /* Internal */
-            MethodInfo OnRunDeclaredMethod = null;
-            int OnRunParamsCount = 0;
+            MethodInfo OnRunDeclaredMethod;
+            int OnRunParamsCount;
 
             public Script() {
                 TypeInfo scriptTypeInfo = this.GetType().GetTypeInfo();

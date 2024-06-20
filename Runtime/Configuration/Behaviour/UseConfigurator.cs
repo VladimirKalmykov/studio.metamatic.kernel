@@ -2,16 +2,16 @@ namespace Metamatic {
     using UnityEngine;
 
     public class UseConfigurator: MonoBehaviour {
-        public bool runInEditor = false;
+        public bool runInEditor;
         protected Configurator configurator;
         Configurator cached_Configurator;
         public event System.Action<Configuration> OnConfigurationChange;
          public bool wasStarted {
             get; private set;
-        } = false;
+        }
         public bool hasInitialized {
             get; private set;
-        } = false;
+        }
 
         void Awake() {
             #if UNITY_EDITOR
@@ -104,7 +104,7 @@ namespace Metamatic {
         }
 
 #if UNITY_EDITOR
-        Configurator m_CachedConfigurator = null;
+        Configurator m_CachedConfigurator;
         void OnValidate() {
             if (configurator != null && m_CachedConfigurator != configurator) {
                 m_CachedConfigurator = configurator;

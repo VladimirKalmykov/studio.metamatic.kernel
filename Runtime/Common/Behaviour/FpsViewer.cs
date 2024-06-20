@@ -7,7 +7,7 @@ namespace  Metamatic
     public class FpsViewer : MonoBehaviour
     {
         public Color color = Color.black;
-        float m_DeltaTime = 0.0f;
+        float m_DeltaTime;
 
         void Update()
         {

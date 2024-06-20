@@ -9,7 +9,6 @@ namespace Metamatic.MicroBehaviours
 {
     using Unity.Jobs;
     using Unity.Collections;
-    using Unity.Burst;
     using UnityEngine;
     
     /// <summary>
@@ -92,7 +91,7 @@ namespace Metamatic.MicroBehaviours
             /// <summary>
             /// Intersected rects mask (bitwise representation)
             /// </summary>
-            public ulong intersectedRectsMask = 0;
+            public ulong intersectedRectsMask;
             /// <summary>
             /// Intersected bounds types
             /// </summary>
@@ -151,7 +150,7 @@ namespace Metamatic.MicroBehaviours
             public FovBoundsType acquiredBoundsTypesBinaryMask { get; private set; } = 0;
             private event Action<FovBoundsType> OnActivateChange;
             public int acquireCount { get; private set; }
-            private bool m_Disposed = false;
+            private bool m_Disposed;
 
             public ObjectTracker(Transform t)
             {
@@ -284,8 +283,8 @@ namespace Metamatic.MicroBehaviours
             public FovBoundsType acquiredBoundsTypesBinaryMask { get; private set; } = 0;
             private event Action<FovBoundsType, ulong, bool> OnActivateChange;
             public int acquireCount { get; private set; }
-            private ulong m_IntersectedRectsMask = 0;
-            private bool m_Disposed = false;
+            private ulong m_IntersectedRectsMask;
+            private bool m_Disposed;
             private bool m_Pristine = true;
 
             public AreaTracker(CameraFOVTracker2d masterTracker, VirtualArea2d area)
@@ -434,20 +433,20 @@ namespace Metamatic.MicroBehaviours
         private Camera m_CustomCamera;
         private float m_InnerBuffer;
         private float m_OuterBuffer;
-        private bool m_TrackedAreasAreSwapped = false;
+        private bool m_TrackedAreasAreSwapped;
         private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreas;
         private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreasBuffer;
         private Dictionary<VirtualArea2d, AreaTracker> iterableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreasBuffer : m_TrackedAreas;
         private Dictionary<VirtualArea2d, AreaTracker> mutableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreas : m_TrackedAreasBuffer;
 
-        private bool m_TrackedObjectsAreSwapped = false;
+        private bool m_TrackedObjectsAreSwapped;
         private List<ObjectTracker> m_TrackedObjects;
         private List<ObjectTracker> m_TrackedObjectsBuffer;
         private List<ObjectTracker> iterableTrackedObjects => m_TrackedObjectsAreSwapped ? m_TrackedObjectsBuffer : m_TrackedObjects;
         private List<ObjectTracker> mutableTrackedObjects => m_TrackedObjectsAreSwapped ? m_TrackedObjects : m_TrackedObjectsBuffer;
 
         private float m_ZDepth;
-        private bool m_Paused = false;
+        private bool m_Paused;
         
         /* Native arrays */
         internal NativeArray<Rect> allRects = new NativeArray<Rect>(7, Allocator.Persistent);

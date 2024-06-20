@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DuckJumper2024;
@@ -8,7 +7,6 @@ using Metamatic.Actions;
 using Metamatic.Events;
 using Metamatic.StorageDriver;
 using UnityEngine;
-using UnityEngine.PlayerLoop;
 
 namespace Metamatic
 {
@@ -84,7 +82,7 @@ namespace Metamatic
             
             private event Action OnDispose;
             private event Action OnUpdate;
-            private bool m_Disposed = false;
+            private bool m_Disposed;
 
             public static RequestMonitor Create(Repository repository, Storage storage, RequestType type, string address, Type dataType, Stats initialStats)
             {
@@ -114,15 +112,15 @@ namespace Metamatic
 #endif
             }
 
-            public void Update(Stats stats)
+            public void Update(Stats nextStats)
             {
-                this.stats = stats;
+                stats = nextStats;
                 OnUpdate?.Invoke();
             }
 
-            public void Release(Stats stats)
+            public void Release(Stats nextStats)
             {
-                this.stats = stats;
+                stats = nextStats;
                 Dispose();
             }
 
@@ -137,16 +135,16 @@ namespace Metamatic
         
         #region Global
         public static readonly string SettingsPath = "Assets/Metamatic/Resources/Settings/Repository.asset";
-        private static Repository _instance;
+        private static Repository _Instance;
         public static Repository global
         {
             get
             {
-                if (_instance == null)
+                if (_Instance == null)
                 {
-                    _instance = new Repository(true, true);
+                    _Instance = new Repository(true, true);
                 }
-                return _instance;
+                return _Instance;
             }
         }
         #endregion
@@ -178,7 +176,6 @@ namespace Metamatic
 
         private readonly bool m_IsGlobalInstance;
         private readonly bool m_AutoSync;
-        private Dictionary<(string address, Type dataType, Type metadataType), (float time, float responseDuration, int retryCount, NetworkOperationStatus status, Exception exception)> m_ActiveRequests = new();
         private readonly Dictionary<(Type, string), Store> m_Stores = new ();
         private readonly List<VersionControlStorageDriver> m_Drivers = new ();
         public IReadOnlyList<VersionControlStorageDriver> drivers => m_Drivers.AsReadOnly();
@@ -186,7 +183,7 @@ namespace Metamatic
         public DataSynchronizer synchronizer { get; private set; }
         private event Action<Store> OnAddStore;
         private event Action<Store> OnRemoveStore;
-        private bool m_Disposed = false;
+        private bool m_Disposed;
         #endregion
         
         /// <summary>
@@ -229,11 +226,13 @@ namespace Metamatic
         }
 
         /// <summary>
-        /// Get store for specific type and address
+        /// Create store with specified address and getDefaultValue function. If store with the same address and type already exists, it will throw an exception.
         /// </summary>
         /// <param name="address"></param>
+        /// <param name="getDefaultValue"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public IStore<T> CreateStore<T>(string address, Store<T>.GetDefaultValue getDefaultValue)
         {
             var key = (typeof(T), address);
@@ -241,7 +240,13 @@ namespace Metamatic
             {
                 throw new Exception($"Store for {typeof(T)} with address {address} already exists");
             }
-            m_Stores[key] = new Store<T>(this, address, getDefaultValue);
+            var newStore = m_Stores[key] = new Store<T>(this, address, getDefaultValue);
+            newStore.SubscribeDispose(() =>
+            {
+                m_Stores.Remove(key);
+                OnRemoveStore?.Invoke(newStore);
+            });
+            OnAddStore?.Invoke(newStore);
 
             return new ProxyStore<T>((Store<T>)m_Stores[key]);
         }

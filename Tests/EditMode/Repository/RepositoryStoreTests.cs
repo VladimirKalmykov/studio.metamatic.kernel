@@ -1,14 +1,11 @@
 ﻿using System.Collections;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Metamatic;
 using Metamatic.StorageDriver;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
-using UnityEditor.VersionControl;
 using UnityEngine.TestTools;
 
-namespace Tests.EditMode
+namespace Metamatic.Tests.EditMode
 {
     [TestFixture]
     public class RepositoryStoreTests
@@ -30,7 +27,7 @@ namespace Tests.EditMode
             var driver = new VersionControlStorageDriver(repository, storage);
             repository.AddStorage(driver);
             
-            await using var store = await repository.CreateStore<TestData>("test", GetTestData, CancellationToken.None);
+            await using var store = await repository.CreateStore("test", GetTestData, CancellationToken.None);
             Assert.IsNotNull(store);
             Assert.AreEqual(33, store.value.id);
             Assert.AreEqual("default", store.value.name);
@@ -44,7 +41,7 @@ namespace Tests.EditMode
             var driver = new VersionControlStorageDriver(repository, storage);
             repository.AddStorage(driver);
             
-            await using var store = await repository.CreateStore<TestData>("test", GetTestData, CancellationToken.None);
+            await using var store = await repository.CreateStore("test", GetTestData, CancellationToken.None);
             Assert.IsNotNull(store);
             Assert.AreEqual(33, store.value.id);
             Assert.AreEqual("default", store.value.name);
@@ -103,7 +100,7 @@ namespace Tests.EditMode
             driver.Set("test", new TestData {id = 56, name = "custom"}, 1, CancellationToken.None).Forget();
             
             await using var store = await repository.CreateStore("test", GetTestData, CancellationToken.None);
-            var releaseBetaBranch = store.Checkout("beta", true, true);
+            var releaseBetaBranch = store.Checkout("beta", true);
             store.value = new TestData {id = 57, name = "custom2"};
             Assert.AreEqual(57, store.value.id);
             Assert.AreEqual("custom2", store.value.name);
@@ -129,7 +126,7 @@ namespace Tests.EditMode
             driver.Set("test", new TestData {id = 56, name = "custom"}, 1, CancellationToken.None).Forget();
             
             await using var store = await repository.CreateStore("test", GetTestData, CancellationToken.None);
-            var releaseBetaBranch = store.Checkout("beta", true, true);
+            var releaseBetaBranch = store.Checkout("beta", true);
             store.value = new TestData {id = 57, name = "custom2"};
 
             store.Merge((from, to) =>

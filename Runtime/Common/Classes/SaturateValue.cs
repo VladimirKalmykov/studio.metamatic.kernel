@@ -17,7 +17,7 @@ namespace Metamatic {
         private float m_MaxTime;
         private float m_CurrentValueTime;
         private int m_CurrentValueIndex = -1;
-        private int m_InitializedCount = 0;
+        private int m_InitializedCount;
         private Func<T, T, bool> m_Compare;
         private float m_Sum;
         private Dictionary<T, int> m_TIndexMap;

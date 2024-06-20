@@ -10,8 +10,8 @@ namespace Metamatic.UI {
         }
         public DIRECTION direction = DIRECTION.ROW;
         [Tooltip("Update position of the elements even if they're not visible (influences performance expenses)")]
-        public bool alwaysUpdate = false;
-        public bool debug = false;
+        public bool alwaysUpdate;
+        public bool debug;
         RectTransform rectTransform;
         RectTransform[] cached_Children;
         Box[] cached_Boxes;

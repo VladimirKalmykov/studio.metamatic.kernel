@@ -16,7 +16,7 @@ namespace Metamatic
         
         #region Protected properties
 
-        protected bool m_IsActivated = false;
+        protected bool m_IsActivated;
         #endregion
         
         #region Usable

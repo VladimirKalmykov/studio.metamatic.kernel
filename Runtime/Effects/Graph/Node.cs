@@ -17,7 +17,7 @@ namespace Metamatic.Effects.Graph
         public EffectsGraph graph;
         private IEffect currentEffect;
         protected readonly List<Node> children = new List<Node>();
-        public Node parent { get; private set; }= null;
+        public Node parent { get; private set; }
         private EffectCancellableOperationAwaiter activeEffectExecution;
         public ExecutionStatus status { get; private set; } = ExecutionStatus.None;
 

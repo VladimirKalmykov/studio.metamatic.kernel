@@ -14,10 +14,10 @@ namespace Metamatic {
         }
        
         [LabelText("Walls"), Tooltip("Enable walls around")]
-        public bool debug = false;
+        public bool debug;
 
         #region Private
-        bool m_Visible = false;
+        bool m_Visible;
         public bool playerisVisible {
             get {
                 return m_Visible;

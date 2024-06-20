@@ -4,18 +4,18 @@
     [ExecuteAlways]
     public class HorizontalTiledLayoutGroup : MonoBehaviour
     {
-        public float paddingLeft = 0f;
-        public float paddingRight = 0f;
-        public float spacing = 0;
+        public float paddingLeft;
+        public float paddingRight;
+        public float spacing;
         public bool fitContent = true;
-        public bool smooth = false;
+        public bool smooth;
         public float smoothSpeed = 6f;
-        public int minWidth = 0;
+        public int minWidth;
         public int maxWidth = 99999;
         private int m_ActiveChildrenCount;
         RectTransform rect;
-        DrivenRectTransformTracker dt = new DrivenRectTransformTracker();
-        DrivenRectTransformTracker dtChild = new DrivenRectTransformTracker();
+        DrivenRectTransformTracker dt;
+        DrivenRectTransformTracker dtChild;
         private event System.Action OnBeforeDisable;
         void Awake() {
             rect = (RectTransform)transform;

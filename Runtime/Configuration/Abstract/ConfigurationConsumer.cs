@@ -4,7 +4,7 @@ namespace Metamatic {
 
     public abstract class ConfigurationConsumer: MonoBehaviour {
         
-        public bool runInEditor = false;
+        public bool runInEditor;
         [Tooltip("Prepend code of parent module")]
         public bool preprendModuleCode = true;
         protected Configurator configurator;

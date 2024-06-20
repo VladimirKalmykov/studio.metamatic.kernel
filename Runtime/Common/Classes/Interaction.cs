@@ -74,7 +74,7 @@ namespace Metamatic
         public T1 payload1 { get; private set; }
         protected T2 payload2;
         protected Handshake handshake;
-        private PayloadHandler1 HandshakeValueAccepter = null;
+        private PayloadHandler1 HandshakeValueAccepter;
         private event PayloadHandler2 OnIncomingValueChange;
         public event Action OnHandshake;
         public event Action OnHandshakeDismiss;

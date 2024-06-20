@@ -6,6 +6,6 @@ namespace Metamatic
     public abstract class UsablePresentableView : UsableGameObject
     {
         [Tooltip("Independent presentables should not be activated within parent")]
-        public bool independent = false;
+        public bool independent;
     }
 }

@@ -98,7 +98,7 @@ namespace Metamatic.Effects
             private TResult m_Result;
             public TProps props;
             
-            public bool m_PropsUpdated = false;
+            public bool m_PropsUpdated;
             
             public TEffector target
             {

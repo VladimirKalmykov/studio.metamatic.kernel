@@ -1,11 +1,7 @@
 namespace Metamatic
 {
     using System;
-    using System.Collections;
-    using System.Collections.Generic;
     using System.Threading;
-    using Metamatic;
-    using Metamatic.Actions;
     using TMPro;
     using UnityEngine;
     using UnityEngine.UI;

@@ -9,7 +9,7 @@ namespace Metamatic
     {
         public readonly ModuleLegacy moduleLegacy;
         public readonly SlotLegacy slotLegacy;
-        public bool released = false;
+        public bool released;
         public event Action OnRelease;
 
         public ModuleAttachment(SlotLegacy slotLegacy, ModuleLegacy moduleLegacy)

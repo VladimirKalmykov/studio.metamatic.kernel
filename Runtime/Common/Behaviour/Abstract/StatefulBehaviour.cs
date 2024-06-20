@@ -11,14 +11,14 @@ namespace Metamatic {
         protected event Action OnStatePreLateUpdate;
         #if DEBUG
         [SerializeField, HideInInspector] protected string[] statful_EditorShowStateKeys;
-        public bool debugStatefulBehaviour = false;
+        public bool debugStatefulBehaviour;
         #endif
         public class Debouncer
         {
             private float m_Duration = 1f;
             private float m_StartTime;
             private Action m_Action;
-            private bool m_IsThrottle = false;
+            private bool m_IsThrottle;
             public event Action OnDispose;
 
             private StatefulBehaviour m_Host;
@@ -99,8 +99,8 @@ namespace Metamatic {
         public State state;
         private State stateful_NextState;
         private State stateful_OverloadedState;
-        private bool stateful_ShouldUpdate = false;
-        private bool stateful_UpdateInProcess = false;
+        private bool stateful_ShouldUpdate;
+        private bool stateful_UpdateInProcess;
         public event StateChangeHandler stateListeners;
         private event StateModifier m_PostUpdateModifiying = delegate {};
 
