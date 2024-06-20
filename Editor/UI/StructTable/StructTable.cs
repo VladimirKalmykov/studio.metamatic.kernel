@@ -42,6 +42,16 @@ namespace Metamatic.UI
                 row.Add(valueLabel);
                 table.Add(row);
                 return table;
+            } else if (rawData == null)
+            {
+                var row = new VisualElement();
+                row.AddToClassList("Row");
+                var valueLabel = new Label();
+                valueLabel.AddToClassList("Value");
+                valueLabel.text = "null";
+                row.Add(valueLabel);
+                table.Add(row);
+                return table;
             }
             
             var props = dataType.GetFields();

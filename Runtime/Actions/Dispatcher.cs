@@ -256,7 +256,7 @@ namespace Metamatic.Actions
                 }
                 if (registry.isActive)
                 {
-                    throw new System.Exception("Registry key already registered: " + id);
+                    throw new System.Exception($"Registry {id} of type {typeof(TValue).Name} already registered");
                 }
                 registry.value = source;
                 registry.isActive = true;

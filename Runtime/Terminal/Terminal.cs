@@ -268,6 +268,7 @@ namespace Metamatic
             Action<string, string[]> commandHandler = null;
             commandHandler = (command, args) =>
             {
+                Debug.Log($"Entered command: {command}");
                 OnCommand -= commandHandler;
                 source.TrySetResult();
             };

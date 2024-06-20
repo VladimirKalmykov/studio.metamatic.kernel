@@ -13,8 +13,14 @@ namespace Metamatic
     [Serializable]
     public class SerializableDataPackage<T, TMetadata>: SerializableDataPackage
     {
-        public readonly Storage.Metadata<TMetadata> metadata;
+        public Storage.Metadata<TMetadata> metadata;
         public T value;
+
+        public SerializableDataPackage()
+        {
+            value = default;
+            metadata = null;
+        }
         public SerializableDataPackage(T value, TMetadata customMetadata) {
             this.value = value;
             /* Read version from VersionAttribute of T, if exists. Or use default version: 0.0 */

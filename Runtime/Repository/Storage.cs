@@ -98,8 +98,8 @@ namespace Metamatic
         [Serializable]
         public class Metadata
         {
-            public readonly string typeVersion;
-            public readonly long updateTime;
+            public string typeVersion;
+            public long updateTime;
             
             public Metadata(string typeVersion, long updateTime)
             {
@@ -108,9 +108,10 @@ namespace Metamatic
             }
         }
 
+        [Serializable]
         public class Metadata<TCustom> : Metadata
         {
-            public readonly TCustom custom;
+            public TCustom custom;
             public Metadata(string typeVersion, long updateTime, TCustom custom) : base(typeVersion, updateTime)
             {
                 this.custom = custom;
@@ -153,7 +154,8 @@ namespace Metamatic
         public static string Serialize<T, TMetadata>(T value, TMetadata metadata)
         {
             var package = new SerializableDataPackage<T, TMetadata>(value, metadata);
-            return JsonUtility.ToJson(package);
+            var serialized = JsonUtility.ToJson(package);
+            return serialized;
         }
         
         /// <summary>
@@ -165,6 +167,11 @@ namespace Metamatic
         public static (T, Metadata, TMetadata) Deserialize<T, TMetadata>(string rawResult)
         {
             var data = JsonUtility.FromJson<SerializableDataPackage<T, TMetadata>>(rawResult);
+
+            if (data.metadata == null || data.metadata.typeVersion == null)
+            {
+                throw new NotFoundException("Data is corrupted or does not contain metadata");
+            }
             
             if (data.metadata.typeVersion != VersionAttribute.GetVersion<T>())
             {
@@ -177,6 +184,10 @@ namespace Metamatic
                     Type genericType = typeof(SerializableDataPackage<,>);
                     Type constructedType = genericType.MakeGenericType(oldVersionType, typeof(TMetadata));
                     var oldData = JsonUtility.FromJson(rawResult, constructedType);
+                    if (oldData == null)
+                    {
+                        throw new DataTypeMigrationException($"Data of type {typeof(T).Name}:{data.metadata.typeVersion} is corrupted or does not match the represented type");
+                    }
                     var valueProperty = oldData.GetType().GetField("value");
                     if (valueProperty != null)
                     {

@@ -27,15 +27,23 @@ namespace Metamatic
             {
                 try
                 {
-                    token.ThrowIfCancellationRequested();
+                    if (token.IsCancellationRequested)
+                    {
+                        await UniTask.SwitchToMainThread();
+                        token.ThrowIfCancellationRequested();
+                    }
 
                     string fileContent;
                     using (StreamReader reader = new StreamReader(fullPath))
                     {
                         fileContent = await reader.ReadToEndAsync();
-                        token.ThrowIfCancellationRequested();
+                        if (token.IsCancellationRequested)
+                        {
+                            await UniTask.SwitchToMainThread();
+                            token.ThrowIfCancellationRequested();
+                        }
                     }
-
+                    
                     await UniTask.SwitchToMainThread();
                     token.ThrowIfCancellationRequested();
                     taskCompletionSource.TrySetResult(Storage.Deserialize<TData, TMetadata>(fileContent));
@@ -77,7 +85,11 @@ namespace Metamatic
             {
                 try
                 {
-                    token.ThrowIfCancellationRequested();
+                    if (token.IsCancellationRequested)
+                    {
+                        await UniTask.SwitchToMainThread();
+                        token.ThrowIfCancellationRequested();
+                    }
 
                     // Создаем все недостающие директории для fullPath
                     string directoryPath = Path.GetDirectoryName(fullPath);
@@ -89,10 +101,13 @@ namespace Metamatic
                     using (await lockerManager.GetAsyncUriLocker(uri, token))
                     using (StreamWriter writer = new StreamWriter(fullPath, false))
                     {
-                        token.ThrowIfCancellationRequested();
+                        if (token.IsCancellationRequested)
+                        {
+                            await UniTask.SwitchToMainThread();
+                            token.ThrowIfCancellationRequested();
+                        }
                         await writer.WriteAsync(json);
                     }
-                    token.ThrowIfCancellationRequested();
                     await UniTask.SwitchToMainThread();
                     token.ThrowIfCancellationRequested();
                     taskCompletionSource.TrySetResult();
@@ -102,7 +117,7 @@ namespace Metamatic
                     await UniTask.SwitchToMainThread();
                     taskCompletionSource.TrySetException(e);
                 }
-            });
+            }, true, token);
             return taskCompletionSource.Task;
         }
 
