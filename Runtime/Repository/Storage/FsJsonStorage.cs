@@ -40,11 +40,18 @@ namespace Metamatic
                     token.ThrowIfCancellationRequested();
                     taskCompletionSource.TrySetResult(Storage.Deserialize<TData, TMetadata>(fileContent));
                 }
-                catch (DirectoryNotFoundException e)
+                catch (Exception e)
                 {
-                    /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
-                    await UniTask.SwitchToMainThread();
-                    taskCompletionSource.TrySetException(e);
+                    if (e is DirectoryNotFoundException || e is FileNotFoundException)
+                    {
+                        /* Anyway synchronized because it has no persistent storage record, it is normal scenario */
+                        await UniTask.SwitchToMainThread();
+                        taskCompletionSource.TrySetException(new Storage.NotFoundException($"{e.GetType().Name}"));
+                    }
+                    else
+                    {
+                        taskCompletionSource.TrySetException(e);
+                    }
                 }
                 finally
                 {

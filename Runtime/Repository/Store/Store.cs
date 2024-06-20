@@ -120,8 +120,9 @@ namespace Metamatic
         private readonly MicroState<Branch> m_CurrentBranch = new();
         private readonly DeferLock m_SyncLock = new ();
         private readonly DeferLock m_CheckoutBranchLock = new ();
+        private UniTaskCompletionSource m_SynchronizedTaskCompletionSource = new ();
         public bool synchronized { get; private set; }
-        public UniTask synchronizationTask { get; private set; }
+        public UniTask synchronizationTask => m_SynchronizedTaskCompletionSource.Task;
 
         public long version => m_CurrentBranch.value.version;
 
@@ -129,7 +130,6 @@ namespace Metamatic
 
         /* Here will be property that will be increased when Inquire method will be called */
         private List<object> m_Inquiriences = new();
-        private UniTaskCompletionSource m_SynchronizedTaskCompletionSource = new();
         private readonly GetDefaultValue getDefaultValue;
         
         public T value
