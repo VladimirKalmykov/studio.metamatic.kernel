@@ -169,6 +169,8 @@ namespace Metamatic
         /// </summary>
         public float disableStorageDuration { get; set; } = 60f;
         public readonly VersionControlStorageDriver inMemoryStorage;
+        public VersionControlStorageDriver deviceStorage { get; private set; }
+        public VersionControlStorageDriver remoteStorage { get; private set; }
         public CancellationToken disposeToken => m_DisposeCancellationTokenSource.Token;
         #endregion
         
@@ -333,14 +335,16 @@ namespace Metamatic
             foreach (var platform in platforms)
             {
                 /* Add remote storage */
-                if (platform.platform == Application.platform && platform.enableRemoteStorage)
+                if (platform.platform == Application.platform && platform.remoteStorage.enabled)
                 {
-                    var sourceType = Type.GetType(platform.remoteStorage);
+                    var sourceType = Type.GetType(platform.remoteStorage.storage);
                     if (sourceType != null)
                     {
                         var storage = (Storage)Activator.CreateInstance(sourceType);
                         storage.locationType = Storage.LocationType.Remote;
-                        m_Drivers.Add(new VersionControlStorageDriver(this, storage));
+                        var driver = new VersionControlStorageDriver(this, storage);
+                        remoteStorage = driver;
+                        m_Drivers.Add(driver);
                         break;
                     }
                     else
@@ -350,14 +354,16 @@ namespace Metamatic
                 }
                 
                 /* Add local storage */
-                if (platform.platform == Application.platform && platform.enableLocalStorage)
+                if (platform.platform == Application.platform && platform.localStorage.enabled)
                 {
-                    var sourceType = Type.GetType(platform.localStorage);
+                    var sourceType = Type.GetType(platform.localStorage.storage);
                     if (sourceType != null)
                     {
                         var storage = (Storage)Activator.CreateInstance(sourceType);
                         storage.locationType = Storage.LocationType.Local;
-                        m_Drivers.Add(new VersionControlStorageDriver(this, storage));
+                        var driver = new VersionControlStorageDriver(this, storage);
+                        deviceStorage = driver;
+                        m_Drivers.Add(driver);
                         break;
                     }
                     else

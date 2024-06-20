@@ -12,14 +12,16 @@ namespace Metamatic
     public class PlatformSource
     {
         public RuntimePlatform platform;
-        public bool enableRemoteStorage;
-        public bool enableLocalStorage;
-        /// <summary>
-        /// Class name of the source
-        /// </summary>
-        public string remoteStorage;
-
-        public string localStorage;
+        public bool enabled;
+        public StorageSource remoteStorage;
+        public StorageSource localStorage;
+    }
+    
+    [System.Serializable]
+    public class StorageSource
+    {
+        public bool enabled;
+        public string storage;
         public IOSourceSettings settings;
     }
     

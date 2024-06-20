@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="Storage" style="flex-grow: 1;">
+        <ui:VisualElement name="Header" style="flex-grow: 0; height: 26px; flex-shrink: 3; flex-direction: row;">
+            <ui:Toggle name="TitleWithToggle" style="font-size: 16px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; flex-grow: 1;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="SourceContainer" style="flex-grow: 0; flex-direction: row; flex-shrink: 3; height: 46px;">
+            <ui:VisualElement name="Select" style="flex-grow: 1;">
+                <ui:DropdownField name="SourcesDropdown" style="margin-left: 0; margin-top: 0; margin-bottom: 0;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="SourceSettings" style="flex-grow: 2;" />
+    </ui:VisualElement>
+</ui:UXML>

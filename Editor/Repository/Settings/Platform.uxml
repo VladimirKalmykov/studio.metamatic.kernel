@@ -1,19 +1,10 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Repository/Settings/Platform.uss?fileID=7433441132597879392&amp;guid=516e7010285d1ad478e9f5d5973c19b4&amp;type=3#Platform" />
-    <ui:VisualElement style="flex-grow: 1;">
-        <ui:VisualElement name="Header" style="flex-grow: 0; max-height: none; padding-top: 0; padding-left: 0; padding-bottom: 6px; padding-right: 6px;">
-            <ui:Label text="Title&#10;" name="PlatformName" style="-unity-font-style: bold; color: rgb(210, 205, 125); white-space: normal;" />
+    <ui:VisualElement style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; background-color: rgb(42, 42, 42); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; margin-bottom: 12px;">
+        <ui:VisualElement name="Header" style="flex-grow: 0; max-height: none; padding-top: 0; padding-left: 0; padding-bottom: 6px; padding-right: 6px; flex-direction: row;">
+            <ui:Label text="Title&#10;" name="PlatformName" style="-unity-font-style: bold; color: rgb(210, 205, 125); white-space: normal; flex-grow: 2;" />
+            <ui:Button text="Remove" name="RemovePlatform" />
         </ui:VisualElement>
-        <ui:VisualElement name="Content" style="flex-grow: 2;">
-            <ui:VisualElement name="SourceContainer" style="flex-grow: 0; flex-direction: row; flex-shrink: 3; height: 46px;">
-                <ui:VisualElement name="Select" style="flex-grow: 1;">
-                    <ui:DropdownField name="SourcesDropdown" style="margin-left: 0; margin-top: 0; margin-bottom: 0;" />
-                </ui:VisualElement>
-                <ui:VisualElement name="Functions" style="flex-grow: 0;">
-                    <ui:Button text="Remove" name="RemoveButton" style="align-items: stretch; align-self: flex-start;" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-            <ui:VisualElement name="SourceSettings" style="flex-grow: 2;" />
-        </ui:VisualElement>
+        <ui:VisualElement name="Content" style="flex-grow: 2;" />
     </ui:VisualElement>
 </ui:UXML>

@@ -102,12 +102,6 @@ namespace Metamatic
         {
             store.Merge(merger);
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Commit(string branchName, CancellationToken cancellationToken)
-        {
-            return store.Commit(branchName, cancellationToken);
-        }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UniTask Commit(CancellationToken cancellationToken)

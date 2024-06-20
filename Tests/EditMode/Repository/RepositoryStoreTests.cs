@@ -143,8 +143,6 @@ namespace Tests.EditMode
             Assert.AreEqual("custom2", store.value.name);
             Assert.AreEqual(1, store.version);
             Assert.AreEqual(true, store.isDirty);
-            
-            
         });
     }
 }

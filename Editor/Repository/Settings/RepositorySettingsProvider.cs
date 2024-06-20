@@ -13,6 +13,7 @@ public class RepositorySettingsProvider : SettingsProvider
     
     private static RepositorySettings settings;
     private VisualTreeAsset m_PlatformVisualTree;
+    private VisualTreeAsset m_StorageVisualTree;
     private ScrollView m_PlatformsScrollView;
     private SequentialArrayHandler<PlatformSource> m_PlatformItemsInitializer;
     private CancellationTokenSource m_ActivationCancellationTokenSource;
@@ -23,7 +24,6 @@ public class RepositorySettingsProvider : SettingsProvider
 
     public override async void OnActivate(string searchContext, VisualElement rootElement)
     {
-        Debug.Log("Activete RepositorySettingsProvider");
         m_ActivationCancellationTokenSource = new CancellationTokenSource();
         string directoryPath = Path.GetDirectoryName(Repository.SettingsPath);
         
@@ -83,6 +83,8 @@ public class RepositorySettingsProvider : SettingsProvider
         
         /* Load Platform UXML */
         m_PlatformVisualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Repository/Settings/Platform.uxml");
+        /* Load Storage UXML */
+        m_StorageVisualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Repository/Settings/Storage.uxml");
         
         /* Select Platform Dropdown */
         var platformDropdown = root.Q<DropdownField>("PlatformDropdown");
@@ -133,32 +135,68 @@ public class RepositorySettingsProvider : SettingsProvider
     {
         var root = m_PlatformVisualTree.CloneTree();
         var platformField = root.Q<Label>("PlatformName");
+        var content = root.Q<VisualElement>("Content");
         platformField.text = platformSource.platform.ToString();
-        /* Select SourcesDropdown */
-        var sourcesDropdown = root.Q<DropdownField>("SourcesDropdown");
-        /* Add to dropdown choices the sources that are compatible with the platform */
-        sourcesDropdown.choices = m_PlatformToSourcesMap.ContainsKey(platformSource.platform)
-            ? m_PlatformToSourcesMap[platformSource.platform].Select(x => x.FullName).ToList()
-            : new List<string>();
-        sourcesDropdown.SetValueWithoutNotify(platformSource.remoteStorage);
-        sourcesDropdown.RegisterValueChangedCallback(evt =>
+        
+        /* Initialize defaults */
+        if (platformSource.remoteStorage == null)
         {
-            platformSource.remoteStorage = evt.newValue;
-            SaveSettings();
-        });
+            platformSource.remoteStorage = new StorageSource();
+        }
+        
+        if (platformSource.localStorage == null)
+        {
+            platformSource.localStorage = new StorageSource();
+        }
+        
+        /* Render local storage */
+        RenderStorage(content, platformSource, platformSource.localStorage, "Local Storage");
+        RenderStorage(content, platformSource, platformSource.remoteStorage, "Remote Storage");
+        
         /* Select RemoveButton */
-        var removeButton = root.Q<Button>("RemoveButton");
+        var removeButton = root.Q<Button>("RemovePlatform");
         removeButton.clicked += () =>
         {
             settings.platforms = settings.platforms.Where(x => x != platformSource).ToArray();
             m_PlatformItemsInitializer.Handle(settings.platforms);
             SaveSettings();
         };
-        
         m_PlatformsScrollView.Add(root);
         await token;
         if (m_PlatformsScrollView.Contains(root))
         m_PlatformsScrollView.Remove(root);
+    }
+
+    private void RenderStorage(VisualElement content, PlatformSource platformSource, StorageSource storageSource, string title)
+    {
+        var storageElement = m_StorageVisualTree.CloneTree();
+        content.Add(storageElement);
+        
+        /* Select SourcesDropdown */
+        var sourcesDropdown = storageElement.Q<DropdownField>("SourcesDropdown");
+        /* Add to dropdown choices the sources that are compatible with the platform */
+        sourcesDropdown.choices = m_PlatformToSourcesMap.ContainsKey(platformSource.platform)
+            ? m_PlatformToSourcesMap[platformSource.platform].Select(x => x.FullName).ToList()
+            : new List<string>();
+        sourcesDropdown.SetValueWithoutNotify(storageSource.storage);
+        sourcesDropdown.RegisterValueChangedCallback(evt =>
+        {
+            storageSource.storage = evt.newValue;
+            SaveSettings();
+        });
+        sourcesDropdown.SetEnabled(storageSource.enabled);
+        
+        /* Select title with toogle */
+        var titleElement = storageElement.Q<Toggle>("TitleWithToggle");
+        titleElement.text = title;
+        titleElement.value = storageSource.enabled;
+        titleElement.RegisterValueChangedCallback(evt =>
+        {
+            storageSource.enabled = evt.newValue;
+            sourcesDropdown.SetEnabled(storageSource.enabled);
+            SaveSettings();
+        });
+        
     }
 
     [SettingsProvider]
