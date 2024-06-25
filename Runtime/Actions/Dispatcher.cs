@@ -238,7 +238,7 @@ namespace Metamatic.Actions
         }
 
         #endregion
-        #region Registry
+        
         public IDisposable Register<TValue>(object id, TValue source) where TValue : notnull
         {
             var valueType = typeof(TValue);
@@ -535,6 +535,93 @@ namespace Metamatic.Actions
         public bool HasRegistry<T>() where T : notnull
         {
             return HasRegistry<Dispatcher, T>(this);
+        }
+        
+        #region Request
+        
+        
+        private readonly Dictionary<(Type, object), LockedList<IDispatcher.RequestHandler<object>>> m_RequestHandlers = new ();
+        public async UniTask Request<T>(T eventObject, object eventName, CancellationToken token) where T : notnull
+        {
+            if (m_RequestHandlers.TryGetValue((typeof(T), eventName), out var handlers))
+            {
+                if (handlers.isLocked)
+                {
+                    await handlers;
+                }
+                if (handlers.Count > 0)
+                {
+                    using (handlers.Lock())
+                    {
+                        var tasks = new List<UniTask>();
+                        foreach (var handler in handlers)
+                        {
+                            tasks.Add(handler(eventObject, token));
+                        }
+                        await UniTask.WhenAll(tasks);
+                    }
+                }
+            }
+        }
+        
+        public DisposableAction SubscribeRequest<T>(object eventName, IDispatcher.RequestHandler<T> handler) where T : notnull
+        {
+            /* Subscribe Request. But take in opinion that it can be locked */
+            if (!m_RequestHandlers.TryGetValue((typeof(T), eventName), out var handlers))
+            {
+                handlers = new LockedList<IDispatcher.RequestHandler<object>>();
+                m_RequestHandlers[(typeof(T), eventName)] = handlers;
+            }
+            
+            IDispatcher.RequestHandler<object> handlerWrapper = (source, token) =>
+            {
+                return handler((T)source, token);
+            };
+            
+            if (handlers.isLocked)
+            {
+                var cancellationTokenSource = new CancellationTokenSource();
+                SubscribeRequest_Deferred(handlers, handlerWrapper, cancellationTokenSource.Token);
+                return new DisposableAction(() => cancellationTokenSource.Cancel());
+            }
+            
+            handlers.Add(handlerWrapper);
+            
+            return new DisposableAction(() =>
+            {
+                UnsubscribeRequest(eventName, handlerWrapper);
+            });
+        }
+        
+        public async void SubscribeRequest_Deferred<T>(LockedList<IDispatcher.RequestHandler<object>> handlers, IDispatcher.RequestHandler<T> handler, CancellationToken token)
+        {
+            await handlers;
+            if (token.IsCancellationRequested) return;
+            var dispose = SubscribeRequest<T>(handlers, handler);
+            token.Register(() => dispose.Dispose());
+        }
+        
+        public void UnsubscribeRequest(object eventName, IDispatcher.RequestHandler<object> handlerWrapper)
+        {
+            if (m_RequestHandlers.TryGetValue((handlerWrapper.Method.GetParameters()[0].ParameterType, eventName), out var handlers))
+            {
+                if (handlers.isLocked)
+                {
+                    UnsubscribeRequest_Deferred(handlers, eventName, handlerWrapper);
+                    return;
+                }
+                handlers.Remove(handlerWrapper);
+                if (handlers.Count == 0)
+                {
+                    m_RequestHandlers.Remove((handlerWrapper.Method.GetParameters()[0].ParameterType, eventName));
+                }
+            }
+        }
+        
+        public async void UnsubscribeRequest_Deferred(LockedList<IDispatcher.RequestHandler<object>> handlers, object eventName, IDispatcher.RequestHandler<object> handlerWrapper)
+        {
+            await handlers;
+            UnsubscribeRequest(eventName, handlerWrapper);
         }
 
         #endregion

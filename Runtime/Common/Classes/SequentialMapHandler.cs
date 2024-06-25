@@ -4,6 +4,17 @@ using System.Threading;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// Creates a handler that will handle the same key sequentially. Instead of SequentialHandler, this class lets you control lifecycle for each key.
+    /// </summary>
+    /// <example>
+    /// var handler = new SequentialMapHandler<string, GameObject>(NamedObjectsHandler);
+    /// handler.handle('player1', player1GameObject);
+    /// handler.handle('player2', player2GameObject);
+    /// handler.handle('player1', newPlayer1GameObject); // For player1, the previous handler will be canceled and the new one will be started.
+    /// handler.handle('player2', newPlayer2GameObject); // For player2, the previous handler will be canceled and the new one will be started.
+    /// </example>
+    /// <typeparam name="TKey"></typeparam>
     public class SequentialMapHandler<TKey>: IDisposable
     {
         private bool m_Disposed;

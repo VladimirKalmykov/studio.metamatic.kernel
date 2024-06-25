@@ -6,10 +6,9 @@ using UnityEngine.Localization;
 
 namespace Metamatic
 {
-    public enum AssetRarityGrade
+    public enum Rarity
     {
-        Auto,
-        Junk,
+        Trivial,
         Regular,
         Legendary,
         Epic,
@@ -19,7 +18,7 @@ namespace Metamatic
     {
         public LocalizedString GetTitle();
         public LocalizedString GetDescription();
-        public AssetRarityGrade grade { get; }
+        public Rarity grade { get; }
         public AssetReferenceSprite previewImage { get; }
         public float GetPrice();
     }
@@ -42,7 +41,7 @@ namespace Metamatic
         [SerializeField]private LocalizedString description;
         [SerializeField]private float price;
         [SerializeField][LabelText("Preview")] private AssetReferenceSprite sPreviewImage;
-        [SerializeField][LabelText("Rarity")] private AssetRarityGrade sGrade;
+        [SerializeField][LabelText("Rarity")] private Rarity sGrade;
         [BoxGroup("Access Config"), PropertyOrder(99)]
         public GameAccessConfig accessConfig;
         public GameAccessConfig GetAccessConfig()
@@ -65,7 +64,7 @@ namespace Metamatic
             return price;
         }
 
-        public AssetRarityGrade grade => sGrade;
+        public Rarity grade => sGrade;
 
        
         public AssetReferenceSprite previewImage => sPreviewImage;

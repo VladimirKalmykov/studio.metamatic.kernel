@@ -12,6 +12,7 @@ namespace Metamatic.Actions
         delegate void RetractionsHandler<T>(T source) where T : notnull;
 
         delegate void EventHandler<T>(T source);
+        delegate UniTask RequestHandler<T>(T source, CancellationToken token);
         /// <summary>
         /// Emit an event of type T
         /// </summary>

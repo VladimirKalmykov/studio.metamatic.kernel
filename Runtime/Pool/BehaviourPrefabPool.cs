@@ -18,7 +18,8 @@ namespace Metamatic
         /// <param name="collectionCheck">Set false for best performance, true for more accuracy</param>
         /// <param name="defaultCapacity"></param>
         /// <param name="maxSize"></param>
-        public BehaviourPrefabPool(T prefab, bool collectionCheck = true, int defaultCapacity = 10, int maxSize = 10000)
+        public 
+            BehaviourPrefabPool(T prefab, bool collectionCheck = false, int defaultCapacity = 10, int maxSize = 10000)
         {
             m_Pool = new ObjectPool<T>(
                 createFunc: () =>

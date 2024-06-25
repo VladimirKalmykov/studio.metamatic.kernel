@@ -88,6 +88,7 @@ namespace Metamatic
         public static UniTask PlayerLoopAction(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, CancellationToken cancellationToken = default)
         {
             var startTime = Time.time;
+            callback(0f);
             return UniTask.WaitUntil(() =>
             {
                 var ratio = duration > 0f ? Mathf.Clamp01((Time.time - startTime) / duration) : 1f;

@@ -66,6 +66,7 @@ namespace Metamatic
                     m_ResultTask = null;
                     m_DisposeCancellationTokenSource.Dispose();
                     m_DisposeCancellationTokenSource = null;
+                    // TODO: Make this configurable or automatic adaptive
                     if (_Pool.Count < 100) {
                         _Pool.Enqueue(this);
                     }
@@ -78,7 +79,7 @@ namespace Metamatic
             Dispose(false, true);
         }
 
-        private void Dispose(bool isFromFinalizer = false, bool isSync = false)
+        private void Dispose(bool isFromFinalizer, bool isSync = false)
         {
             if (isFromFinalizer)
             {
@@ -97,6 +98,7 @@ namespace Metamatic
                 m_ResultTask = null;
                 m_IsSyncDisposed = false;
                 m_DisposeCancellationTokenSource = null;
+                // TODO: Make this configurable or automatic adaptive
                 if (_Pool.Count < 100) {
                     _Pool.Enqueue(this);
                 }
@@ -148,7 +150,9 @@ namespace Metamatic
             }
             return new MicroPromise<T>(action);
         }
-        
+        private bool m_IsSyncDisposed;
+        public bool isSyncDisposed => m_IsSyncDisposed;
+        public bool isAsyncDisposed => !m_IsSyncDisposed;
         private CancellationTokenSource m_DisposeCancellationTokenSource;
         private UniTask<T>? m_ResultTask;
         private UniTask? m_ReleaseTask;
@@ -199,10 +203,10 @@ namespace Metamatic
         
         public void Dispose()
         {
-            Dispose(false);
+            Dispose(false, true);
         }
 
-        private void Dispose(bool isFromFinalizer = false)
+        private void Dispose(bool isFromFinalizer, bool isSync = false)
         {
             if (isFromFinalizer)
             {
@@ -213,7 +217,19 @@ namespace Metamatic
                 return;
             }
             m_Disposed = true;
+            m_IsSyncDisposed = isSync;
             m_DisposeCancellationTokenSource?.Cancel();
+            if (isSync)
+            {
+                m_ReleaseTask = null;
+                m_ResultTask = null;
+                m_IsSyncDisposed = false;
+                m_DisposeCancellationTokenSource = null;
+                // TODO: Make this configurable or automatic adaptive
+                if (_Pool.Count < 100) {
+                    _Pool.Enqueue(this);
+                }
+            }
             GC.SuppressFinalize(this);
         }
 
