@@ -14,8 +14,19 @@ namespace Metamatic.Actions
 
         public static Dispatcher global
         {
-            get => (_globalDispatcher ??= new GameObject("__GLOBALDISPATCHER__").AddComponent<DispatcherComponent>()).dispatcher;
+            get
+            {
+                #if UNITY_EDITOR
+                if (!Application.isPlaying)
+                {
+                    throw new System.Exception("Global dispatcher is not available in edit mode");
+                }
+                #endif
+                return (_globalDispatcher ??=
+                    new GameObject("__GLOBALDISPATCHER__").AddComponent<DispatcherComponent>()).dispatcher;
+            }
         }
+
         /// <summary>
         /// Find dispatcher in parent components
         /// </summary>
