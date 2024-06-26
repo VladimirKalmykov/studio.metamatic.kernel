@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Metamatic.DevTools
 {
-    public class BoxGizmo : Gizmo
+    public class BoxGizmo : GizmoHelper
     {
         public Rect rect;
         
