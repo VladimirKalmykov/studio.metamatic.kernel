@@ -192,7 +192,7 @@ namespace Metamatic.Actions
             }
         }
 
-        public IReadOnlyList<T> GetAnnounced<T>() where T : notnull
+        public IReadOnlyList<T> GetAnnouncements<T>() where T : notnull
         {
             if (m_Announcements.TryGetValue(typeof(T), out var announcements))
             {
@@ -233,7 +233,7 @@ namespace Metamatic.Actions
 
         public DisposableAction SubscribeAnnouncements<T>(IDispatcher.AnnouncementsHandler<T> handler) where T : notnull
         {
-            handler(GetAnnounced<T>().ToArray());
+            handler(GetAnnouncements<T>().ToArray());
             return Subscribe<Announcement<T>>(announcement =>
             {
                 handler(new []{announcement.source});
