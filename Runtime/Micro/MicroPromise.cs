@@ -201,6 +201,17 @@ namespace Metamatic
             }
             return new MicroPromise<T>(action);
         }
+        public static MicroPromise<T> Run(AsyncActionPromise action, CancellationToken cancellationToken = default)
+        {
+            if (_Pool.Count > 0)
+            {
+                var operation = _Pool.Dequeue();
+                operation.m_Disposed = false;
+                operation.InternalRun(action, cancellationToken);
+                return operation;
+            }
+            return new MicroPromise<T>(action);
+        }
         #endregion
 
         public delegate UniTask AsyncAction(Action<T> resolve, Action<Exception> reject, CancellationToken cancellationToken);

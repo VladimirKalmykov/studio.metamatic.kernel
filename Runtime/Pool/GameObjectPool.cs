@@ -6,6 +6,7 @@ using Object = UnityEngine.Object;
 
 namespace Metamatic
 {
+    [Obsolete("Use Pool.GetGameObjectPool instead")]
     public class GameObjectPool: IObjectPool<GameObject>, IDisposable
     {
         private readonly ObjectPool<GameObject> m_Pool;

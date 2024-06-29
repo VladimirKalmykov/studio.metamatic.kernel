@@ -99,12 +99,12 @@ namespace Metamatic
         }
 
         #if UNITY_EDITOR
-        protected void OnValidate()
+        protected virtual void OnValidate()
         {
             OnValidateEvent?.Invoke();
         }
 
-        protected void OnDrawGizmos()
+        protected virtual void OnDrawGizmos()
         {
             OnDrawGizmosEvent?.Invoke();
         }

@@ -8,7 +8,7 @@ using Metamatic.Actions;
 using Metamatic.MicroBehaviours;
 using UnityEngine;
 
-public class FOV2DService : AsyncBehaviour
+public class FOV2DService : Service
 {
     [SerializeField] private float m_OuterBuffer = 1.0f;
     [SerializeField] private float m_InnerBuffer = 1.0f;
@@ -17,30 +17,41 @@ public class FOV2DService : AsyncBehaviour
     public CameraFOVTracker2d cameraFovTracker2d => m_CameraFovTracker2d;
     private List<DisposableAction> m_Trackers = new List<DisposableAction>(100);
 
-    protected override async void RunAsync(CancellationToken cancellationToken)
+    protected async override void RunService(CancellationToken cancellationToken)
     {
-        Debug.Log("CameraFOVTracker2d RunAsync Started");
         /* Subscribe to camera controller */
-        await using var cameraFovTracker2d = m_CameraFovTracker2d = new CameraFOVTracker2d(null, m_InnerBuffer, m_OuterBuffer, transform.position.z);
+        var cameraService = await Resolve<CameraService>();
+        await using var dispsableCameraFOVTracker2d = m_CameraFovTracker2d = new CameraFOVTracker2d(cameraService.camera, m_InnerBuffer, m_OuterBuffer, transform.position.z);
+        using var cameraListener = cameraService.SubscribeToMainCamera(cameraController =>
+        {
+            if (cameraController == null || cameraController.camera == null)
+            {
+                m_CameraFovTracker2d.Pause();
+                m_CameraFovTracker2d.camera = null;
+                return;
+            }
+            m_CameraFovTracker2d.Resume();
+            m_CameraFovTracker2d.camera = cameraController.camera;
+        });
         using var validationListener = SubscribeValidate(() =>
         {
             m_CameraFovTracker2d.innerBuffer = m_InnerBuffer;
             m_CameraFovTracker2d.outerBuffer = m_OuterBuffer;
         });
-        #if UNITY_EDITOR
+#if UNITY_EDITOR
         using var drawGizmosListener = SubscribeDrawGizmos(m_CameraFovTracker2d.DrawGizmos);
-        #endif
+#endif
         using var cameraControllerSubscription = Dispatcher.global.SubscribeRegistry<CameraAnchor>(
             cameraController =>
             {
                 if (cameraController == null || cameraController.camera == null)
                 {
-                    cameraFovTracker2d.Pause();
-                    cameraFovTracker2d.camera = null;
+                    dispsableCameraFOVTracker2d.Pause();
+                    dispsableCameraFOVTracker2d.camera = null;
                     return;
                 }
-                cameraFovTracker2d.Resume();
-                cameraFovTracker2d.camera = cameraController.camera;
+                dispsableCameraFOVTracker2d.Resume();
+                dispsableCameraFOVTracker2d.camera = cameraController.camera;
             });
         /* Check for already registered */
         if (Dispatcher.global.HasRegistry<FOV2DService>())
@@ -53,6 +64,7 @@ public class FOV2DService : AsyncBehaviour
         /* Untrack all */
         m_Trackers.ForEach(t => t.Dispose());
     }
+
     public DisposableAction TrackArea(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
     {
         var untrack = cameraFovTracker2d.TrackArea(area, boundsType, onActivated);

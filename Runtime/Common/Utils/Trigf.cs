@@ -1032,5 +1032,34 @@ namespace Metamatic {
 
             return bestIndex;
         }
+
+        public static float PingPong(float t, float x = 0.5f)
+        {
+            #if DEBUG
+            if (t < 0f || t > 1f)
+            {
+                throw new System.ArgumentOutOfRangeException("t", "Value must be between 0 and 1.");
+            }
+
+            if (x <= 0f || x >= 1f)
+            {
+                throw new System.ArgumentOutOfRangeException("x", "Value must be between 0 and 1, exclusive.");
+            }
+            #endif
+
+            // Приведение t к диапазону от 0 до 1 (не обязательно, если t всегда в диапазоне [0, 1])
+            t = Mathf.Clamp01(t);
+
+            if (t < x)
+            {
+                // Линейная интерполяция от 0 до 1
+                return t / x;
+            }
+            else
+            {
+                // Линейная интерполяция от 1 до 0
+                return (1f - (t - x) / (1f - x));
+            }
+        }
     }
 }

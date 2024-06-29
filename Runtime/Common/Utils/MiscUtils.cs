@@ -962,5 +962,37 @@ namespace Metamatic {
 
             return result;
         }
+        
+        /// <summary>
+        /// Get random int value from range based on seed
+        /// </summary>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <param name="seed"></param>
+        /// <returns></returns>
+        public static int RandomRange(int min, int max, int seed)
+        {
+            System.Random random = new System.Random(seed);
+            return random.Next(min, max);
+        }
+        
+        /// <summary>
+        /// Get random float value from range based on seed
+        /// </summary>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <param name="seed"></param>
+        /// <returns></returns>
+        public static float RandomRange(float min, float max, int seed)
+        {
+            System.Random random = new System.Random(seed);
+            double val = random.NextDouble();
+            return (float)(min + val * (max - min));
+        }
+        
+        /// <summary>
+        /// Returns a random integer number between int.MinValue and int.MaxValue
+        /// </summary>
+        public static int seed => new System.Random().Next();
     }
 }

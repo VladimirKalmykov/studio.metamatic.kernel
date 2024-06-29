@@ -85,6 +85,26 @@ namespace Metamatic
             });
         }
         
+        public static async UniTask PlayerLoopActionFps(Func<float, bool> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float fps = 60, CancellationToken cancellationToken = default)
+        {
+            /* Reduce fps to specified value */
+            var interval = 1f / fps;
+            var lastTime = Time.time;
+            await UniTask.WaitUntil(() =>
+            {
+                var currentTime = Time.time;
+                var ready = false;
+                if (currentTime - lastTime >= interval)
+                {
+                    ready =callback(currentTime - lastTime);
+                    lastTime = currentTime;
+                }
+                
+                return ready;
+
+            }, timing, cancellationToken);
+        }
+        
         public static UniTask PlayerLoopAction(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, CancellationToken cancellationToken = default)
         {
             var startTime = Time.time;

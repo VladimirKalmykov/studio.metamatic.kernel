@@ -90,7 +90,24 @@ namespace Metamatic
             _HandleServiceAdded += handler;
             return new DisposableAction(() => _HandleServiceAdded -= handler);
         }
+        
+        private bool m_InitializedOnDemand;
 
         protected abstract void RunService(CancellationToken cancellationToken);
+        protected virtual UniTask InitializeServiceOnDemand(MicroPromise promise)
+        {
+            throw new NotImplementedException("InitializeServiceOnDemand for this server is not implemented");
+        }
+
+        protected async UniTask InitializeOnDemand()
+        {
+            if (m_InitializedOnDemand)
+            {
+                return;
+            }
+            var promise = MicroPromise.Run(InitializeServiceOnDemand, componentDisableCancellationToken);
+            await promise.result;
+            m_InitializedOnDemand = true;
+        }
     }
 }
