@@ -21,7 +21,7 @@ namespace Metamatic
                 operation.InternalRun(action, cancellationToken);
                 return operation;
             }
-            return new MicroPromise(action);
+            return new MicroPromise(action, cancellationToken);
         }
         private string m_DebugName;
         public static MicroPromise Run(AsyncActionPromise action, CancellationToken cancellationToken = default)
@@ -33,7 +33,7 @@ namespace Metamatic
                 operation.InternalRun(action, cancellationToken);
                 return operation;
             }
-            return new MicroPromise(action);
+            return new MicroPromise(action, cancellationToken);
         }
         #endregion
         
@@ -166,6 +166,10 @@ namespace Metamatic
             m_ResultTaskCompletionSource = new UniTaskCompletionSource();
             m_DisposeCancellationTokenSource =
                 CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
+            m_DisposeCancellationTokenSource.Token.Register(() =>
+            {
+                Debug.Log("Promise was cancelled");
+            });
             var task = action(this);
             try
             {

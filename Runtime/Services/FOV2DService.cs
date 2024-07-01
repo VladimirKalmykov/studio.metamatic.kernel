@@ -17,7 +17,7 @@ public class FOV2DService : Service
     public CameraFOVTracker2d cameraFovTracker2d => m_CameraFovTracker2d;
     private List<DisposableAction> m_Trackers = new List<DisposableAction>(100);
 
-    protected async override void RunService(CancellationToken cancellationToken)
+    protected async override UniTask RunService(Ready ready, CancellationToken cancellationToken)
     {
         /* Subscribe to camera controller */
         var cameraService = await Resolve<CameraService>();
@@ -60,7 +60,7 @@ public class FOV2DService : Service
         }
         /* Register this in Dispatcher */
         using var registration = Dispatcher.global.Register(this);
-        await cancellationToken;
+        await ready();
         /* Untrack all */
         m_Trackers.ForEach(t => t.Dispose());
     }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -10,7 +11,73 @@ namespace Metamatic
         private static readonly Dictionary<Type, Service> _Services = new ();
         private static event Action<Service> _HandleServiceAdded;
         private static event Action<Service> _HandleServiceRemoved;
-        protected sealed override void RunAsync(CancellationToken cancellationToken)
+        private static bool _IsReady;
+        private event Action OnReady;
+        
+        #region Fields
+        [Tooltip("If true, service will be initialized only on demand")]
+        [SerializeField] private bool m_InitializeOnDemand;
+        #endregion
+        
+        protected async UniTask InternalServiceReady()
+        {
+            _IsReady = true;
+            OnReady?.Invoke();
+            await componentDisableCancellationToken;
+        }
+        public UniTask WhenReady(CancellationToken cancellationToken = default)
+        {
+            var tcs = new UniTaskCompletionSource();
+            IDisposable readyListener = null;
+            var cancellationTokenRegistration = cancellationToken.Register(() =>
+            {
+                readyListener?.Dispose();
+                tcs.TrySetCanceled();
+            });
+            
+            readyListener = SubscribeReady(() =>
+            {
+                readyListener?.Dispose();
+                cancellationTokenRegistration.Dispose();
+                tcs.TrySetResult();
+            });
+
+            return tcs.Task;
+        }
+        
+        public DisposableAction SubscribeReady(Action action)
+        {
+            if (_IsReady)
+            {
+                action();
+                return DisposableAction.Empty;
+            }
+            OnReady += action;
+            return new DisposableAction(() => OnReady -= action);
+        }
+        
+        /// <summary>
+        /// Demand service initialization (only if InitializeOnDemand is true)
+        /// </summary>
+        public void Demand()
+        {
+            if (m_InitializeOnDemand && !m_Demanded)
+            {
+                m_Demanded = true;
+                m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
+                m_DemandCompletionSource.TrySetResult();
+            }
+        }
+        
+        public UniTask Demand(CancellationToken cancellationToken)
+        {
+            Demand();
+            return WhenReady(cancellationToken);
+        }
+
+        private bool m_Demanded;
+        private UniTaskCompletionSource m_DemandCompletionSource;
+        protected sealed override async void RunAsync(CancellationToken cancellationToken)
         {
             var type = this.GetType();
             if (_Services.ContainsKey(type))
@@ -21,10 +88,32 @@ namespace Metamatic
             _HandleServiceAdded?.Invoke(this);
             cancellationToken.Register(() =>
             {
+                m_DemandCompletionSource?.TrySetCanceled();
+                m_DemandCompletionSource = null;
                 _Services.Remove(this.GetType());
                 _HandleServiceRemoved?.Invoke(this);
             });
-            RunService(cancellationToken);
+            try
+            {
+                if (m_InitializeOnDemand)
+                {
+                    m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
+                    await m_DemandCompletionSource.Task;
+                }
+                await RunService(InternalServiceReady, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Service {type} failed to run: {e}");
+            }
+        }
+
+        public static async UniTask<T> Resolve<T>(CancellationToken cancellationToken = default, float timeout = 60f)
+            where T : Service
+        {
+            var service = await ResolveInternal<T>(cancellationToken, timeout);
+            await service.Demand(cancellationToken);
+            return service;
         }
         
         /// <summary>
@@ -32,7 +121,7 @@ namespace Metamatic
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static UniTask<T> Resolve<T>(CancellationToken cancellationToken = default, float timeout = 0f) where T : Service
+        public static UniTask<T> ResolveInternal<T>(CancellationToken cancellationToken = default, float timeout = 60f) where T : Service
         {
             if (_Services.TryGetValue(typeof(T), out var service))
             {
@@ -91,23 +180,9 @@ namespace Metamatic
             return new DisposableAction(() => _HandleServiceAdded -= handler);
         }
         
+        protected delegate UniTask Ready();
         private bool m_InitializedOnDemand;
 
-        protected abstract void RunService(CancellationToken cancellationToken);
-        protected virtual UniTask InitializeServiceOnDemand(MicroPromise promise)
-        {
-            throw new NotImplementedException("InitializeServiceOnDemand for this server is not implemented");
-        }
-
-        protected async UniTask InitializeOnDemand()
-        {
-            if (m_InitializedOnDemand)
-            {
-                return;
-            }
-            var promise = MicroPromise.Run(InitializeServiceOnDemand, componentDisableCancellationToken);
-            await promise.result;
-            m_InitializedOnDemand = true;
-        }
+        protected abstract UniTask RunService(Ready ready, CancellationToken cancellationToken);
     }
 }

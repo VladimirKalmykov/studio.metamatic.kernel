@@ -1,3 +1,5 @@
+using Cysharp.Threading.Tasks;
+
 namespace Metamatic
 {
     using System.Threading;
@@ -10,12 +12,12 @@ namespace Metamatic
         
         public UITerminal terminal => m_Terminal;
 
-        protected override async void RunService(CancellationToken cancellationToken)
+        protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
         {
             #if DEBUG
             m_Terminal.gameObject.SetActive(true);
             #endif
-            await cancellationToken;
+            await ready();
         }
 
         private void Update()
