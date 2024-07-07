@@ -17,11 +17,11 @@ namespace Metamatic
     {
         private Component m_Component;
 
-        public VirtualPinWriter(UnityEngine.Object component) : base(component)
+        internal VirtualPinWriter(UnityEngine.Object component) : base(component)
         {
             
         }
-        public VirtualPinWriter(UnityEngine.Object component, IPin<T> pin): base(component)
+        internal VirtualPinWriter(UnityEngine.Object component, IPin<T> pin): base(component)
         {
             pin.ConnectInput(this);
         }

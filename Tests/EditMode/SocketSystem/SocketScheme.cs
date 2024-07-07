@@ -195,11 +195,11 @@ namespace Tests.EditMode.SocketSystem
             var plug2InputPins = new IPin[] { plug2InputPin };
             var plug2OutputPins = new IPin[] { plug2OutputPin };
 
-            var plug1Reader = new VirtualPinReader<int>(this, plug1OutputPin);
-            var plug1Writer = new VirtualPinWriter<int>(this, plug1InputPin);
+            var plug1Reader = plug1OutputPin.CreateReader(this);
+            var plug1Writer = plug1InputPin.CreateWriter(this);
             
-            var plug2Reader = new VirtualPinReader<int>(this, plug2OutputPin);
-            var plug2Writer = new VirtualPinWriter<int>(this, plug2InputPin);
+            var plug2Reader = plug2OutputPin.CreateReader(this);
+            var plug2Writer = plug2InputPin.CreateWriter(this);
 
             plug1Reader.Subscribe(data =>
             {

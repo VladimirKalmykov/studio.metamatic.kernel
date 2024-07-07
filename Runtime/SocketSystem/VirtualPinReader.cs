@@ -23,10 +23,10 @@ namespace Metamatic
     public class VirtualPinReader<T>: VirtualPin<T>, IVirtualPinOutput<T>, IPin<T>
     {
         public T value => wire.data;
-        public VirtualPinReader(Object component): base(component)
+        internal VirtualPinReader(Object component): base(component)
         {
         }
-        public VirtualPinReader(Object component, IPin<T> pin): base(component)
+        internal VirtualPinReader(Object component, IPin<T> pin): base(component)
         {
             ConnectInput(pin);
         }

@@ -112,6 +112,38 @@ namespace Metamatic
             });
             return tcs.Task;
         }
+
+        public UniTask<TValue> WaitUntilValueIs(Func<TValue, bool> callback,
+            CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
+                { m_DisposeCancellationTokenSource.Token, cancellationToken });
+            var combinedCancellationToken = combinedCancellationTokenSource.Token;
+            if (callback(GetValue())) return UniTask.FromResult(GetValue());
+            var tcs = new UniTaskCompletionSource<TValue>();
+            Action<TValue> handler = null;
+            handler = v =>
+            {
+                if (callback(v))
+                {
+                    combinedCancellationTokenSource.Dispose();
+                    tcs.TrySetResult(v);
+                    OnChange -= handler;
+                }
+            };
+            OnChange += handler;
+            var unregister= combinedCancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled(combinedCancellationToken);
+                OnChange -= handler;
+            });
+            tcs.Task.GetAwaiter().OnCompleted(() =>
+            {
+                unregister.Dispose();
+            });
+            return tcs.Task;
+        }
         
         public UniTask<TValue> WaitUntilValueIsNot(TValue value, CancellationToken cancellationToken = default)
         {
@@ -339,9 +371,9 @@ namespace Metamatic
 
         public override TValue GetValue()
         {
-            if (m_Proxy == null)
+            if (m_Proxy.value == null)
             {
-                throw new NullReferenceException("Proxy value is null. Check HasValue() before calling GetValue()");
+                return default(TValue);
             }
             return m_Proxy.value.GetValue();
         }
