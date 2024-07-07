@@ -166,10 +166,6 @@ namespace Metamatic
             m_ResultTaskCompletionSource = new UniTaskCompletionSource();
             m_DisposeCancellationTokenSource =
                 CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
-            m_DisposeCancellationTokenSource.Token.Register(() =>
-            {
-                Debug.Log("Promise was cancelled");
-            });
             var task = action(this);
             try
             {

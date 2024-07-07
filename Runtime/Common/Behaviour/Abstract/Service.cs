@@ -100,7 +100,12 @@ namespace Metamatic
                     m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
                     await m_DemandCompletionSource.Task;
                 }
+
                 await RunService(InternalServiceReady, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.Log($"Service {type} was canceled.");
             }
             catch (Exception e)
             {
