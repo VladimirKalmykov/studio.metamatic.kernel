@@ -16,6 +16,7 @@ namespace Metamatic
         private Label m_Type;
         private Module m_Module;
         private Button m_CopyFromLocalButton;
+        private Button m_CopyToLocalButton;
         private bool m_CopyFromLocal;
         private  IVisualElementScheduledItem m_CopyFromLocalScheduledItem;
         public override VisualElement CreateInspectorGUI()
@@ -134,7 +135,7 @@ namespace Metamatic
             m_Settings.Add(m_RotationElement);
             m_RotationElement.SetEnabled(!Application.isPlaying);
             
-            /* Copy from local */
+            /* Copy from local position and rotation */
             m_CopyFromLocalButton = new Button(() =>
             {
                 m_CopyFromLocal = !m_CopyFromLocal;
@@ -146,8 +147,8 @@ namespace Metamatic
                     {
                         m_CopyFromLocalScheduledItem.Pause();
                     }
-                    ApplyCopyToLocal();
-                    m_CopyFromLocalScheduledItem = m_CopyFromLocalButton.schedule.Execute(() => ApplyCopyToLocal()).Every(100);
+                    ApplyCopyFromLocal();
+                    m_CopyFromLocalScheduledItem = m_CopyFromLocalButton.schedule.Execute(() => ApplyCopyFromLocal()).Every(100);
                 }
                 else
                 {
@@ -163,13 +164,38 @@ namespace Metamatic
             {
                 text = "Copy from local"
             };
+            
+            /* Copy to local position and rotation */
+            m_CopyToLocalButton = new Button(() =>
+            {
+                ApplyCopyToLocal();
+            })
+            {
+                text = "Copy to local"
+            };
+            
             m_Settings.Add(m_CopyFromLocalButton);
+            m_Settings.Add(m_CopyToLocalButton);
             m_CopyFromLocalButton.SetEnabled(!Application.isPlaying);
+            m_CopyToLocalButton.SetEnabled(!Application.isPlaying);
 
             UpdateView();
         }
-
+        
         private void ApplyCopyToLocal()
+        {
+            var positionProp = serializedObject.FindProperty("relativePosition");
+            var rotationProp = serializedObject.FindProperty("relativeRotation");
+            var nextLocalPosition = m_PositionElement.value;
+            var nextLocalRotation = Quaternion.Euler(m_RotationElement.value);
+            m_Module.transform.localPosition = nextLocalPosition;
+            m_Module.transform.localRotation = nextLocalRotation;
+            positionProp.vector3Value = nextLocalPosition;
+            rotationProp.quaternionValue = nextLocalRotation;
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private void ApplyCopyFromLocal()
         {
             var positionProp = serializedObject.FindProperty("relativePosition");
             var rotationProp = serializedObject.FindProperty("relativeRotation");
@@ -190,6 +216,7 @@ namespace Metamatic
             m_PositionElement.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
             m_RotationElement.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
             m_CopyFromLocalButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
+            m_CopyToLocalButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
             m_PositionElement.value = positionProp.vector3Value;
             m_RotationElement.value = rotationProp.quaternionValue.eulerAngles;
             if (m_CopyFromLocal)

@@ -25,11 +25,12 @@ namespace Metamatic.Extensions
             SpriteSkinPointsGenerationMode mode = SpriteSkinPointsGenerationMode.Matrix,
             int findingHullSteps = 1,
             int count = 100,
-            Vector2 matrixSize = default
+            Vector2 matrixSize = default,
+            Texture2D overrideTexture = null
         )
         {
             var spriteRenderer = spriteSkin.GetComponent<SpriteRenderer>();
-            var spriteTexture = spriteRenderer.sprite.texture;
+            var spriteTexture = overrideTexture ? overrideTexture : spriteRenderer.sprite.texture;
             var result = new List<(Vector2, Color, Vector3Int, Vector3, Vector2)>();
 
             Vector3[] deformedVertices = spriteSkin.GetDeformedVertexPositionData().ToArray();
