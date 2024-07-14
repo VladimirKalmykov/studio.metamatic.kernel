@@ -25,18 +25,7 @@ namespace Metamatic
                 if (m_DisableCancellationTokenSource == null)
                 {
                     var disableCancellationToken = m_DisableCancellationTokenSource = new CancellationTokenSource();
-                    if (!m_IsDisabled)
-                    {
-                        Action cancelToken = null;
-                        cancelToken = () =>
-                        {
-                            m_DisableCancellationTokenSource.Cancel();
-                            m_DisableCancellationTokenSource = null;
-                            OnDisabled -= cancelToken;
-                        };
-                        OnDisabled += cancelToken;
-                    }
-                    else
+                    if (m_IsDisabled)
                     {
                         m_DisableCancellationTokenSource.Cancel();
                         m_DisableCancellationTokenSource = null;
@@ -57,6 +46,8 @@ namespace Metamatic
         protected virtual void OnDisable()
         {
             m_IsDisabled = true;
+            m_DisableCancellationTokenSource.Cancel();
+            m_DisableCancellationTokenSource = null;
             OnDisabled?.Invoke();
         }
 
