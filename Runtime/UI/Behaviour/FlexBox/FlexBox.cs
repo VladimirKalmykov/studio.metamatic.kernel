@@ -10,8 +10,8 @@ namespace Metamatic.UI {
         }
         public DIRECTION direction = DIRECTION.ROW;
         [Tooltip("Update position of the elements even if they're not visible (influences performance expenses)")]
-        public bool alwaysUpdate = false;
-        public bool debug = false;
+        public bool alwaysUpdate;
+        public bool debug;
         RectTransform rectTransform;
         RectTransform[] cached_Children;
         Box[] cached_Boxes;
@@ -23,6 +23,8 @@ namespace Metamatic.UI {
 
         void OnEnable() {
             UpdateDirection();
+            UpdateCache();
+            UpdateChildren();
         }
 
         void ISerializationCallbackReceiver.OnBeforeSerialize() {
@@ -36,11 +38,11 @@ namespace Metamatic.UI {
         void UpdateDirection() {
             OnBeforeDisableOrChangeDirection?.Invoke();
             foreach(RectTransform child in transform) {
-                var dt = new DrivenRectTransformTracker();
-                dt.Clear();
-                dt.Add(this, child, direction == DIRECTION.ROW ? DrivenTransformProperties.AnchoredPositionX : DrivenTransformProperties.AnchoredPositionY);
+                // var dt = new DrivenRectTransformTracker();
+                // dt.Clear();
+                // dt.Add(this, child, direction == DIRECTION.ROW ? DrivenTransformProperties.AnchoredPositionX : DrivenTransformProperties.AnchoredPositionY);
 
-                ClearTrackerOnDestroyOrChangeDirection(dt);
+                // ClearTrackerOnDestroyOrChangeDirection(dt);
             }
             UpdateCache();
         }
@@ -53,13 +55,6 @@ namespace Metamatic.UI {
             OnBeforeDisableOrChangeDirection += () => {
                 dt.Clear();
             };
-        }
-
-        // Start is called before the first frame update
-        void Start()
-        {
-            UpdateCache();
-            UpdateChildren();
         }
 
         void UpdateCache() {
@@ -141,13 +136,16 @@ namespace Metamatic.UI {
             }
             
             var restSpace = totalSpace - usedSpace;
-            
             var growUnitWeight = growCount > 0 ? restSpace / totalGrow : 0;
 
             var margin = 0f;
             i = 0;
             foreach(RectTransform child in transform) {
                 if (child.transform.gameObject.activeInHierarchy) {
+                    if (cached_Boxes[i] != null) {
+                        margin += direction == DIRECTION.ROW ? cached_Boxes[i].marginLeft : -cached_Boxes[i].marginTop;
+                    }
+                    
                     child.anchoredPosition = new Vector3(
                         direction == DIRECTION.ROW ? margin : 0,
                         direction == DIRECTION.ROW ? 0 : margin
@@ -155,14 +153,20 @@ namespace Metamatic.UI {
 
                     if (cached_Boxes[i] != null) {
                         child.sizeDelta = direction == DIRECTION.COLUMN
-                            ? new Vector2(0, growUnitWeight * cached_Boxes[i].grow)
-                            : new Vector2(growUnitWeight * cached_Boxes[i].grow, 0);
+                            ? new Vector2(0, (growUnitWeight * cached_Boxes[i].grow) - cached_Boxes[i].marginTop - cached_Boxes[i].marginBottom)
+                            : new Vector2((growUnitWeight * cached_Boxes[i].grow) - cached_Boxes[i].marginLeft - cached_Boxes[i].marginRight, 0);
+
+                        margin += direction == DIRECTION.ROW ? cached_Boxes[i].marginRight 
+                                                             : -cached_Boxes[i].marginBottom;
                     }
-                    margin = margin + (direction == DIRECTION.ROW ? child.sizeDelta.x : -child.sizeDelta.y);
+                    
+                    margin += direction == DIRECTION.ROW ? child.sizeDelta.x 
+                        : -child.sizeDelta.y;
                 }
                 i++;
             }
         }
+
 
         void OnValidate() {
             UpdateCache();
@@ -171,5 +175,4 @@ namespace Metamatic.UI {
             }
         }
     }
-
 }

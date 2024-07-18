@@ -20,7 +20,7 @@ namespace Metamatic {
         }
         public class PictureAttribute: Attribute {
             public string path = "";
-            public bool relative = false;
+            public bool relative;
             public PictureAttribute(string path, bool relative = false) {
                 this.path = path;
                 this.relative = relative;
@@ -28,7 +28,7 @@ namespace Metamatic {
         }
         public class MarkdownGuideAssetPath: Attribute {
             public string path = "";
-            public bool relative = false;
+            public bool relative;
 
             public MarkdownGuideAssetPath(string path, bool relative = false) {
                 this.path = path;

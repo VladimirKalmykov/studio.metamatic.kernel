@@ -4,13 +4,13 @@ namespace Metamatic
 {
     public abstract class TargetPositionSource : PositionSource
     {
-        public Transform target
+        public IPositionSource target
         {
-            get => GetTarget();
             set => SetTarget(value);
         }
         
-        protected abstract void SetTarget(Transform target);
-        public abstract Transform GetTarget();
+        public abstract void SetTarget(Transform target);
+        public abstract void SetTarget(IPositionSource target);
+        public abstract IPositionSource GetTarget();
     }
 }

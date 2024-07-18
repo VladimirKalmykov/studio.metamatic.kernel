@@ -1,3 +1,5 @@
+using System;
+
 namespace Metamatic {
     using System.Collections.Generic;
     using UnityEngine;
@@ -8,6 +10,7 @@ namespace Metamatic {
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
     /// <markdown path="Packages\studio.metamatic.kernel\Documentation\AbstractClasses\SerializedDictionary.md" />
+    [Serializable]
     public abstract class SerializedDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
     {
         [SerializeField, HideInInspector]

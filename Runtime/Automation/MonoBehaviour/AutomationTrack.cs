@@ -26,7 +26,7 @@ namespace Metamatic {
         }
         #endif
         [FoldoutGroup("Playback config")]
-        public bool fixedOverlapMode = false;
+        public bool fixedOverlapMode;
         [ShowIf("fixedOverlapMode"), Tooltip("Determines multiple automation playback behaviour")]
         [FoldoutGroup("Playback config")]
         public Automation.OverlapMode overlapMode = Automation.OverlapMode.Unlimit;

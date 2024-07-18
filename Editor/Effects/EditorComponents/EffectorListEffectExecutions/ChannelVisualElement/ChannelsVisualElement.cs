@@ -1,5 +1,3 @@
-using Codice.CM.Common;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Effects

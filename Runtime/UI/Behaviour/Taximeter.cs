@@ -36,8 +36,8 @@
         }
         [System.Serializable]
         public class StringEvent: UnityEvent<string> {}
-        public float defaultValue = 0f;
-        public float defaultNextValue = 0f;
+        public float defaultValue;
+        public float defaultNextValue;
         public string format = "0.00";
         [Tooltip("String template with placeholder {n}")]
         public string template = "{n}";
@@ -48,7 +48,7 @@
         public bool autoPlay = true;
         public bool realTime = true;
         private AutomationTrack track;
-        private float m_Value = 0f;
+        private float m_Value;
         [ShowInInspector]
         public float value {
             get {
@@ -64,7 +64,7 @@
                 onTextChange.Invoke(value);
             }
         }
-        private float n_NextValue = 0f;
+        private float n_NextValue;
         public float nextValue {
             set {
                 n_NextValue = value;

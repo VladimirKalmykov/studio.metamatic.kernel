@@ -1,12 +1,8 @@
 using System;
-using System.Reflection;
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
-using Metamatic;
 using Sirenix.OdinInspector.Editor;
-using Random = UnityEngine.Random;
 
 
 namespace Metamatic {
@@ -14,11 +10,25 @@ namespace Metamatic {
         private Dictionary<RequireEditorComponentAttribute, EditorComponent> components = new Dictionary<RequireEditorComponentAttribute, EditorComponent>();
         private List<KeyValuePair<RequireEditorComponentAttribute, EditorComponent>>[] executeOrderList = new List<KeyValuePair<RequireEditorComponentAttribute, EditorComponent>>[0];
         private bool m_Enabled = false;
+        private VisualElement m_RootVisualElement;
+        public VisualElement rootVisualElement => m_RootVisualElement;
         public override VisualElement CreateInspectorGUI()
         {
             Initialize();
             
-            return BuildInspectorGUI();
+            var root = BuildInspectorGUI();
+            OnCreateInspectorGUI(root);
+            return root;
+        }
+
+        protected virtual void OnCreateInspectorGUI(VisualElement root)
+        {
+            
+        }
+
+        protected virtual void Awake()
+        {
+            
         }
 
         protected override void OnEnable(){
@@ -71,7 +81,7 @@ namespace Metamatic {
         }
 
         private VisualElement BuildInspectorGUI() {
-            var root = new VisualElement();
+            var root = m_RootVisualElement = new VisualElement();
 
             foreach(var listItem in executeOrderList) {
                 if (listItem != null) {

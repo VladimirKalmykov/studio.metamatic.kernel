@@ -15,7 +15,7 @@ namespace Metamatic {
             List<CancellationTokenSource> cancellationTokens = new List<CancellationTokenSource>();
             public int playbackCount {
                 get; private set;
-            } = 0;
+            }
 
             public bool isPlaying {
                 get {

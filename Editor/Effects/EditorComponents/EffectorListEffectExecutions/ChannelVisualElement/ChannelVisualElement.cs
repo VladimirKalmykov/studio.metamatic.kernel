@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Effects
@@ -36,7 +34,7 @@ namespace Metamatic.Effects
             channel.editor_SubscribeEffectExecutionsChange(HandleEffectsExecutionsChange);
         }
 
-        private void HandleEffectsExecutionsChange(EffectExecutionContext[] executions)
+        private void HandleEffectsExecutionsChange(IEffect.EffectExecutionContext[] executions)
         {
             var onlyNewExecutions = executions.ToList();
             foreach (var item in m_ChannelEffectExecutionVisualElements.ToArray())

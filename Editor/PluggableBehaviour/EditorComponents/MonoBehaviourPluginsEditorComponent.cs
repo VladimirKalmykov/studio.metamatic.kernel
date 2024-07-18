@@ -6,7 +6,6 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 
 namespace Metamatic {
     public class MonoBehaviourPluginsEditorComponent: EditorComponent {
@@ -199,6 +198,7 @@ namespace Metamatic {
             var allComponents = ((MonoBehaviour)this.target).gameObject.GetComponents<MonoBehaviour>();
             List<Type> plugins = new List<Type>();
             foreach(var component in allComponents) {
+                if (component == null) continue;
                 var pluginForAttributes = component.GetType().GetCustomAttributes(typeof(PluginFor), true);
 
                 foreach(var pluginForAttribute in pluginForAttributes) {

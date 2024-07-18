@@ -9,6 +9,7 @@ namespace Metamatic {
     public static class AddressableUtils
     {
         
+        [Obsolete("Use LoadAsyncAsset instead", true)]
         public class AssetReferenceLoadBehaviourWrapper<T>: IDisposable
             where T : UnityEngine.Object
         {
@@ -41,6 +42,8 @@ namespace Metamatic {
                 }
             }
         }
+        
+        [Obsolete("Use LoadAssetAsync with cancellationToken instead", true)]
         public static Task<TObject> SafeLoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference) where TObject : UnityEngine.Object {
             if (!assetReference.IsValid()) {
                 var aoh = assetReference.LoadAssetAsync<TObject>();
@@ -52,6 +55,7 @@ namespace Metamatic {
             return tsc.Task;
         }
         
+        [Obsolete("Use LoadAssetAsync instead", true)]
         public static AssetReferenceLoadBehaviourWrapper<T> LoadAssetReferenceWithinBehaviour<T>(this Component component, AssetReferenceT<T> assetReference, CancellationToken cancellationToken = default) where T: UnityEngine.Object
         {
             return new AssetReferenceLoadBehaviourWrapper<T>(component, assetReference, cancellationToken);

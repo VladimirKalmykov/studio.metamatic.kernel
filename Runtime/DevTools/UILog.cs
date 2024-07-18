@@ -57,15 +57,19 @@ namespace Metamatic.DevTools {
             var db = go.GetComponent<UILog>();
             db.InternalAdd(sectionName, key, message);
         }
-        public static void Add(string sectionNane, string key, Func<object> getter) {
-            if (!Application.isPlaying) {
-                return;
+        public static DisposableAction Add(string sectionNane, string key, Func<object> getter) {
+            if (!Application.isPlaying)
+            {
+                return DisposableAction.Empty;
             }
             var go = UILog.GetGo();
 
-            if (go == null) return;
+            if (go == null) return DisposableAction.Empty;
             var db = go.GetComponent<UILog>();
             db.InternalAdd(sectionNane, key, getter);
+            return DisposableAction.Create(() => {
+                db.InternalRemove(sectionNane, key);
+            });
         }
         public static void Add(string key, Func<object> getter) {
             if (!Application.isPlaying) {
@@ -186,7 +190,7 @@ namespace Metamatic.DevTools {
             CompileMessages();
             var style = new GUIStyle();
             style.fontSize = Screen.height / 50;
-            style.normal.textColor = Color.HSVToRGB(0.48f, 0.26f, 1f);
+            style.normal.textColor = Color.black;
             GUILayout.BeginArea(new Rect(10, 10, Screen.width / 2, Screen.height / 2));
             GUILayout.Label(_text, style);
             GUILayout.EndArea();

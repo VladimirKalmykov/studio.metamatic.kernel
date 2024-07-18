@@ -136,7 +136,7 @@ namespace Metamatic
         #region State implementations
         private TState m_Stateful_state;
         private TState m_Stateful_prevState;
-        private bool m_Stateful_shouldUpdate = false;
+        private bool m_Stateful_shouldUpdate;
         public TState state {
             get { return m_Stateful_state; }
             protected set {

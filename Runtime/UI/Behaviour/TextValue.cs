@@ -3,11 +3,11 @@ using UnityEngine.UI;
 namespace Metamatic.UI {
     using System;
     using UnityEngine;
-    using Sirenix.OdinInspector;
 
     /// <summary>
     /// One solution to set TextMeshPro and Text text programmatically
     /// </summary>
+    [Obsolete("Component has performance issues", true)]
     public class TextValue: MonoBehaviour {
         [Multiline(3)]
         public string text = "";

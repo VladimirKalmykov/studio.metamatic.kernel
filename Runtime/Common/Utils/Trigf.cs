@@ -221,7 +221,7 @@ namespace Metamatic {
         /// <param name="found">Will true if intersect</param>
         /// <param name="thickness">Thickness of line (when zero intersection point will be difficult to determine)</param>
         /// <returns></returns>
-        public static Vector2? getLinesIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2, float thickness = 0.1f) {
+        public static Vector2? GetLinesIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2, float thickness = 0.1f) {
             var point = GetRaysIntersectionPoint(A1, A2, B1, B2);
             
             if (point.HasValue) {
@@ -270,17 +270,17 @@ namespace Metamatic {
                 innerPoint,
                 topLeft
             ) && pointAngle <= angleTopRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
             } else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
             /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
             } else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle < Trigf.GetAngleInverted(
                 innerPoint,
                 bottomLeft
             ))) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
             } else {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
             }
 
             return intersection;
@@ -338,17 +338,17 @@ namespace Metamatic {
                 innerPoint,
                 topLeft
             ) && pointAngle <= angleTopRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
             } else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
             /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
             } else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle < Trigf.GetAngleInverted(
                 innerPoint,
                 bottomLeft
             ))) {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
             } else {
-                intersection = Trigf.getLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
+                intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
             }
 
             return intersection;
@@ -622,6 +622,21 @@ namespace Metamatic {
             var minDistance = Mathf.DeltaAngle(current, min);
 
             return Mathf.Abs(minDistance / distance);
+        }
+
+        public static Quaternion SumQuaternions(Quaternion a, Quaternion b)
+        {
+            Vector3 slotEuler = a.eulerAngles;
+            Vector3 moduleEuler = b.eulerAngles;
+            
+            Vector3 combinedEuler = slotEuler + moduleEuler;
+            
+            combinedEuler = new Vector3(
+                (combinedEuler.x + 360) % 360,
+                (combinedEuler.y + 360) % 360,
+                (combinedEuler.z + 360) % 360
+            );
+            return Quaternion.Euler(combinedEuler);
         }
         
         /// <summary>
@@ -1016,6 +1031,35 @@ namespace Metamatic {
             }
 
             return bestIndex;
+        }
+
+        public static float PingPong(float t, float x = 0.5f)
+        {
+            #if DEBUG
+            if (t < 0f || t > 1f)
+            {
+                throw new System.ArgumentOutOfRangeException("t", "Value must be between 0 and 1.");
+            }
+
+            if (x <= 0f || x >= 1f)
+            {
+                throw new System.ArgumentOutOfRangeException("x", "Value must be between 0 and 1, exclusive.");
+            }
+            #endif
+
+            // Приведение t к диапазону от 0 до 1 (не обязательно, если t всегда в диапазоне [0, 1])
+            t = Mathf.Clamp01(t);
+
+            if (t < x)
+            {
+                // Линейная интерполяция от 0 до 1
+                return t / x;
+            }
+            else
+            {
+                // Линейная интерполяция от 1 до 0
+                return (1f - (t - x) / (1f - x));
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ namespace Metamatic
 {
     public abstract class StateMachine
     {
-        public abstract void OnFrameEnd();
+        public abstract void Apply();
     }
 
     public class StateMachine<TState> : StateMachine
@@ -12,10 +12,10 @@ namespace Metamatic
         public delegate void StateChangeHandler(ref TState state, ref TState prevState);
 
         public delegate void StateModifier(ref TState state);
+        public TState prevState;
         public TState state;
-        private TState m_NextState;
-        private bool m_ShouldUpdate = false;
-        private bool m_UpdateInProcess = false;
+        private bool m_ShouldUpdate;
+        private bool m_UpdateInProcess;
         private event StateModifier m_PostUpdateModifiying = delegate {};
        
         public event StateChangeHandler stateListeners;
@@ -31,7 +31,7 @@ namespace Metamatic
             }
             else
             {
-                modifier(ref m_NextState);
+                modifier(ref state);
                 ForceUpdateState();
             }
         }
@@ -42,7 +42,7 @@ namespace Metamatic
         /// <returns>Next state</returns>
         public ref TState GetNextStateRef()
         {
-            return ref m_NextState;
+            return ref state;
         }
 
         public StateMachine(): base()
@@ -52,8 +52,8 @@ namespace Metamatic
         
         public StateMachine(TState defaultState): base()
         {
+            prevState = defaultState;
             state = defaultState;
-            m_NextState = defaultState;
         }
         
         /// <summary>
@@ -66,7 +66,7 @@ namespace Metamatic
 
         public Action SubscribeState(StateChangeHandler handler) {
             stateListeners += handler;
-            handler(ref m_NextState, ref state);
+            handler(ref state, ref prevState);
             return () => {
                 UnsubscribeState(handler);
             };
@@ -75,17 +75,28 @@ namespace Metamatic
         public void UnsubscribeState(StateChangeHandler handler) {
             stateListeners -= handler;
         }
-
-        public override void OnFrameEnd()
+        
+        /**
+         * Call this method in Update() of MonoBehaviour
+         */
+        public void UpdateTick()
         {
             if (!m_ShouldUpdate) return;
             m_ShouldUpdate = false;
+            Apply();
+        }
+        
+        /**
+         * Force update state. Call this method if you'd wish to invoke state update in the middle of frame
+         */
+        public override void Apply()
+        {
             m_UpdateInProcess = true;
-            stateListeners?.Invoke(ref m_NextState, ref state);
+            stateListeners?.Invoke(ref state, ref prevState);
             
-            OnStateChange(ref m_NextState, ref state);
-            state = m_NextState;
-            m_PostUpdateModifiying.Invoke(ref m_NextState);
+            OnStateChange(ref state, ref prevState);
+            prevState = state;
+            m_PostUpdateModifiying.Invoke(ref state);
             m_PostUpdateModifiying = delegate { };
             m_UpdateInProcess = false;
         }

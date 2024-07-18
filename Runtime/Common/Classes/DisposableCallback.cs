@@ -2,6 +2,7 @@
 
 namespace Metamatic
 {
+    [Obsolete("Use DisposableAction instead")]
     public readonly struct DisposableCallback: IDisposable
     {
         private readonly Action OnDispose;

@@ -1,32 +1,52 @@
-﻿namespace Metamatic.UI {
+﻿using UnityEngine.EventSystems;
+
+namespace Metamatic.UI {
     using UnityEngine;
 
     [ExecuteAlways]
-    public class VerticalTiledLayoutGroup : MonoBehaviour
+    public class VerticalTiledLayoutGroup : UIBehaviour
     {
         public bool fitContent = true;
-        public bool fitContentWidth = false;
-        public float paddingTop = 0f;
-        public float paddingBottom = 0f;
-        public float spacing = 0;
-        RectTransform rect;
+        public bool fitContentWidth;
+        public float paddingTop;
+        public float paddingBottom;
+        public float paddingLeft;
+        public float paddingRight;
+        public float spacing;
+        /// <summary>
+        /// Update size each frame
+        /// </summary>
+        public bool updateEachFrame;
+        private float m_UpdateInterval = 0.1f; // 10 раз в секунду (1 секунда / 10)
+        private float m_NextUpdateTime;
+        private RectTransform m_Rect;
+        RectTransform rect => m_Rect ??= GetComponent<RectTransform>();
         DrivenRectTransformTracker dt;
         private event System.Action OnBeforeDisable;
         void Awake() {
-            rect = (RectTransform)transform;
             dt = new DrivenRectTransformTracker();
         }
         void OnEnable() {
             dt.Clear();
-            dt.Add(this, rect, DrivenTransformProperties.SizeDeltaY);
+            if (fitContent) {
+                dt.Add(this, rect, DrivenTransformProperties.SizeDeltaY);
+            }
+            if (fitContentWidth) {
+                dt.Add(this, rect, DrivenTransformProperties.SizeDeltaX);
+            }
 
             foreach(RectTransform child in transform) {
+                if (child.gameObject.activeSelf == false) {
+                    continue;
+                }
                 var dt = new DrivenRectTransformTracker();
                 dt.Clear();
                 dt.Add(this, child, DrivenTransformProperties.AnchoredPositionY);
 
                 ClearTrackerOnDestroy(dt);
             }
+            
+            SetDirty();
         }
 
         void ClearTrackerOnDestroy(DrivenRectTransformTracker dt) {
@@ -35,12 +55,17 @@
             };
         }
 
-        void OnDisable() {
+        void OnDisable()
+        {
+            SetDirty();
             dt.Clear();
             OnBeforeDisable?.Invoke();
         }
         void Start() {
             foreach(RectTransform child in transform) {
+                if (child.gameObject.activeSelf == false) {
+                    continue;
+                }
                 child.anchorMax = new Vector2(
                     child.anchorMax.x,
                     1
@@ -58,16 +83,41 @@
 
         void Update()
         {
-            float top = paddingTop;
+            if (!updateEachFrame)
+            {
+                SetDirty();
+            } else if (Time.time >= m_NextUpdateTime)
+            {
+                m_NextUpdateTime = Time.time + m_UpdateInterval;
+                SetDirty();
+            }
+        }
+
+        void SetDirty()
+        {
+            float top = -paddingTop;
             int index = 0;
             foreach(RectTransform child in transform) {
+                if (child.gameObject.activeSelf == false) {
+                    continue;
+                }
+
+                if (fitContentWidth || fitContent)
+                {
+                    child.anchorMin = new Vector2(fitContentWidth ? 0.5f : child.anchorMin.x, fitContent ? 1 : child.anchorMin.y);
+                    child.anchorMax = new Vector2(fitContentWidth ? 0.5f : child.anchorMax.x, fitContent ? 1 : child.anchorMax.y);
+                    child.pivot = new Vector2(
+                        fitContentWidth ? 0.5f : child.pivot.x,
+                        fitContent ? 1 : child.pivot.y
+                    );
+                }
                 child.anchoredPosition = new Vector3(
                     child.anchoredPosition.x,
                     top
                 );
                 top -= child.sizeDelta.y;
 
-                 if (index < transform.childCount - 1) {
+                if (index < transform.childCount - 1) {
                     top -= spacing;
                 }
                 index++;
@@ -78,7 +128,10 @@
 
             if (fitContentWidth) {
                 foreach(RectTransform child in transform) {
-                    width = Mathf.Max(width, child.sizeDelta.x);
+                    if (child.gameObject.activeSelf == false) {
+                        continue;
+                    }
+                    width = Mathf.Max(width, child.sizeDelta.x) + paddingLeft + paddingRight;
                 }
             } else {
                 width = rect.sizeDelta.x;
@@ -95,9 +148,25 @@
 #if UNITY_EDITOR
         void OnValidate() {
             dt.Clear();
-            if (fitContent && rect != null) {
+            if (fitContent) {
                 dt.Add(this, rect, DrivenTransformProperties.SizeDeltaY);
             }
+            if (fitContentWidth) {
+                dt.Add(this, rect, DrivenTransformProperties.SizeDeltaX);
+            }
+            if (!IsActive())
+                return;
+            SetDirtyNextFrame();
+        }
+        
+        private void SetDirtyNextFrame()
+        {
+            var that = this;
+            UnityEditor.EditorApplication.delayCall += () => {
+                if (that == null)
+                    return;
+                SetDirty();
+            };
         }
 #endif
     }

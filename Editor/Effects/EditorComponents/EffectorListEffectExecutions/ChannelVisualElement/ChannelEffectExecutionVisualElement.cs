@@ -1,14 +1,13 @@
 using System;
 using System.Threading.Tasks;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Effects
 {
     public sealed class ChannelEffectExecutionVisualElement : TextElement
     {
-        public readonly EffectExecutionContext execution;
-        public ChannelEffectExecutionVisualElement(EffectExecutionContext execution)
+        public readonly IEffect.EffectExecutionContext execution;
+        public ChannelEffectExecutionVisualElement(IEffect.EffectExecutionContext execution)
         {
             this.execution = execution;
             AddToClassList("Execution");

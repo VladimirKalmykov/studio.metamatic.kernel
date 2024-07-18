@@ -14,7 +14,7 @@ namespace Metamatic {
         [BoxGroup("Effect")]
         [SerializeField] private ScriptableEffect[] subEffects;
         
-        public override async UniTask WrapEffectTask(UniTask effectTask, EffectExecutionContext<TEffector, TProps> executionContext, CancellationToken cancellationToken)
+        public override async UniTask WrapEffectTask(UniTask effectTask, IEffect<TEffector, TProps>.EffectExecutionContext executionContext, CancellationToken cancellationToken)
         {
             Action disposer = null;
             /* Apply effects */

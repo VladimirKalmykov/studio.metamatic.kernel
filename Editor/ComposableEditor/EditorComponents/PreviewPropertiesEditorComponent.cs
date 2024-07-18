@@ -3,7 +3,6 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
-using Metamatic;
 
 namespace Metamatic {
     public class PreviewPropertiesEditorComponent: EditorComponent {

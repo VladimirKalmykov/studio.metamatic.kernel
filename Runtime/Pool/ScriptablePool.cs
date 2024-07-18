@@ -17,7 +17,7 @@ namespace Metamatic {
         /// <summary>
         /// Total prewarmed count
         /// </summary>
-        protected int reservedCount = 0;
+        protected int reservedCount;
 
         public T[] Get(int count = 1, Transform parent = null, System.Action<T> beforeEnableHook = null) {
             var index = 0;

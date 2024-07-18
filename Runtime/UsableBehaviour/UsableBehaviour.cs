@@ -16,7 +16,7 @@ namespace Metamatic
         
         #region Protected properties
 
-        protected bool m_IsActivated = false;
+        protected bool m_IsActivated;
         #endregion
         
         #region Usable
@@ -175,7 +175,8 @@ namespace Metamatic
         }
         #endregion
     }
-
+    
+    [Obsolete("Use RunnableBehaviour instead", false)]
     public abstract class UsableBehaviour<TProps> : UsableBehaviour
     where TProps : notnull
     {

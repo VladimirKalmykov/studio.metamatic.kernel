@@ -12,7 +12,7 @@ namespace Metamatic.UI {
     {
         [PropertyOrder(-1)]
         public Sprite sprite;
-        private bool m_Tracked = false;
+        private bool m_Tracked;
         private Sprite activeSprite {
             get {
                 return sprite;
@@ -235,7 +235,7 @@ namespace Metamatic.UI {
             m_TrackedTexturelessImages.Remove(g);
         }
 
-        static protected Material s_ETC1DefaultUI = null;
+        static protected Material s_ETC1DefaultUI;
 
         /// <summary>
         /// Cache of the default Canvas Ericsson Texture Compression 1 (ETC1) and alpha Material.
@@ -301,11 +301,10 @@ namespace Metamatic.UI {
             }
         }
 
-        Sprite m_CachedSprite = null;
+        Sprite m_CachedSprite;
 
         void Update() {
             if (m_CachedSprite != sprite) {
-                Debug.Log("Sprite changed");
                 m_CachedSprite = sprite;
                 SetAllDirty();
             }

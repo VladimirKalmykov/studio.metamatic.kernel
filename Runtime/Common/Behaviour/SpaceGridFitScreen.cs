@@ -11,7 +11,7 @@ namespace Metamatic
     public class SpaceGridFitScreen : MonoBehaviour
     {
         public float distance = 10f;
-        public bool invertAxis = false;
+        public bool invertAxis;
         private SpaceGrid m_SpaceGrid;
         private Transform m_SpaceGridTransform;
         private Camera m_CachedCamera;

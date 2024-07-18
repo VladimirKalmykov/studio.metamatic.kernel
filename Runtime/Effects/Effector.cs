@@ -1,20 +1,15 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Metamatic.Actions;
-using Metamatic.DevTools;
 using Action = System.Action;
-using System.Collections.ObjectModel;
 
 namespace Metamatic.Effects
 {   
     public class Effector : MonoBehaviour
     {
         public event Action OnBeforeDestroy;
-        public readonly List<EffectExecutionContext> effectExecutions = new List<EffectExecutionContext>();
+        public readonly List<IEffect.EffectExecutionContext> effectExecutions = new List<IEffect.EffectExecutionContext>();
         public readonly Dictionary<string, EffectsChannel> channels = new Dictionary<string, EffectsChannel>();
-        private Dispatcher m_Dispatcher;
 
         // public Dispatcher dispatcher
         // {
@@ -31,14 +26,14 @@ namespace Metamatic.Effects
 
 
 #if UNITY_EDITOR
-        public event Action<EffectsChannel[]> editor_OnChannelsChange;
-        public void editor_SubscribeChannels(Action<EffectsChannel[]> handler)
+        public event System.Action<EffectsChannel[]> editor_OnChannelsChange;
+        public void editor_SubscribeChannels(System.Action<EffectsChannel[]> handler)
         {
             handler(channels.Values.ToArray());
             editor_OnChannelsChange += handler;
         }
         
-        public void editor_UnsubscribeChannels(Action<EffectsChannel[]> handler)
+        public void editor_UnsubscribeChannels(System.Action<EffectsChannel[]> handler)
         {
             editor_OnChannelsChange -= handler;
         }
@@ -48,11 +43,6 @@ namespace Metamatic.Effects
             editor_OnChannelsChange?.Invoke(channels.Values.ToArray());
         }
         #endif
-        
-        private void Start()
-        {
-            UILog.Add("Effector", "playbacks.Count", () => effectExecutions.Count);
-        }
         
         private void OnDestroy()
         {
@@ -103,24 +93,9 @@ namespace Metamatic.Effects
             return m_CommonChannel.Add(effect);
         }*/
 
-        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
             return commonChannel.Add(effect, props);
-        }
-        
-        /// <summary>
-        /// Get all active effects as actions (to be able to restore it later)
-        /// </summary>
-        /// <returns></returns>
-        public Metamatic.Actions.Action[] GetActiveEffectsAsActions()
-        {
-            var actions = new Collection<Metamatic.Actions.Action>();
-            foreach (var execution in channels.Values.SelectMany(channel => channel.executions))
-            {
-                actions.Add(execution.GetAsAction());
-            }
-            
-            return actions.ToArray();
         }
         
         /// <summary>

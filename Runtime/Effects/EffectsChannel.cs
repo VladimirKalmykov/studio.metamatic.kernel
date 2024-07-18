@@ -11,7 +11,7 @@ namespace Metamatic.Effects
         /// <summary>
         /// Effects execution context queue
         /// </summary>
-        public readonly List<EffectExecutionContext> executions = new List<EffectExecutionContext>();
+        public readonly List<IEffect.EffectExecutionContext> executions = new List<IEffect.EffectExecutionContext>();
         public readonly Behaviour owner;
         public readonly string debugName;
         
@@ -26,14 +26,14 @@ namespace Metamatic.Effects
         // }
         
         #if UNITY_EDITOR
-        public event Action<EffectExecutionContext[]> editor_OnExecutionsChange;
-        public void editor_SubscribeEffectExecutionsChange(Action<EffectExecutionContext[]> handler)
+        public event Action<IEffect.EffectExecutionContext[]> editor_OnExecutionsChange;
+        public void editor_SubscribeEffectExecutionsChange(Action<IEffect.EffectExecutionContext[]> handler)
         {
             handler(executions.ToArray());
             editor_OnExecutionsChange += handler;
         }
         
-        public void editor_UnsubscribeEffectExecutionsChange(Action<EffectExecutionContext[]> handler)
+        public void editor_UnsubscribeEffectExecutionsChange(Action<IEffect.EffectExecutionContext[]> handler)
         {
             editor_OnExecutionsChange -= handler;  
         }
@@ -98,7 +98,7 @@ namespace Metamatic.Effects
             ).GetAwaiter();
         }*/
 
-        public EffectCancellableOperationAwaiter Add<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
+        public EffectCancellableOperationAwaiter Add<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
             #if UNITY_EDITOR
             if (!Application.isPlaying)
@@ -121,7 +121,7 @@ namespace Metamatic.Effects
                         }
                         else
                         {
-                            (executingEffectExecutionContext as EffectExecutionContext<TEffector, TEffectProps>)
+                            (executingEffectExecutionContext as IEffect<TEffector, TEffectProps, TResult>.EffectExecutionContext)
                                 ?.UpdateProps(props);
                             return executingEffectExecutionContext.GetAwaiter();
                         }
@@ -131,7 +131,7 @@ namespace Metamatic.Effects
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            return new EffectExecutionContext<TEffector, TEffectProps>(
+            return new IEffect<TEffector, TEffectProps, TResult>.EffectExecutionContext(
                 this,
                 effect,
                 ref props

@@ -11,8 +11,8 @@ namespace Metamatic{
             /// <summary>
             /// Contains automation script function (lambda or method)
             /// </summary>
-            protected ScriptFunction fn = null;
-            protected AsyncFunction asyncFn = null;
+            protected ScriptFunction fn;
+            protected AsyncFunction asyncFn;
             public FunctionScript(ScriptFunction fn): base() {
                 this.fn = fn;
             }
@@ -40,8 +40,8 @@ namespace Metamatic{
             /// <summary>
             /// Contains automation script function (lambda or method)
             /// </summary>
-            protected ScriptFunction fn = null;
-            protected AsyncFunction asyncFn = null;
+            protected ScriptFunction fn;
+            protected AsyncFunction asyncFn;
             public FunctionScript(ScriptFunction fn): base() {
                 this.fn = fn;
             }

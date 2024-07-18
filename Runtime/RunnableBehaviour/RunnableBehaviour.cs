@@ -8,8 +8,8 @@ namespace Metamatic
     public abstract class RunnableBehaviour : MonoBehaviour, IRunnable
     {
         private CancellationTokenSource m_CancellationTokenSource;
-        private bool m_IsDisposed = false;
-        private TaskCompletionSource<bool> m_CancellationProcessTaslCompletionSource = null;
+        private bool m_IsDisposed;
+        private TaskCompletionSource<bool> m_CancellationProcessTaslCompletionSource;
         public void Dispose()
         {
             if (m_IsDisposed) return;

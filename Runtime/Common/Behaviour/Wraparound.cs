@@ -12,16 +12,12 @@ namespace Metamatic {
             Teleport,
             Barrier
         }
-        [Tooltip("Register for player")]
-        public GameObjectRegistry playerRegister;
-        [Tooltip("Register for all objects except player")]
-        public GameObjectRegistry npcRegister;
-        public GameObjectRegistry cameraRegister;
+       
         [LabelText("Walls"), Tooltip("Enable walls around")]
-        public bool debug = false;
+        public bool debug;
 
         #region Private
-        bool m_Visible = false;
+        bool m_Visible;
         public bool playerisVisible {
             get {
                 return m_Visible;
@@ -34,9 +30,9 @@ namespace Metamatic {
                 }
             }
         }
-
-        GameObject player;
-        new Camera camera;
+        
+        private GameObject player;
+        public Camera camera;
         Collider playerCollider;
         Renderer[] playerRenderers;
         Bounds playerBounds;
@@ -47,13 +43,14 @@ namespace Metamatic {
         public static Vector3 editor_BoundsCenter;
         #endif
 
-        void Start() {
-            playerRegister.SubscribeFirst(HandlePlayerChange);
-            cameraRegister.SubscribeFirst(HandleCameraChange);
+        void Start()
+        {
+            HandlePlayerChange();
         }
 
-        void HandlePlayerChange(UnityEngine.Object player) {
-            this.player = (GameObject)player;
+        void HandlePlayerChange()
+        {
+            player = this.gameObject;
             if (player != null) {
                 this.playerRenderers = this.player.GetComponentsInChildren<Renderer>().Where(renderer => {
                     System.Type type = renderer.GetType();
@@ -61,12 +58,6 @@ namespace Metamatic {
                     return !isParticle;
                 }).ToArray();
             }
-        }
-
-        void HandleCameraChange(UnityEngine.Object camera) {
-            this.camera = camera == null
-                ? null
-                : ((GameObject)camera).GetComponent<Camera>();
         }
 
         void FixedUpdate()

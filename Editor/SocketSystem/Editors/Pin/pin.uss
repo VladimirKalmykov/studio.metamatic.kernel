@@ -1,0 +1,176 @@
+﻿.TopLine {
+    width: 100%;
+    height: 2px;
+    border-radius: 1px;
+    margin-bottom: 4px;
+}
+
+.StatusBar {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.PinBlockContainer {
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+.PinBlock {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    background-color: #323232;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 3px;
+    align-items: center;
+}
+
+.StatusCircle {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #262626;
+}
+
+.StatusCircle_Enabled {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #09defe;
+    border-color: #262626;
+    border-width: 3px;
+}
+
+.StatusCircle_Disconnected {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #ff0000;
+    border-color: #262626;
+    border-width: 3px;
+}
+
+
+.PinLabel {
+    font-size: 11px;
+    margin-left: 3px;
+}
+
+.PinBlockLine {
+    margin-top: 4px;
+    background-color: #323232;
+    height: 4px;
+    width: 30px;
+}
+
+.Hidden {
+    display: none;
+}
+
+.PinBlockLineCircle {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+    background-color: #323232;
+    margin-top: 2px;
+}
+
+.PinBlockLineCircle_Enabled {
+    background-color: #3a3a3a;
+    border-color: #323232;
+    border-width: 3px;
+}
+
+.VirtualPin {
+    background-color: #fffb00;
+}
+
+.PinBlockLineCircle_Active {
+    background-color:#09defe;
+    border-color: #323232;
+    border-width: 3px;
+}
+
+/* Object inputs */
+.ObjectInputsRow {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 2px;
+    flex-wrap: nowrap;
+}
+
+.EmptySpace {
+    width: 20px;
+    flex-basis: 20px;
+    flex-grow: 0;
+}
+
+.InputPinObjectFieldContainer {
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 50%;
+    flex-basis: 50%;
+    padding-right: 10px;
+}
+
+.InputPinObjectFieldContainer > * {
+    margin-top: 2px;
+}
+
+.OutputPinObjectFieldContainer {
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-start;
+    flex-grow: 1;
+    width: 50%;
+    flex-basis: 50%;
+    padding-left: 10px;
+}
+
+.OutputPinObjectFieldContainer > * {
+    margin-top: 2px;
+}
+
+.CenterFunctions {
+    flex-direction: row;
+    align-items: stretch;
+    height: 22px;
+}
+
+.CenterFunctions > * {
+    margin-left: 1px;
+    margin-right: 1px;
+}
+
+.CustomButton {
+    background-color: #323232;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 3px;
+    border-width: 0px;
+    color: #8d8d8d;
+    font-size: 9px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.CustomButton:hover {
+    background-color: #3a3a3a;
+}
+
+.CustomButton.Active {
+    background-color: #09defe;
+    color: #323232;
+}
+
+.PinFix {
+    max-width: 100%;
+}

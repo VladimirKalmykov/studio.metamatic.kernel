@@ -6,8 +6,8 @@ namespace Metamatic
 {
     public class PluralAwaitable<T>: ICriticalNotifyCompletion
     {
-        public EffectExecutionContext context;
-        private bool m_IsCompleted = false;
+        public IEffect.EffectExecutionContext context;
+        private bool m_IsCompleted;
         public bool IsCompleted
         {
             get

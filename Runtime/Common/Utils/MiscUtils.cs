@@ -6,6 +6,7 @@ using UnityEngine;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace Metamatic {
     class DefaultValues {
@@ -208,12 +209,12 @@ namespace Metamatic {
         }
 
         /// <summary>
-        /// Get result of lerp and indemnify it of stuck
+        /// Adjusts the result of a linear interpolation (lerp) to prevent it from "stuck" situations by applying a threshold (gap). It is designed to ensure that the interpolation result reaches the target value (b) without getting stuck due to small differences that could prevent exact equality due to floating-point precision limitations.
         /// </summary>
-        /// <param name="a">From</param>
-        /// <param name="b">To</param>
-        /// <param name="result">Result</param>
-        /// <param name="gap">Gap</param>
+        /// <param name="a">The start value of the interpolation.</param>
+        /// <param name="b">The end target value of the interpolation.</param>
+        /// <param name="result">The current result of the linear interpolation between a and b.</param>
+        /// <param name="gap">An optional threshold that defines the "close enough" margin to b. Default is 0.01f.</param>
         /// <returns></returns>    
         public static float Indemnify(float a, float b, float result, float gap = 0.01f) {
             if ((b > a && result + gap >= b) || (b < a && result - gap <= b)) {
@@ -223,13 +224,12 @@ namespace Metamatic {
         }
 
         /// <summary>
-        /// Get result of lerp and indemnify it of stuck
+        /// Checks if the result is within a specified gap around a value, and returns the result if it's close enough; otherwise, it returns the original value.
         /// </summary>
-        /// <param name="a">From</param>
-        /// <param name="b">To</param>
-        /// <param name="result">Result</param>
-        /// <param name="gap">Gap</param>
-        /// <returns></returns>    
+        /// <param name="value">The target value you're aiming to reach.</param>
+        /// <param name="result">The current value that you're evaluating to see if it's close enough to value.</param>
+        /// <param name="gap">An optional parameter that defines the tolerance range around value within which result is considered acceptable. The default is 0.01f.</param>
+        /// <returns></returns>
         public static float Indemnify(float value, float result, float gap = 0.01f) {
             if ((result + gap >= value) && (result - gap <= value)) {
                 return result;
@@ -626,7 +626,7 @@ namespace Metamatic {
         }
 
         /// <summary>
-        /// Get combinig colliders bounding rect (renderers can be collected by method GetComponontsInChildren)
+        /// Get common bounding rect for colliders (renderers can be collected by method GetComponontsInChildren)
         /// </summary>
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
@@ -767,11 +767,13 @@ namespace Metamatic {
             return new Vector2Int(divisors[0], n / divisors[0]);
         }
         
+        
         /// <summary>
         /// Simulate of dropping game dice with one-in-count change to get true value
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
+        [Obsolete("Use UniqueDice class instead")]
         public static bool Dice(int count, bool negative = false)
         {
             return (UnityEngine.Random.Range(0, count + 1) == count) != negative;
@@ -885,5 +887,112 @@ namespace Metamatic {
 
             return FindParentSiblingsWithName(parent, name);
         }
+        
+        public static string GetGenericName(Type t, bool hideClassName = false, bool hideScopes = false)
+        {
+            if (!t.IsGenericType)
+            {
+                return t.Name;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            if (!hideClassName)
+            {
+                sb.Append(t.Name.Substring(0, t.Name.IndexOf('`')));
+            }
+
+            if (!hideScopes)
+            {
+                sb.Append('<');
+            }
+
+            Type[] genericArguments = t.GetGenericArguments();
+            for (int i = 0; i < genericArguments.Length; i++)
+            {
+                sb.Append(GetGenericName(genericArguments[i]));
+                if (i < genericArguments.Length - 1)
+                {
+                    sb.Append(", ");
+                }
+            }
+
+            if (!hideScopes)
+            {
+                sb.Append('>');
+            }
+
+            return sb.ToString();
+        }
+        
+        public static Color MultiplyColors(Color color1, Color color2)
+        {
+            return new Color(
+                color1.r * color2.r,
+                color1.g * color2.g,
+                color1.b * color2.b,
+                color1.a * color2.a
+            );
+        }
+        
+        /// <summary>
+        /// Reduces array count to specified length by selecting values with equal intervals
+        /// </summary>
+        /// <param name="l"></param>
+        /// <param name="maxLength"></param>
+        /// <returns></returns>
+        public static T[] ReduceArrayLength<T>(List<T> l, int maxLength)
+        {
+            int inputLength = l.Count;
+
+            if (inputLength <= maxLength)
+            {
+                return l.ToArray();
+            }
+
+            T[] result = new T[maxLength];
+            result[0] = l[0];
+            result[maxLength - 1] = l[inputLength - 1];
+
+            double interval = (double)(inputLength - 1) / (maxLength - 1);
+
+            for (int i = 1; i < maxLength - 1; i++)
+            {
+                result[i] = l[(int)Math.Round(i * interval)];
+            }
+
+            return result;
+        }
+        
+        /// <summary>
+        /// Get random int value from range based on seed
+        /// </summary>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <param name="seed"></param>
+        /// <returns></returns>
+        public static int RandomRange(int min, int max, int seed)
+        {
+            System.Random random = new System.Random(seed);
+            return random.Next(min, max);
+        }
+        
+        /// <summary>
+        /// Get random float value from range based on seed
+        /// </summary>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <param name="seed"></param>
+        /// <returns></returns>
+        public static float RandomRange(float min, float max, int seed)
+        {
+            System.Random random = new System.Random(seed);
+            double val = random.NextDouble();
+            return (float)(min + val * (max - min));
+        }
+        
+        /// <summary>
+        /// Returns a random integer number between int.MinValue and int.MaxValue
+        /// </summary>
+        public static int seed => new System.Random().Next();
     }
 }

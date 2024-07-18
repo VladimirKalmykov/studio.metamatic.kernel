@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/studio.metamatic.kernel/Editor/SocketSystem/Editors/Module/ModuleEditor.uss?fileID=7433441132597879392&amp;guid=8d4db09c39e7489d969e24701e382f6e&amp;type=3#ModuleEditor" />
+    <ui:VisualElement name="header" class="Header">
+        <ui:Label name="title" text="MODULE" class="Title" />
+        <ui:VisualElement name="type-container" class="TypeContainer">
+            <ui:Label name="type" text="Unknown" class="Type" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="settings" class="Settings" />
+    <ui:VisualElement name="body" class="Body" />
+</ui:UXML>

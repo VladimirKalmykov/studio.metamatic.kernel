@@ -29,7 +29,7 @@ namespace Metamatic
         where T : notnull
     {
         public T value { get; protected set; }
-        public bool locked = false;
+        public bool locked;
         private event Action<T> OnMutate;
         public MutablePayload(in T value = default, bool locked = false): base(typeof(T))
         {

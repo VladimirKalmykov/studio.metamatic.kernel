@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 
 namespace Metamatic.UI {
@@ -10,9 +11,16 @@ namespace Metamatic.UI {
             HORIZONTAL,
             VERTICAL
         }
+        
+        #region Events
+
+        public event Action OnSlidesChanged;
+        #endregion
+        
         #region Fields
         public Orientation orientation = Orientation.HORIZONTAL;
-        public Vector2 positionRatio;
+        [ShowInInspector, ReadOnly]
+        public Vector2 positionRatio { get; set; }
         
         [ShowInInspector, ReadOnly]
         #endregion
@@ -74,13 +82,14 @@ namespace Metamatic.UI {
                     child.anchorMin = new Vector2(index, 0);
                     child.anchorMax = new Vector2(index + 1, 1);
                 } else {
-                    child.anchorMin = new Vector2(0, index);
-                    child.anchorMax = new Vector2(1, index + 1);
+                    child.anchorMin = new Vector2(0, transform.childCount - index - 1);
+                    child.anchorMax = new Vector2(1, transform.childCount - index);
                 }
                 child.pivot = Vector2.zero;
                 m_CachedChildren[index] = child as Transform;
                 index++;
             }
+            OnSlidesChanged?.Invoke();
         }
 
         #if UNITY_EDITOR

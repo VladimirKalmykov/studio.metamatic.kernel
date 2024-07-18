@@ -17,7 +17,7 @@ namespace Metamatic.Effects.Graph
         public EffectsGraph graph;
         private IEffect currentEffect;
         protected readonly List<Node> children = new List<Node>();
-        public Node parent { get; private set; }= null;
+        public Node parent { get; private set; }
         private EffectCancellableOperationAwaiter activeEffectExecution;
         public ExecutionStatus status { get; private set; } = ExecutionStatus.None;
 
@@ -60,7 +60,16 @@ namespace Metamatic.Effects.Graph
             }
         }*/
         
-        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffectWithProps<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffect<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
+        {
+            TryCancel();
+            currentEffect = effect;
+            activeEffectExecution = this.graph.channel.Add(effect, props);
+            this.graph.Execute().Forget();
+            return activeEffectExecution;
+        }
+        
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
         {
             TryCancel();
             currentEffect = effect;
@@ -93,7 +102,7 @@ namespace Metamatic.Effects.Graph
 
         public async UniTask Execute()
         {
-            if (activeEffectExecution.status == EffectExecutionContext.Status.Pending)
+            if (activeEffectExecution.status == IEffect.EffectExecutionContext.Status.Pending)
             {
                 activeEffectExecution.Replay();
             }

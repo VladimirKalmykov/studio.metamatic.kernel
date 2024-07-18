@@ -1,6 +1,6 @@
 ﻿using System;
 
-public class DisposableNullable<T> : IDisposable
+public struct DisposableNullable<T> : IDisposable
 where T: IDisposable
 {
     private T m_Disposable;

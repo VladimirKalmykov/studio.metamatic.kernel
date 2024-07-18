@@ -1,6 +1,5 @@
 ﻿#pragma warning disable CS1591
 
-using Cysharp.Threading.Tasks.Internal;
 using System;
 using System.Linq;
 using System.Diagnostics;
@@ -97,8 +96,8 @@ namespace Cysharp.Threading.Tasks.CompilerServices
             pool.TryPush(this);
         }
 
-        [DebuggerHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // [DebuggerHidden]
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Run()
         {
             stateMachine.MoveNext();

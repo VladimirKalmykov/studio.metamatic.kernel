@@ -9,7 +9,7 @@ namespace Metamatic
     {
         public readonly struct CancellationEventMessage {}
         private List<Action<Payload>> listeners = new List<Action<Payload>>();
-        private TaskCompletionSource<bool> m_EventHandlingProcessed = null;
+        private TaskCompletionSource<bool> m_EventHandlingProcessed;
         public async void Emit<T>(T value = default)
         {
             while (m_EventHandlingProcessed != null)

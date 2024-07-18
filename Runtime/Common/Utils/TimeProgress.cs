@@ -13,11 +13,11 @@ namespace Metamatic
         /// Time, since it create timestamp
         /// </summary>
         private DateTime m_Timestamp;
-        private double m_elapsedMilliseconds = 0;
+        private double m_elapsedMilliseconds;
         /// <summary>
         /// Determines that it is real time or scaled
         /// </summary>
-        private bool realTime = false;
+        private bool realTime;
         /// <summary>
         /// Return milliseconds since SclaedTime was created. It also takes in opinion timeScale.
         /// </summary>
@@ -115,7 +115,7 @@ namespace Metamatic
         public bool realTime {
             get; private set;
         }
-        bool m_TechnicalCancellation = false;
+        bool m_TechnicalCancellation;
         TechnicalCancellationPurpose m_TechnicalCancellationPurpose;
         Task timerTask;
         public Task task {

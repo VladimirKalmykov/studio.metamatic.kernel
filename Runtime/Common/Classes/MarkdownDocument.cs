@@ -48,7 +48,7 @@ namespace Metamatic {
             }
         }
         public class CodeNode: Node {
-            public string lang = null;
+            public string lang;
             public string value = "";
             public CodeNode(string value, string lang = null): base() {
                 this.value = value;

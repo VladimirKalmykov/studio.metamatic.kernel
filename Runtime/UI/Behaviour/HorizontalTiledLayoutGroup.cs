@@ -4,46 +4,56 @@
     [ExecuteAlways]
     public class HorizontalTiledLayoutGroup : MonoBehaviour
     {
-        public float paddingLeft = 0f;
-        public float paddingRight = 0f;
-        public float spacing = 0;
+        public float paddingLeft;
+        public float paddingRight;
+        public float spacing;
         public bool fitContent = true;
-        public bool smooth = false;
+        public bool smooth;
         public float smoothSpeed = 6f;
-        public int minWidth = 0;
+        public int minWidth;
         public int maxWidth = 99999;
+        private int m_ActiveChildrenCount;
         RectTransform rect;
         DrivenRectTransformTracker dt;
+        DrivenRectTransformTracker dtChild;
         private event System.Action OnBeforeDisable;
         void Awake() {
             rect = (RectTransform)transform;
-            dt = new DrivenRectTransformTracker();
         }
         void OnEnable() {
             dt.Clear();
-            dt.Add(this, rect, DrivenTransformProperties.SizeDeltaX);
-
-            foreach(RectTransform child in transform) {
-                var dt = new DrivenRectTransformTracker();
-                dt.Clear();
-                dt.Add(this, child, DrivenTransformProperties.AnchoredPositionX);
-
-                ClearTrackerOnDestroy(dt);
+            if (fitContent && rect != null) {
+                dt.Add(this, rect, DrivenTransformProperties.SizeDeltaX);
             }
+
+            ProcessChild();
         }
 
-        void ClearTrackerOnDestroy(DrivenRectTransformTracker dt) {
-            OnBeforeDisable += () => {
-                dt.Clear();
-            };
+        private void ProcessChild()
+        {
+            dtChild.Clear();
+            foreach(RectTransform child in transform) {
+                if (!child.gameObject.activeInHierarchy) continue;
+                dtChild.Add(this, child, DrivenTransformProperties.AnchoredPositionX);
+            }
+        }
+        
+        private void OnTransformChildrenChanged()
+        {
+            ProcessChild();
         }
 
         void OnDisable() {
             dt.Clear();
+            dtChild.Clear();
             OnBeforeDisable?.Invoke();
         }
-        void Start() {
+        void Start()
+        {
+            m_ActiveChildrenCount = 0;
             foreach(RectTransform child in transform) {
+                if (!child.gameObject.activeInHierarchy) continue;
+                m_ActiveChildrenCount++;
                 child.anchorMax = new Vector2(
                     0,
                     child.anchorMax.y
@@ -63,18 +73,23 @@
         {
             float left = paddingLeft;
             int index = 0;
+            var nextActiveChildCount = 0;
             foreach(RectTransform child in transform) {
+                if (!child.gameObject.activeInHierarchy) continue;
+                nextActiveChildCount++;
                 child.anchoredPosition = new Vector3(
                     left,
                     child.anchoredPosition.y
                 );
                 left += child.sizeDelta.x;
 
-                if (index < transform.childCount - 1) {
+                if (index < m_ActiveChildrenCount - 1) {
                     left += spacing;
                 }
                 index++;
             }
+
+            m_ActiveChildrenCount = nextActiveChildCount;
             if (fitContent) {
                 var finalWidth = Mathf.Min(Mathf.Max(minWidth + paddingRight, left + paddingRight), maxWidth);
                 if (smooth) {

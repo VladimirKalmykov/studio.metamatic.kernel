@@ -22,7 +22,7 @@ namespace Metamatic {
         public class StateValue<T>: StateValueBase {
             public T value {
                 get; protected set;
-            } = default(T);
+            }
 
             public StateValue() {
                 type = typeof(T);
