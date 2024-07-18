@@ -12,6 +12,15 @@ namespace Metamatic
         private static event Action<Service> _HandleServiceAdded;
         private static event Action<Service> _HandleServiceRemoved;
         private static bool _IsReady;
+        
+        /* Static errors and susbcriptions */
+        public static event Action<Type, Exception> OnErrorInService;
+        public DisposableAction SubscribeErrorInService(Action<Type, Exception> action)
+        {
+            OnErrorInService += action;
+            return new DisposableAction(() => OnErrorInService -= action);
+        }
+        
         private event Action OnReady;
         
         #region Fields
@@ -109,11 +118,15 @@ namespace Metamatic
             }
             catch (Exception e)
             {
+                OnErrorInService?.Invoke(type, e);
+                #if METAMATIC_TERMINAL
+                Terminal.LogError($"Service {type} failed to run: {e.Message}");
+                #endif
                 Debug.LogError($"Service {type} failed to run: {e}");
             }
         }
 
-        public static async UniTask<T> Resolve<T>(CancellationToken cancellationToken = default, float timeout = 60f)
+        public static async UniTask<T> Resolve<T>(CancellationToken cancellationToken = default, float timeout = 10f)
             where T : Service
         {
             var service = await ResolveInternal<T>(cancellationToken, timeout);
@@ -126,7 +139,7 @@ namespace Metamatic
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static UniTask<T> ResolveInternal<T>(CancellationToken cancellationToken = default, float timeout = 60f) where T : Service
+        public static UniTask<T> ResolveInternal<T>(CancellationToken cancellationToken = default, float timeout = 10f) where T : Service
         {
             if (_Services.TryGetValue(typeof(T), out var service))
             {
@@ -163,7 +176,7 @@ namespace Metamatic
                     {
                         _HandleServiceAdded -= handler;
                         cancellationTokenRegistration.Dispose();
-                        tcs.TrySetException(new TimeoutException("Operation timed out."));
+                        tcs.TrySetException(new TimeoutException($"Resolving service {typeof(T)} timed out"));
                     }
                 }).Forget();
             }

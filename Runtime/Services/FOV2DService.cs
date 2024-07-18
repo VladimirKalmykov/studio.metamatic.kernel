@@ -21,6 +21,8 @@ public class FOV2DService : Service
     {
         /* Subscribe to camera controller */
         var cameraService = await Resolve<CameraService>();
+        /* Wait for camera */
+        await cameraService.WaitForCamera(cancellationToken);
         await using var dispsableCameraFOVTracker2d = m_CameraFovTracker2d = new CameraFOVTracker2d(cameraService.camera, m_InnerBuffer, m_OuterBuffer, transform.position.z);
         using var cameraListener = cameraService.SubscribeToMainCamera(cameraController =>
         {
