@@ -7,8 +7,8 @@ using Sirenix.OdinInspector;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
-#if ENABLE_INPUT_SYSTEM
 using Metamatic.DevTools;
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 #endif
