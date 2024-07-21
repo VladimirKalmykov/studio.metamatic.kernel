@@ -165,7 +165,7 @@ namespace Metamatic {
             }
         }
         // [ShowInInspector, InlineEditor(InlineEditorObjectFieldModes.CompletelyHidden)]
-        Editor mainGameEntityEditor;
+        UnityEditor.Editor mainGameEntityEditor;
         GameEntity mainGameEntity;
         // [ShowInInspector, ReadOnly, CustomValueDrawer("TitleDrawer"), PropertyOrder(-10)]
         string windowTitle;

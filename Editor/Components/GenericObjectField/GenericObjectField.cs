@@ -129,8 +129,12 @@ namespace Metamatic
             var menu = new GenericDropdownMenu();
 
             menu.AddItem("Clear", false, ClearAction);
-
+            
+            #if UNITY_6000
+            menu.DropDown(targetElement.worldBound, targetElement, false);
+            #else
             menu.DropDown(targetElement.worldBound, targetElement);
+            #endif
         }
         
         private void ClearAction()

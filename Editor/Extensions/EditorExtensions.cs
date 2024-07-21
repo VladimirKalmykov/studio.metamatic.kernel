@@ -12,7 +12,7 @@ namespace Metamatic.Extensions {
         /// <param name="relativePath"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static T LoadRelativeAsset<T>(this Editor scriptableObject, string relativePath) where T: UnityEngine.Object {
+        public static T LoadRelativeAsset<T>(this UnityEditor.Editor scriptableObject, string relativePath) where T: UnityEngine.Object {
             var ms = MonoScript.FromScriptableObject( scriptableObject );
             var directoryName = Path.GetDirectoryName(AssetDatabase.GetAssetPath(ms));
             var path = NormalizePath(Path.Combine(directoryName, relativePath));

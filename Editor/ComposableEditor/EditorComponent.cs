@@ -6,7 +6,7 @@ namespace Metamatic {
     {
         public readonly UnityEngine.Object target;
         public readonly ComposableEditor composableEditor;
-        public readonly Editor editor;
+        public readonly UnityEditor.Editor editor;
         public SerializedObject serializedObject => editor.serializedObject;
 
         public virtual VisualElement CreateInspectorGUI()

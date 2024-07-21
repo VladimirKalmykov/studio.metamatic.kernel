@@ -7,7 +7,7 @@ namespace Metamatic
         public abstract void Apply();
     }
 
-    public class StateMachine<TState> : StateMachine
+    public class StateMachineLegacy<TState> : StateMachine
     {
         public delegate void StateChangeHandler(ref TState state, ref TState prevState);
 
@@ -45,12 +45,12 @@ namespace Metamatic
             return ref state;
         }
 
-        public StateMachine(): base()
+        public StateMachineLegacy(): base()
         {
             OnInitState();
         }
         
-        public StateMachine(TState defaultState): base()
+        public StateMachineLegacy(TState defaultState): base()
         {
             prevState = defaultState;
             state = defaultState;

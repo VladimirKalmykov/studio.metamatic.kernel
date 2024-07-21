@@ -1,3 +1,6 @@
+using Sirenix.OdinInspector;
+using Unity.Collections;
+
 namespace Metamatic
 {
     using System;
@@ -11,12 +14,13 @@ namespace Metamatic
     {
         private readonly MicroState<CameraController> m_CameraController = new();
         private Dictionary<CameraController, IDisposable> m_CameraWeightSubscriptions = new();
-
+        
+        [ShowInInspector]
         public Camera camera
         {
             get
             {
-                if (m_CameraController.value == null) throw new Exception("No camera available");
+                if (m_CameraController.value == null) return null;
                 return m_CameraController.value.camera;
             }
         }

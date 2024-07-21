@@ -78,6 +78,11 @@ namespace Metamatic
             m_Handler = handler;
             m_Latch = latch;
         }
+
+        public void Handle()
+        {
+            CheckCompletion();
+        }
         public void Handle1(T1 obj)
         {
             m_Value1 = obj;

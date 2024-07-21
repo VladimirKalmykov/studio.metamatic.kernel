@@ -203,4 +203,34 @@ namespace Metamatic
             m_Handler = default;
         }
     }
+    
+    public class UniqueSequentialHandler<T>: ExclusiveHandlerBase
+    {
+        public delegate void Handler(T value, CancellationToken token);
+
+        private Handler m_Handler;
+        private bool m_MemoizedValueSet;
+        private T m_MemoizedValue;
+    
+        public UniqueSequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
+        {
+            m_Handler = handler;
+            externCancellationToken = externalCancellationToken;
+        }
+        public void Handle(T value)
+        {
+            Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            if (m_MemoizedValueSet && m_MemoizedValue.Equals(value)) return;
+            m_MemoizedValueSet = true;
+            m_MemoizedValue = value;
+            CancelInternalToken();
+            internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
+            m_Handler(value, internalCancellationTokenSource.Token);
+        }
+
+        protected override void EraseProps()
+        {
+            m_Handler = default;
+        }
+    }
 }

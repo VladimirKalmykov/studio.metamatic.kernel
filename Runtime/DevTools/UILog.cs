@@ -47,15 +47,18 @@ namespace Metamatic.DevTools {
             var db = go.GetComponent<UILog>();
             db.InternalAdd(key, message);
         }
-        public static void Add(string sectionName, string key, object message) {
+        public static DisposableAction Add(string sectionName, string key, object message) {
             if (!Application.isPlaying) {
-                return;
+                throw new InvalidOperationException("UILog.Add can only be called in play mode");
             }
             var go = UILog.GetGo();
 
-            if (go == null) return;
+            if (go == null) throw new InvalidOperationException("UILog.GetGo returned null");
             var db = go.GetComponent<UILog>();
             db.InternalAdd(sectionName, key, message);
+            return DisposableAction.Create(() => {
+                db.InternalRemove(sectionName, key);
+            });
         }
         public static DisposableAction Add(string sectionNane, string key, Func<object> getter) {
             if (!Application.isPlaying)

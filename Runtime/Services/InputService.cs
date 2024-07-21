@@ -10,13 +10,14 @@ namespace Metamatic
     {
         [SerializeField] private PlayerInput m_PlayerInputPrefab;
         private ManagedList<PlayerInput> m_PlayerInputs;
+        private CameraService m_CameraService;
         private event Action<int, InputAction.CallbackContext> m_OnPlayerActionTriggered;
 
         protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
         {
             /* Prepare handler for player inputs */
             m_PlayerInputs = new ManagedList<PlayerInput>(HandlePlayerInput);
-            var cameraService = await Service.Resolve<CameraService>();
+            var cameraService = m_CameraService = await Resolve<CameraService>();
             /* Subscribe to main camera */
             using var mainCameraSubscription = cameraService.SubscribeToMainCamera(HandleMainCamera);
 
@@ -28,7 +29,7 @@ namespace Metamatic
             playerInputManager.onPlayerJoined += OnPlayerJoined;
             playerInputManager.onPlayerLeft += OnPlayerLeft;
 
-            await cancellationToken;
+            await ready();
             playerInputManager.onPlayerJoined -= OnPlayerJoined;
             playerInputManager.onPlayerLeft -= OnPlayerLeft;
         }
@@ -48,6 +49,7 @@ namespace Metamatic
         private void OnPlayerJoined(PlayerInput playerInput)
         {
             Debug.Log($"Player joined: {playerInput.playerIndex}");
+            playerInput.camera = m_CameraService.camera;
             m_PlayerInputs.Add(playerInput);
         }
 

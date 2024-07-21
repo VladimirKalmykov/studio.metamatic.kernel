@@ -14,8 +14,8 @@ namespace Metamatic {
     public interface ISocketLegacy<TState>
     {
         public ref TState GetState();
-        public void SetState(StateMachine<TState>.StateModifier modifier);
-        public Action SubscribeState(StateMachine<TState>.StateChangeHandler handler);
+        public void SetState(StateMachineLegacy<TState>.StateModifier modifier);
+        public Action SubscribeState(StateMachineLegacy<TState>.StateChangeHandler handler);
     }
 
     public abstract class SocketLegacy : PluggableMonoBehaviour
@@ -42,7 +42,7 @@ namespace Metamatic {
         private event Action OnReattach;
         private event Action OnDetach;
         private event Action<SocketUnavailableReason> OnUnavailable;
-        protected StateMachine<TState> stateMachine = new StateMachine<TState>();
+        protected StateMachineLegacy<TState> StateMachineLegacy = new StateMachineLegacy<TState>();
         protected EventMachine<TEventType> eventMachine = new EventMachine<TEventType>();
         [BoxGroup("Socket"), GUIColor("GetProxyConnectionColor")]
         [ShowInInspector, ReadOnly, LabelText("Input")]
@@ -70,7 +70,7 @@ namespace Metamatic {
         private void Awake()
         {
             var defaultState = GetDefaultState();
-            stateMachine.SetState((ref TState state) =>
+            StateMachineLegacy.SetState((ref TState state) =>
             {
                 state = defaultState;
             });
@@ -137,7 +137,7 @@ namespace Metamatic {
                 throw new System.Exception("Socket is already attached");
             }
             m_ParentSocketLegacy = socketLegacy;
-            stateMachine = socketLegacy.stateMachine;
+            StateMachineLegacy = socketLegacy.StateMachineLegacy;
             eventMachine = socketLegacy.eventMachine;
             socketLegacy.m_ChildSockets.Add(this);
             OnReattach?.Invoke();
@@ -207,8 +207,8 @@ namespace Metamatic {
                 socketLegacy.OnReattach -= ReattachToParent;
                 socketLegacy.OnUnavailable -= DetachFromParent;
                 /* Reset state machine to parent state machine and detach from parent */
-                var lastParentState = stateMachine.prevState;
-                stateMachine = new StateMachine<TState>(lastParentState);
+                var lastParentState = StateMachineLegacy.prevState;
+                StateMachineLegacy = new StateMachineLegacy<TState>(lastParentState);
                 eventMachine = new EventMachine<TEventType>();
                 m_ParentSocketLegacy = null;
                 OnReattach?.Invoke();
@@ -218,20 +218,20 @@ namespace Metamatic {
         
         public ref TState GetState()
         {
-            return ref stateMachine.state;
+            return ref StateMachineLegacy.state;
         }
         
-        public void SetState(StateMachine<TState>.StateModifier modifier) {
-            stateMachine.SetState(modifier);
+        public void SetState(StateMachineLegacy<TState>.StateModifier modifier) {
+            StateMachineLegacy.SetState(modifier);
         }
         
-        public Action SubscribeState(StateMachine<TState>.StateChangeHandler handler)
+        public Action SubscribeState(StateMachineLegacy<TState>.StateChangeHandler handler)
         {
-            var currentStateMachine = stateMachine;
+            var currentStateMachine = StateMachineLegacy;
             var unsubscribe = currentStateMachine.SubscribeState(handler);
             Action reattachHandler = () => {
                 unsubscribe();
-                unsubscribe = this.stateMachine.SubscribeState(handler);
+                unsubscribe = this.StateMachineLegacy.SubscribeState(handler);
             };
             OnReattach += reattachHandler;
             return () =>
@@ -258,7 +258,7 @@ namespace Metamatic {
 
         public void ApplyChanges()
         {
-            stateMachine.Apply();
+            StateMachineLegacy.Apply();
         }
         
         public void Emit(TEventType args)
