@@ -293,6 +293,7 @@ namespace Metamatic.Tests
             {
                 await UniTask.Delay(10);
                 await transition.WaitNextState();
+                Debug.Log("Next state is specified");
             });
             
             stateMachine.OnTransitionStep += (from, to) =>
