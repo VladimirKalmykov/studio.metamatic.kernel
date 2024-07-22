@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,6 +50,7 @@ namespace Metamatic
         public readonly struct Transition
         {
             private readonly AsyncStateMachine<TState> m_StateMachine;
+            public readonly ulong ID;
 
             public TransitionStatus status => m_StateMachine.m_Status;
             public CancellationToken externalCancellationToken => m_StateMachine.m_ExternalCancellationToken;
@@ -69,9 +71,10 @@ namespace Metamatic
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public UniTask<TState> WaitNextState() => m_StateMachine.WaitNextState();
 
-            internal Transition(AsyncStateMachine<TState> stateMachine)
+            internal Transition(AsyncStateMachine<TState> stateMachine, ulong id)
             {
                 m_StateMachine = stateMachine;
+                ID = id;
             }
         }
 
@@ -125,6 +128,16 @@ namespace Metamatic
         /// Event to notify that transition is aborted
         /// </summary>
         private event Action OnAborted;
+        
+        /// <summary>
+        /// Last generated id
+        /// </summary>
+        private ulong m_LastId;
+        
+        /// <summary>
+        /// State ID that is currently active
+        /// </summary>
+        public ulong activeId { get; private set; }
 
         /// <summary>
         /// Determines that external cancellation token is canceled (thus SetState should throw OperationCanceledException)
@@ -377,12 +390,37 @@ namespace Metamatic
         {
             throw new InvalidOperationException("AsyncStateMachine should be disposed manually");
         }
-
-        private Queue<(TState state, CancellationToken cancellationToken, UniTaskCompletionSource tcs)> m_StatesQueue =
-            new Queue<(TState state, CancellationToken cancellationToken, UniTaskCompletionSource tcs)>();
-
-        public UniTask SetState(TState state, CancellationToken externalCancellationToken = default)
+        
+        private ulong GenerateId()
         {
+            return ++m_LastId == ulong.MaxValue ? m_LastId = 0 : m_LastId;
+        }
+
+        private Queue<(ulong id, TState state, CancellationToken cancellationToken, UniTaskCompletionSource tcs)> m_StatesQueue =
+            new ();
+        
+        /// <summary>
+        /// Add new state to the queue
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="externalCancellationToken"></param>
+        /// <param name="id"></param>
+        /// <returns>Uni task for transition between prev task to this task</returns>
+        public UniTask Add(TState state, CancellationToken externalCancellationToken = default, ulong id = 0)
+        {
+            return AddState(state, externalCancellationToken, id).task;
+        }
+        
+        /// <summary>
+        /// Add new state to the queue and get its task and id
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="externalCancellationToken"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public (UniTask task, ulong id) AddState(TState state, CancellationToken externalCancellationToken = default, ulong id = 0)
+        {
+            var nextId = id == 0 ? GenerateId() : id;
             if (m_Status != TransitionStatus.Idle)
             {
                 switch (m_Status)
@@ -394,20 +432,20 @@ namespace Metamatic
                         /* Bet first we should check if queue already has next state */
                         var tcs = new UniTaskCompletionSource();
                         var isFirstInQueue = m_StatesQueue.Count == 0;
-                        EnqueueState(state, externalCancellationToken, tcs);
+                        EnqueueState(nextId, state, externalCancellationToken, tcs);
                         if (isFirstInQueue)
                         {
                             SetNextState(state);
                         }
 
-                        return tcs.Task;
+                        return (tcs.Task, nextId);
                     }
                     case TransitionStatus.FromCurrentToNextProcessing:
                     {
                         /* Transition is in state of transitioning between current state and next state. We should add this state to queue */
                         var tcs = new UniTaskCompletionSource();
-                        EnqueueState(state, externalCancellationToken, tcs);
-                        return tcs.Task;
+                        EnqueueState(nextId, state, externalCancellationToken, tcs);
+                        return (tcs.Task, nextId);
                     }
                 }
 
@@ -419,18 +457,66 @@ namespace Metamatic
             }
 
             /* Create new transition and perform */
-            PerformTransition().Forget();
+            PerformTransition(nextId).Forget();
             /* Peek next state in queue to prepare next state */
             if (m_StatesQueue.Count > 0)
             {
-                var (nextState, _, _) = m_StatesQueue.Peek();
+                var (_, nextState, _, _) = m_StatesQueue.Peek();
                 SetNextState(nextState);
             }
 
-            return completeTransitionFromPrevStateTask;
+            return (completeTransitionFromPrevStateTask, nextId);
+        }
+        
+        /// <summary>
+        /// Returns true if the state with specified id is active and state machine hasn't next state.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public bool IsLatest(ulong id)
+        {
+            return activeId == id && !m_HasNextState;
+        }
+        
+        /// <summary>
+        /// Returns true if the state with specified id is in queue or active
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public bool HasState(ulong id)
+        {
+            return activeId == id || m_StatesQueue.Any(x => x.id == id);
+        }
+        
+        /// <summary>
+        /// Wait for the state with specified id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="throwIfNotFound"></param>
+        /// <returns></returns>
+        public UniTask WaitState(ulong id, bool throwIfNotFound = false)
+        {
+            if (activeId == id)
+            {
+                return completeTransitionFromPrevStateTask;
+            }
+            /* Search in queue */
+            foreach (var (stateId, _, _, tcs) in m_StatesQueue)
+            {
+                if (stateId == id)
+                {
+                    return tcs.Task;
+                }
+            }
+            if (throwIfNotFound)
+            {
+                return UniTask.FromException(new InvalidOperationException($"State with id {id} not found"));
+            }
+            /* Not found */
+            return UniTask.CompletedTask;
         }
 
-        private void EnqueueState(TState state, CancellationToken externalCancellationToken, UniTaskCompletionSource tcs)
+        private void EnqueueState(ulong id, TState state, CancellationToken externalCancellationToken, UniTaskCompletionSource tcs)
         {
             if (m_KeepOnlyLatestState && m_StatesQueue.Count > 1)
             {
@@ -441,11 +527,12 @@ namespace Metamatic
                 }
             }
 
-            m_StatesQueue.Enqueue((state, externalCancellationToken, tcs));
+            m_StatesQueue.Enqueue((id, state, externalCancellationToken, tcs));
         }
 
-        private async UniTaskVoid PerformTransition()
+        private async UniTaskVoid PerformTransition(ulong id)
         {
+            activeId = id;
             try
             {
 #if DEBUG
@@ -454,7 +541,7 @@ namespace Metamatic
             SetStatus(TransitionStatus.FromPrevToCurrentProcessing);
 #endif
                 OnTransitionStep?.Invoke(prevState, currentState);
-                await m_Handler(new Transition(this));
+                await m_Handler(new Transition(this, id));
             }
             catch (OperationCanceledException)
             {
@@ -523,7 +610,7 @@ namespace Metamatic
                 return;
             }
 
-            var (state, externalCancellationToken, tcs) = m_StatesQueue.Dequeue();
+            var (id, newNextState, externalCancellationToken, tcs) = m_StatesQueue.Dequeue();
             if (!previousIsSuccess)
             {
                 tcs.TrySetException(exception);
@@ -539,7 +626,7 @@ namespace Metamatic
 
             try
             {
-                await SetState(state, externalCancellationToken);
+                await Add(newNextState, externalCancellationToken, id);
                 tcs.TrySetResult();
             }
             catch (Exception e)

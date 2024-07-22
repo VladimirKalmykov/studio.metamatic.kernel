@@ -1,4 +1,5 @@
 ﻿#if ANIMANCER
+using System;
 using System.Threading;
 using Animancer;
 using Cysharp.Threading.Tasks;
@@ -29,7 +30,9 @@ namespace Metamatic
                 tcs.TrySetCanceled();
                 state.Events.EndEvent = default;
             });
-            state.Events.EndEvent = new AnimancerEvent(isReversed ? 0f : 1f, () =>
+            var checkFn = isReversed ? new Func<bool>(() => state.NormalizedTime > 0f) : new Func<bool>(() => state.NormalizedTime < 1f);
+            return UniTask.WaitWhile(checkFn, cancellationToken: cancellationToken);
+            /*state.Events.EndEvent = new AnimancerEvent(isReversed ? 0f : 1f, () =>
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -37,7 +40,7 @@ namespace Metamatic
                 }
                 tcs.TrySetResult();
                 state.Events.EndEvent = default;
-            });
+            });*/
             return tcs.Task;
         }
         

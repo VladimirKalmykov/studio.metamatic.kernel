@@ -46,7 +46,7 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.SetState(State.Running);
+            await stateMachine.Add(State.Running);
             Assert.AreEqual(State.Running, actualState);
             Assert.AreEqual(2, actualStatus.Count, "Expected two status changes");
             Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentProcessing, actualStatus[0], "Expected first status to be processing");
@@ -82,8 +82,8 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.SetState(State.Running);
-            await stateMachine.SetState(State.Falling);
+            await stateMachine.Add(State.Running);
+            await stateMachine.Add(State.Falling);
             Assert.AreEqual(5, progress, "Progress should be 5");
             Assert.AreEqual(State.Falling, actualState);
             Assert.AreEqual(6, actualStatus.Count, "Expected two status changes");
@@ -127,10 +127,10 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.SetState(State.Running); // Running immediately
-            await stateMachine.SetState(State.Falling); // Add to queue as next state
-            await stateMachine.SetState(State.Jumping); // Add to queue
-            await stateMachine.SetState(State.Landing); // Add to queue
+            await stateMachine.Add(State.Running); // Running immediately
+            await stateMachine.Add(State.Falling); // Add to queue as next state
+            await stateMachine.Add(State.Jumping); // Add to queue
+            await stateMachine.Add(State.Landing); // Add to queue
             Assert.AreEqual(4, statesHistory.Count);
             Assert.AreEqual(State.Running, statesHistory[0]);
             Assert.AreEqual(State.Falling, statesHistory[1]);
@@ -177,7 +177,7 @@ namespace Metamatic.Tests
                 cancellationTokenSource.Cancel();
             }).Forget();
             try {
-                await stateMachine.SetState(State.Running, cancellationTokenSource.Token);
+                await stateMachine.Add(State.Running, cancellationTokenSource.Token);
             } catch (Exception e)
             {
                 exception = e;
@@ -221,9 +221,9 @@ namespace Metamatic.Tests
             {
                 cancellationTokenSource.Cancel();
             }).Forget();
-            stateMachine.SetState(State.Running);
+            stateMachine.Add(State.Running);
             try {
-                await stateMachine.SetState(State.Falling, cancellationTokenSource.Token);
+                await stateMachine.Add(State.Falling, cancellationTokenSource.Token);
             } catch (Exception e)
             {
                 exception = e;
@@ -266,7 +266,7 @@ namespace Metamatic.Tests
 
                 try
                 {
-                    await stateMachine.SetState(State.Running);
+                    await stateMachine.Add(State.Running);
                 }
                 catch (Exception e)
                 {
@@ -301,9 +301,9 @@ namespace Metamatic.Tests
                 transitionStepsHistory.Add((from, to));
             };
             
-            await stateMachine.SetState(State.Running);
-            await stateMachine.SetState(State.Falling);
-            await stateMachine.SetState(State.Jumping);
+            await stateMachine.Add(State.Running);
+            await stateMachine.Add(State.Falling);
+            await stateMachine.Add(State.Jumping);
             
             Assert.AreEqual(3, transitionStepsHistory.Count);
             Assert.AreEqual((State.Idle, State.Running), transitionStepsHistory[0]);
@@ -325,7 +325,7 @@ namespace Metamatic.Tests
                 transitionStepsHistory.Add((from, to));
             };
             
-            await stateMachine.SetState(State.Running);
+            await stateMachine.Add(State.Running);
             
             Assert.AreEqual(1, transitionStepsHistory.Count);
             Assert.AreEqual((State.Idle, State.Running), transitionStepsHistory[0]);
