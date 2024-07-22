@@ -25,7 +25,7 @@ namespace Metamatic.Tests
         public IEnumerator SimpleTransitionBetweenTwoStates() => UniTask.ToCoroutine(async () =>
         {
             var actualState = State.Idle;
-            var actualStatus = new List<AsyncStateMachine<State>.Transition.Status>();
+            var actualStatus = new List<AsyncStateMachine<State>.TransitionStatus>();
             var cancelled = false;
             await using var stateMachine = new AsyncStateMachine<State>(async transition =>
             {
@@ -49,8 +49,8 @@ namespace Metamatic.Tests
             await stateMachine.SetState(State.Running);
             Assert.AreEqual(State.Running, actualState);
             Assert.AreEqual(2, actualStatus.Count, "Expected two status changes");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromPrevToCurrentProcessing, actualStatus[0], "Expected first status to be processing");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromPrevToCurrentCompleted, actualStatus[1], "Expected first status to be processed");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentProcessing, actualStatus[0], "Expected first status to be processing");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentCompleted, actualStatus[1], "Expected first status to be processed");
             Debug.Log("Completed");
         });
         
@@ -58,8 +58,7 @@ namespace Metamatic.Tests
         public IEnumerator TransitionBetweenThreeStates() => UniTask.ToCoroutine(async () =>
         {
             var actualState = State.Idle;
-            var actualStatus = new List<AsyncStateMachine<State>.Transition.Status>();
-            var cancelled = false;
+            var actualStatus = new List<AsyncStateMachine<State>.TransitionStatus>();
             var progress = 0;
             await using var stateMachine = new AsyncStateMachine<State>(async transition =>
             {
@@ -72,9 +71,10 @@ namespace Metamatic.Tests
                     progress++;
                     var nextState = await transition.WaitNextState();
                     progress++;
-                } catch (Exception e)
+                }
+                catch (Exception e)
                 {
-                    cancelled = true;
+                    // ignored
                 }
             });
             using var transitionStatusListener = stateMachine.SubscribeTransitionStatusChanged(status =>
@@ -87,12 +87,12 @@ namespace Metamatic.Tests
             Assert.AreEqual(5, progress, "Progress should be 5");
             Assert.AreEqual(State.Falling, actualState);
             Assert.AreEqual(6, actualStatus.Count, "Expected two status changes");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromPrevToCurrentProcessing, actualStatus[0], "Expected first status to be processing");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromPrevToCurrentCompleted, actualStatus[1], "Expected first status to be processed");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromCurrentToNextProcessing, actualStatus[2], "Expected first status to be completing");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromCurrentToNextCompleted, actualStatus[3], "Expected first status to be completing");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromPrevToCurrentProcessing, actualStatus[4], "Expected first status to be processing");
-            Assert.AreEqual(AsyncStateMachine<State>.Transition.Status.FromPrevToCurrentCompleted, actualStatus[5], "Expected first status to be processed");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentProcessing, actualStatus[0], "Expected first status to be processing");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentCompleted, actualStatus[1], "Expected first status to be processed");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromCurrentToNextProcessing, actualStatus[2], "Expected first status to be completing");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromCurrentToNextCompleted, actualStatus[3], "Expected first status to be completing");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentProcessing, actualStatus[4], "Expected first status to be processing");
+            Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentCompleted, actualStatus[5], "Expected first status to be processed");
             Debug.Log("Completed");
         });
         
@@ -102,7 +102,7 @@ namespace Metamatic.Tests
         {
             var statesHistory = new List<State>();
             var transitionHistory = new List<(State, State, State)>();
-            var actualStatus = new List<AsyncStateMachine<State>.Transition.Status>();
+            var actualStatus = new List<AsyncStateMachine<State>.TransitionStatus>();
             await using var stateMachine = new AsyncStateMachine<State>(async transition =>
             {
                 try
@@ -150,7 +150,7 @@ namespace Metamatic.Tests
         {
             var statesHistory = new List<State>();
             var transitionHistory = new List<(State, State, State)>();
-            var actualStatus = new List<AsyncStateMachine<State>.Transition.Status>();
+            var actualStatus = new List<AsyncStateMachine<State>.TransitionStatus>();
             await using var stateMachine = new AsyncStateMachine<State>(async transition =>
             {
                 try
@@ -195,7 +195,7 @@ namespace Metamatic.Tests
         {
             var statesHistory = new List<State>();
             var transitionHistory = new List<(State, State, State)>();
-            var actualStatus = new List<AsyncStateMachine<State>.Transition.Status>();
+            var actualStatus = new List<AsyncStateMachine<State>.TransitionStatus>();
             await using var stateMachine = new AsyncStateMachine<State>(async transition =>
             {
                 try
@@ -244,7 +244,7 @@ namespace Metamatic.Tests
             {
                 var statesHistory = new List<State>();
                 var transitionHistory = new List<(State, State, State)>();
-                var actualStatus = new List<AsyncStateMachine<State>.Transition.Status>();
+                var actualStatus = new List<AsyncStateMachine<State>.TransitionStatus>();
                 await using var stateMachine = new AsyncStateMachine<State>(async transition =>
                 {
                     try
