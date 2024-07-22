@@ -73,7 +73,7 @@ namespace Metamatic
         {
             if (m_Disposed)
             {
-                return;
+                throw new InvalidOperationException("Already disposed");
             }
             Dispose(false);
             if (m_ReleaseTaskCompletionSource != null)
@@ -91,6 +91,7 @@ namespace Metamatic
                     m_DisposeCancellationTokenSource = null;
                     // TODO: Make this configurable or automatic adaptive
                     if (_Pool.Count < 100) {
+                        m_Disposed = false;
                         _Pool.Enqueue(this);
                     }
                 }
@@ -125,6 +126,7 @@ namespace Metamatic
                 m_DisposeCancellationTokenSource = null;
                 // TODO: Make this configurable or automatic adaptive
                 if (_Pool.Count < 100) {
+                    m_Disposed = false;
                     _Pool.Enqueue(this);
                 }
             }
@@ -245,7 +247,7 @@ namespace Metamatic
         {
             if (m_Disposed)
             {
-                return;
+                throw new InvalidOperationException("Already disposed");
             }
             Dispose(false);
             if (m_ReleaseTaskCompletionSource != null)
@@ -264,6 +266,7 @@ namespace Metamatic
                     // TODO: Make this configurable or automatic adaptive
                     if (_Pool.Count < 100)
                     {
+                        m_Disposed = false;
                         _Pool.Enqueue(this);
                     }
                 }
@@ -283,7 +286,7 @@ namespace Metamatic
             }
             if (m_Disposed)
             {
-                return;
+                throw new InvalidOperationException("Already disposed");
             }
             m_Disposed = true;
             m_IsSyncDisposed = isSync;
@@ -299,6 +302,7 @@ namespace Metamatic
                 // TODO: Make this configurable or automatic adaptive
                 if (_Pool.Count < 100)
                 {
+                    m_Disposed = false;
                     _Pool.Enqueue(this);
                 }
             }

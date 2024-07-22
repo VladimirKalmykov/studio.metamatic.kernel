@@ -310,5 +310,25 @@ namespace Metamatic.Tests
             Assert.AreEqual((State.Running, State.Falling), transitionStepsHistory[1]);
             Assert.AreEqual((State.Falling, State.Jumping), transitionStepsHistory[2]);
         });
+        
+        [UnityTest]
+        public IEnumerator CompleteTransitionWithoutWaitingNext() => UniTask.ToCoroutine(async () =>
+        {
+            var transitionStepsHistory = new List<(State, State)>();
+            await using var stateMachine = new AsyncStateMachine<State>(async transition =>
+            {
+                await UniTask.Delay(10);
+            });
+            
+            stateMachine.OnTransitionStep += (from, to) =>
+            {
+                transitionStepsHistory.Add((from, to));
+            };
+            
+            await stateMachine.SetState(State.Running);
+            
+            Assert.AreEqual(1, transitionStepsHistory.Count);
+            Assert.AreEqual((State.Idle, State.Running), transitionStepsHistory[0]);
+        });
     }
 }

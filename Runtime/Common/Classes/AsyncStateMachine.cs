@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Metamatic
 {
@@ -51,9 +52,9 @@ namespace Metamatic
 
             public TransitionStatus status => m_StateMachine.m_Status;
             public CancellationToken externalCancellationToken => m_StateMachine.m_ExternalCancellationToken;
-            public TState prevState => m_StateMachine.m_PrevState;
-            public TState state => m_StateMachine.m_State;
-            public TState nextState => m_StateMachine.m_NextState;
+            public TState prevState => m_StateMachine.prevState;
+            public TState state => m_StateMachine.currentState;
+            public TState nextState => m_StateMachine.nextState;
             public bool hasNextState => m_StateMachine.m_HasNextState;
 
             public bool isExternalCancellationTokenCancelled =>
@@ -96,17 +97,17 @@ namespace Metamatic
         /// <summary>
         /// Previous state
         /// </summary>
-        private TState m_PrevState;
+        public TState prevState { get; private set; }
 
         /// <summary>
         /// Current state
         /// </summary>
-        private TState m_State;
+        public TState currentState { get; private set; }
 
         /// <summary>
         /// Next state
         /// </summary>
-        private TState m_NextState;
+        public TState nextState { get; private set; }
 
         private bool m_HasPrevState;
 
@@ -142,6 +143,18 @@ namespace Metamatic
         /// Determines that this is the final state, therefore no next state
         /// </summary>
         public bool isFinalize => m_Status == TransitionStatus.Aborted;
+        
+        /// <summary>
+        /// Returns current state or next state if it is defined
+        /// </summary>
+        public TState state
+        {
+            get
+            {
+                if (m_HasNextState) return nextState;
+                return currentState;
+            }
+        }
 
         /// <summary>
         /// CancellationToken for the transition (will be canceled when the transition gets next state)
@@ -150,11 +163,11 @@ namespace Metamatic
 
         private UniTask task => UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource.Task,
             m_TransitionToNextStateCompletionSource.Task);
-
+        
         private void Reset(TState nextState, TState nextPrevState = default, CancellationToken externalCancellationToken = default)
         {
-            this.m_State = nextState;
-            this.m_PrevState = nextPrevState;
+            this.currentState = nextState;
+            this.prevState = nextPrevState;
             m_ExternalCancellationToken = externalCancellationToken;
             m_CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
             m_TransitionFromPrevStateCompletionSource = new UniTaskCompletionSource();
@@ -162,7 +175,7 @@ namespace Metamatic
             m_Status = TransitionStatus.Idle;
             m_HasNextState = false;
             m_HasPrevState = true;
-            m_NextState = default;
+            this.nextState = default;
             OnNextState = null;
             OnAborted = null;
         }
@@ -170,7 +183,7 @@ namespace Metamatic
         private void Reset(TState nextState, CancellationToken externalCancellationToken = default)
         {
             Reset(nextState, default, externalCancellationToken);
-            m_PrevState = m_DefaultState;
+            prevState = m_DefaultState;
             m_HasPrevState = false;
         }
 
@@ -182,13 +195,18 @@ namespace Metamatic
         {
             if (m_HasNextState)
             {
+                #if DEBUG
+                SetStatus(TransitionStatus.FromPrevToCurrentCompleted, "WaitNextState -> hasNextState");
+                #else
                 SetStatus(TransitionStatus.FromPrevToCurrentCompleted);
+                #endif
                 m_TransitionFromPrevStateCompletionSource.TrySetResult();
-                return UniTask.FromResult(m_NextState);
+                return UniTask.FromResult(nextState);
             }
 #if DEBUG
+            string statusHistoryText = string.Join(" -> ", System.Linq.Enumerable.Select(m_TransitionStatusQueue.originalQueue, x => $"{x.Item1} ({x.Item2})"));
             Debug.Assert(m_Status == TransitionStatus.FromPrevToCurrentProcessing,
-                "Transition is not processing, therefore it is not possible to wait for the next state and set status to Processed");
+                $"Transition is not processing, therefore it is not possible to wait for the next state and set status to Processed. Got status: {m_Status}, prevState: {prevState}, currentState: {currentState}, nextState: {nextState} ({(m_HasNextState ? "defined" : "default")}) Status history: {statusHistoryText}");
 #endif
 
             var tsc = new UniTaskCompletionSource<TState>();
@@ -198,7 +216,12 @@ namespace Metamatic
                 Debug.Log("Abort wait next state");
                 tsc.TrySetCanceled();
             };
-            SetStatus(TransitionStatus.FromPrevToCurrentCompleted);
+#if DEBUG
+            SetStatus(TransitionStatus.FromPrevToCurrentCompleted, "WaitNextState -> End of function");
+#else
+               SetStatus(TransitionStatus.FromPrevToCurrentCompleted);
+#endif
+            
             m_TransitionFromPrevStateCompletionSource.TrySetResult();
             return tsc.Task;
         }
@@ -214,18 +237,29 @@ namespace Metamatic
             throw new NotImplementedException();
         }
 
-        private void SetStatus(TransitionStatus status)
+        private void SetStatus(
+            TransitionStatus status
+            #if DEBUG
+            , string source
+                #endif
+        )
         {
             this.m_Status = status;
 #if DEBUG
-            Debug_SetTransitionStatus(status);
+            Debug_SetTransitionStatus(status, source);
 #endif
         }
 
         private void SetNextState(TState nextState)
         {
+#if DEBUG
+            SetStatus(TransitionStatus.FromCurrentToNextProcessing, "SetNextState");
+#else
             SetStatus(TransitionStatus.FromCurrentToNextProcessing);
-            this.m_NextState = nextState;
+#endif
+            
+            this.nextState = nextState;
+            this.m_HasNextState = true;
             OnNextState?.Invoke(nextState);
             m_TransitionFromPrevStateCompletionSource.TrySetResult();
             m_CancellationTokenSource.Cancel();
@@ -233,37 +267,58 @@ namespace Metamatic
 
         private void Abort()
         {
+#if DEBUG
+            SetStatus(TransitionStatus.Aborted, "Abort");
+#else
             SetStatus(TransitionStatus.Aborted);
+#endif
+            
             m_CancellationTokenSource?.Dispose();
             OnAborted?.Invoke();
         }
 
         public void SetPrevState(TState prevState)
         {
-            this.m_PrevState = prevState;
+            this.prevState = prevState;
         }
 
         private void SetTransitionFromPrevStateCompleted()
         {
+#if DEBUG
+            SetStatus(TransitionStatus.FromPrevToCurrentCompleted, "SetTransitionFromPrevStateCompleted");
+#else
             SetStatus(TransitionStatus.FromPrevToCurrentCompleted);
+#endif
             m_TransitionFromPrevStateCompletionSource.TrySetResult();
         }
 
         private void SetTransitionToNextStateCompleted()
         {
+#if DEBUG
+            SetStatus(TransitionStatus.FromCurrentToNextCompleted, "SetTransitionToNextStateCompleted");
+#else
             SetStatus(TransitionStatus.FromCurrentToNextCompleted);
+#endif
             m_TransitionToNextStateCompletionSource.TrySetResult();
         }
 
         private void SetTransitionFromPrevStateError(Exception e)
         {
+#if DEBUG
+            SetStatus(TransitionStatus.Error, "SetTransitionFromPrevStateError");
+#else
             SetStatus(TransitionStatus.Error);
+#endif
             m_TransitionFromPrevStateCompletionSource.TrySetException(e);
         }
 
         private void SetTransitionToNextStateError(Exception e)
         {
+#if DEBUG
+            SetStatus(TransitionStatus.Error, "SetTransitionToNextStateError");
+#else
             SetStatus(TransitionStatus.Error);
+#endif
             m_TransitionToNextStateCompletionSource.TrySetException(e);
         }
 
@@ -280,22 +335,6 @@ namespace Metamatic
         private TState m_DefaultState;
         private bool m_KeepOnlyLatestState;
 
-        /// <summary>
-        /// Current processing state or the next state if transition to the next state is in process
-        /// </summary>
-        public TState state
-        {
-            get
-            {
-                if (m_HasNextState)
-                {
-                    return m_NextState;
-                }
-
-                return m_State;
-            }
-        }
-
         #region Events
 
         public event Action OnTransitionCompleted;
@@ -306,9 +345,11 @@ namespace Metamatic
 
 #if DEBUG
         public event Action<TransitionStatus> DebugOnTransitionStatusChanged;
+        private LimitedQueue<(TransitionStatus, string)> m_TransitionStatusQueue = new LimitedQueue<(TransitionStatus, string)>(5);
 
-        private void Debug_SetTransitionStatus(TransitionStatus status)
+        private void Debug_SetTransitionStatus(TransitionStatus status, string source)
         {
+            m_TransitionStatusQueue.Enqueue((status, source));
             DebugOnTransitionStatusChanged?.Invoke(status);
         }
 
@@ -370,7 +411,7 @@ namespace Metamatic
                     }
                 }
 
-                Reset(state, m_State, externalCancellationToken);
+                Reset(state, this.currentState, externalCancellationToken);
             }
             else
             {
@@ -407,8 +448,12 @@ namespace Metamatic
         {
             try
             {
-                SetStatus(TransitionStatus.FromPrevToCurrentProcessing);
-                OnTransitionStep?.Invoke(m_PrevState, m_State);
+#if DEBUG
+                SetStatus(TransitionStatus.FromPrevToCurrentProcessing, "PerformTransition");
+#else
+            SetStatus(TransitionStatus.FromPrevToCurrentProcessing);
+#endif
+                OnTransitionStep?.Invoke(prevState, currentState);
                 await m_Handler(new Transition(this));
             }
             catch (OperationCanceledException)
@@ -445,6 +490,7 @@ namespace Metamatic
             finally
             {
                 OnTransitionCompleted?.Invoke();
+                SetTransitionFromPrevStateCompleted();
                 SetTransitionToNextStateCompleted();
                 DeferCallNextStateOnCurrentTransitionReady();
             }
@@ -506,6 +552,13 @@ namespace Metamatic
         {
             OnTransitionCompleted += onStateCompleted;
             return new DisposableAction(() => OnTransitionCompleted -= onStateCompleted);
+        }
+        
+        public DisposableAction SubscribeTransitionStep(TransitionStepHandler onTransitionStep)
+        {
+            OnTransitionStep += onTransitionStep;
+            onTransitionStep(prevState, currentState);
+            return new DisposableAction(() => OnTransitionStep -= onTransitionStep);
         }
 
         private void Dispose(bool isAsync)
