@@ -67,5 +67,15 @@ namespace Metamatic
 
             return indices.ToArray();
         }
+        
+        public static bool HasFlag(int value, int flag)
+        {
+            return (value & flag) == flag;
+        }
+        
+        public static bool HasFlag(long value, int flag)
+        {
+            return (value & flag) == flag;
+        }
     }
 }
