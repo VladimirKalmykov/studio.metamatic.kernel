@@ -86,7 +86,7 @@ namespace Metamatic.Tests
             await stateMachine.Push(State.Falling);
             Assert.AreEqual(5, progress, "Progress should be 5");
             Assert.AreEqual(State.Falling, actualState);
-            Assert.AreEqual(6, actualStatus.Count, "Expected two status changes");
+            Assert.AreEqual(6, actualStatus.Count, "Expected six status changes");
             Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentProcessing, actualStatus[0], "Expected first status to be processing");
             Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentCompleted, actualStatus[1], "Expected first status to be processed");
             Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromCurrentToNextProcessing, actualStatus[2], "Expected first status to be completing");
