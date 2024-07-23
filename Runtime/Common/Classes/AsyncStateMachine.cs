@@ -67,6 +67,7 @@ namespace Metamatic
             public bool isInitial => m_StateMachine.isInitial;
             public bool isFinalize => m_StateMachine.m_Status == TransitionStatus.Aborted;
             public CancellationToken cancellationToken => m_StateMachine.cancellationToken;
+            public CancellationToken internalCancellationToken => m_StateMachine.internalCancellationToken;
             
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public UniTask<TState> WaitNextState() => m_StateMachine.WaitNextState();
@@ -79,6 +80,15 @@ namespace Metamatic
         }
 
         private TransitionStatus m_Status = TransitionStatus.Idle;
+
+        /// <summary>
+        /// Internal cancellation token for the whole state machine
+        /// </summary>
+        private CancellationTokenSource m_InternalCancellationTokenSource = new();
+        
+        /// <summary>
+        /// External cancellation token passed within the state
+        /// </summary>
         private CancellationToken m_ExternalCancellationToken;
 
         /// <summary>
@@ -173,6 +183,11 @@ namespace Metamatic
         /// CancellationToken for the transition (will be canceled when the transition gets next state)
         /// </summary>
         private CancellationToken cancellationToken => m_CancellationTokenSource.Token;
+        
+        /// <summary>
+        /// Internal cancellation token for the whole state machine (will be canceled when state machine is disposed)
+        /// </summary>
+        public CancellationToken internalCancellationToken => m_InternalCancellationTokenSource.Token;
 
         private UniTask task => UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource.Task,
             m_TransitionToNextStateCompletionSource.Task);
@@ -182,7 +197,7 @@ namespace Metamatic
             this.currentState = nextState;
             this.prevState = nextPrevState;
             m_ExternalCancellationToken = externalCancellationToken;
-            m_CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
+            m_CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(m_InternalCancellationTokenSource.Token, externalCancellationToken);
             m_TransitionFromPrevStateCompletionSource = new UniTaskCompletionSource();
             m_TransitionToNextStateCompletionSource = new UniTaskCompletionSource();
             m_Status = TransitionStatus.Idle;
@@ -406,7 +421,7 @@ namespace Metamatic
         /// <param name="externalCancellationToken"></param>
         /// <param name="id"></param>
         /// <returns>Uni task for transition between prev task to this task</returns>
-        public UniTask Add(TState state, CancellationToken externalCancellationToken = default, ulong id = 0)
+        public UniTask Push(TState state, CancellationToken externalCancellationToken = default, ulong id = 0)
         {
             return AddState(state, externalCancellationToken, id).task;
         }
@@ -626,7 +641,7 @@ namespace Metamatic
 
             try
             {
-                await Add(newNextState, externalCancellationToken, id);
+                await Push(newNextState, externalCancellationToken, id);
                 tcs.TrySetResult();
             }
             catch (Exception e)
@@ -650,9 +665,10 @@ namespace Metamatic
 
         private void Dispose(bool isAsync)
         {
+            m_InternalCancellationTokenSource.Cancel();
+            m_InternalCancellationTokenSource.Dispose();
             if (!isAsync)
             {
-                m_CancellationTokenSource?.Dispose();
                 m_TransitionFromPrevStateCompletionSource?.TrySetCanceled();
                 m_TransitionToNextStateCompletionSource?.TrySetCanceled();
             }

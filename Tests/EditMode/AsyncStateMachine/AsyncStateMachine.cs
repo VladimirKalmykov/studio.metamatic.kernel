@@ -46,7 +46,7 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.Add(State.Running);
+            await stateMachine.Push(State.Running);
             Assert.AreEqual(State.Running, actualState);
             Assert.AreEqual(2, actualStatus.Count, "Expected two status changes");
             Assert.AreEqual(AsyncStateMachine<State>.TransitionStatus.FromPrevToCurrentProcessing, actualStatus[0], "Expected first status to be processing");
@@ -82,8 +82,8 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.Add(State.Running);
-            await stateMachine.Add(State.Falling);
+            await stateMachine.Push(State.Running);
+            await stateMachine.Push(State.Falling);
             Assert.AreEqual(5, progress, "Progress should be 5");
             Assert.AreEqual(State.Falling, actualState);
             Assert.AreEqual(6, actualStatus.Count, "Expected two status changes");
@@ -127,10 +127,10 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.Add(State.Running); // Running immediately
-            await stateMachine.Add(State.Falling); // Add to queue as next state
-            await stateMachine.Add(State.Jumping); // Add to queue
-            await stateMachine.Add(State.Landing); // Add to queue
+            await stateMachine.Push(State.Running); // Running immediately
+            await stateMachine.Push(State.Falling); // Add to queue as next state
+            await stateMachine.Push(State.Jumping); // Add to queue
+            await stateMachine.Push(State.Landing); // Add to queue
             Assert.AreEqual(4, statesHistory.Count);
             Assert.AreEqual(State.Running, statesHistory[0]);
             Assert.AreEqual(State.Falling, statesHistory[1]);
@@ -177,7 +177,7 @@ namespace Metamatic.Tests
                 cancellationTokenSource.Cancel();
             }).Forget();
             try {
-                await stateMachine.Add(State.Running, cancellationTokenSource.Token);
+                await stateMachine.Push(State.Running, cancellationTokenSource.Token);
             } catch (Exception e)
             {
                 exception = e;
@@ -221,9 +221,9 @@ namespace Metamatic.Tests
             {
                 cancellationTokenSource.Cancel();
             }).Forget();
-            stateMachine.Add(State.Running);
+            stateMachine.Push(State.Running);
             try {
-                await stateMachine.Add(State.Falling, cancellationTokenSource.Token);
+                await stateMachine.Push(State.Falling, cancellationTokenSource.Token);
             } catch (Exception e)
             {
                 exception = e;
@@ -266,7 +266,7 @@ namespace Metamatic.Tests
 
                 try
                 {
-                    await stateMachine.Add(State.Running);
+                    await stateMachine.Push(State.Running);
                 }
                 catch (Exception e)
                 {
@@ -301,9 +301,9 @@ namespace Metamatic.Tests
                 transitionStepsHistory.Add((from, to));
             };
             
-            await stateMachine.Add(State.Running);
-            await stateMachine.Add(State.Falling);
-            await stateMachine.Add(State.Jumping);
+            await stateMachine.Push(State.Running);
+            await stateMachine.Push(State.Falling);
+            await stateMachine.Push(State.Jumping);
             
             Assert.AreEqual(3, transitionStepsHistory.Count);
             Assert.AreEqual((State.Idle, State.Running), transitionStepsHistory[0]);
@@ -325,7 +325,7 @@ namespace Metamatic.Tests
                 transitionStepsHistory.Add((from, to));
             };
             
-            await stateMachine.Add(State.Running);
+            await stateMachine.Push(State.Running);
             
             Assert.AreEqual(1, transitionStepsHistory.Count);
             Assert.AreEqual((State.Idle, State.Running), transitionStepsHistory[0]);
