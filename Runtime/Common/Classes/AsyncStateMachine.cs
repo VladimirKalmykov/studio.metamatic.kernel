@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
+using Sirenix.OdinInspector.Editor.Validation;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -71,11 +72,9 @@ namespace Metamatic
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public UniTask<TState> WaitNextState() => m_StateMachine.WaitNextState();
-
-            // ReSharper disable once InconsistentNaming
-            public StateValidationHandler ValidateNextState
+            public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator)
             {
-                set => m_StateMachine.m_StateValidationHandler = value;
+                return m_StateMachine.AddNextStateValidator(validator);
             }
 
             internal Transition(AsyncStateMachine<TState> stateMachine, ulong id)
@@ -112,11 +111,10 @@ namespace Metamatic
         /// TODO: Consider to remove this completion source and use only m_TransitionFromPrevStateCompletionSource, because it is not in use
         /// </summary>
         private UniTaskCompletionSource m_TransitionToNextStateCompletionSource;
+        
+        private StateValidationHandler m_CommonNextStateValidationHandler;
 
-        /// <summary>
-        /// Contains validation handler for the state (it can be added by added handler to property transition.ValidateNextState) 
-        /// </summary>
-        private StateValidationHandler m_StateValidationHandler;
+        private Validator<TState, TState> m_NextStateValidator = new ();
 
         /// <summary>
         /// Previous state
@@ -214,7 +212,6 @@ namespace Metamatic
                     externalCancellationToken);
             m_TransitionFromPrevStateCompletionSource = new UniTaskCompletionSource();
             m_TransitionToNextStateCompletionSource = new UniTaskCompletionSource();
-            m_StateValidationHandler = null;
             m_Status = TransitionStatus.Idle;
             m_HasNextState = false;
             m_HasPrevState = true;
@@ -269,6 +266,16 @@ namespace Metamatic
             m_TransitionFromPrevStateCompletionSource.TrySetResult();
             return tsc.Task;
         }
+        
+        /// <summary>
+        /// Add validation function that validates every next state. If it returns false, the state will be ignored. You can add multiple validators, all of them should return true to pass the validation. Don't forget to dispose the returned object to remove the validator.
+        /// </summary>
+        /// <param name="validator"></param>
+        /// <returns></returns>
+        public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator)
+        {
+            return m_NextStateValidator.Add(validator);
+        }
 
         /// <summary>
         /// Let handler mark that it is ready to transition to the next state. It creates copy of Transition object and detach it from a execution chain
@@ -297,12 +304,9 @@ namespace Metamatic
         private bool SetNextState(TState nextState)
         {
             /* Invalidate state */
-            if (m_StateValidationHandler != null)
+            if (!m_NextStateValidator.Validate(state, nextState))
             {
-                if (!m_StateValidationHandler(nextState))
-                {
-                    return false;
-                }
+                return false;
             }
 #if DEBUG
             SetStatus(TransitionStatus.FromCurrentToNextProcessing, "SetNextState");
@@ -471,12 +475,9 @@ namespace Metamatic
             ulong id = 0)
         {
             /* Invalidate state */
-            if (m_StateValidationHandler != null)
+            if (!m_NextStateValidator.Validate(currentState, state))
             {
-                if (!m_StateValidationHandler(state))
-                {
-                    return (UniTask.CompletedTask, 0);
-                }
+                return (UniTask.CompletedTask, 0);
             }
 
             /* Generate unique Id the future transition */
@@ -651,7 +652,6 @@ namespace Metamatic
             }
             finally
             {
-                m_StateValidationHandler = null;
                 OnTransitionCompleted?.Invoke();
                 TrySetTransitionFromPrevStateCompleted();
                 SetTransitionToNextStateCompleted();
