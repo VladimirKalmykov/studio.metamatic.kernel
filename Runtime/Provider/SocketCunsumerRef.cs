@@ -5,7 +5,7 @@ using Sirenix.OdinInspector;
 namespace Metamatic
 {
     [Obsolete("Use plug with autoConnect = true instead.")]
-    public class SocketConsumerRef<TSocketScheme>: AsyncBehaviour
+    public class SocketConsumerRef<TSocketScheme>: AsyncBehaviourBase
         where TSocketScheme: SocketScheme, new()
     {
         public Plug<TSocketScheme> plug;

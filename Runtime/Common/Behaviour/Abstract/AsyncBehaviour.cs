@@ -1,104 +1,145 @@
-﻿using System;
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class AsyncBehaviour: MonoBehaviour
+    public abstract class AsyncBehaviour: AsyncBehaviourBase
     {
-        private CancellationTokenSource m_DisableCancellationTokenSource = new();
-        private bool m_IsDisabled;
-        public delegate UniTask RunAsyncHandler(CancellationToken cancellationToken);
-        public CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource?.Token ?? CancellationToken.None;
-        
-        private event Action OnValidateEvent;
-        private event Action OnDrawGizmosEvent;
-        
-        protected bool isAboutToDestroy { get; private set; }
-        
+        private bool m_IsReady;
+        private event Action OnReady;
 
-        public CancellationToken componentDisableToken
+        private async UniTask InternalSetReady()
         {
-            get
+            m_IsReady = true;
+            OnReady?.Invoke();
+            await componentDisableCancellationToken;
+        }
+        public async UniTask WhenReady(CancellationToken cancellationToken = default)
+        {
+            if (!m_Demanded)
             {
-                if (m_DisableCancellationTokenSource == null)
-                {
-                    var disableCancellationToken = m_DisableCancellationTokenSource = new CancellationTokenSource();
-                    if (m_IsDisabled)
-                    {
-                        m_DisableCancellationTokenSource.Cancel();
-                        m_DisableCancellationTokenSource = null;
-                        return disableCancellationToken.Token;
-                    }
-                }
+                Demand();
+            }
+            var tcs = new UniTaskCompletionSource();
+            IDisposable readyListener = null;
+            var cancellationTokenRegistration = cancellationToken.Register(() =>
+            {
+                // ReSharper disable once AccessToModifiedClosure
+                readyListener?.Dispose();
+                tcs.TrySetCanceled();
+            });
+            
+            readyListener = SubscribeReady(() =>
+            {
+                // ReSharper disable once AccessToModifiedClosure
+                readyListener?.Dispose();
+                cancellationTokenRegistration.Dispose();
+                tcs.TrySetResult();
+            });
 
-                return m_DisableCancellationTokenSource.Token;
+            var timeoutTask = UniTask.Delay(TimeSpan.FromSeconds(30), DelayType.Realtime, PlayerLoopTiming.TimeUpdate,
+                cancellationToken);
+            var result = await UniTask.WhenAny(timeoutTask, tcs.Task);
+            if (result == 0)
+            {
+                throw new TimeoutException($"Async behaviour {this.GetType().Name} initialization timeout");
             }
         }
-        public event Action OnDisabled;
-        protected virtual void OnEnable()
+        
+        // ReSharper disable once MemberCanBePrivate.Global
+        public DisposableAction SubscribeReady(Action action)
         {
-            m_IsDisabled = false;
-            RunAsync(componentDisableToken);
+            if (m_IsReady)
+            {
+                action();
+                return DisposableAction.Empty;
+            }
+            OnReady += action;
+            return new DisposableAction(() => OnReady -= action);
         }
-
-        protected virtual void OnDisable()
-        {
-            m_IsDisabled = true;
-            m_DisableCancellationTokenSource.Cancel();
-            m_DisableCancellationTokenSource = null;
-            OnDisabled?.Invoke();
-        }
-
-        protected void OnDestroy()
-        {
-            isAboutToDestroy = true;
-        }
-
-        protected abstract void RunAsync(CancellationToken cancellationToken);
         
         /// <summary>
-        /// IDisposable object will be disposed on component disable
+        /// Demand service initialization (only if InitializeOnDemand is true)
         /// </summary>
-        /// <param name="disposable"></param>
-        public IDisposable WithinLifecycle(IDisposable disposable)
+        private void Demand()
         {
-            if (m_IsDisabled)
+            if (!m_Demanded)
             {
-                disposable.Dispose();
-                return VoidDisposable.None;
+                m_Demanded = true;
+                m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
+                m_DemandCompletionSource.TrySetResult();
             }
-            OnDisabled += disposable.Dispose;
-            return DisposableAction.Create(() =>
+        }
+        
+        /// <summary>
+        /// Demand async behaviour initialization (gives any effect only if Run method is awaited demand request by calling await WhenDemand() method)
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private UniTask Demand(CancellationToken cancellationToken)
+        {
+            Demand();
+            return WhenReady(cancellationToken);
+        }
+
+        /// <summary>
+        /// Wait for demand
+        /// </summary>
+        /// <returns></returns>
+        public UniTask WhenDemand()
+        {
+            return m_DemandCompletionSource.Task;
+        }
+
+        private bool m_Demanded;
+        private UniTaskCompletionSource m_DemandCompletionSource;
+        protected sealed override async void RunAsync(CancellationToken cancellationToken)
+        {
+            var type = this.GetType();
+            cancellationToken.Register(() =>
             {
-                disposable.Dispose();
-                OnDisabled -= disposable.Dispose;
+                m_DemandCompletionSource?.TrySetCanceled();
+                m_DemandCompletionSource = null;
             });
-        }
-        
-        protected DisposableAction SubscribeValidate(Action action)
-        {
-            OnValidateEvent += action;
-            return new DisposableAction(() => OnValidateEvent -= action);
-        }
-        
-        protected DisposableAction SubscribeDrawGizmos(Action action)
-        {
-            OnDrawGizmosEvent += action;
-            return new DisposableAction(() => OnDrawGizmosEvent -= action);
-        }
-
-        #if UNITY_EDITOR
-        protected virtual void OnValidate()
-        {
-            OnValidateEvent?.Invoke();
+            try
+            {
+                m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
+                await Run(InternalSetReady, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.Log($"Service {type} was canceled.");
+            }
+            catch (Exception e)
+            {
+                #if METAMATIC_TERMINAL
+                Terminal.LogError($"AsyncBehaviour {type} failed to run: {e.Message}");
+                #endif
+                Debug.LogError($"Service {type} failed to run: {e}");
+            }
         }
 
-        protected virtual void OnDrawGizmos()
+        public static async UniTask<T> Resolve<T>(GameObject gameObject, CancellationToken cancellationToken = default, float timeout = 10f)
+            where T : Service
         {
-            OnDrawGizmosEvent?.Invoke();
+            var behaviour = gameObject.GetComponent<T>();
+            await behaviour.WhenReady(cancellationToken);
+            return behaviour;
         }
-        #endif
+        
+        public static async UniTask<T> Resolve<T>(MonoBehaviour monoBehaviour, CancellationToken cancellationToken = default, float timeout = 10f)
+            where T : Service
+        {
+            var behaviour = monoBehaviour.GetComponent<T>();
+            await behaviour.WhenReady(cancellationToken);
+            return behaviour;
+        }
+        
+        protected delegate UniTask Ready();
+        private bool m_InitializedOnDemand;
+
+        protected abstract UniTask Run(Ready ready, CancellationToken cancellationToken);
     }
 }

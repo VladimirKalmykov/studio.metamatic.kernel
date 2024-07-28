@@ -16,7 +16,7 @@ namespace Metamatic
     interface IObservableValue<TValue>
     {
         public TValue value { get; }
-        public DisposableAction Subscribe(Action<TValue> handler);
+        public DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false);
     }
     public abstract class MicroStateReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>
     {
@@ -45,7 +45,7 @@ namespace Metamatic
             m_DisposeCancellationTokenSource = new CancellationTokenSource();
         }
 
-        public abstract DisposableAction Subscribe(Action<TValue> handler);
+        public abstract DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false);
         
         public Action SubscribeOnce(Action<TValue> handler)
         {
@@ -250,10 +250,13 @@ namespace Metamatic
             return true;
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler)
+        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false)
         {
             AddListener(handler);
-            handler(GetValue());
+            if (!skipInitial)
+            {
+                handler(GetValue());
+            }
             return new DisposableAction(() =>
             {
                 RemoveListener(handler);
@@ -302,7 +305,7 @@ namespace Metamatic
             return m_Getter != null;
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler)
+        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false)
         {
             throw new NotImplementedException();
         }
@@ -346,7 +349,7 @@ namespace Metamatic
             Dispose();
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler)
+        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false)
         {
             Action releaseValueListener = default;
             var releaseProxyListener = m_Proxy.Subscribe((MicroStateReadOnly<TValue> value) =>
@@ -356,7 +359,7 @@ namespace Metamatic
                 {
                     releaseValueListener = value.Subscribe(handler);
                 }
-            });
+            }, skipInitial);
             return new DisposableAction(() =>
             {
                 releaseValueListener?.Invoke();

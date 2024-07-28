@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class Service: AsyncBehaviour
+    public abstract class Service: AsyncBehaviourBase
     {
         private static readonly Dictionary<Type, Service> _Services = new ();
         private static event Action<Service> _HandleServiceAdded;
         private static event Action<Service> _HandleServiceRemoved;
-        private static bool _IsReady;
+        
         
         /* Static errors and susbcriptions */
         public static event Action<Type, Exception> OnErrorInService;
@@ -22,6 +22,7 @@ namespace Metamatic
         }
         
         private event Action OnReady;
+        private bool _IsReady;
         
         #region Fields
         [Tooltip("If true, service will be initialized only on demand")]

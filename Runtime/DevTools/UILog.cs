@@ -191,12 +191,36 @@ namespace Metamatic.DevTools {
 
         private void OnGUI() {
             CompileMessages();
+
             var style = new GUIStyle();
             style.fontSize = Screen.height / 50;
             style.normal.textColor = Color.black;
+
+            var backgroundStyle = new GUIStyle(style);
+            backgroundStyle.normal.background = MakeTexture(2, 2, Color.white); // Белый фон за текстом
+
             GUILayout.BeginArea(new Rect(10, 10, Screen.width / 2, Screen.height / 2));
-            GUILayout.Label(_text, style);
+
+            // Используем GUILayout.Label для текста с фоном
+            foreach (var line in _text.Split('\n')) {
+                GUILayout.Label(line, backgroundStyle);
+            }
+
             GUILayout.EndArea();
         }
+
+// Метод для создания текстуры фона
+        private Texture2D MakeTexture(int width, int height, Color color) {
+            var texture = new Texture2D(width, height);
+            var fillColor = new Color32((byte)(color.r * 255), (byte)(color.g * 255), (byte)(color.b * 255), (byte)(color.a * 255));
+            var pixels = new Color32[width * height];
+            for (int i = 0; i < pixels.Length; i++) {
+                pixels[i] = fillColor;
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return texture;
+        }
+
     }
 }

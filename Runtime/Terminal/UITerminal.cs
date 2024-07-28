@@ -6,7 +6,7 @@ namespace Metamatic
     using UnityEngine;
     using UnityEngine.UI;
 
-    public class UITerminal : AsyncBehaviour
+    public class UITerminal : AsyncBehaviourBase
     {
         public class Row : IDisposable
         {

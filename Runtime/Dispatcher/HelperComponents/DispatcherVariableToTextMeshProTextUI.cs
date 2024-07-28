@@ -5,7 +5,7 @@ namespace Metamatic
     using System.Threading;
     using Metamatic.Actions;
 
-    public class DispatcherVariableToTextMeshProTextUI : AsyncBehaviour
+    public class DispatcherVariableToTextMeshProTextUI : AsyncBehaviourBase
     {
         public string variableName;
         public string fallbackText;

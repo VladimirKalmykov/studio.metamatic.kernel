@@ -6,7 +6,7 @@ using Object = UnityEngine.Object;
 namespace Metamatic
 {
     [Obsolete("Use plug with autoConnect = true instead.")]
-    public class SocketProviderRef<TSocketScheme>: AsyncBehaviour
+    public class SocketProviderRef<TSocketScheme>: AsyncBehaviourBase
         where TSocketScheme: SocketScheme, new()
     {
         private static MicroState<SocketProviderRef<TSocketScheme>> m_Instance = new();

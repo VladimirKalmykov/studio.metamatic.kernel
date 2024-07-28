@@ -4,7 +4,7 @@ namespace Metamatic
     using UnityEngine;
     using Metamatic.Actions;
 
-    public class CameraAnchor : AsyncBehaviour
+    public class CameraAnchor : AsyncBehaviourBase
     {
         [SerializeField] private Camera m_Camera;
         public Camera camera => m_Camera;

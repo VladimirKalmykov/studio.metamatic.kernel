@@ -5,7 +5,7 @@ namespace Metamatic
     using UnityEngine;
     using UnityEngine.UI;
 
-    public class DispatcherVariableToImage : AsyncBehaviour
+    public class DispatcherVariableToImage : AsyncBehaviourBase
     {
         public string variableName;
         public Sprite fallbackSprite;

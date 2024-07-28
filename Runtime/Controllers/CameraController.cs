@@ -5,7 +5,7 @@ namespace Metamatic
     using Metamatic.Actions;
     using UnityEngine;
 
-    public class CameraController : AsyncBehaviour
+    public class CameraController : AsyncBehaviourBase
     {
         [SerializeField] float m_Weight = 1.0f;
         public event Action<CameraController, float> onWeightChanged;

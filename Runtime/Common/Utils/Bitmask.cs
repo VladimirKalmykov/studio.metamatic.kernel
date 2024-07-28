@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -76,6 +77,21 @@ namespace Metamatic
         public static bool HasFlag(long value, int flag)
         {
             return (value & flag) == flag;
+        }
+        
+        public static (T added, T removed) GetFlagsDiff<T>(T oldFlags, T newFlags) where T : Enum
+        {
+            // Преобразуем enum в целочисленные значения
+            long oldFlagsValue = Convert.ToInt64(oldFlags);
+            long newFlagsValue = Convert.ToInt64(newFlags);
+        
+            // Находим добавленные флаги
+            T added = (T)Enum.ToObject(typeof(T), newFlagsValue & ~oldFlagsValue);
+        
+            // Находим удаленные флаги
+            T removed = (T)Enum.ToObject(typeof(T), oldFlagsValue & ~newFlagsValue);
+
+            return (added, removed);
         }
     }
 }
