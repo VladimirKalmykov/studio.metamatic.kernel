@@ -439,6 +439,12 @@ namespace Metamatic
         private bool m_SettingAutoCompleteWithDefaultState;
         private bool m_SettingDebug;
 
+        /// <summary>
+        /// Determines that state machine is autocompleted with default state (according to m_SettingAutoCompleteWithDefaultState). This property is needed to avoid adding default state to the queue when it is already added that can cause infinite loop
+        /// </summary>
+        private ulong m_LatestTransitionId = 0;
+        private ulong m_AutocompleteTransitionId = 0;
+
         #region Events
 
         public event Action OnTransitionCompleted;
@@ -743,6 +749,7 @@ namespace Metamatic
                         $"[DEBUG-1][TRANSITION] Transition #{id} finalized  (prev: {prevState}, current: {currentState}, next: {nextState})");
                 OnTransitionCompleted?.Invoke();
                 SetStatus(TransitionStatus.Idle, "Transition finalizer");
+                m_LatestTransitionId = id;
                 DeferCallNextStateOnCurrentTransitionReady();
             }
         }
@@ -772,10 +779,11 @@ namespace Metamatic
             if (m_StatesQueue.Count == 0)
             {
                 // Fallback to default state
-                if (m_SettingAutoCompleteWithDefaultState)
+                if (m_SettingAutoCompleteWithDefaultState && m_AutocompleteTransitionId != m_LatestTransitionId)
                 {
                     if (m_SettingDebug) Debug.Log($"[DEBUG-1] Auto push default state");
-                    Push(m_DefaultState).Forget();
+                    m_AutocompleteTransitionId = GenerateId();
+                    AddState(m_DefaultState, id: m_AutocompleteTransitionId);
                 }
 
                 return;
