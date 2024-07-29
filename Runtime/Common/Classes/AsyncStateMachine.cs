@@ -715,9 +715,8 @@ namespace Metamatic
             }
             catch (Exception e)
             {
-                if (m_SettingDebug)
-                    Debug.Log(
-                        $"[DEBUG-1][TRANSITION] <color=red>Exception in transition</color> #{id} {prevState} -> {currentState} (e: {e.Message}");
+                Debug.Log(
+                        $"<color=red>[ASYNC_STATE_MACHINE] Exception in transition</color> #{id} {prevState} -> {currentState} (e: {e}");
                 if (m_Status == TransitionStatus.FromPrevToCurrentProcessing)
                 {
                     SetTransitionFromPrevStateError(e);
@@ -733,20 +732,20 @@ namespace Metamatic
                 {
                     if (m_SettingDebug)
                         Debug.Log(
-                            $"[DEBUG-1][TRANSITION] Transition #{id} <color=red>finalizing after error</color> (prev: {prevState}, current: {currentState}, next: {nextState})");
+                            $"[WINGS BEHAVIOUR] Transition #{id} <color=red>finalizing after error</color> (prev: {prevState}, current: {currentState}, next: {nextState})");
                 }
                 else
                 {
                     if (m_SettingDebug)
                         Debug.Log(
-                            $"[DEBUG-1][TRANSITION] Transition #{id} finalizing  (prev: {prevState}, current: {currentState}, next: {nextState})");
+                            $"[WINGS BEHAVIOUR] Transition #{id} finalizing  (prev: {prevState}, current: {currentState}, next: {nextState})");
                 }
 
                 TrySetTransitionFromPrevStateCompleted(id);
                 SetTransitionToNextStateCompleted(id);
                 if (m_SettingDebug)
                     Debug.Log(
-                        $"[DEBUG-1][TRANSITION] Transition #{id} finalized  (prev: {prevState}, current: {currentState}, next: {nextState})");
+                        $"[WINGS BEHAVIOUR] Transition #{id} finalized  (prev: {prevState}, current: {currentState}, next: {nextState})");
                 OnTransitionCompleted?.Invoke();
                 SetStatus(TransitionStatus.Idle, "Transition finalizer");
                 m_LatestTransitionId = id;
@@ -820,7 +819,7 @@ namespace Metamatic
             return new DisposableAction(() => OnTransitionCompleted -= onStateCompleted);
         }
 
-        public DisposableAction SubscribeTransitionStep(TransitionStepHandler onTransitionStep)
+        public DisposableAction SubscribeTransition(TransitionStepHandler onTransitionStep)
         {
             OnTransitionStep += onTransitionStep;
             onTransitionStep(prevState, currentState);

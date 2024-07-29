@@ -17,16 +17,6 @@ namespace Metamatic
         /// <returns></returns>
         public static UniTask WhenEnds(this AnimancerState state, CancellationToken cancellationToken = default, string debugID = "")
         {
-            if (state.IsLooping)
-            {
-                var loopTcs = new UniTaskCompletionSource();
-                cancellationToken.Register(() =>
-                {
-                    loopTcs.TrySetCanceled();
-                });
-                /* If animation is looping, we can't wait for it to end */
-                return loopTcs.Task;
-            }
             var isReversed = state.Speed < 0;
             var isLooping = state.Clip.isLooping;
 
@@ -40,6 +30,15 @@ namespace Metamatic
                 tcs.TrySetCanceled();
                 state.Events.EndEvent = default;
             });
+            if (isReversed && state.NormalizedTime <= 0f)
+            {
+                tcs.TrySetResult();
+                return tcs.Task;
+            } else if (!isReversed && state.NormalizedTime >= 1f)
+            {
+                tcs.TrySetResult();
+                return tcs.Task;
+            }
             var checkFn = isReversed ? new Func<bool>(() => state.NormalizedTime > 0f) : new Func<bool>(() => state.NormalizedTime < 1f);
             return UniTask.WaitWhile(checkFn, cancellationToken: cancellationToken);
             /*state.Events.EndEvent = new AnimancerEvent(isReversed ? 0f : 1f, () =>
