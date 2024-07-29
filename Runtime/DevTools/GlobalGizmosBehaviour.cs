@@ -8,6 +8,7 @@ namespace DevTools
     public class GlobalGizmosBehaviour : MonoBehaviour
     {
         private List<GlobalGizmo> m_Gizmos = new ();
+        private Dictionary<string, GlobalGizmo> m_MappedGizmos = new ();
         
         public DisposableAction AddGizmo(System.Action renderer)
         {
@@ -19,10 +20,35 @@ namespace DevTools
             });
         }
         
+        public void AddGizmo(string key, System.Action renderer)
+        {
+            if (m_MappedGizmos.TryGetValue(key, out var gizmo))
+            {
+                gizmo.renderer = renderer;
+            }
+            else
+            {
+                gizmo = new GlobalGizmo(renderer);
+                m_MappedGizmos.Add(key, gizmo);
+            }
+        }
+        
+        public void RemoveGizmo(string key)
+        {
+            if (m_MappedGizmos.ContainsKey(key))
+            {
+                m_MappedGizmos.Remove(key);
+            }
+        }
+        
         #if UNITY_EDITOR
         public void OnDrawGizmos()
         {
             foreach (var gizmo in m_Gizmos)
+            {
+                gizmo.Render();
+            }
+            foreach (var gizmo in m_MappedGizmos.Values)
             {
                 gizmo.Render();
             }

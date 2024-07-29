@@ -6,15 +6,15 @@ namespace Metamatic.DevTools
 {
     public class GlobalGizmo: IDisposable
     {
-        private readonly System.Action m_GizmoRenderer;
+        public System.Action renderer;
         public GlobalGizmo(System.Action renderer)
         {
-            m_GizmoRenderer = renderer;
+            this.renderer = renderer;
         }
 
         public void Render()
         {
-            m_GizmoRenderer();
+            renderer();
         }
 
         public void Dispose()
@@ -42,6 +42,16 @@ namespace Metamatic.DevTools
         public static DisposableAction AddGizmo(System.Action renderer)
         {
             return instance.AddGizmo(renderer);
+        }
+        
+        public static void AddGizmo(string key, System.Action renderer)
+        {
+            instance.AddGizmo(key, renderer);
+        }
+        
+        public static void RemoveGizmo(string key)
+        {
+            instance.RemoveGizmo(key);
         }
     }
 }
