@@ -9,10 +9,10 @@ namespace Metamatic
         public delegate void ClientSupply(TClient client, CancellationToken cancellationToken);
         public TClient[] clients { get; }
         public int clientsCount { get; }
-        public DisposableAction SubscribeClient(ClientSupply supply);
+        public DisposableAction Subscribe(ClientSupply supply);
         internal void InternalSetClient(IDuplexApiWireClient<TClient, TVendor> wire, MicroStateReadOnly<TClient> clientState);
         internal void InternalRemoveClient(IDuplexApiWireClient<TClient, TVendor> wire);
-        public void SetVendor(TVendor vendor);
+        public void Set(TVendor vendor);
     }
     
     public interface IDuplexApiWireClient<TClient, TVendor>: IInputModernWire
@@ -22,9 +22,9 @@ namespace Metamatic
         public delegate void VendorSupply(TVendor vendor, CancellationToken cancellationToken);
         public TVendor[] vendors { get; }
         public int vendorsCount { get; }
-        public DisposableAction SubscribeVendor(VendorSupply supply);
+        public DisposableAction Subscribe(VendorSupply supply);
         internal void InternalSetVendor(IDuplexApiWireVendor<TVendor, TClient> wire, MicroStateReadOnly<TVendor> vendorState);
         internal void InternalRemoveVendor(IDuplexApiWireVendor<TVendor, TClient> wire);
-        public void SetClient(TClient client);
+        public void Set(TClient client);
     }
 }

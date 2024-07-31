@@ -61,7 +61,7 @@ namespace Metamatic
         public TClient[] clients => m_ClientStateProxies.Values.Select(p => p.Proxy.value).ToArray();
         public int clientsCount => m_ClientStateProxies.Count;
 
-        public DisposableAction SubscribeClient(IDuplexApiWireVendor<TVendor, TClient>.ClientSupply supply)
+        public DisposableAction Subscribe(IDuplexApiWireVendor<TVendor, TClient>.ClientSupply supply)
         {
 
             List<Action> disposables = new List<Action>();
@@ -117,7 +117,7 @@ namespace Metamatic
             }
         }
 
-        public void SetVendor(TVendor vendor)
+        public void Set(TVendor vendor)
         {
             m_VendorState.value = vendor;
         }
@@ -143,7 +143,7 @@ namespace Metamatic
         public TVendor[] vendors => m_VendorStateProxies.Values.Select(p => p.Proxy.value).ToArray();
         public int vendorsCount => m_VendorStateProxies.Count;
 
-        public DisposableAction SubscribeVendor(IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply)
+        public DisposableAction Subscribe(IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply)
         {
             List<Action> disposables = new List<Action>();
             void ProxySourceHandler(DuplexApiWireProxySource<TVendor> proxySource)
@@ -198,7 +198,7 @@ namespace Metamatic
             }
         }
 
-        public void SetClient(TClient client)
+        public void Set(TClient client)
         {
             m_ClientState.value = client;
         }
