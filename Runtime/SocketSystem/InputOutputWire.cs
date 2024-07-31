@@ -81,6 +81,15 @@ namespace Metamatic
         {
             return m_OutputWires.Contains((TOutputWire)outputWire);
         }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            foreach (var outputWire in m_OutputWires.ToArray())
+            {
+                ((IInputModernWire)this).InternalDisconnectOutput(outputWire);
+            }
+        }
     }
 
     public abstract class OutputModernWire<TInputWire> : ModernWire, IOutputModernWire<TInputWire>
@@ -154,6 +163,15 @@ namespace Metamatic
         public bool IsConnectedOut(IInputModernWire inputWire)
         {
             return m_InputWires.Contains((TInputWire)inputWire);
+        }
+        
+        public override void Dispose()
+        {
+            base.Dispose();
+            foreach (var inputWire in m_InputWires.ToArray())
+            {
+                ((IOutputModernWire)this).InternalDisconnectInput(inputWire);
+            }
         }
     }
 }

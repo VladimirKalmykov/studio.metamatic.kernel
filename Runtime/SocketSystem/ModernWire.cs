@@ -3,9 +3,10 @@ using Metamatic;
 
 namespace Metamatic
 {
-    public class ModernWire: IModernWire
+    public abstract class ModernWire: IModernWire
     {
         private readonly Guid m_ID;
+        public event Action OnDispose;
         public ModernWire(IModernWire.ConnectionType connectionType = IModernWire.ConnectionType.Multiple)
         {
             m_ID = Guid.NewGuid();
@@ -16,11 +17,16 @@ namespace Metamatic
             return m_ID.GetHashCode();
         }
 
+        public virtual void Dispose()
+        {
+            OnDispose?.Invoke();
+        }
+
         public IModernWire.ConnectionType connectionType { get; private set; }
 
         public bool Equals(IModernWire anotherWire)
         {
-            throw new System.NotImplementedException();
+            return GetHashCode() == anotherWire.GetHashCode();
         }
     }
 }

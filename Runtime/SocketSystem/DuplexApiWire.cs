@@ -44,6 +44,22 @@ namespace Metamatic
         where TVendor: class
         where TClient: class
     {
+        public DuplexApiWireVendor(TVendor vendor, IDuplexApiWireVendor<TVendor, TClient>.ClientSupply supply) : base()
+        {
+            Set(vendor);
+            OnDispose += Subscribe(supply);
+        }
+        public DuplexApiWireVendor(IDuplexApiWireVendor<TVendor, TClient>.ClientSupply supply) : base()
+        {
+            OnDispose += Subscribe(supply);
+        }
+        public DuplexApiWireVendor(TVendor vendor) : base()
+        {
+            Set(vendor);
+        }
+        public DuplexApiWireVendor() : base()
+        {
+        }
         private MicroState<TVendor> m_VendorState = new();
         private Dictionary<IModernWire, DuplexApiWireProxySource<TClient>> m_ClientStateProxies = new();
         private event Action<DuplexApiWireProxySource<TClient>> OnClientProxyInitialized;
@@ -127,6 +143,22 @@ namespace Metamatic
         where TVendor: class
         where TClient: class
     {
+        public DuplexApiWireClient(TClient client, IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply) : base()
+        {
+            Set(client);
+            OnDispose += Subscribe(supply);
+        }
+        public DuplexApiWireClient(IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply) : base()
+        {
+            OnDispose += Subscribe(supply);
+        }
+        public DuplexApiWireClient(TClient client) : base()
+        {
+            Set(client);
+        }
+        public DuplexApiWireClient() : base()
+        {
+        }
         private MicroState<TClient> m_ClientState = new();
         private Dictionary<IModernWire, DuplexApiWireProxySource<TVendor>> m_VendorStateProxies = new();
         private event Action<DuplexApiWireProxySource<TVendor>> OnVendorProxyInitialized;

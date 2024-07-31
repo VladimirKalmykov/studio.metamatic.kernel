@@ -443,6 +443,7 @@ namespace Metamatic
         /// Determines that state machine is autocompleted with default state (according to m_SettingAutoCompleteWithDefaultState). This property is needed to avoid adding default state to the queue when it is already added that can cause infinite loop
         /// </summary>
         private ulong m_LatestTransitionId = 0;
+
         private ulong m_AutocompleteTransitionId = 0;
 
         #region Events
@@ -522,7 +523,7 @@ namespace Metamatic
         /// <param name="nextState"></param>
         /// <param name="externalCancellationToken"></param>
         /// <returns></returns>
-        public UniTask TryPushNextStateAfter(TState ifCurrentStateIs, TState nextState,
+        public UniTask TryPushNextState(TState ifCurrentStateIs, TState nextState,
             CancellationToken externalCancellationToken = default)
         {
             if (this.currentState.Equals(ifCurrentStateIs) && m_StatesQueue.Count == 0)
@@ -532,7 +533,24 @@ namespace Metamatic
 
             return UniTask.CompletedTask;
         }
-        
+
+        /// <summary>
+        /// This method allows you to push next state right after transition with specified ID
+        /// E.g.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public ulong TryPushNextState(ulong id, TState nextState, CancellationToken cancellationToken = default)
+        {
+            if (IsLatest(id))
+            {
+                return PushState(nextState, cancellationToken);
+            }
+
+            return 0;
+        }
+
         /// <summary>
         /// More convenient method to add state to the queue and get its id
         /// In the future versions this method can stay as the only method to add state, because its interface is more convenient to reduce the number of created UniTaskCompletionSources per flow of the state machine
@@ -553,7 +571,8 @@ namespace Metamatic
         /// <param name="externalCancellationToken"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public (UniTask task, ulong id) PushStateAsync(TState state, CancellationToken externalCancellationToken = default,
+        public (UniTask task, ulong id) PushStateAsync(TState state,
+            CancellationToken externalCancellationToken = default,
             ulong id = 0)
         {
             if (m_SettingDebug) Debug.Log($"[DEBUG-1] Add state {state} (id #{id}) (Curren status is {m_Status})");
@@ -626,6 +645,7 @@ namespace Metamatic
 
         /// <summary>
         /// Returns true if the state with specified id is active and state machine hasn't next state.
+        /// You can use this check to ensure that it's safe to push some next state right after transition with provided id (e.g. push Idle state if you wish to cancel previous state with it)
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -729,7 +749,7 @@ namespace Metamatic
             catch (Exception e)
             {
                 Debug.Log(
-                        $"<color=red>[ASYNC_STATE_MACHINE] Exception in transition</color> #{id} {prevState} -> {currentState} (e: {e}");
+                    $"<color=red>[ASYNC_STATE_MACHINE] Exception in transition</color> #{id} {prevState} -> {currentState} (e: {e}");
                 if (m_Status == TransitionStatus.FromPrevToCurrentProcessing)
                 {
                     SetTransitionFromPrevStateError(e);

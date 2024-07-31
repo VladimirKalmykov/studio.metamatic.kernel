@@ -14,11 +14,8 @@ namespace Metamatic
         private bool m_Disposed;
         private CancellationTokenSource m_DisposeCancellationTokenSource;
         public CancellationToken cancellationToken => m_DisposeCancellationTokenSource.Token;
-        private UniTask? m_Task;
-        protected MicroBehaviour()
-        {
-            
-        }
+        private readonly UniTaskCompletionSource m_TaskCompletionSource = new();
+        private bool m_IsRunning;
         ~MicroBehaviour()
         {
             Dispose(true);
@@ -30,10 +27,7 @@ namespace Metamatic
                 return;
             }
             Dispose(false);
-            if (m_Task.HasValue)
-            {
-                await m_Task.Value;
-            }
+            await m_TaskCompletionSource.Task;
         }
 
         public void Dispose()
@@ -41,7 +35,7 @@ namespace Metamatic
             Dispose(false, true);
         }
         
-        private void Dispose(bool isFromFinalizer = false, bool isSync = false)
+        private void Dispose(bool isFromFinalizer, bool isSync = false)
         {
             if (isFromFinalizer)
             {
@@ -59,15 +53,14 @@ namespace Metamatic
         
         protected delegate UniTask AsyncAction(CancellationToken cancellationToken);
 
-        protected async void Run(CancellationToken cancellationToken = default)
+        protected async void Run(CancellationToken externalCancellationToken = default)
         {
-            if (m_Task.HasValue)
+            if (m_IsRunning)
             {
                 throw new InvalidOperationException("Task is already running");
             }
-            var taskCompletionSource = new UniTaskCompletionSource();
-            m_Task = taskCompletionSource.Task;
-            m_DisposeCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            m_IsRunning = true;
+            m_DisposeCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
             var task = Main(m_DisposeCancellationTokenSource.Token);
             try
             {
@@ -78,11 +71,12 @@ namespace Metamatic
             }
             catch (Exception e)
             {
-                taskCompletionSource.TrySetException(e);
+                Debug.LogError(e);
+                m_TaskCompletionSource.TrySetException(e);
             }
             finally
             {
-                taskCompletionSource.TrySetResult();
+                m_TaskCompletionSource.TrySetResult();
             }
         }
 

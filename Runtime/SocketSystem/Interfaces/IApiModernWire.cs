@@ -1,3 +1,5 @@
+using System;
+
 namespace Metamatic
 {
     public interface IApiModernWireClient<TApi>: IOutputModernWire

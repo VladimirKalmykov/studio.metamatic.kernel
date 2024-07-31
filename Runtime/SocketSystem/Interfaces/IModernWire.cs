@@ -1,6 +1,8 @@
+using System;
+
 namespace Metamatic
 {
-    public interface IModernWire
+    public interface IModernWire: IDisposable
     {
         public enum ConnectionType
         {
@@ -17,6 +19,8 @@ namespace Metamatic
             /// </summary>
             Multiple
         }
+
+        public event Action OnDispose;
         public ConnectionType connectionType { get; }
         public bool Equals(IModernWire anotherWire);
         public int GetHashCode();
