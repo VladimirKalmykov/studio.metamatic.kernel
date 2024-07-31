@@ -39,6 +39,11 @@ namespace Metamatic
         {
             Dispose();
         }
+        
+        public override int GetHashCode()
+        {
+            return _action.GetHashCode();
+        }
 
         // Позволяет использовать DisposableAction напрямую как Action
         public static implicit operator Action(DisposableAction disposableAction)

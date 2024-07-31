@@ -510,9 +510,9 @@ namespace Metamatic
         /// <param name="externalCancellationToken"></param>
         /// <param name="id"></param>
         /// <returns>Uni task for transition between prev task to this task</returns>
-        public UniTask Push(TState state, CancellationToken externalCancellationToken = default, ulong id = 0)
+        public UniTask PushLegacy(TState state, CancellationToken externalCancellationToken = default, ulong id = 0)
         {
-            return AddState(state, externalCancellationToken, id).task;
+            return PushStateAsync(state, externalCancellationToken, id).task;
         }
 
         /// <summary>
@@ -522,15 +522,28 @@ namespace Metamatic
         /// <param name="nextState"></param>
         /// <param name="externalCancellationToken"></param>
         /// <returns></returns>
-        public UniTask TryPushNextAfter(TState ifCurrentStateIs, TState nextState,
+        public UniTask TryPushNextStateAfter(TState ifCurrentStateIs, TState nextState,
             CancellationToken externalCancellationToken = default)
         {
             if (this.currentState.Equals(ifCurrentStateIs) && m_StatesQueue.Count == 0)
             {
-                return Push(nextState, externalCancellationToken);
+                return PushLegacy(nextState, externalCancellationToken);
             }
 
             return UniTask.CompletedTask;
+        }
+        
+        /// <summary>
+        /// More convenient method to add state to the queue and get its id
+        /// In the future versions this method can stay as the only method to add state, because its interface is more convenient to reduce the number of created UniTaskCompletionSources per flow of the state machine
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="externalCancellationToken"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public ulong PushState(TState state, CancellationToken externalCancellationToken = default, ulong id = 0)
+        {
+            return PushStateAsync(state, externalCancellationToken, id).id;
         }
 
         /// <summary>
@@ -540,7 +553,7 @@ namespace Metamatic
         /// <param name="externalCancellationToken"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public (UniTask task, ulong id) AddState(TState state, CancellationToken externalCancellationToken = default,
+        public (UniTask task, ulong id) PushStateAsync(TState state, CancellationToken externalCancellationToken = default,
             ulong id = 0)
         {
             if (m_SettingDebug) Debug.Log($"[DEBUG-1] Add state {state} (id #{id}) (Curren status is {m_Status})");
@@ -782,7 +795,7 @@ namespace Metamatic
                 {
                     if (m_SettingDebug) Debug.Log($"[DEBUG-1] Auto push default state");
                     m_AutocompleteTransitionId = GenerateId();
-                    AddState(m_DefaultState, id: m_AutocompleteTransitionId);
+                    PushStateAsync(m_DefaultState, id: m_AutocompleteTransitionId);
                 }
 
                 return;
@@ -804,7 +817,7 @@ namespace Metamatic
 
             try
             {
-                await Push(newNextState, externalCancellationToken, id);
+                await PushLegacy(newNextState, externalCancellationToken, id);
                 tcs.TrySetResult();
             }
             catch (Exception e)

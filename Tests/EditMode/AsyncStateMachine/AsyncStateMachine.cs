@@ -46,7 +46,7 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.Push(State.Running);
+            await stateMachine.PushLegacy(State.Running);
             await UniTask.Delay(10);
             Assert.AreEqual(State.Running, actualState);
             Assert.AreEqual(2, actualStatus.Count, "Expected two status changes");
@@ -83,8 +83,8 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.Push(State.Running);
-            await stateMachine.Push(State.Falling);
+            await stateMachine.PushLegacy(State.Running);
+            await stateMachine.PushLegacy(State.Falling);
             await UniTask.Delay(10);
             Assert.AreEqual(5, progress, "Progress should be 5");
             Assert.AreEqual(State.Falling, actualState);
@@ -130,10 +130,10 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
 
-            await stateMachine.Push(State.Running); // Running immediately
-            await stateMachine.Push(State.Falling); // Add to queue as next state
-            await stateMachine.Push(State.Jumping); // Add to queue
-            await stateMachine.Push(State.Landing); // Add to queue
+            await stateMachine.PushLegacy(State.Running); // Running immediately
+            await stateMachine.PushLegacy(State.Falling); // Add to queue as next state
+            await stateMachine.PushLegacy(State.Jumping); // Add to queue
+            await stateMachine.PushLegacy(State.Landing); // Add to queue
             Assert.AreEqual(4, statesHistory.Count);
             Assert.AreEqual(State.Running, statesHistory[0]);
             Assert.AreEqual(State.Falling, statesHistory[1]);
@@ -180,7 +180,7 @@ namespace Metamatic.Tests
                 cancellationTokenSource.Cancel();
             }).Forget();
             try {
-                await stateMachine.Push(State.Running, cancellationTokenSource.Token);
+                await stateMachine.PushLegacy(State.Running, cancellationTokenSource.Token);
             } catch (Exception e)
             {
                 exception = e;
@@ -224,9 +224,9 @@ namespace Metamatic.Tests
             {
                 cancellationTokenSource.Cancel();
             }).Forget();
-            stateMachine.Push(State.Running);
+            stateMachine.PushLegacy(State.Running);
             try {
-                await stateMachine.Push(State.Falling, cancellationTokenSource.Token);
+                await stateMachine.PushLegacy(State.Falling, cancellationTokenSource.Token);
             } catch (Exception e)
             {
                 exception = e;
@@ -269,7 +269,7 @@ namespace Metamatic.Tests
 
                 try
                 {
-                    await stateMachine.Push(State.Running);
+                    await stateMachine.PushLegacy(State.Running);
                 }
                 catch (Exception e)
                 {
@@ -304,9 +304,9 @@ namespace Metamatic.Tests
                 transitionStepsHistory.Add((from, to));
             };
             
-            await stateMachine.Push(State.Running);
-            await stateMachine.Push(State.Falling);
-            await stateMachine.Push(State.Jumping);
+            await stateMachine.PushLegacy(State.Running);
+            await stateMachine.PushLegacy(State.Falling);
+            await stateMachine.PushLegacy(State.Jumping);
             
             Assert.AreEqual(3, transitionStepsHistory.Count);
             Assert.AreEqual((State.Idle, State.Running), transitionStepsHistory[0]);
@@ -328,7 +328,7 @@ namespace Metamatic.Tests
                 transitionStepsHistory.Add((from, to));
             };
             
-            await stateMachine.Push(State.Running);
+            await stateMachine.PushLegacy(State.Running);
             
             Assert.AreEqual(1, transitionStepsHistory.Count);
             Assert.AreEqual((State.Idle, State.Running), transitionStepsHistory[0]);

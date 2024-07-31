@@ -335,6 +335,7 @@ namespace Metamatic
     public class MicroStateProxy<TValue> : MicroStateReadOnly<TValue>, IDisposable
     {
         protected readonly MicroState<MicroStateReadOnly<TValue>> m_Proxy = new MicroState<MicroStateReadOnly<TValue>>();
+        private event Action OnDisposed;
         public MicroStateProxy(): base()
         {
             
@@ -359,12 +360,21 @@ namespace Metamatic
                 {
                     releaseValueListener = value.Subscribe(handler);
                 }
+                else
+                {
+                    handler(default);
+                }
             }, skipInitial);
-            return new DisposableAction(() =>
+            DisposableAction commonDisposable = default;
+            commonDisposable = new DisposableAction(() =>
             {
+                OnDisposed -= commonDisposable.Dispose;
                 releaseValueListener?.Invoke();
                 releaseProxyListener.Invoke();
             });
+            OnDisposed += commonDisposable.Dispose;
+
+            return commonDisposable;
         }
         
         public override bool HasValue()
