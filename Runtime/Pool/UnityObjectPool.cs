@@ -21,7 +21,7 @@ namespace Metamatic
         /// <param name="obj"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static IPool<T> GetComponentPool<T>(T obj) where T: Component
+        public static IUnityObjectPool<T> GetComponentPool<T>(T obj) where T: Component
         {
             if (obj == null) throw new ArgumentNullException(nameof(obj));
             if (m_Pools.TryGetValue(obj, out var pool))
@@ -46,7 +46,7 @@ namespace Metamatic
             }
         }
         
-        public static IPool<GameObject> GetGameObjectPool(GameObject obj)
+        public static IUnityObjectPool<GameObject> GetGameObjectPool(GameObject obj)
         {
             if (m_Pools.TryGetValue(obj, out var pool))
             {
@@ -65,7 +65,7 @@ namespace Metamatic
             }
         }
         
-        public static IPool<GameObject> GetGameObjectPool(Func<GameObject> onCreate)
+        public static IUnityObjectPool<GameObject> GetGameObjectPool(Func<GameObject> onCreate)
         {
             if (m_Pools.TryGetValue(onCreate, out var pool))
             {
@@ -133,7 +133,7 @@ namespace Metamatic
         }
     }
     
-    public class Pool<T>: Pool, IPool<T>
+    public class UnityObjectPool<T>: Pool, IUnityObjectPool<T>
     where T: UnityEngine.Object
     {
         protected readonly Stack<T> objectsInPool;
@@ -144,7 +144,7 @@ namespace Metamatic
         protected readonly Action<T> onDestroy;
         protected readonly int capacity;
         
-        public Pool(Func<T> onCreate, Action<T> onGet = null, Action<T> onRelease = null, Action<T> onDestroy = null, int capacity = 1)
+        public UnityObjectPool(Func<T> onCreate, Action<T> onGet = null, Action<T> onRelease = null, Action<T> onDestroy = null, int capacity = 1)
         {
             objectsInPool = new Stack<T>(capacity);
             m_OnCreate = onCreate;
@@ -158,7 +158,7 @@ namespace Metamatic
         public virtual T Get()
         {
             #if DEBUG
-            if (m_DisposeCancellationTokenSource.IsCancellationRequested) throw new ObjectDisposedException(nameof(Pool<T>));
+            if (m_DisposeCancellationTokenSource.IsCancellationRequested) throw new ObjectDisposedException(nameof(UnityObjectPool<T>));
             #endif
             outOfPoolObjectsCount++;
             if (objectsInPool.Count > 0)
@@ -180,7 +180,7 @@ namespace Metamatic
         public virtual void Release(T obj)
         {
 #if DEBUG
-            if (m_DisposeCancellationTokenSource.IsCancellationRequested) throw new ObjectDisposedException(nameof(Pool<T>));
+            if (m_DisposeCancellationTokenSource.IsCancellationRequested) throw new ObjectDisposedException(nameof(UnityObjectPool<T>));
 #endif
             m_ReleaseHistory.Add(obj);
             outOfPoolObjectsCount--;
@@ -235,7 +235,7 @@ namespace Metamatic
         }
     }
     
-    public class OrganicPool<T>: Pool<T> where T: UnityEngine.Object {
+    public class OrganicPool<T>: UnityObjectPool<T> where T: UnityEngine.Object {
         
         private CancellationTokenSource m_LifetimeCancellationTokenSource = new ();
         private float m_Lifetime;
@@ -329,7 +329,7 @@ namespace Metamatic
         }
     }
 
-    public readonly struct PoolReserve<T> : IPool<T>
+    public readonly struct PoolReserve<T> : IUnityObjectPool<T>
         where T : UnityEngine.Object
     {
         private readonly OrganicPool<T> m_Pool;

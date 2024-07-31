@@ -16,8 +16,15 @@ namespace Metamatic
         /// <returns></returns>
         UniTask WhenAllReleased(CancellationToken cancellationToken);
     }
+    
+    public interface IUniversalPool<T>: IPool
+    {
+        T Get();
+        void Release(T obj);
+        void TryRelease(T obj);
+    }
 
-    public interface IPool<T> : IPool where T : UnityEngine.Object
+    public interface IUnityObjectPool<T> : IPool where T : UnityEngine.Object
     {
         T Get();
         void Release(T obj);
