@@ -427,7 +427,7 @@ namespace Metamatic
 
         public delegate UniTask StateChangeHandler(Transition transition);
 
-        public delegate void TransitionStepHandler(TState from, TState to);
+        public delegate void TransitionHandler(TState from, TState to);
 
         public delegate bool StateValidationHandler(TState state);
 
@@ -449,7 +449,7 @@ namespace Metamatic
         #region Events
 
         public event Action OnTransitionCompleted;
-        public event TransitionStepHandler OnTransitionStep;
+        public event TransitionHandler OnTransitionStep;
 
         #endregion
 
@@ -852,11 +852,11 @@ namespace Metamatic
             return new DisposableAction(() => OnTransitionCompleted -= onStateCompleted);
         }
 
-        public DisposableAction SubscribeTransition(TransitionStepHandler onTransitionStep)
+        public DisposableAction SubscribeTransition(TransitionHandler onTransition)
         {
-            OnTransitionStep += onTransitionStep;
-            onTransitionStep(prevState, currentState);
-            return new DisposableAction(() => OnTransitionStep -= onTransitionStep);
+            OnTransitionStep += onTransition;
+            onTransition(prevState, currentState);
+            return new DisposableAction(() => OnTransitionStep -= onTransition);
         }
 
         private void Dispose(bool isAsync)
