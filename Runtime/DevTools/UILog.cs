@@ -199,7 +199,7 @@ namespace Metamatic.DevTools {
         private void Draw()
         {
             var style = new GUIStyle();
-            style.fontSize = Screen.height / 50;
+            style.fontSize = Screen.height / 25;
             style.normal.textColor = Color.white;
 
             GUILayout.BeginArea(new Rect(10, 10, Screen.width / 2, Screen.height / 2));
@@ -215,7 +215,7 @@ namespace Metamatic.DevTools {
         private void DrawShadow()
         {
             var style = new GUIStyle();
-            style.fontSize = Screen.height / 50;
+            style.fontSize = Screen.height / 25;
             style.normal.textColor = Color.black;
 
             GUILayout.BeginArea(new Rect(9, 11, Screen.width / 2, Screen.height / 2));

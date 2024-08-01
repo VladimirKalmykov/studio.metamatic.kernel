@@ -90,6 +90,8 @@ namespace Metamatic
             }
         }
 
+        private readonly bool m_StateIsDisposable;
+
         private TransitionStatus m_Status = TransitionStatus.Initial;
 
         /// <summary>
@@ -221,6 +223,12 @@ namespace Metamatic
             CancellationToken externalCancellationToken = default)
         {
             if (m_SettingDebug) Debug.Log($"[DEBUG-1] Reset (new prevState: {nextPrevState}, nextState: {nextState}");
+            /* Dispose prev state if it supports IDisposable */
+            if (m_StateIsDisposable && m_HasPrevState)
+            {
+                (prevState as IDisposable)?.Dispose();
+            }
+            
             this.currentState = nextState;
             this.prevState = nextPrevState;
             m_ExternalCancellationToken = externalCancellationToken;
@@ -321,12 +329,17 @@ namespace Metamatic
             return tsc.Task;
         }
 
-        private bool SetNextState(TState nextState)
+        private bool SetNextState(TState nextState, bool skipValidationCheck = false)
         {
             if (m_SettingDebug) Debug.Log($"[DEBUG-1] Set next state: {nextState}");
             /* Invalidate state */
-            if (!m_NextStateValidator.Validate(state, nextState))
+            if (!skipValidationCheck && !m_NextStateValidator.Validate(state, nextState))
             {
+                /* As the state is invalid, we should dispose it if it supports IDisposable */
+                if (m_StateIsDisposable)
+                {
+                    (nextState as IDisposable)?.Dispose();
+                }
                 return false;
             }
 
@@ -488,6 +501,7 @@ namespace Metamatic
             this.m_SettingAutoCompleteWithDefaultState = autoCompleteWithDefaultState;
             this.m_SettingDebug = debug;
             this.currentState = defaultState;
+            this.m_StateIsDisposable = typeof(IDisposable).IsAssignableFrom(typeof(TState));
         }
 
         ~AsyncStateMachine()
@@ -579,6 +593,11 @@ namespace Metamatic
             /* Invalidate state */
             if (!m_NextStateValidator.Validate(currentState, state))
             {
+                /* As the state is invalid, we should dispose it if it supports IDisposable */
+                if (m_StateIsDisposable)
+                {
+                    (state as IDisposable)?.Dispose();
+                }
                 return (UniTask.CompletedTask, 0);
             }
 
@@ -599,7 +618,7 @@ namespace Metamatic
                         if (isFirstInQueue)
                         {
                             // Do not need to check validation handler, because it was checked before
-                            SetNextState(state);
+                            SetNextState(state, true);
                         }
 
                         return (tcs.Task, nextId);
@@ -703,7 +722,14 @@ namespace Metamatic
                 /* Remove all states except the last one */
                 while (m_StatesQueue.Count > 1)
                 {
-                    m_StatesQueue.Dequeue().tcs.TrySetResult();
+                    var deqState = m_StatesQueue.Dequeue();
+                    deqState.tcs.TrySetResult();
+                    
+                    /* Dispose state */
+                    if (m_StateIsDisposable)
+                    {
+                        (deqState.state as IDisposable)?.Dispose();
+                    }
                 }
             }
 
@@ -863,6 +889,20 @@ namespace Metamatic
         {
             m_InternalCancellationTokenSource.Cancel();
             m_InternalCancellationTokenSource.Dispose();
+            
+            /* Dispose active states */
+            if (m_StateIsDisposable)
+            {
+                (prevState as IDisposable)?.Dispose();
+                (currentState as IDisposable)?.Dispose();
+                (nextState as IDisposable)?.Dispose();
+                
+                /* Dispose states in queue */
+                foreach (var (_, state, _, _) in m_StatesQueue)
+                {
+                    (state as IDisposable)?.Dispose();
+                }
+            }
             if (!isAsync)
             {
                 m_TransitionFromPrevStateResolved = true;

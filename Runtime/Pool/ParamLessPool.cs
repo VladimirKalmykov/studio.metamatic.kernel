@@ -1,92 +1,157 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace Metamatic
 {
     public class ParamLessPool<T> : IDisposable
     {
-        private readonly Stack<T> m_ObjectsInPool = new();
-        #if DEBUG
-        private readonly List<T> m_ObjectOutOfPool = new();
-        private PoolMetrics m_PoolMetrics;
-        #endif
+        private readonly Queue<T> m_ObjectsInPool = new();
+        private HashSet<int> m_OutOfPoolHashes = new();
+        
+        private int m_Capacity;
+        private int m_Limit = int.MaxValue;
+        
+        /// <summary>
+        /// Count of objects in pool (available for get)
+        /// </summary>
+        // ReSharper disable once InconsistentNaming
+        public int Count => m_ObjectsInPool.Count;
+        /// <summary>
+        /// Count of objects out of pool (not available for get, but still belongs to pool)
+        /// </summary>
+        // ReSharper disable once InconsistentNaming
+        public int OutOfPoolCount => m_OutOfPoolHashes.Count;
 
         public ParamLessPool()
         {
-            #if DEBUG
-            m_PoolMetrics = new PoolMetrics(30000);
-            m_PoolMetrics.onResult = (stats) => Debug.Log($"[POOL_METRICS] Recommended capacity for pool is {stats.recommendedCapacity}, Recommended limit is {stats.recommendedLimit}");
-            #endif
+           
         }
         
-        public ParamLessPool(int capacity = 0): this()
+        public ParamLessPool(int capacity = 0, int limit = Int32.MaxValue): this()
         {
+            m_Capacity = capacity;
+            m_Limit = limit;
             for (int i = 0; i < capacity; i++)
             {
-                m_ObjectsInPool.Push(Activator.CreateInstance<T>());
+                m_ObjectsInPool.Enqueue(Activator.CreateInstance<T>());
             }
         }
         
+        /// <summary>
+        /// Get object from pool. If pool is empty, new object will be created
+        /// </summary>
+        /// <returns></returns>
         public T Get()
         {
-            if (m_ObjectsInPool.Count > 0)
-            {
-                var outOfPool = m_ObjectsInPool.Pop();
-                #if DEBUG
-                m_ObjectOutOfPool.Add(outOfPool);
-                #endif
-                return outOfPool;
-            }
-            else
-            {
-                var outOfPool = Activator.CreateInstance<T>();
-                #if DEBUG
-                m_ObjectOutOfPool.Add(outOfPool);
-                #endif
-                return outOfPool;
-            }
+            var outOfPool = m_ObjectsInPool.Count == 0 ? Activator.CreateInstance<T>() : m_ObjectsInPool.Dequeue();
+            m_OutOfPoolHashes.Add(outOfPool.GetHashCode());
+            return outOfPool;
         }
-
-        public void Release(T obj)
+        
+        /// <summary>
+        /// Return object back to pool
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <exception cref="Exception"></exception>
+        public void Return(T obj)
         {
             #if DEBUG
-            /* Check that released object is not in pool */
-            if (m_ObjectOutOfPool.Contains(obj))
+            /* Check that returned object is not in pool */
+            if (m_ObjectsInPool.Contains(obj))
             {
-                throw new Exception("Object is already released");
+                throw new Exception("Object is already in pool");
             }
-            /* Check that release object is contained in out of pool list */
-            if (!m_ObjectOutOfPool.Contains(obj))
+            /* Check that returned object is contained in out of pool list */
+            if (!m_OutOfPoolHashes.Contains(obj.GetHashCode()))
             {
                 throw new Exception("Object is not belong to this pool");
             }
             #endif
-            m_ObjectsInPool.Push(obj);
-            
+            m_OutOfPoolHashes.Remove(obj.GetHashCode());
+            if (m_ObjectsInPool.Count < m_Limit)
+            {
+                m_ObjectsInPool.Enqueue(obj);
+            }
+            else
+            {
+                #if DEBUG
+                Debug.LogWarning("Pool limit reached. Object will be destroyed");
+                #endif
+            }
         }
-
-        public void TryRelease(T obj)
+        
+        /// <summary>
+        /// Determines whether object belongs to pool (was created by pool and wasn't released or detached)
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public bool BelongsToPool(T obj)
         {
-            if (m_ObjectsInPool.Contains(obj)) return;
-            Release(obj);
+            return m_OutOfPoolHashes.Contains(obj.GetHashCode());
+        }
+        
+        /// <summary>
+        /// Release object. Released object will not return to the pool. It will be removed from the pool memory that it object belongs to pool.
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <exception cref="Exception"></exception>
+        public void Release(T obj)
+        {
+#if DEBUG
+            /* Check released object is not present in pool */
+            if (m_ObjectsInPool.Contains(obj))
+            {
+                throw new Exception("Object is in pool, you can not release. Get it from pool first.");
+            }
+#endif
+            /* Check that released object is exists in pool or out of pool lists */
+            if (!m_OutOfPoolHashes.Contains(obj.GetHashCode()))
+            {
+                throw new Exception("Object is not belong to this pool");
+            }
+
+            var hashCode = obj.GetHashCode();
+            if (m_OutOfPoolHashes.Contains(hashCode))
+            {
+                m_OutOfPoolHashes.Remove(hashCode);
+            }
+        }
+        
+        /// <summary>
+        /// Heavy operation! If you need detach from the pool concrete object even if its in the pool right now, use this method.
+        /// </summary>
+        /// <param name="obj"></param>
+        public void HardDetach(T obj)
+        {
+            var hashCode = obj.GetHashCode();
+            if (m_OutOfPoolHashes.Contains(hashCode))
+            {
+                m_OutOfPoolHashes.Remove(hashCode);
+            } else if (m_ObjectsInPool.Contains(obj))
+            {
+                /* Create copy of queue */
+                var queueCopy = new Queue<T>(m_ObjectsInPool);
+                m_ObjectsInPool.Clear();
+                foreach (var item in queueCopy)
+                {
+                    if (!item.Equals(obj))
+                    {
+                        m_ObjectsInPool.Enqueue(item);
+                    }
+                }
+            }
         }
 
         public void Dispose()
         {
-            #if DEBUG
-            if (m_ObjectOutOfPool.Count > 0)
-            {
-                throw new Exception("You are trying to dispose pool with objects that are not released");
-            }
-            #endif
             /* Clear pool */
             m_ObjectsInPool.Clear();
-            #if DEBUG
-            m_ObjectOutOfPool.Clear();
-            #endif
+            m_OutOfPoolHashes.Clear();
         }
     }
 }
