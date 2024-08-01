@@ -753,7 +753,6 @@ namespace Metamatic
             }
             catch (OperationCanceledException)
             {
-                Debug.Log("Async state machine operation canceled");
                 // Skip
                 if (isExternalCancellationTokenCancelled &&
                     m_Status == TransitionStatus.FromPrevToCurrentProcessing)

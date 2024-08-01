@@ -250,7 +250,12 @@ namespace Metamatic
             return true;
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false)
+        public DisposableAction Subscribe(Action<TValue> handler)
+        {
+            return Subscribe(handler, false);
+        }
+
+        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial)
         {
             AddListener(handler);
             if (!skipInitial)

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class ExclusiveHandlerBase: IDisposable
+    public abstract class SequentialHandlerBase: IDisposable
     {
         protected CancellationToken externCancellationToken;
         protected CancellationTokenSource internalCancellationTokenSource;
@@ -27,8 +27,18 @@ namespace Metamatic
 
         protected abstract void EraseProps();
     }
-    public class SequentialHandler: ExclusiveHandlerBase
+    public class SequentialHandler: SequentialHandlerBase
     {
+        public static DisposableAction Subscribe(Func<Action, IDisposable> subscribe, Handler handler)
+        {
+            var handlerDisposable = new SequentialHandler(handler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
         public delegate void Handler(CancellationToken token);
 
         private Handler m_Handler;
@@ -52,8 +62,18 @@ namespace Metamatic
             m_Handler = default;
         }
     }
-    public class SequentialHandler<T>: ExclusiveHandlerBase
+    public class SequentialHandler<T>: SequentialHandlerBase
     {
+        public static DisposableAction Subscribe(Func<Action<T>, DisposableAction> subscribe, Handler handler)
+        {
+            var handlerDisposable = new SequentialHandler<T>(handler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
         public delegate void Handler(T value, CancellationToken token);
 
         private Handler m_Handler;
@@ -76,8 +96,18 @@ namespace Metamatic
             m_Handler = default;
         }
     }
-    public class SequentialHandler<T1, T2>: ExclusiveHandlerBase
+    public class SequentialHandler<T1, T2>: SequentialHandlerBase
     {
+        public static DisposableAction Subscribe(Func<Action<T1, T2>, IDisposable> subscribe, Handler handler)
+        {
+            var handlerDisposable = new SequentialHandler<T1, T2>(handler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
         public delegate void Handler(T1 value1, T2 value2, CancellationToken token);
 
         private Handler m_Handler;
@@ -101,8 +131,18 @@ namespace Metamatic
         }
     }
 
-    public class SequentialHandler<T1, T2, T3> : ExclusiveHandlerBase
+    public class SequentialHandler<T1, T2, T3> : SequentialHandlerBase
     {
+        public static DisposableAction Subscribe(Func<Action<T1, T2, T3>, IDisposable> subscribe, Handler handler)
+        {
+            var handlerDisposable = new SequentialHandler<T1, T2, T3>(handler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
         public delegate void Handler(T1 value1, T2 value2, T3 value3, CancellationToken token);
 
         private Handler m_Handler;
@@ -127,8 +167,18 @@ namespace Metamatic
         }
     }
     
-    public class SequentialHandler<T1, T2, T3, T4> : ExclusiveHandlerBase
+    public class SequentialHandler<T1, T2, T3, T4> : SequentialHandlerBase
     {
+        public static DisposableAction Subscribe(Func<Action<T1, T2, T3, T4>, IDisposable> subscribe, Handler handler)
+        {
+            var handlerDisposable = new SequentialHandler<T1, T2, T3, T4>(handler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
         public delegate void Handler(T1 value1, T2 value2, T3 value3, T4 value4, CancellationToken token);
 
         private Handler m_Handler;
@@ -153,8 +203,18 @@ namespace Metamatic
         }
     }
     
-    public class SequentialHandler<T1, T2, T3, T4, T5> : ExclusiveHandlerBase
+    public class SequentialHandler<T1, T2, T3, T4, T5> : SequentialHandlerBase
     {
+        public static DisposableAction Subscribe(Func<Action<T1, T2, T3, T4, T5>, IDisposable> subscribe, Handler handler)
+        {
+            var handlerDisposable = new SequentialHandler<T1, T2, T3, T4, T5>(handler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
         public delegate void Handler(T1 value1, T2 value2, T3 value3, T4 value4, T5 value5, CancellationToken token);
 
         private Handler m_Handler;
@@ -179,7 +239,7 @@ namespace Metamatic
         }
     }
     
-    public class SequentialHandlerRef<T>: ExclusiveHandlerBase
+    public class SequentialHandlerRef<T>: SequentialHandlerBase
     {
         public delegate void Handler(ref T value, CancellationToken token);
 
@@ -204,7 +264,7 @@ namespace Metamatic
         }
     }
     
-    public class UniqueSequentialHandler<T>: ExclusiveHandlerBase
+    public class UniqueSequentialHandler<T>: SequentialHandlerBase
     {
         public delegate void Handler(T value, CancellationToken token);
 
