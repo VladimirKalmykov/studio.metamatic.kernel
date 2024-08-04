@@ -106,7 +106,6 @@ namespace Metamatic
                 return;
             }
 
-            Debug.Log("[OPERATION] Dispose");
             m_Disposed = true;
             m_IsSyncDisposed = isSync;
             m_DisposeCancellationTokenSource?.Cancel();
