@@ -7,9 +7,13 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Metamatic.DevTools;
+using UnityEditor.Graphs;
 
-namespace Metamatic {
-    class DefaultValues {
+namespace Metamatic
+{
+    class DefaultValues
+    {
         /// <summary>
         /// Default plane at zero axis
         /// </summary>
@@ -17,7 +21,9 @@ namespace Metamatic {
         /// <returns></returns>
         public readonly static Plane DEFAULT_PLANE = new Plane(Vector3.forward, new Vector3(0, 0, 0));
     }
-    public static class MiscUtils {
+
+    public static class MiscUtils
+    {
         /// <summary>
         /// Get world distance from screen distabce 
         /// </summary>
@@ -25,7 +31,8 @@ namespace Metamatic {
         /// <param name="camera"></param>
         /// <param name="plane"></param>
         /// <returns></returns>
-        public static Vector3 ScreenToPerspectivePoint(Vector2 screenPos, Camera camera = null, Plane? plane = null) {
+        public static Vector3 ScreenToPerspectivePoint(Vector2 screenPos, Camera camera = null, Plane? plane = null)
+        {
             plane = plane.HasValue ? plane.Value : DefaultValues.DEFAULT_PLANE;
             if (camera == null)
             {
@@ -35,9 +42,10 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
+
             var ray = camera.ScreenPointToRay(screenPos);
             float distance;
-            
+
             plane.Value.Raycast(ray, out distance);
             return ray.GetPoint(distance);
         }
@@ -47,7 +55,8 @@ namespace Metamatic {
         /// </summary>
         /// <param name="gameObject">The object must contains MeshFilter</param>
         /// <returns></returns>
-        public static Plane MeshToPlane(GameObject gameObject) {
+        public static Plane MeshToPlane(GameObject gameObject)
+        {
             var filter = gameObject.GetComponent<MeshFilter>();
             var normal = Vector3.zero;
 
@@ -55,18 +64,18 @@ namespace Metamatic {
             normal = filter.transform.TransformDirection(filter.mesh.normals[0]);
 
             return new Plane(normal, gameObject.transform.position);
+        }
 
-        }
-        
         /// <summary>
         /// Get random point on the collider edge
         /// </summary>
         /// <param name="collider"></param>
         /// <returns></returns>
-        public static Vector3 GetRandomPointOnCollider(Collider collider) {
+        public static Vector3 GetRandomPointOnCollider(Collider collider)
+        {
             var bounds = collider.bounds;
             var center = bounds.center;
- 
+
             float x = 0;
             float y = 0;
             float z = 0;
@@ -75,16 +84,17 @@ namespace Metamatic {
             z = UnityEngine.Random.Range(center.z - bounds.extents.z, center.z + bounds.extents.z);
             return collider.ClosestPoint(new Vector3(x, y, z));
         }
-        
+
         /// <summary>
         /// Get random point on the collider edge
         /// </summary>
         /// <param name="collider"></param>
         /// <returns></returns>
-        public static Vector2 GetRandomPointOnCollider(Collider2D collider) {
+        public static Vector2 GetRandomPointOnCollider(Collider2D collider)
+        {
             var bounds = collider.bounds;
             var center = bounds.center;
- 
+
             float x = 0;
             float y = 0;
             float z = 0;
@@ -93,20 +103,20 @@ namespace Metamatic {
             z = UnityEngine.Random.Range(center.z - bounds.extents.z, center.z + bounds.extents.z);
             return collider.ClosestPoint(new Vector3(x, y, z));
         }
-        
+
         /// <summary>
         /// Create Plane by mesh (You should use it with Plane primitive)
         /// </summary>
         /// <param name="gameObject">The object must contains MeshFilter</param>
         /// <returns></returns>
-        public static Plane MeshToPlane(MeshFilter filter, GameObject gameObject) {
+        public static Plane MeshToPlane(MeshFilter filter, GameObject gameObject)
+        {
             var normal = Vector3.zero;
 
             if (!filter || filter.mesh.normals.Length <= 0) return default;
             normal = filter.transform.TransformDirection(filter.mesh.normals[0]);
 
             return new Plane(normal, gameObject.transform.position);
-
         }
 
         /// <summary>
@@ -116,7 +126,8 @@ namespace Metamatic {
         /// <param name="camera"></param>
         /// <param name="plane"></param>
         /// <returns></returns>
-        public static Vector3 ViewportToPerspectivePoint(Vector2 viewportPos, Camera camera = null, Plane? plane = null) {
+        public static Vector3 ViewportToPerspectivePoint(Vector2 viewportPos, Camera camera = null, Plane? plane = null)
+        {
             plane = plane.HasValue ? plane.Value : DefaultValues.DEFAULT_PLANE;
             if (camera == null)
             {
@@ -126,9 +137,10 @@ namespace Metamatic {
                 camera = Camera.main;
 #endif
             }
+
             var ray = camera.ViewportPointToRay(viewportPos);
             float distance;
-            
+
             plane.Value.Raycast(ray, out distance);
             return ray.GetPoint(distance);
         }
@@ -140,17 +152,19 @@ namespace Metamatic {
         /// <param name="camera"></param>
         /// <param name="plane"></param>
         /// <returns></returns>
-        public static float ScreenDistanceToPerspectivePoint(float distance, Camera camera = null, Plane? plane = null) {
+        public static float ScreenDistanceToPerspectivePoint(float distance, Camera camera = null, Plane? plane = null)
+        {
             Debug.LogWarning("ScreenDistanceToPerspectivePoint is deprecated, use ScreenToWorldDistance");
             plane = plane ?? DefaultValues.DEFAULT_PLANE;
             if (camera == null)
             {
 #if UNITY_EDITOR
                 throw new InvalidOperationException("You must pass cached camera to improove performance");
-#else 
+#else
                 camera = Camera.main;
 #endif
             }
+
             var worldPoint1 = ScreenToPerspectivePoint(Vector2.zero, camera, plane.Value);
             var worldPoint2 = ScreenToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
             return Vector3.Distance(worldPoint1, worldPoint2);
@@ -163,45 +177,51 @@ namespace Metamatic {
         /// <param name="camera"></param>
         /// <param name="plane"></param>
         /// <returns></returns>
-        public static float ScreenToWorldDistance(float distance, Camera camera = null, Plane? plane = null) {
+        public static float ScreenToWorldDistance(float distance, Camera camera = null, Plane? plane = null)
+        {
             plane = plane ?? DefaultValues.DEFAULT_PLANE;
             if (camera == null)
             {
 #if UNITY_EDITOR
                 throw new InvalidOperationException("You must pass cached camera to improove performance");
-#else 
+#else
                 camera = Camera.main;
 #endif
             }
+
             var worldPoint1 = ScreenToPerspectivePoint(Vector2.zero, camera, plane.Value);
             var worldPoint2 = ScreenToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
             return Vector3.Distance(worldPoint1, worldPoint2);
         }
 
-        public static float ViewportToWorldDistance(float distance, Camera camera = null, Plane? plane = null) {
+        public static float ViewportToWorldDistance(float distance, Camera camera = null, Plane? plane = null)
+        {
             plane = plane ?? DefaultValues.DEFAULT_PLANE;
             if (camera == null)
             {
 #if UNITY_EDITOR
                 throw new InvalidOperationException("You must pass cached camera to improove performance");
-#else 
+#else
                 camera = Camera.main;
 #endif
             }
+
             var worldPoint1 = ViewportToPerspectivePoint(Vector2.zero, camera, plane.Value);
             var worldPoint2 = ViewportToPerspectivePoint(Vector2.zero + Vector2.right * distance, camera, plane.Value);
             return Vector3.Distance(worldPoint1, worldPoint2);
         }
 
-        public static Rect ScreenRectToWorldRect(Rect rect, Camera camera = null) {
+        public static Rect ScreenRectToWorldRect(Rect rect, Camera camera = null)
+        {
             if (camera == null)
             {
 #if UNITY_EDITOR
                 throw new InvalidOperationException("You must pass cached camera to improove performance");
-#else 
+#else
                 camera = Camera.main;
 #endif
             }
+
             var min = camera.ScreenToWorldPoint(new Vector3(rect.xMin, rect.yMin, camera.nearClipPlane));
             var max = camera.ScreenToWorldPoint(new Vector3(rect.xMax, rect.yMax, camera.nearClipPlane));
 
@@ -216,10 +236,13 @@ namespace Metamatic {
         /// <param name="result">The current result of the linear interpolation between a and b.</param>
         /// <param name="gap">An optional threshold that defines the "close enough" margin to b. Default is 0.01f.</param>
         /// <returns></returns>    
-        public static float Indemnify(float a, float b, float result, float gap = 0.01f) {
-            if ((b > a && result + gap >= b) || (b < a && result - gap <= b)) {
+        public static float Indemnify(float a, float b, float result, float gap = 0.01f)
+        {
+            if ((b > a && result + gap >= b) || (b < a && result - gap <= b))
+            {
                 return b;
             }
+
             return result;
         }
 
@@ -230,10 +253,13 @@ namespace Metamatic {
         /// <param name="result">The current value that you're evaluating to see if it's close enough to value.</param>
         /// <param name="gap">An optional parameter that defines the tolerance range around value within which result is considered acceptable. The default is 0.01f.</param>
         /// <returns></returns>
-        public static float Indemnify(float value, float result, float gap = 0.01f) {
-            if ((result + gap >= value) && (result - gap <= value)) {
+        public static float Indemnify(float value, float result, float gap = 0.01f)
+        {
+            if ((result + gap >= value) && (result - gap <= value))
+            {
                 return result;
             }
+
             return value;
         }
 
@@ -270,17 +296,18 @@ namespace Metamatic {
         /// <param name="brightness">The brightness value</param>
         /// <param name="multiply">If true new brightness multiplied to current brightness</param>
         /// <returns></returns>
-        public static Color SetColorBrightness(Color color, float brightness, bool multiply = false) {
+        public static Color SetColorBrightness(Color color, float brightness, bool multiply = false)
+        {
             /* Create special color for additional smoke (it should have main color but with resetted saturation and value) */
             var H = 0f;
             var S = 0f;
             var V = 0f;
-            
+
             Color.RGBToHSV(color, out H, out S, out V);
 
             V = multiply ? brightness * V : brightness;
 
-            return  Color.HSVToRGB(H, S, V);
+            return Color.HSVToRGB(H, S, V);
         }
 
         /// <summary>
@@ -290,7 +317,8 @@ namespace Metamatic {
         /// <param name="minRatio"></param>
         /// <param name="maxRatio"></param>
         /// <returns></returns>
-        public static Rect InscribeAspectRatioToRect(Rect rect, float minRatio, float maxRatio) {
+        public static Rect InscribeAspectRatioToRect(Rect rect, float minRatio, float maxRatio)
+        {
             var rectRatio = rect.width / rect.height;
             var width = rect.width;
             var height = rect.height;
@@ -298,16 +326,25 @@ namespace Metamatic {
             // 1.7777
             // 0.5625
 
-            if (rectRatio > maxRatio) {
-                if (width > height) {
+            if (rectRatio > maxRatio)
+            {
+                if (width > height)
+                {
                     width = height * maxRatio;
-                } else {
+                }
+                else
+                {
                     height = width / maxRatio;
                 }
-            } else if (rectRatio < minRatio) {
-                if (width > height) {
+            }
+            else if (rectRatio < minRatio)
+            {
+                if (width > height)
+                {
                     width = height * minRatio;
-                } else {
+                }
+                else
+                {
                     height = width / minRatio;
                 }
             }
@@ -324,8 +361,8 @@ namespace Metamatic {
         /// <param name="minRatio"></param>
         /// <param name="maxRatio"></param>
         /// <returns></returns>
-        public static Rect fitScreenAspectRatioRangeToTheWorld(float minRatio, float maxRatio, Camera camera = null) {
-            
+        public static Rect fitScreenAspectRatioRangeToTheWorld(float minRatio, float maxRatio, Camera camera = null)
+        {
             if (camera == null)
             {
 #if UNITY_EDITOR
@@ -339,9 +376,12 @@ namespace Metamatic {
             float areaScreenWidth = Screen.width;
             float areaScreenHeight = Screen.height;
 
-            if (screenRatio < maxRatio) {
+            if (screenRatio < maxRatio)
+            {
                 areaScreenWidth = areaScreenHeight / maxRatio;
-            } else if (screenRatio > minRatio) {
+            }
+            else if (screenRatio > minRatio)
+            {
                 areaScreenHeight = areaScreenWidth * minRatio;
             }
 
@@ -349,7 +389,8 @@ namespace Metamatic {
 
             Vector2 bottomLeft = camera.ScreenToWorldPoint(new Vector3(left, 0, camera.nearClipPlane));
             Vector2 topLeft = camera.ScreenToWorldPoint(new Vector3(left + 0, areaScreenHeight, camera.nearClipPlane));
-            Vector2 bottomRight = camera.ScreenToWorldPoint(new Vector3(left + areaScreenWidth, 0f, camera.nearClipPlane));
+            Vector2 bottomRight =
+                camera.ScreenToWorldPoint(new Vector3(left + areaScreenWidth, 0f, camera.nearClipPlane));
 
             var worldWidth = bottomRight.x - bottomLeft.x;
             var worldHeight = bottomLeft.y - topLeft.y;
@@ -362,7 +403,8 @@ namespace Metamatic {
         /// </summary>
         /// <param name="spriteRenderer"></param>
         /// <param name="size"></param>
-        public static void fitSprite2DScaleToRect(SpriteRenderer spriteRenderer, Rect rect) {
+        public static void fitSprite2DScaleToRect(SpriteRenderer spriteRenderer, Rect rect)
+        {
             var defaultBoundX = spriteRenderer.bounds.size.x / spriteRenderer.transform.localScale.x;
             var defaultBoundY = spriteRenderer.bounds.size.y / spriteRenderer.transform.localScale.y;
             var width = rect.width == 0 ? defaultBoundX : rect.width;
@@ -374,7 +416,7 @@ namespace Metamatic {
                 scaleY,
                 1
             );
-            
+
             spriteRenderer.transform.localPosition = new Vector3(
                 rect.x + (width / 2),
                 rect.y + (height / 2),
@@ -382,25 +424,29 @@ namespace Metamatic {
             );
         }
 
-         /// <summary>
+        /// <summary>
         /// Fit GameObject sprite to specified rect using transform scale
         /// </summary>
         /// <param name="spriteRenderer"></param>
         /// <param name="size"></param>
-        public static void fitSprite2DScaleToSize(SpriteRenderer spriteRenderer, Vector2 size) {
+        public static void fitSprite2DScaleToSize(SpriteRenderer spriteRenderer, Vector2 size)
+        {
             var defaultBoundX = spriteRenderer.bounds.size.x / spriteRenderer.transform.localScale.x;
             var defaultBoundY = spriteRenderer.bounds.size.y / spriteRenderer.transform.localScale.y;
             float width;
             float height;
 
-            if (spriteRenderer.drawMode == SpriteDrawMode.Sliced) {
+            if (spriteRenderer.drawMode == SpriteDrawMode.Sliced)
+            {
                 width = size.x == 0 ? spriteRenderer.size.x : size.x;
                 height = size.y == 0 ? spriteRenderer.size.y : size.y;
                 spriteRenderer.size = new Vector2(
                     width,
                     height
                 );
-            } else {
+            }
+            else
+            {
                 width = size.x == 0 ? defaultBoundX : size.x;
                 height = size.y == 0 ? defaultBoundY : size.y;
                 var scaleX = width / defaultBoundX;
@@ -420,10 +466,11 @@ namespace Metamatic {
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <returns></returns>
-        public static float Superimpose(float x, float y) {
+        public static float Superimpose(float x, float y)
+        {
             var result = (x * y > 0.0f)
-                    ? (x >= 0 ? Mathf.Max(x, y) : Mathf.Min(x, y))
-                    : x + y;
+                ? (x >= 0 ? Mathf.Max(x, y) : Mathf.Min(x, y))
+                : x + y;
             return result;
         }
 
@@ -433,7 +480,8 @@ namespace Metamatic {
         /// <param name="value"></param>
         /// <param name="min"></param>
         /// <returns></returns>
-        public static float MinAbs(float value, float min) {
+        public static float MinAbs(float value, float min)
+        {
             return Mathf.Min(Mathf.Abs(value), min) * Mathf.Sign(value);
         }
 
@@ -443,7 +491,8 @@ namespace Metamatic {
         /// <param name="value"></param>
         /// <param name="max"></param>
         /// <returns></returns>
-        public static float MaxAbs(float value, float max) {
+        public static float MaxAbs(float value, float max)
+        {
             return Mathf.Max(Mathf.Abs(value), max) * Mathf.Sign(value);
         }
 
@@ -465,12 +514,15 @@ namespace Metamatic {
                 case MemberTypes.Property:
                     return ((PropertyInfo)member).PropertyType;
                 default:
-                    if (throwException) {
+                    if (throwException)
+                    {
                         throw new ArgumentException
                         (
-                        "Input MemberInfo must be if type EventInfo, FieldInfo, MethodInfo, or PropertyInfo"
+                            "Input MemberInfo must be if type EventInfo, FieldInfo, MethodInfo, or PropertyInfo"
                         );
-                    } else {
+                    }
+                    else
+                    {
                         return null;
                     }
             }
@@ -482,7 +534,8 @@ namespace Metamatic {
         /// <param name="member"></param>
         /// <param name="throwException"></param>
         /// <returns></returns>
-        public static bool CanMemberWrite(MemberInfo member, bool throwException = true) {
+        public static bool CanMemberWrite(MemberInfo member, bool throwException = true)
+        {
             switch (member.MemberType)
             {
                 case MemberTypes.Field:
@@ -490,12 +543,15 @@ namespace Metamatic {
                 case MemberTypes.Property:
                     return ((PropertyInfo)member).CanWrite;
                 default:
-                    if (throwException) {
+                    if (throwException)
+                    {
                         throw new ArgumentException
                         (
-                        "Input MemberInfo must be if type EventInfo, FieldInfo, MethodInfo, or PropertyInfo"
+                            "Input MemberInfo must be if type EventInfo, FieldInfo, MethodInfo, or PropertyInfo"
                         );
-                    } else {
+                    }
+                    else
+                    {
                         return false;
                     }
             }
@@ -507,23 +563,25 @@ namespace Metamatic {
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
         /// <returns></returns>
-        public static Rect GetRenderersBoundingRect(Renderer[] renderers) {
+        public static Rect GetRenderersBoundingRect(Renderer[] renderers)
+        {
             var bounds = renderers[0].bounds;
             for (var i = 1; i < renderers.Length; i++)
             {
                 bounds.Encapsulate(renderers[i].bounds);
             }
+
             var ext = bounds.extents;
 
             float maxY = -999999, maxX = -999999, minY = 999999, minX = 999999;
 
-            for (var x = -1; x < 2; x+=2)
+            for (var x = -1; x < 2; x += 2)
             {
-                for (var y = -1; y < 2; y+=2)
+                for (var y = -1; y < 2; y += 2)
                 {
-                    for (var z = -1; z < 2; z+=2)
+                    for (var z = -1; z < 2; z += 2)
                     {
-                        var worldPoint = bounds.center+new Vector3(ext.x*x, ext.y*y, ext.z*z);
+                        var worldPoint = bounds.center + new Vector3(ext.x * x, ext.y * y, ext.z * z);
 
                         maxY = Mathf.Max(maxY, worldPoint.y);
                         maxX = Mathf.Max(maxX, worldPoint.x);
@@ -542,13 +600,14 @@ namespace Metamatic {
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
         /// <returns></returns>
-        public static Bounds GetRenderersBounds(Renderer[] renderers) {
+        public static Bounds GetRenderersBounds(Renderer[] renderers)
+        {
             var bounds = renderers[0].bounds;
             for (var i = 1; i < renderers.Length; i++)
             {
                 bounds.Encapsulate(renderers[i].bounds);
             }
-            
+
             return bounds;
         }
 
@@ -558,16 +617,17 @@ namespace Metamatic {
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
         /// <returns></returns>
-        public static Bounds GetColiidersBounds(Collider[] colliders) {
+        public static Bounds GetColiidersBounds(Collider[] colliders)
+        {
             var bounds = colliders[0].bounds;
             for (var i = 1; i < colliders.Length; i++)
             {
                 bounds.Encapsulate(colliders[i].bounds);
             }
-            
+
             return bounds;
         }
-        
+
         /// <summary>
         /// Get combinig renderers bounding rect (renderers can be collected by method GetComponontsInChildren)
         /// </summary>
@@ -582,7 +642,7 @@ namespace Metamatic {
             {
                 bounds.Encapsulate(colliders[i].bounds);
             }
-            
+
             return bounds;
         }
 
@@ -592,26 +652,30 @@ namespace Metamatic {
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
         /// <returns></returns>
-        public static Rect GetRenderersScreenBoundingRect(Renderer[] renderers, Camera camera = null) {
-            if (camera == null) {
+        public static Rect GetRenderersScreenBoundingRect(Renderer[] renderers, Camera camera = null)
+        {
+            if (camera == null)
+            {
                 camera = Camera.main;
             }
+
             var bounds = renderers[0].bounds;
             for (var i = 1; i < renderers.Length; i++)
             {
                 bounds.Encapsulate(renderers[i].bounds);
             }
+
             var ext = bounds.extents;
 
             float maxY = -999999, maxX = -999999, minY = 999999, minX = 999999;
 
-            for (var x = -1; x < 2; x+=2)
+            for (var x = -1; x < 2; x += 2)
             {
-                for (var y = -1; y < 2; y+=2)
+                for (var y = -1; y < 2; y += 2)
                 {
-                    for (var z = -1; z < 2; z+=2)
+                    for (var z = -1; z < 2; z += 2)
                     {
-                        var vect = bounds.center+new Vector3(ext.x*x, ext.y*y, ext.z*z);
+                        var vect = bounds.center + new Vector3(ext.x * x, ext.y * y, ext.z * z);
                         var worldPoint = camera.WorldToScreenPoint(vect);
 
                         maxY = Mathf.Max(maxY, worldPoint.y);
@@ -631,26 +695,30 @@ namespace Metamatic {
         /// <param name="renderers"></param>
         /// <param name="camera"></param>
         /// <returns></returns>
-        public static Rect GetCollidersScreenBoundingRect(Collider[] colliders, Camera camera = null) {
-            if (camera == null) {
+        public static Rect GetCollidersScreenBoundingRect(Collider[] colliders, Camera camera = null)
+        {
+            if (camera == null)
+            {
                 camera = Camera.main;
             }
+
             var bounds = colliders[0].bounds;
             for (var i = 1; i < colliders.Length; i++)
             {
                 bounds.Encapsulate(colliders[i].bounds);
             }
+
             var ext = bounds.extents;
 
             float maxY = -999999, maxX = -999999, minY = 999999, minX = 999999;
 
-            for (var x = -1; x < 2; x+=2)
+            for (var x = -1; x < 2; x += 2)
             {
-                for (var y = -1; y < 2; y+=2)
+                for (var y = -1; y < 2; y += 2)
                 {
-                    for (var z = -1; z < 2; z+=2)
+                    for (var z = -1; z < 2; z += 2)
                     {
-                        var vect = bounds.center+new Vector3(ext.x*x, ext.y*y, ext.z*z);
+                        var vect = bounds.center + new Vector3(ext.x * x, ext.y * y, ext.z * z);
                         var worldPoint = camera.WorldToScreenPoint(vect);
 
                         maxY = Mathf.Max(maxY, worldPoint.y);
@@ -663,22 +731,22 @@ namespace Metamatic {
 
             return new Rect(minX, minY, maxX - minX, maxY - minY);
         }
-        
+
         /// <summary>
         /// Change 3d object volume in a case to get required mass
         /// </summary>
         /// <param name="mass"></param>
         /// <param name="rb"></param>
-        public static void Set3DMass(Rigidbody rb, float mass) {
+        public static void Set3DMass(Rigidbody rb, float mass)
+        {
             rb.transform.localScale = rb.transform.localScale * (Mathf.Sqrt(mass) / Mathf.Sqrt(rb.mass));
         }
 
-        public static Task AsyncOperationToTask(AsyncOperation asyncOperation, bool allowSceneActivation = true) {
+        public static Task AsyncOperationToTask(AsyncOperation asyncOperation, bool allowSceneActivation = true)
+        {
             asyncOperation.allowSceneActivation = allowSceneActivation;
             var taskCompletionSource = new TaskCompletionSource<bool>();
-            asyncOperation.completed += (AsyncOperation ao) => {
-                taskCompletionSource.SetResult(true);
-            };
+            asyncOperation.completed += (AsyncOperation ao) => { taskCompletionSource.SetResult(true); };
 
             return taskCompletionSource.Task;
         }
@@ -690,17 +758,20 @@ namespace Metamatic {
         /// <returns>Related path</returns>
         public static String PathSimplify(String path)
         {
-            path = path.Replace($"{Path.DirectorySeparatorChar}.{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}");
+            path = path.Replace($"{Path.DirectorySeparatorChar}.{Path.DirectorySeparatorChar}",
+                $"{Path.DirectorySeparatorChar}");
             while (true)
             {
-                var newPath = new Regex(@"[^\\/]+(?<!\.\.)[\\/]\.\.[\\/]").Replace(path, "" );
+                var newPath = new Regex(@"[^\\/]+(?<!\.\.)[\\/]\.\.[\\/]").Replace(path, "");
                 if (newPath == path) break;
                 path = newPath;
             }
+
             return path;
         }
 
-        public static string NormalizePath(string path) {
+        public static string NormalizePath(string path)
+        {
             var replaceSymbol = Path.DirectorySeparatorChar == '/' ? '\\' : '/';
             return MiscUtils.PathSimplify(path.Replace(replaceSymbol, Path.DirectorySeparatorChar));
         }
@@ -711,13 +782,16 @@ namespace Metamatic {
         /// <param name="transform"></param>
         /// <param name="delimiter"></param>
         /// <returns></returns>
-        public static string GetGameObjectPath(Transform transform, string delimiter = ".") {
+        public static string GetGameObjectPath(Transform transform, string delimiter = ".")
+        {
             var path = new List<string>();
             var currentTransform = transform;
-            while(currentTransform != null && currentTransform.parent != null) {
+            while (currentTransform != null && currentTransform.parent != null)
+            {
                 path.Add(currentTransform.name);
-                currentTransform = currentTransform.parent;   
+                currentTransform = currentTransform.parent;
             }
+
             return String.Join(delimiter, path.ToArray());
         }
 
@@ -727,10 +801,11 @@ namespace Metamatic {
         /// <param name="gameObject"></param>
         /// <param name="delimiter"></param>
         /// <returns></returns>
-        public static string GetGameObjectPath(GameObject gameObject, string delimiter = ".") {
+        public static string GetGameObjectPath(GameObject gameObject, string delimiter = ".")
+        {
             return GetGameObjectPath(gameObject.transform, delimiter);
         }
-        
+
         /// <summary>
         /// Get two integer divisors of an integer which are maximum close to root of this number
         /// </summary>
@@ -742,6 +817,7 @@ namespace Metamatic {
             {
                 return Vector2Int.zero;
             }
+
             var root = Mathf.Sqrt(n);
             var divisors = new List<int>();
             for (var i = 1; i <= root; i++)
@@ -766,8 +842,8 @@ namespace Metamatic {
                 });
             return new Vector2Int(divisors[0], n / divisors[0]);
         }
-        
-        
+
+
         /// <summary>
         /// Simulate of dropping game dice with one-in-count change to get true value
         /// </summary>
@@ -785,7 +861,10 @@ namespace Metamatic {
             Properties,
             All
         }
-        public static T CopyComponent<T>(T original, GameObject destination, CopyComponentType copyType = CopyComponentType.All, string[] excludePropertyNames = default) where T : Component
+
+        public static T CopyComponent<T>(T original, GameObject destination,
+            CopyComponentType copyType = CopyComponentType.All, string[] excludePropertyNames = default)
+            where T : Component
         {
             System.Type type = original.GetType();
 
@@ -850,7 +929,7 @@ namespace Metamatic {
                 }
             }
         }
-        
+
         /// <summary>
         /// Is float value near target value with given gap (for example 0.98f will be near 1f when gap 0.002)
         /// </summary>
@@ -862,7 +941,7 @@ namespace Metamatic {
         {
             return (target + gap >= value) && (target - gap <= value);
         }
-        
+
         /// <summary>
         /// Find in parent components siblings with given name
         /// </summary>
@@ -887,7 +966,7 @@ namespace Metamatic {
 
             return FindParentSiblingsWithName(parent, name);
         }
-        
+
         public static string GetGenericName(Type t, bool hideClassName = false, bool hideScopes = false)
         {
             if (!t.IsGenericType)
@@ -923,7 +1002,7 @@ namespace Metamatic {
 
             return sb.ToString();
         }
-        
+
         public static Color MultiplyColors(Color color1, Color color2)
         {
             return new Color(
@@ -933,7 +1012,7 @@ namespace Metamatic {
                 color1.a * color2.a
             );
         }
-        
+
         /// <summary>
         /// Reduces array count to specified length by selecting values with equal intervals
         /// </summary>
@@ -962,7 +1041,7 @@ namespace Metamatic {
 
             return result;
         }
-        
+
         /// <summary>
         /// Get random int value from range based on seed
         /// </summary>
@@ -975,7 +1054,7 @@ namespace Metamatic {
             System.Random random = new System.Random(seed);
             return random.Next(min, max);
         }
-        
+
         /// <summary>
         /// Get random float value from range based on seed
         /// </summary>
@@ -989,10 +1068,59 @@ namespace Metamatic {
             double val = random.NextDouble();
             return (float)(min + val * (max - min));
         }
-        
+
         /// <summary>
         /// Returns a random integer number between int.MinValue and int.MaxValue
         /// </summary>
         public static int seed => new System.Random().Next();
+        
+        /// <summary>
+        /// Draw box cast with preview (do not support angle)
+        /// </summary>
+        /// <param name="start"></param>
+        /// <param name="size"></param>
+        /// <param name="angle"></param>
+        /// <param name="direction"></param>
+        /// <param name="distance"></param>
+        /// <param name="layerMask"></param>
+        /// <param name="onHitColor"></param>
+        /// <param name="onMissColor"></param>
+        /// <returns></returns>
+        public static RaycastHit2D BoxCastPreview(
+            Vector2 start,
+            Vector2 size,
+            float angle,
+            Vector2 direction,
+            float distance,
+            int layerMask,
+            Color onHitColor = default,
+            Color onMissColor = default
+        )
+        {
+            RaycastHit2D hit = Physics2D.BoxCast(start, size, angle, direction, distance, layerMask);
+            #if UNITY_EDITOR
+            GlobalGizmos.Once(() =>
+            {
+                // Начальная позиция для BoxCast
+                Vector3 rayStart = start;
+
+                // Цвет для визуализации BoxCast
+                Gizmos.color = hit.collider != null ? onHitColor : onMissColor;
+
+                // Смещение для конечной позиции BoxCast
+                Vector3 boxCastEnd = rayStart + (Vector3)direction.normalized * distance;
+
+                // Визуализация начальной позиции BoxCast
+                Gizmos.DrawWireCube(rayStart, size);
+
+                // Визуализация конечной позиции BoxCast
+                Gizmos.DrawWireCube(boxCastEnd, size);
+
+                // Визуализация направления BoxCast
+                Gizmos.DrawLine(rayStart, boxCastEnd);
+            });
+            #endif
+            return hit;
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Metamatic;
 using Metamatic.DevTools;
 using UnityEngine;
@@ -9,6 +10,7 @@ namespace DevTools
     {
         private List<GlobalGizmo> m_Gizmos = new ();
         private Dictionary<string, GlobalGizmo> m_MappedGizmos = new ();
+        public event Action OnDrawGizmosEvent;
         
         public DisposableAction AddGizmo(System.Action renderer)
         {
@@ -41,9 +43,18 @@ namespace DevTools
             }
         }
         
+        public void Once(System.Action renderer)
+        {
+            #if UNITY_EDITOR
+            OnDrawGizmosEvent += renderer;
+            #endif
+        }
+        
         #if UNITY_EDITOR
         public void OnDrawGizmos()
         {
+            OnDrawGizmosEvent?.Invoke();
+            OnDrawGizmosEvent = null;
             foreach (var gizmo in m_Gizmos)
             {
                 gizmo.Render();

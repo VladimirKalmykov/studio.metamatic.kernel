@@ -44,6 +44,11 @@ namespace Metamatic.DevTools
             return instance.AddGizmo(renderer);
         }
         
+        public static void Once(System.Action renderer)
+        {
+            instance.Once(renderer);
+        }
+        
         public static void AddGizmo(string key, System.Action renderer)
         {
             instance.AddGizmo(key, renderer);
