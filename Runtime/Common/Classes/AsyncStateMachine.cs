@@ -222,7 +222,7 @@ namespace Metamatic
         private void Reset(TState nextState, TState nextPrevState = default,
             CancellationToken externalCancellationToken = default)
         {
-            if (m_SettingDebug) Debug.Log($"[DEBUG-1] Reset (new prevState: {nextPrevState}, nextState: {nextState}");
+            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Reset (new prevState: {nextPrevState}, nextState: {nextState}");
             /* Dispose prev state if it supports IDisposable */
             if (m_StateIsDisposable && m_HasPrevState)
             {
@@ -288,7 +288,7 @@ namespace Metamatic
 #if DEBUG
             if (m_SettingDebug)
                 Debug.Log(
-                    $"[DEBUG-1] Set status {status} (prev: {prevState}, current: {currentState}, next: {nextState}) Source: {source}");
+                    $"[ASYNC-STATE-MACHINE] Set status {status} (prev: {prevState}, current: {currentState}, next: {nextState}) Source: {source}");
             Debug_SetTransitionStatus(status, source);
 #endif
         }
@@ -331,7 +331,7 @@ namespace Metamatic
 
         private bool SetNextState(TState nextState, bool skipValidationCheck = false)
         {
-            if (m_SettingDebug) Debug.Log($"[DEBUG-1] Set next state: {nextState}");
+            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Set next state: {nextState}");
             /* Invalidate state */
             if (!skipValidationCheck && !m_NextStateValidator.Validate(state, nextState))
             {
@@ -355,9 +355,15 @@ namespace Metamatic
 #endif
             }
 
-
+            var memoizedCancellationTokenSource = m_CancellationTokenSource;
             OnNextState?.Invoke(nextState);
-            m_CancellationTokenSource.Cancel();
+            #if DEBUG
+            if (m_SettingDebug)
+            {
+                Debug.Log($"[ASYNC-STATE-MACHINE] CANCEL because next state is defined: {nextState}");
+            }
+            #endif
+            memoizedCancellationTokenSource.Cancel();
             return true;
         }
 
@@ -382,7 +388,7 @@ namespace Metamatic
         {
             if (!m_TransitionFromPrevStateResolved)
             {
-                if (m_SettingDebug) Debug.Log($"[DEBUG-1] Complete transition #{transitionId} from prev to current");
+                if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from prev to current");
 #if DEBUG
                 SetStatus(TransitionStatus.FromPrevToCurrentCompleted, "SetTransitionFromPrevStateCompleted");
 #else
@@ -397,7 +403,7 @@ namespace Metamatic
         {
             if (!m_TransitionToNextStateResolved)
             {
-                if (m_SettingDebug) Debug.Log($"[DEBUG-1] Complete transition #{transitionId} from current to next");
+                if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from current to next");
 #if DEBUG
                 SetStatus(TransitionStatus.FromCurrentToNextCompleted, "SetTransitionToNextStateCompleted");
 #else
@@ -589,7 +595,7 @@ namespace Metamatic
             CancellationToken externalCancellationToken = default,
             ulong id = 0)
         {
-            if (m_SettingDebug) Debug.Log($"[DEBUG-1] Add state {state} (id #{id}) (Curren status is {m_Status})");
+            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Add state {state} (id #{id}) (Curren status is {m_Status})");
             /* Invalidate state */
             if (!m_NextStateValidator.Validate(currentState, state))
             {
@@ -742,7 +748,7 @@ namespace Metamatic
             try
             {
                 if (m_SettingDebug)
-                    Debug.Log($"[DEBUG-1][TRANSITION] Perform transition #{id} {prevState} -> {currentState}");
+                    Debug.Log($"[ASYNC-STATE-MACHINE][TRANSITION] Perform transition #{id} {prevState} -> {currentState}");
 #if DEBUG
                 SetStatus(TransitionStatus.FromPrevToCurrentProcessing, "PerformTransition");
 #else
@@ -838,7 +844,7 @@ namespace Metamatic
                 // Fallback to default state
                 if (m_SettingAutoCompleteWithDefaultState && m_AutocompleteTransitionId != m_LatestTransitionId)
                 {
-                    if (m_SettingDebug) Debug.Log($"[DEBUG-1] Auto push default state");
+                    if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Auto push default state");
                     m_AutocompleteTransitionId = GenerateId();
                     PushStateAsync(m_DefaultState, id: m_AutocompleteTransitionId);
                 }
