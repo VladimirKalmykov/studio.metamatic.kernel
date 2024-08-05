@@ -7,6 +7,10 @@ namespace Metamatic
         where TOutputWire : IOutputModernWire
     {
         private readonly List<TOutputWire> m_OutputWires = new();
+
+        protected InputModernWire(IModernWire.ConnectionType connectionType = IModernWire.ConnectionType.SingleError) : base(connectionType)
+        {
+        }
         
         public DisposableAction ConnectIn(TOutputWire outputWire)
         {
@@ -49,7 +53,7 @@ namespace Metamatic
             {
                 if (connectionType == IModernWire.ConnectionType.SingleError && m_OutputWires.Count > 0)
                 {
-                    throw new InvalidOperationException("This output wire already connected");
+                    throw new InvalidOperationException("The output wire already connected in this input wire");
                 }
                 foreach (var wire in m_OutputWires.ToArray())
                 {
@@ -95,6 +99,10 @@ namespace Metamatic
         where TInputWire : IInputModernWire
     {
         private List<TInputWire> m_InputWires = new();
+        
+        protected OutputModernWire(IModernWire.ConnectionType connectionType = IModernWire.ConnectionType.SingleError) : base(connectionType)
+        {
+        }
 
         public DisposableAction ConnectOut(TInputWire inputWire)
         {

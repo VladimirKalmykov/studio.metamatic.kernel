@@ -5,8 +5,10 @@ namespace Metamatic
 {
     public class SequentialHub : IDisposable
     {
-        protected CancellationTokenSource m_CancellationTokenSource;
+        protected CancellationTokenSource CancellationTokenSource;
         private bool m_Disposed;
+        // ReSharper disable once InconsistentNaming
+        public CancellationToken ExposedToken => CancellationTokenSource.Token;
 
         ~SequentialHub()
         {
@@ -17,7 +19,7 @@ namespace Metamatic
             if (m_Disposed)
                 return;
             m_Disposed = true;
-            m_CancellationTokenSource?.Cancel();
+            CancellationTokenSource?.Cancel();
             GC.SuppressFinalize(this);
         }
     }
@@ -54,9 +56,9 @@ namespace Metamatic
         {
             if (!m_Latch || (m_Value1Set && m_Value2Set))
             {
-                m_CancellationTokenSource?.Cancel();
-                m_CancellationTokenSource = new CancellationTokenSource();
-                m_Handler(m_Value1, m_Value2, m_CancellationTokenSource.Token);
+                CancellationTokenSource?.Cancel();
+                CancellationTokenSource = new CancellationTokenSource();
+                m_Handler(m_Value1, m_Value2, CancellationTokenSource.Token);
             }
         }
     }
@@ -108,9 +110,9 @@ namespace Metamatic
         {
             if (!m_Latch || (m_Value1Set && m_Value2Set && m_Value3Set))
             {
-                m_CancellationTokenSource?.Cancel();
-                m_CancellationTokenSource = new CancellationTokenSource();
-                m_Handler(m_Value1, m_Value2, m_Value3, m_CancellationTokenSource.Token);
+                CancellationTokenSource?.Cancel();
+                CancellationTokenSource = new CancellationTokenSource();
+                m_Handler(m_Value1, m_Value2, m_Value3, CancellationTokenSource.Token);
             }
         }
     }

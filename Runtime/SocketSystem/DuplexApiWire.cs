@@ -137,22 +137,33 @@ namespace Metamatic
         {
             m_VendorState.value = vendor;
         }
+
+        public bool TryGetClient(out TClient client)
+        {
+            if (m_ClientStateProxies.Values.FirstOrDefault(proxy => proxy.Proxy.value != null) is { } proxy)
+            {
+                client = proxy.Proxy.value;
+                return true;
+            }
+            client = default;
+            return false;
+        }
     }
     
     public class DuplexApiWireClient<TClient, TVendor>: InputModernWire<DuplexApiWireVendor<TVendor, TClient>>, IDuplexApiWireClient<TClient, TVendor>
         where TVendor: class
         where TClient: class
     {
-        public DuplexApiWireClient(TClient client, IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply) : base()
+        public DuplexApiWireClient(TClient client, IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply) : base(IModernWire.ConnectionType.SingleError)
         {
             Set(client);
             OnDispose += Subscribe(supply);
         }
-        public DuplexApiWireClient(IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply) : base()
+        public DuplexApiWireClient(IDuplexApiWireClient<TClient, TVendor>.VendorSupply supply) : base(IModernWire.ConnectionType.SingleError)
         {
             OnDispose += Subscribe(supply);
         }
-        public DuplexApiWireClient(TClient client) : base()
+        public DuplexApiWireClient(TClient client) : base(IModernWire.ConnectionType.SingleError)
         {
             Set(client);
         }
@@ -202,6 +213,12 @@ namespace Metamatic
             
             OnVendorProxyInitialized += ProxySourceHandler;
             
+            /* Handle already initialized proxies */
+            foreach (var proxy in m_VendorStateProxies.Values)
+            {
+                ProxySourceHandler(proxy);
+            }
+            
             return new DisposableAction(() =>
             {
                 OnVendorProxyInitialized -= ProxySourceHandler;
@@ -233,6 +250,17 @@ namespace Metamatic
         public void Set(TClient client)
         {
             m_ClientState.value = client;
+        }
+
+        public bool TryGetVendor(out TVendor vendor)
+        {
+            if (m_VendorStateProxies.Values.FirstOrDefault(proxy => proxy.Proxy.value != null) is { } proxy)
+            {
+                vendor = proxy.Proxy.value;
+                return true;
+            }
+            vendor = default;
+            return false;
         }
     }
 }

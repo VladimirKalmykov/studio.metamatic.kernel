@@ -13,6 +13,12 @@ namespace Metamatic
         internal void InternalSetClient(IDuplexApiWireClient<TClient, TVendor> wire, MicroStateReadOnly<TClient> clientState);
         internal void InternalRemoveClient(IDuplexApiWireClient<TClient, TVendor> wire);
         public void Set(TVendor vendor);
+        /// <summary>
+        /// If the client is available, it will be returned in the out parameter and the method will return true. Otherwise, it will return false.
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        public bool TryGetClient(out TClient client);
     }
     
     public interface IDuplexApiWireClient<TClient, TVendor>: IInputModernWire
@@ -26,5 +32,11 @@ namespace Metamatic
         internal void InternalSetVendor(IDuplexApiWireVendor<TVendor, TClient> wire, MicroStateReadOnly<TVendor> vendorState);
         internal void InternalRemoveVendor(IDuplexApiWireVendor<TVendor, TClient> wire);
         public void Set(TClient client);
+        /// <summary>
+        /// If the vendor is available, it will be returned in the out parameter and the method will return true. Otherwise, it will return false.
+        /// </summary>
+        /// <param name="vendor"></param>
+        /// <returns></returns>
+        public bool TryGetVendor(out TVendor vendor);
     }
 }
