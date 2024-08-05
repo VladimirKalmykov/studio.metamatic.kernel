@@ -5,9 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
-using Sirenix.OdinInspector.Editor.Validation;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Metamatic
 {
@@ -811,7 +809,11 @@ namespace Metamatic
                     Debug.Log(
                         $"[WINGS BEHAVIOUR] Transition #{id} finalized  (prev: {prevState}, current: {currentState}, next: {nextState})");
                 OnTransitionCompleted?.Invoke();
-                SetStatus(TransitionStatus.Idle, "Transition finalizer");
+                SetStatus(TransitionStatus.Idle
+                    #if DEBUG
+                    , "Transition finalizer"
+                    #endif
+                    );
                 m_LatestTransitionId = id;
                 DeferCallNextStateOnCurrentTransitionReady();
             }

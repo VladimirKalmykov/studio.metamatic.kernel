@@ -152,7 +152,9 @@ namespace Metamatic
             m_OnRelease = onRelease;
             this.onDestroy = onDestroy ?? DefaultDestroy;
             this.capacity = capacity;
+            #if DEBUG
             debugUniqueId = Guid.NewGuid().ToString();
+            #endif
         }
         
         public virtual T Get()
@@ -339,8 +341,10 @@ namespace Metamatic
             m_Pool = pool;
             m_Reserve = m_Pool.Inquire();
         }
-
+        
+        #if DEBUG
         public string debugUniqueId => m_Pool.debugUniqueId;
+        #endif
         public CancellationToken disposeCancellationToken => m_Pool.disposeCancellationToken;
         public UniTask WhenAllReleased(CancellationToken cancellationToken)
         {

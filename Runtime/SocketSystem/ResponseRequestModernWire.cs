@@ -1,5 +1,3 @@
-using Metamatic;
-
 namespace Metamatic
 {
     public class RequesterModernWire<TRequest, TResponse>: OutputModernWire<IResponderModernWire<TRequest, TResponse>>, IRequesterModernWire<TRequest, TResponse>

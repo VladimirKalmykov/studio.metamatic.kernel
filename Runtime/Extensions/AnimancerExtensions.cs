@@ -3,7 +3,7 @@ using System;
 using System.Threading;
 using Animancer;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
+
 namespace Metamatic
 {
     public static class AnimancerExtensions

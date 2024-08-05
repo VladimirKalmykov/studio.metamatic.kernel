@@ -133,7 +133,7 @@ namespace Metamatic
                     await UniTask.Yield(PlayerLoopTiming.Update);
                 }
 #else
-            await Task.Delay(TimeSpan.FromSeconds(delay), cancellationToken).ConfigureAwait(true);
+            await UniTask.Delay(delay, cancellationToken: cancellationToken);
 #endif
         }
     }

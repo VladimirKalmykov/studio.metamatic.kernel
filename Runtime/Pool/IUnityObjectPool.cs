@@ -7,7 +7,9 @@ namespace Metamatic
 
     public interface IPool: IDisposable
     {
+#if DEBUG
         public string debugUniqueId { get; }
+#endif
         CancellationToken disposeCancellationToken { get; }
         /// <summary>
         /// Wait until all created objects are released. It uses simple math to calculate spawned and released objects.
