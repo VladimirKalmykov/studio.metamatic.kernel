@@ -26,11 +26,15 @@ namespace Metamatic
         public void Dispose()
         {
             #if DEBUG
-            if (_disposed.value)
+            if (_disposed?.value ?? false)
             {
                 throw new ObjectDisposedException(nameof(DisposableAction));
             }
-            _disposed.value = true;
+
+            if (_disposed != null)
+            {
+                _disposed.value = true;
+            }
             #endif
             _action?.Invoke();
         }
