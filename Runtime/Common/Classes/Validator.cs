@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -12,7 +13,7 @@ namespace Metamatic
         {
             public ValidatorDelegate Handler;
             public LinkedValidator Parent;
-            private LinkedValidator m_Child;
+            public LinkedValidator Child;
 
             public void Init(LinkedValidator parent, ValidatorDelegate handler)
             {
@@ -23,7 +24,7 @@ namespace Metamatic
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void SetChild(LinkedValidator next)
             {
-                m_Child = next;
+                Child = next;
                 next?.SetParent(this);
             }
             
@@ -36,9 +37,9 @@ namespace Metamatic
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Release()
             {
-                Parent?.SetChild(m_Child);
+                Parent?.SetChild(Child);
                 Parent = null;
-                m_Child = null;
+                Child = null;
             }
             
             public bool Validate(T item)
@@ -71,7 +72,7 @@ namespace Metamatic
             
             return new DisposableAction(() =>
             {
-                m_Current = newValidator.Parent;
+                m_Current = newValidator.Child ?? newValidator.Parent;
                 newValidator.Release();
                 // TODO: Consider adding a limit to the pool size
                 m_Pool.Enqueue(newValidator);
@@ -100,12 +101,15 @@ namespace Metamatic
     
     public class Validator<T1, T2>: IDisposable
     {
+        #if DEBUG
+        public bool debug = false;
+        #endif
         public delegate bool ValidatorDelegate(T1 item1, T2 item2);
         private class LinkedValidator
         {
             public ValidatorDelegate Handler;
             public LinkedValidator Parent;
-            private LinkedValidator m_Child;
+            public LinkedValidator Child;
 
             public void Init(LinkedValidator parent, ValidatorDelegate handler)
             {
@@ -116,7 +120,7 @@ namespace Metamatic
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void SetChild(LinkedValidator next)
             {
-                m_Child = next;
+                Child = next;
                 next?.SetParent(this);
             }
             
@@ -129,9 +133,9 @@ namespace Metamatic
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Release()
             {
-                Parent?.SetChild(m_Child);
+                Parent?.SetChild(Child);
                 Parent = null;
-                m_Child = null;
+                Child = null;
             }
             
             public bool Validate(T1 item1, T2 item2)
@@ -150,6 +154,13 @@ namespace Metamatic
                 return functions.ToArray();
             
             }
+            
+            #if DEBUG
+            public override string ToString()
+            {
+                return $"{Handler?.Method.Name ?? "null"} -> {Parent?.ToString() ?? "null"}";
+            }
+            #endif
         }
         
         private readonly Queue<LinkedValidator> m_Pool = new ();
@@ -160,11 +171,25 @@ namespace Metamatic
         {
             var newValidator = m_Pool.Count > 0 ? m_Pool.Dequeue() : new LinkedValidator();
             newValidator.Init(m_Current, validator);
+            #if DEBUG
+            if (debug)
+            {
+                Debug.Log($"[VALIDATOR] Add new validator {newValidator?.ToString()} and set as children of {m_Current?.ToString()} (Parent: {m_Current?.Parent?.ToString()}, Children: {m_Current?.Child?.ToString()})");
+            }
+            
+            #endif
             m_Current = newValidator;
+            
             
             return new DisposableAction(() =>
             {
-                m_Current = newValidator.Parent;
+                #if DEBUG
+                if (debug)
+                {
+                    Debug.Log($"[VALIDATOR] Dispose validator {newValidator.ToString()} (Parent: {newValidator.Parent?.ToString()}, Children: {newValidator.Child?.ToString()})");
+                }
+                #endif
+                m_Current = newValidator.Child ?? newValidator.Parent;
                 newValidator.Release();
                 // TODO: Consider adding a limit to the pool size
                 m_Pool.Enqueue(newValidator);
@@ -189,5 +214,18 @@ namespace Metamatic
             m_Current?.Release();
             m_Current = null;
         }
+        
+        #if DEBUG
+        public override string ToString()
+        {
+            return m_Current?.ToString() ?? "Empty";
+        }
+        
+        private void LogCurrentThread(string methodName)
+        {
+            var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            Debug.Log($"[VALIDATOR] Method: {methodName}, Thread ID: {threadId}");
+        }
+        #endif
     }
 }
