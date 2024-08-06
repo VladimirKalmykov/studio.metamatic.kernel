@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
+using Metamatic.DevTools;
 using UnityEngine;
 
 namespace Metamatic
@@ -214,8 +215,7 @@ namespace Metamatic
         /// </summary>
         public CancellationToken internalCancellationToken => m_InternalCancellationTokenSource.Token;
 
-        private UniTask task => UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource.Task,
-            m_TransitionToNextStateCompletionSource.Task);
+        private UniTask task => UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource?.Task ?? UniTask.CompletedTask, m_TransitionToNextStateCompletionSource?.Task ?? UniTask.CompletedTask);
 
         private void Reset(TState nextState, TState nextPrevState = default,
             CancellationToken externalCancellationToken = default)
@@ -257,9 +257,22 @@ namespace Metamatic
         /// </summary>
         /// <param name="validator"></param>
         /// <returns></returns>
-        public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator)
+        public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator
+            #if DEBUG
+            ,
+            string debugId = ""
+            #endif
+        )
         {
+            #if DEBUG
+            var dispose = m_NextStateValidator.Add(validator);
+            return new DisposableAction(() =>
+            {
+                dispose.Dispose();
+            });
+            #else
             return m_NextStateValidator.Add(validator);
+            #endif
         }
 
         /// <summary>
@@ -483,11 +496,14 @@ namespace Metamatic
             DebugOnTransitionStatusChanged?.Invoke(status);
         }
 
-        public DisposableAction SubscribeTransitionStatusChanged(Action<TransitionStatus> onTransitionStatusChanged)
+        public DisposableAction Debug_SubscribeTransitionStatusChanged(Action<TransitionStatus> onTransitionStatusChanged)
         {
             DebugOnTransitionStatusChanged += onTransitionStatusChanged;
             return new DisposableAction(() => DebugOnTransitionStatusChanged -= onTransitionStatusChanged);
         }
+        
+        private DisposableAction m_Debug_UILoggerDisposable;
+        
 #endif
         /// <summary>
         /// 
@@ -506,6 +522,14 @@ namespace Metamatic
             this.m_SettingDebug = debug;
             this.currentState = defaultState;
             this.m_StateIsDisposable = typeof(IDisposable).IsAssignableFrom(typeof(TState));
+            
+            #if DEBUG
+            if (m_SettingDebug)
+            {
+                m_NextStateValidator.debug = true;
+                m_Debug_UILoggerDisposable = UILog.Add("Async state machine", "Validator", () => m_NextStateValidator.ToString());
+            }
+            #endif
         }
 
         ~AsyncStateMachine()
@@ -894,6 +918,9 @@ namespace Metamatic
 
         private void Dispose(bool isAsync)
         {
+            #if DEBUG
+            m_Debug_UILoggerDisposable.Dispose();
+            #endif
             m_InternalCancellationTokenSource.Cancel();
             m_InternalCancellationTokenSource.Dispose();
             

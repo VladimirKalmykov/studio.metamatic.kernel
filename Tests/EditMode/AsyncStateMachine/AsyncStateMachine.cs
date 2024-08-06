@@ -41,7 +41,7 @@ namespace Metamatic.Tests
                     cancelled = true;
                 }
             });
-            using var transitionStatusListener = stateMachine.SubscribeTransitionStatusChanged(status =>
+            using var transitionStatusListener = stateMachine.Debug_SubscribeTransitionStatusChanged(status =>
             {
                 actualStatus.Add(status);
             });
@@ -78,7 +78,7 @@ namespace Metamatic.Tests
                     // ignored
                 }
             });
-            using var transitionStatusListener = stateMachine.SubscribeTransitionStatusChanged(status =>
+            using var transitionStatusListener = stateMachine.Debug_SubscribeTransitionStatusChanged(status =>
             {
                 actualStatus.Add(status);
             });
@@ -125,7 +125,7 @@ namespace Metamatic.Tests
                     transitionHistory.Add((transition.prevState, transition.state, transition.nextState));
                 }
             });
-            using var transitionStatusListener = stateMachine.SubscribeTransitionStatusChanged(status =>
+            using var transitionStatusListener = stateMachine.Debug_SubscribeTransitionStatusChanged(status =>
             {
                 actualStatus.Add(status);
             });
@@ -169,7 +169,7 @@ namespace Metamatic.Tests
                     transitionHistory.Add((transition.prevState, transition.state, transition.nextState));
                 }
             });
-            using var transitionStatusListener = stateMachine.SubscribeTransitionStatusChanged(status =>
+            using var transitionStatusListener = stateMachine.Debug_SubscribeTransitionStatusChanged(status =>
             {
                 actualStatus.Add(status);
             });
@@ -214,7 +214,7 @@ namespace Metamatic.Tests
                     transitionHistory.Add((transition.prevState, transition.state, transition.nextState));
                 }
             });
-            using var transitionStatusListener = stateMachine.SubscribeTransitionStatusChanged(status =>
+            using var transitionStatusListener = stateMachine.Debug_SubscribeTransitionStatusChanged(status =>
             {
                 actualStatus.Add(status);
             });
@@ -261,7 +261,7 @@ namespace Metamatic.Tests
                         transitionHistory.Add((transition.prevState, transition.state, transition.nextState));
                     }
                 });
-                using var transitionStatusListener = stateMachine.SubscribeTransitionStatusChanged(status =>
+                using var transitionStatusListener = stateMachine.Debug_SubscribeTransitionStatusChanged(status =>
                 {
                     actualStatus.Add(status);
                 });
