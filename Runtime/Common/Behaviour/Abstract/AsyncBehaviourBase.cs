@@ -10,7 +10,7 @@ namespace Metamatic
         private CancellationTokenSource m_DisableCancellationTokenSource = new();
         private bool m_IsDisabled;
         public delegate UniTask RunAsyncHandler(CancellationToken cancellationToken);
-        public CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource?.Token ?? CancellationToken.None;
+        internal CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource?.Token ?? CancellationToken.None;
         
         private event Action OnValidateEvent;
         private event Action OnDrawGizmosEvent;

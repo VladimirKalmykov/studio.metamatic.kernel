@@ -169,6 +169,11 @@ namespace Metamatic
                 taskCompletionSource.TrySetResult();
             }
         }
+        
+        public static implicit operator DisposableAction(MicroOperation operation)
+        {
+            return new DisposableAction(operation.Dispose);
+        }
     }
     
     /// <summary>

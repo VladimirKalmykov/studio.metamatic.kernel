@@ -13,7 +13,7 @@ namespace Metamatic
         public bool isAsyncDisposed => !m_IsSyncDisposed;
         private bool m_Disposed;
         private CancellationTokenSource m_DisposeCancellationTokenSource;
-        public CancellationToken cancellationToken => m_DisposeCancellationTokenSource.Token;
+        public CancellationToken disposeCancellationToken => m_DisposeCancellationTokenSource.Token;
         private readonly UniTaskCompletionSource m_TaskCompletionSource = new();
         private bool m_IsRunning;
         ~MicroBehaviour()

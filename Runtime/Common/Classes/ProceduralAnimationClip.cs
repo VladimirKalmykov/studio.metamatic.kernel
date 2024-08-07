@@ -57,7 +57,7 @@ namespace Metamatic
         public UniTask<float> WhenSignal(TSignal signalName, CancellationToken cancellationToken, bool waitForNew = false)
         {
             var taskCompletionSource = new UniTaskCompletionSource<float>();
-            var localCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.cancellationToken);
+            var localCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.disposeCancellationToken);
             CancellationTokenRegistration registration = default;
             var resolved = false;
             var disposable = SubscribeSignal(signalName, timestamp =>
