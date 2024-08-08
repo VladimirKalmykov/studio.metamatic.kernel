@@ -50,7 +50,7 @@ namespace Metamatic
             lockers.TryRemove(uri, out var _);
         }
 
-        private class ReleaseLock : IDisposable, IMAsyncDisposable
+        private class ReleaseLock : IDisposable, IUniTaskAsyncDisposable
         {
             private readonly Func<Task> _releaseFunc;
             private readonly string _uri;
@@ -70,7 +70,8 @@ namespace Metamatic
             }
 
             public event Action OnAsyncDisposeCompleted;
-            async UniTask IMAsyncDisposable.DisposeAsync()
+
+            public async UniTask DisposeAsync()
             {
                 if (!_disposed)
                 {

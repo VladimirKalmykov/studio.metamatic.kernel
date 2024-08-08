@@ -99,7 +99,7 @@ namespace Metamatic
     }
     
     
-    public class DisposableAsyncOperationT<T>: IDisposable, IAsyncDisposable
+    public class DisposableAsyncOperationT<T>: IDisposable, IUniTaskAsyncDisposable
     {
         public delegate UniTask<T> DisposableProcedure(CancellationToken cancellationToken);
 
@@ -182,11 +182,11 @@ namespace Metamatic
             OnDispose?.Invoke();
         }
 
-        public ValueTask DisposeAsync()
+        public UniTask DisposeAsync()
         {
             m_CancellationTokenSource.Cancel();
             OnDispose?.Invoke();
-            return new ValueTask();
+            return UniTask.CompletedTask;
         }
     }
     

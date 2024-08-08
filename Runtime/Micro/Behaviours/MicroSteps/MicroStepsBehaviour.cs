@@ -5,7 +5,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public class MicroStepsBehaviour : IDisposable, IAsyncDisposable
+    public class MicroStepsBehaviour : IDisposable, IUniTaskAsyncDisposable
     {
         public delegate UniTask<bool> NextStepAction();
 
@@ -124,7 +124,7 @@ namespace Metamatic
             GC.SuppressFinalize(this);
         }
 
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             Dispose(false, true);
             await m_CompletionSource.Task;

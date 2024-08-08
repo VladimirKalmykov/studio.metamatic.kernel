@@ -5,7 +5,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public class ExchangeBehaviour : IDisposable, IAsyncDisposable
+    public class ExchangeBehaviour : IDisposable, IUniTaskAsyncDisposable
     {
         public class Exchanger
         {
@@ -325,7 +325,7 @@ namespace Metamatic
             GC.SuppressFinalize(this);
         }
 
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             Dispose(false, true);
             await m_GeneralCompletionSource.Task;

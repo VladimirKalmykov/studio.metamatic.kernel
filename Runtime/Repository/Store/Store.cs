@@ -536,7 +536,7 @@ namespace Metamatic
            });
         }
 
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             if (isDisposed)
             {

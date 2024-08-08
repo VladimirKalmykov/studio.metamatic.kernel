@@ -69,7 +69,7 @@ namespace Metamatic
             Dispose();
         }
         private bool m_Disposed;
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             if (m_Disposed)
             {
@@ -188,7 +188,7 @@ namespace Metamatic
         
     }
     
-    public class MicroPromise<T> : IDisposable, IAsyncDisposable
+    public class MicroPromise<T> : IDisposable, IUniTaskAsyncDisposable
     {
         #region Static
         private static Queue<MicroPromise<T>> _Pool = new();
@@ -243,7 +243,7 @@ namespace Metamatic
             Dispose();
         }
         private bool m_Disposed;
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             if (m_Disposed)
             {

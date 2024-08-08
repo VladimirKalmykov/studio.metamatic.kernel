@@ -11,7 +11,7 @@ namespace Metamatic
     /// Similar to MicroOperation, but with one parameter
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class MicroOperation<T> : IDisposable, IAsyncDisposable
+    public class MicroOperation<T> : IDisposable, IUniTaskAsyncDisposable
     {
         public delegate UniTask AsyncAction(T value, CancellationToken cancellationToken);
         public delegate UniTask AsyncOperationAction(T value, MicroOperation<T> operation);
@@ -65,7 +65,7 @@ namespace Metamatic
             Dispose();
         }
         private bool m_Disposed;
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             if (m_Disposed)
             {

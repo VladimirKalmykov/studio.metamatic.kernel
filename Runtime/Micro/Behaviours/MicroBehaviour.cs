@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class MicroBehaviour: IAsyncDisposable, IDisposable
+    public abstract class MicroBehaviour: IUniTaskAsyncDisposable, IDisposable
     {
         private bool m_IsSyncDisposed;
         public bool isSyncDisposed => m_IsSyncDisposed;
@@ -20,7 +20,7 @@ namespace Metamatic
         {
             Dispose(true);
         }
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             if (m_Disposed)
             {

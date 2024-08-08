@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public sealed class AsyncStateMachine<TState> : IDisposable, IAsyncDisposable
+    public sealed class AsyncStateMachine<TState> : IDisposable, IUniTaskAsyncDisposable
     {
         public enum TransitionStatus
         {
@@ -953,7 +953,7 @@ namespace Metamatic
             Dispose(false);
         }
 
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             Dispose(true);
             Abort();

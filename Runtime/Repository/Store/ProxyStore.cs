@@ -151,7 +151,7 @@ namespace Metamatic
             GC.SuppressFinalize(this);
         }
 
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             if (m_Disposed) return;
             Dispose(false, true);

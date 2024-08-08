@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class MicroOperation: IDisposable, IAsyncDisposable
+    public class MicroOperation: IDisposable, IUniTaskAsyncDisposable
     {
         public delegate UniTask AsyncAction(CancellationToken cancellationToken);
         public delegate UniTask AsyncOperationAction(MicroOperation operation);
@@ -61,7 +61,7 @@ namespace Metamatic
             Dispose();
         }
         private bool m_Disposed;
-        public async ValueTask DisposeAsync()
+        public async UniTask DisposeAsync()
         {
             if (m_Disposed)
             {

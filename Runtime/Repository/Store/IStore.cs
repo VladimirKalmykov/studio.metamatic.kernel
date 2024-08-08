@@ -8,7 +8,7 @@ namespace Metamatic
     {
         public DisposableAction SubscribeDispose(Action action);
     }
-    public interface IStore<T>: IAsyncDisposable
+    public interface IStore<T>: IUniTaskAsyncDisposable
     {
         public delegate T Modifier(T value);
         public delegate ref T ModifierRef(ref T value);
