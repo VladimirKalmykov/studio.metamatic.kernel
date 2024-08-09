@@ -72,6 +72,7 @@ public class RepositorySettingsProvider : SettingsProvider
     {
         Debug.Log("Diactivate RepositorySettingsProvider");
         m_ActivationCancellationTokenSource?.Cancel();
+        m_ActivationCancellationTokenSource?.Dispose();
     }
     
     private VisualElement CreateSettingsGUI()

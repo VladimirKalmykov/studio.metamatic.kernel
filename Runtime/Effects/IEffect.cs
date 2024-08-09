@@ -41,6 +41,7 @@ namespace Metamatic.Effects
             {
                 cycle.SetResult(false);
                 cancellationTokenSource?.Cancel();
+                cancellationTokenSource?.Dispose();
             }
             
             public EffectCancellableOperationAwaiter GetAwaiter()
