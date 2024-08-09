@@ -47,7 +47,7 @@ namespace Metamatic
             }
             m_IsSyncDisposed = isSync;
             m_Disposed = true;
-            m_DisposeCancellationTokenSource?.Cancel();
+            m_DisposeCancellationTokenSource?.CancelAndDispose();
             GC.SuppressFinalize(this);
         }
         

@@ -25,6 +25,7 @@ namespace Metamatic
         {
             base.OnDisable();
             m_DisableCancellationTokenSource.Cancel();
+            m_DisableCancellationTokenSource.Dispose();
         }
 
         protected override void RunAsync(CancellationToken cancellationToken)

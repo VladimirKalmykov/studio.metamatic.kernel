@@ -29,11 +29,5 @@ namespace Metamatic {
                 Object.Destroy(gameObject);
             }
         }
-
-        // public static CancellationTokenSource CreateCancellationTokenSource(this MonoBehaviour gameObject, CancellationToken parentCancellationToken)
-        // {
-        //     var cancellationTokenSource = new CancellationTokenSource();
-        //     
-        // }
     }
 }

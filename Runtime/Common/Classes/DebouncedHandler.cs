@@ -15,8 +15,7 @@ namespace Metamatic
         
         public void Handle(T value)
         {
-            m_CancellationTokenSource?.Cancel();
-            m_CancellationTokenSource = new System.Threading.CancellationTokenSource();
+            m_CancellationTokenSource = MiscUtils.Renew(m_CancellationTokenSource);
             AsyncUtils.ExecuteDelayed(() =>
             {
                 m_Action(value);
@@ -27,6 +26,7 @@ namespace Metamatic
         public void Dispose()
         {
             m_CancellationTokenSource?.Cancel();
+            m_CancellationTokenSource?.Dispose();
         }
     }
     
@@ -43,8 +43,7 @@ namespace Metamatic
         
         public void Handle()
         {
-            m_CancellationTokenSource?.Cancel();
-            m_CancellationTokenSource = new System.Threading.CancellationTokenSource();
+            m_CancellationTokenSource = MiscUtils.Renew(m_CancellationTokenSource);
             AsyncUtils.ExecuteDelayed(() =>
             {
                 m_Action();
@@ -54,6 +53,7 @@ namespace Metamatic
         public void Dispose()
         {
             m_CancellationTokenSource?.Cancel();
+            m_CancellationTokenSource?.Dispose();
         }
     }
     
@@ -70,7 +70,7 @@ namespace Metamatic
         
         public void Handle(T1 value1, T2 value2)
         {
-            m_CancellationTokenSource?.Cancel();
+            m_CancellationTokenSource = MiscUtils.Renew(m_CancellationTokenSource);
             m_CancellationTokenSource = new System.Threading.CancellationTokenSource();
             AsyncUtils.ExecuteDelayed(() =>
             {
@@ -81,6 +81,7 @@ namespace Metamatic
         public void Dispose()
         {
             m_CancellationTokenSource?.Cancel();
+            m_CancellationTokenSource?.Dispose();
         }
     }
 }

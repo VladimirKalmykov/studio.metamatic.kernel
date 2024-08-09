@@ -37,5 +37,18 @@ namespace Metamatic
             cancellationToken.Register(s => ((TaskCompletionSource<bool>)s).SetResult(true), tcs);
             return tcs.Task;
         }
+        
+        public static void CancelAndDispose(this CancellationTokenSource cts)
+        {
+            cts?.Cancel();
+            cts?.Dispose();
+        }
+        
+        public static CancellationTokenSource Renew(this CancellationTokenSource cts)
+        {
+            cts?.Cancel();
+            cts?.Dispose();
+            return new CancellationTokenSource();
+        }
     }
 }

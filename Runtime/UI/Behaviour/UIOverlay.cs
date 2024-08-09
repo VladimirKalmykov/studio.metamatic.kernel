@@ -41,7 +41,9 @@ namespace Metamatic.UI
         private void OnDestroy()
         {
             m_RequireCancellationTokenSource?.Cancel();
+            m_RequireCancellationTokenSource?.Dispose();
             m_ReleaseCancellationTokenSource?.Cancel();
+            m_RequireCancellationTokenSource?.Dispose();
             if (_Instance.value == this)
             {
                 _Instance.value = null;

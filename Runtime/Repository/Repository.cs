@@ -391,6 +391,7 @@ namespace Metamatic
             if (m_Disposed) return;
             m_Disposed = true;
             m_DisposeCancellationTokenSource.Cancel();
+            m_DisposeCancellationTokenSource.Dispose();
             GC.SuppressFinalize(this);
         }
 

@@ -62,7 +62,7 @@ namespace Metamatic
                 return state.Clip == currentClip;
             }, cancellationToken: cancellationTokenSource.Token);
             await UniTask.WhenAny(waitClipChanged, state.WhenEnds(cancellationTokenSource.Token, debugID));
-            cancellationTokenSource.Cancel();
+            cancellationTokenSource.CancelAndDispose();
         }
     }
 }

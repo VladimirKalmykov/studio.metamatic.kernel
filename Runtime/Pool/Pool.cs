@@ -119,8 +119,14 @@ namespace Metamatic
 
         public virtual void Dispose()
         {
-            if (m_DisposeCancellationTokenSource.IsCancellationRequested) return;
+            #if DEBUG
+            if (m_DisposeCancellationTokenSource.IsCancellationRequested)
+            {
+                throw new ObjectDisposedException(nameof(Pool));
+            }
+            #endif
             m_DisposeCancellationTokenSource.Cancel();
+            m_DisposeCancellationTokenSource.Dispose();
             GC.SuppressFinalize(this);
         }
         

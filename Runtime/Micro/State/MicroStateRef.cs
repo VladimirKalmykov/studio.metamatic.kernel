@@ -88,6 +88,7 @@ namespace Metamatic
         public void Dispose()
         {
             m_DisposeCancellationTokenSource?.Cancel();
+            m_DisposeCancellationTokenSource?.Dispose();
             GC.SuppressFinalize(this);
         }
     }

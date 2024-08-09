@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Metamatic.DevTools;
 
 namespace Metamatic
@@ -1120,6 +1121,20 @@ namespace Metamatic
             });
             #endif
             return hit;
+        }
+        
+        public static CancellationTokenSource Renew(CancellationTokenSource cts)
+        {
+            cts?.Cancel();
+            cts?.Dispose();
+            return new CancellationTokenSource();
+        }
+        
+        public static void Renew(ref CancellationTokenSource cts)
+        {
+            cts?.Cancel();
+            cts?.Dispose();
+            cts = new CancellationTokenSource();
         }
     }
 }

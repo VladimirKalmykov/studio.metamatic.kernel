@@ -100,7 +100,7 @@ namespace Metamatic.Actions
                 // Но явно использовать тут await handlers не получится, так как это не async метод
                 // Поэтому мне нужно каким то образом дождаться handlers, но и не превращать Subscribe в async метод
                 Subscribe_Deferred(handlers, handler, cancellationTokenSource.Token);
-                return new DisposableAction(() => cancellationTokenSource.Cancel());
+                return new DisposableAction(() => cancellationTokenSource.CancelAndDispose());
             }
             handlers.Add(handler);
 

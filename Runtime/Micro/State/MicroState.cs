@@ -230,6 +230,7 @@ namespace Metamatic
         public override void Dispose()
         {
             m_DisposeCancellationTokenSource?.Cancel();
+            m_DisposeCancellationTokenSource?.Dispose();
             OnChange = null;
         }
     }

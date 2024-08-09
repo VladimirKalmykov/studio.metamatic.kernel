@@ -113,6 +113,7 @@ namespace Metamatic
             {
                 m_Task = null;
                 m_IsSyncDisposed = false;
+                m_DisposeCancellationTokenSource?.Dispose();
                 m_DisposeCancellationTokenSource = null;
                 if (_Pool.Count < 100) {
                     /* Reset before enqueuing */

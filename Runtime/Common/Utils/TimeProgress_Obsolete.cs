@@ -44,6 +44,7 @@ namespace Metamatic
             m_Timestamp = DateTime.Now;
         }
     }
+    [Obsolete("This class is deprecated, use UniTask.Delay instead", true)]
     public class TimeProgress {
         enum TechnicalCancellationPurpose {
             Replay
@@ -211,7 +212,7 @@ namespace Metamatic
         }
         
         private async void StartTimeout() {
-            cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource = MiscUtils.Renew(cancellationTokenSource);
             bool cancelled = false;
             float elapsed = GetElapsedMilliseconds();
 
@@ -240,6 +241,7 @@ namespace Metamatic
             } finally {
                 isActive = false;
             }
+            cancellationTokenSource?.Dispose();
             cancellationTokenSource = null;
             if (m_TechnicalCancellation) {
                 m_TechnicalCancellation = false;

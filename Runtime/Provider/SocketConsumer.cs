@@ -21,6 +21,7 @@ namespace Metamatic
         {
             base.OnDisable();
             m_DisableCancellationTokenSource.Cancel();
+            m_DisableCancellationTokenSource.Dispose();
         }
         
         private void HandleProviderChange(SocketProvider<TSocketScheme> provider, CancellationToken cancellationToken)

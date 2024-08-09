@@ -132,6 +132,7 @@ namespace Metamatic
                 m_TextRow.value.Dispose();
                 m_TextRow.Dispose();
                 m_LifecycleTokenSource.Cancel();
+                m_LifecycleTokenSource.Dispose();
                 GC.SuppressFinalize(this);
             }
         }
@@ -214,6 +215,7 @@ namespace Metamatic
             Service.SubscribeService<TerminalService>(service =>
             {
                 cancellationTokenSource?.Cancel();
+                cancellationTokenSource?.Dispose();
                 cancellationTokenSource = new CancellationTokenSource();
                 m_CachedUITerminal.value = service.terminal;
                 service.terminal.OnCommand += HandleCommand;
