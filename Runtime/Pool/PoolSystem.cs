@@ -1,7 +1,10 @@
+using System;
+
 namespace Metamatic {
     using System.Collections.Generic;
     using UnityEngine;
 
+    [Obsolete("Use Pool class instead")]
     public class PoolSystem : MonoBehaviour
     {
         [System.Serializable]

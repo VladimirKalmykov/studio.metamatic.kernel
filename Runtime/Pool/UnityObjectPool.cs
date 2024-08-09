@@ -7,132 +7,10 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class Pool: IPool
-    {
-        #region Static
-        private static Dictionary<object, Pool> m_Pools = new ();
-#if DEBUG
-        public string debugUniqueId { get; protected set;  }
-#endif
-
-        /// <summary>
-        /// Get a pool for the specified component prefab. Dispose the pool when it is no longer needed (required).
-        /// </summary>
-        /// <param name="obj"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static IUnityObjectPool<T> GetComponentPool<T>(T obj) where T: Component
-        {
-            if (obj == null) throw new ArgumentNullException(nameof(obj));
-            if (m_Pools.TryGetValue(obj, out var pool))
-            {
-                return new PoolReserve<T>(pool as OrganicPool<T>);
-            }
-            else
-            {
-                pool = new OrganicPool<T>(
-                    onCreate: () => UnityEngine.Object.Instantiate(obj),
-                    onRelease: (instance) => instance.gameObject.SetActive(false),
-                    onGet: (instance) => instance.gameObject.SetActive(true),
-                    onDestroy: (instance) => UnityEngine.Object.Destroy(instance.gameObject)
-                );
-                pool.OnReadyToRelease += () =>
-                {
-                    m_Pools.Remove(obj);
-                    pool.Dispose();
-                };
-                m_Pools.Add(obj, pool);
-                return new PoolReserve<T>(pool as OrganicPool<T>);
-            }
-        }
-        
-        public static IUnityObjectPool<GameObject> GetGameObjectPool(GameObject obj)
-        {
-            if (m_Pools.TryGetValue(obj, out var pool))
-            {
-                return new PoolReserve<GameObject>(pool as OrganicPool<GameObject>);
-            }
-            else
-            {
-                pool = new OrganicPool<GameObject>(() => UnityEngine.Object.Instantiate(obj), onDestroy: (instance) => UnityEngine.Object.Destroy(instance));
-                pool.OnReadyToRelease += () =>
-                {
-                    m_Pools.Remove(obj);
-                    pool.Dispose();
-                };
-                m_Pools.Add(obj, pool);
-                return new PoolReserve<GameObject>(pool as OrganicPool<GameObject>);
-            }
-        }
-        
-        public static IUnityObjectPool<GameObject> GetGameObjectPool(Func<GameObject> onCreate)
-        {
-            if (m_Pools.TryGetValue(onCreate, out var pool))
-            {
-                return new PoolReserve<GameObject>(pool as OrganicPool<GameObject>);
-            }
-            else
-            {
-                pool = new OrganicPool<GameObject>(onCreate, onDestroy: (instance) => UnityEngine.Object.Destroy(instance));
-                pool.OnReadyToRelease += () =>
-                {
-                    m_Pools.Remove(onCreate);
-                    pool.Dispose();
-                };
-                m_Pools.Add(onCreate, pool);
-                return new PoolReserve<GameObject>(pool as OrganicPool<GameObject>);
-            }
-        }
-        #endregion
-        
-        protected int outOfPoolObjectsCount = 0;
-        protected event Action OnAllObjectsReleased;
-        public event Action OnReadyToRelease;
-        protected readonly CancellationTokenSource m_DisposeCancellationTokenSource = new ();
-        public CancellationToken disposeCancellationToken => m_DisposeCancellationTokenSource.Token;
-        /// <summary>
-        /// Wait until all created objects are released. It uses simple math to calculate spawned and released objects.
-        /// </summary>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public UniTask WhenAllReleased(CancellationToken cancellationToken)
-        {
-            var tcs = new UniTaskCompletionSource();
-            Action handler = null;
-            CancellationTokenRegistration registration = default;
-            handler = () =>
-            {
-                registration.Dispose();
-                OnAllObjectsReleased -= handler;
-                tcs.TrySetResult();
-            };
-            OnAllObjectsReleased += handler;
-            registration = cancellationToken.Register(() =>
-            {
-                OnAllObjectsReleased -= handler;
-                tcs.TrySetCanceled();
-            });
-            return tcs.Task;
-        }
-
-        public virtual void Dispose()
-        {
-            if (m_DisposeCancellationTokenSource.IsCancellationRequested) return;
-            m_DisposeCancellationTokenSource.Cancel();
-            GC.SuppressFinalize(this);
-        }
-        
-        protected void ReadyToRelease()
-        {
-            OnReadyToRelease?.Invoke();
-        }
-        
-        protected void AllObjectsReleased()
-        {
-            OnAllObjectsReleased?.Invoke();
-        }
-    }
-    
+    /// <summary>
+    /// Pool for unity objects
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class UnityObjectPool<T>: Pool, IUnityObjectPool<T>
     where T: UnityEngine.Object
     {
@@ -142,7 +20,9 @@ namespace Metamatic
         private readonly Action<T> m_OnGet;
         private readonly Action<T> m_OnRelease;
         protected readonly Action<T> onDestroy;
-        protected readonly int capacity;
+        private int m_DefaultCapacity;
+        protected int capacity { get; private set; }
+        private Dictionary<string, int> m_CapacityOverrides = new ();
         
         public UnityObjectPool(Func<T> onCreate, Action<T> onGet = null, Action<T> onRelease = null, Action<T> onDestroy = null, int capacity = 1)
         {
@@ -151,10 +31,47 @@ namespace Metamatic
             m_OnGet = onGet;
             m_OnRelease = onRelease;
             this.onDestroy = onDestroy ?? DefaultDestroy;
-            this.capacity = capacity;
+            this.m_DefaultCapacity = capacity;
             #if DEBUG
             debugUniqueId = Guid.NewGuid().ToString();
             #endif
+        }
+        
+        /// <summary>
+        /// Method allows temporarily override the capacity of the pool. New value associated with the specific unique id and can be released by calling ReleaseTemporaryConfig.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="overridingCapacity"></param>
+        public void SetTemporaryCapacity(string id, int overridingCapacity)
+        {
+            m_CapacityOverrides[id] = overridingCapacity;
+            UpdateCapacity(m_CapacityOverrides.Values.Sum() + m_DefaultCapacity);
+        }
+        
+        /// <summary>
+        /// Release all configurations associated with the specific unique id. This method is used in pull reservation and provide ability to release temporary configurations created by SetCapacity.
+        /// </summary>
+        /// <param name="id"></param>
+        protected void ReleaseTemporaryConfig(string id)
+        {
+            if (m_CapacityOverrides.ContainsKey(id))
+            {
+                m_CapacityOverrides.Remove(id);
+            }
+
+            UpdateCapacity(m_CapacityOverrides.Values.Sum() + m_DefaultCapacity);
+        }
+        
+        private void UpdateCapacity(int newCapacity)
+        {
+            this.capacity = newCapacity;
+            /* Create new objects to fill the pool with new capacity */
+            while (objectsInPool.Count < newCapacity)
+            {
+                T obj = m_OnCreate();
+                allProducedObjects.AddLast(obj);
+                objectsInPool.Push(obj);
+            }
         }
         
         public virtual T Get()
@@ -176,6 +93,11 @@ namespace Metamatic
                 m_OnGet?.Invoke(obj);
                 return obj;
             }
+        }
+
+        public void SetCapacity(int capacity)
+        {
+            this.m_DefaultCapacity = capacity;
         }
 
         private List<T> m_ReleaseHistory = new ();
@@ -234,141 +156,6 @@ namespace Metamatic
                 allProducedObjects.Remove(obj);
                 onDestroy?.Invoke(obj);
             }
-        }
-    }
-    
-    public class OrganicPool<T>: UnityObjectPool<T> where T: UnityEngine.Object {
-        
-        private CancellationTokenSource m_LifetimeCancellationTokenSource = new ();
-        private float m_Lifetime;
-        private int m_InquiryCount;
-        private int m_CountInPoolAtCountdownStart = 0;
-        private bool m_IsCountingDown = false;
-        
-        internal OrganicPool(Func<T> onCreate, Action<T> onGet = null, Action<T> onRelease = null, Action<T> onDestroy = null, int capacity = 1, float lifetime = 30f) : base(onCreate, onGet, onRelease, onDestroy, capacity)
-        {   
-            m_Lifetime = lifetime;
-        }
-        
-        public DisposableAction Inquire()
-        {
-            m_InquiryCount++;
-            bool disposed = false;
-            return new DisposableAction(() =>
-            {
-                if (disposed) return;
-                disposed = true;
-                m_InquiryCount--;
-                if (m_InquiryCount == 0)
-                {
-                    m_LifetimeCancellationTokenSource.Cancel();
-                    ReadyToRelease();
-                }
-            });
-        }
-        
-        public override T Get()
-        {
-            m_CountInPoolAtCountdownStart--;
-            T obj = base.Get();
-            return obj;
-        }
-        
-        public override void Release(T obj)
-        {
-            m_CountInPoolAtCountdownStart++;
-            base.Release(obj);
-            /* Start the lifetime countdown */
-            StartCountdown();
-        }
-        
-        private async void StartCountdown()
-        {
-            if (m_IsCountingDown) return;
-            m_CountInPoolAtCountdownStart = objectsInPool.Count;
-            m_IsCountingDown = true;
-            var shouldRestart = false;
-            try
-            {
-                await UniTask.Delay(TimeSpan.FromSeconds(m_Lifetime),
-                    cancellationToken: m_LifetimeCancellationTokenSource.Token);
-                if (objectsInPool.Count > capacity)
-                {
-                    if (m_CountInPoolAtCountdownStart <= 0) return;
-                    var countToDelete = Mathf.Min(objectsInPool.Count - capacity, m_CountInPoolAtCountdownStart);
-                    /* Remove countToDelete objects from the pool */
-                    var countToDeleteClamped = Mathf.Clamp(countToDelete, 0, objectsInPool.Count - capacity);
-                    for (int i = 0; i < countToDeleteClamped; i++)
-                    {
-                        T obj = objectsInPool.Pop();
-                        Destroy(obj);
-                    }
-
-                    if (objectsInPool.Count > capacity)
-                    {
-                        /* Restart the countdown */
-                        shouldRestart = true;
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                /* Ignore */
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Countdown error: {e.Message}");
-                Debug.LogError(e);
-            }
-            finally
-            {
-                m_IsCountingDown = false;
-                if (shouldRestart)
-                {
-                    StartCountdown();
-                }
-            }
-        }
-    }
-
-    public readonly struct PoolReserve<T> : IUnityObjectPool<T>
-        where T : UnityEngine.Object
-    {
-        private readonly OrganicPool<T> m_Pool;
-        private readonly IDisposable m_Reserve;
-        public PoolReserve(OrganicPool<T> pool)
-        {
-            m_Pool = pool;
-            m_Reserve = m_Pool.Inquire();
-        }
-        
-        #if DEBUG
-        public string debugUniqueId => m_Pool.debugUniqueId;
-        #endif
-        public CancellationToken disposeCancellationToken => m_Pool.disposeCancellationToken;
-        public UniTask WhenAllReleased(CancellationToken cancellationToken)
-        {
-            return m_Pool.WhenAllReleased(cancellationToken);
-        }
-
-        public T Get()
-        {
-            return m_Pool.Get();
-        }
-
-        public void Release(T obj)
-        {
-            m_Pool.Release(obj);
-        }
-
-        public void TryRelease(T obj)
-        {
-            m_Pool.TryRelease(obj);
-        }
-
-        public void Dispose()
-        {
-            m_Reserve.Dispose();
         }
     }
 }

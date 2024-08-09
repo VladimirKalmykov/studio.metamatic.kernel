@@ -29,7 +29,9 @@ namespace Metamatic
     public interface IUnityObjectPool<T> : IPool where T : UnityEngine.Object
     {
         T Get();
+        void SetCapacity(int capacity);
         void Release(T obj);
         void TryRelease(T obj);
+        
     }
 }

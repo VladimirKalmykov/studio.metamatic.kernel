@@ -6,6 +6,7 @@ using Object = UnityEngine.Object;
 
 namespace Metamatic
 {
+    [Obsolete("Use provided by Pool class static methods to create a pool instead")]
     public class BehaviourPrefabPool<T>: IObjectPool<T>, IDisposable
         where T: MonoBehaviour
     {
