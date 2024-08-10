@@ -40,7 +40,7 @@ namespace Metamatic
         protected virtual void OnEnable()
         {
             m_IsDisabled = false;
-            RunAsync(componentDisableToken);
+            RunAsync(componentDisableToken).Forget();
         }
 
         protected virtual void OnDisable()
@@ -56,7 +56,7 @@ namespace Metamatic
             isAboutToDestroy = true;
         }
 
-        protected abstract void RunAsync(CancellationToken cancellationToken);
+        protected abstract UniTaskVoid RunAsync(CancellationToken cancellationToken);
         
         /// <summary>
         /// IDisposable object will be disposed on component disable

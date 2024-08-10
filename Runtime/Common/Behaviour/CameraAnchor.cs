@@ -1,3 +1,5 @@
+using Cysharp.Threading.Tasks;
+
 namespace Metamatic
 {
     using System.Threading;
@@ -9,7 +11,7 @@ namespace Metamatic
         [SerializeField] private Camera m_Camera;
         public Camera camera => m_Camera;
 
-        protected override async void RunAsync(CancellationToken cancellationToken)
+        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
             /* Register camera controller */
             using var registration = Dispatcher.global.Register(this);

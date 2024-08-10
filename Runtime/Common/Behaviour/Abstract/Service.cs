@@ -87,7 +87,7 @@ namespace Metamatic
 
         private bool m_Demanded;
         private UniTaskCompletionSource m_DemandCompletionSource;
-        protected sealed override async void RunAsync(CancellationToken cancellationToken)
+        protected sealed override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
             var type = this.GetType();
             if (_Services.ContainsKey(type))
@@ -171,18 +171,22 @@ namespace Metamatic
             
             if (timeout > 0f)
             {
-                UniTask.Delay(TimeSpan.FromSeconds(timeout), cancellationToken: cancellationToken).ContinueWith(() =>
-                {
-                    if (!task.Status.IsCompleted())
-                    {
-                        _HandleServiceAdded -= handler;
-                        cancellationTokenRegistration.Dispose();
-                        tcs.TrySetException(new TimeoutException($"Resolving service {typeof(T)} timed out"));
-                    }
-                }).Forget();
+                return DelayTimeout(timeout, cancellationToken, task, tcs, handler, cancellationTokenRegistration);
             }
             
             return tcs.Task;
+        }
+        
+        private static async UniTask<T> DelayTimeout<T>(float timeout, CancellationToken cancellationToken, UniTask<T> task, UniTaskCompletionSource<T> tcs, Action<Service> handler, CancellationTokenRegistration cancellationTokenRegistration)
+        {
+            var delayTask = UniTask.Delay(TimeSpan.FromSeconds(timeout), cancellationToken: cancellationToken);
+            var result = await UniTask.WhenAny(task, delayTask);
+            if (result.hasResultLeft)
+            {
+                return result.result;
+            }
+            tcs.TrySetException(new TimeoutException($"Resolving service {typeof(T)} timed out"));
+            throw new TimeoutException($"Resolving service {typeof(T)} timed out");
         }
 
         public static DisposableAction SubscribeService<T>(Action<T> service) where T : Service

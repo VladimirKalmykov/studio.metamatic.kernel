@@ -29,7 +29,7 @@ namespace Metamatic
             Interlocked.Increment(ref locker.count);
             await locker.semaphore.WaitAsync(cancellationToken); // Используем cancellationToken здесь
 
-            return new ReleaseLock(async () =>
+            return new ReleaseLock(() =>
             {
                 if (Interlocked.Decrement(ref locker.count) == 0)
                 {
@@ -52,12 +52,12 @@ namespace Metamatic
 
         private class ReleaseLock : IDisposable, IUniTaskAsyncDisposable
         {
-            private readonly Func<Task> _releaseFunc;
+            private readonly Action _releaseFunc;
             private readonly string _uri;
             private readonly UriLockerManager _manager;
             private bool _disposed;
 
-            public ReleaseLock(Func<Task> releaseFunc, string uri, UriLockerManager manager)
+            public ReleaseLock(Action releaseFunc, string uri, UriLockerManager manager)
             {
                 _releaseFunc = releaseFunc;
                 _uri = uri;
@@ -66,18 +66,19 @@ namespace Metamatic
 
             public void Dispose()
             {
-                _releaseFunc().ConfigureAwait(false).GetAwaiter().GetResult();
+                _releaseFunc();
             }
 
             public event Action OnAsyncDisposeCompleted;
 
-            public async UniTask DisposeAsync()
+            public UniTask DisposeAsync()
             {
                 if (!_disposed)
                 {
                     _disposed = true;
-                    await _releaseFunc();
+                    _releaseFunc();
                 }
+                return UniTask.CompletedTask;
             }
         }
     }

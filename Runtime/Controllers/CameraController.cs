@@ -1,3 +1,5 @@
+using Cysharp.Threading.Tasks;
+
 namespace Metamatic
 {
     using System;
@@ -21,7 +23,7 @@ namespace Metamatic
             }
         }
 
-        protected override async void RunAsync(CancellationToken cancellationToken)
+        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
             camera = GetComponent<Camera>();
             using var announce = Dispatcher.global.Announce(this);

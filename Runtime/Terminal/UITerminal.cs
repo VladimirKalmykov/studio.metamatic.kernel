@@ -1,3 +1,5 @@
+using Cysharp.Threading.Tasks;
+
 namespace Metamatic
 {
     using System;
@@ -83,7 +85,7 @@ namespace Metamatic
         
         public event Action<string> OnCommand;
 
-        protected override async void RunAsync(CancellationToken cancellationToken)
+        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
             /* Subscribe to input press enter event */
             m_InputField.onSubmit.AddListener(OnSubmit);

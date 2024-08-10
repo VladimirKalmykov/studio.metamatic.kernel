@@ -1,3 +1,5 @@
+using Cysharp.Threading.Tasks;
+
 namespace Metamatic
 {
     using System.Threading;
@@ -13,7 +15,7 @@ namespace Metamatic
         private Image m_Image;
 
 
-        protected override async void RunAsync(CancellationToken cancellationToken)
+        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
             m_Image = GetComponent<Image>();
             using var listener =

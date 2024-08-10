@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using TMPro;
 
 namespace Metamatic
@@ -11,7 +12,7 @@ namespace Metamatic
         public string fallbackText;
         private TextMeshProUGUI m_TextMeshProUGUI;
 
-        protected override async void RunAsync(CancellationToken cancellationToken)
+        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
             m_TextMeshProUGUI = GetComponent<TextMeshProUGUI>();
             using var listener = Dispatcher.global.SubscribeVariable<string>(variableName, OnValueChange, fallbackText);

@@ -95,7 +95,7 @@ namespace Metamatic
 
         private bool m_Demanded;
         private UniTaskCompletionSource m_DemandCompletionSource;
-        protected sealed override async void RunAsync(CancellationToken cancellationToken)
+        protected sealed override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
             var type = this.GetType();
             cancellationToken.Register(() =>
