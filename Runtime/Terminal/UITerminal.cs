@@ -8,7 +8,7 @@ namespace Metamatic
     using UnityEngine;
     using UnityEngine.UI;
 
-    public class UITerminal : AsyncBehaviourBase
+    public class UITerminal : AsyncBehaviour
     {
         public class Row : IDisposable
         {
@@ -85,14 +85,6 @@ namespace Metamatic
         
         public event Action<string> OnCommand;
 
-        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
-        {
-            /* Subscribe to input press enter event */
-            m_InputField.onSubmit.AddListener(OnSubmit);
-            await cancellationToken;
-            m_InputField.onSubmit.RemoveListener(OnSubmit);
-        }
-        
         private void OnSubmit(string text)
         {
             OnCommand?.Invoke(text);
@@ -109,6 +101,14 @@ namespace Metamatic
         public TextRow AddTextRow(string text)
         {
             return new TextRow(this, text);
+        }
+
+        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
+        {
+            /* Subscribe to input press enter event */
+            m_InputField.onSubmit.AddListener(OnSubmit);
+            await ready();
+            m_InputField.onSubmit.RemoveListener(OnSubmit);
         }
     }
 

@@ -116,10 +116,11 @@ namespace Metamatic
             return inquireId;
         }
         
-        internal async UniTask Release(int id, bool async = false)
+        internal async UniTask Release(int id, bool async = false, bool ignoreExceptions = false)
         {
             if (id != inquireId)
             {
+                if (ignoreExceptions) return;
                 throw new InvalidOperationException("Invalid inquire id");
             }
             

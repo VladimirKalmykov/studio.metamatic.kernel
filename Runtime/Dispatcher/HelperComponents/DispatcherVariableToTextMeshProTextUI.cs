@@ -6,17 +6,17 @@ namespace Metamatic
     using System.Threading;
     using Metamatic.Actions;
 
-    public class DispatcherVariableToTextMeshProTextUI : AsyncBehaviourBase
+    public class DispatcherVariableToTextMeshProTextUI : AsyncBehaviour
     {
         public string variableName;
         public string fallbackText;
         private TextMeshProUGUI m_TextMeshProUGUI;
 
-        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
+        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
         {
             m_TextMeshProUGUI = GetComponent<TextMeshProUGUI>();
             using var listener = Dispatcher.global.SubscribeVariable<string>(variableName, OnValueChange, fallbackText);
-            await cancellationToken;
+            await ready();
         }
 
         private void OnValueChange(string value)

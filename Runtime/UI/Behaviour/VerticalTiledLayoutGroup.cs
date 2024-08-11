@@ -23,10 +23,10 @@ namespace Metamatic.UI {
         RectTransform rect => m_Rect ??= GetComponent<RectTransform>();
         DrivenRectTransformTracker dt;
         private event System.Action OnBeforeDisable;
-        void Awake() {
+        protected override void Awake() {
             dt = new DrivenRectTransformTracker();
         }
-        void OnEnable() {
+        protected override void OnEnable() {
             dt.Clear();
             if (fitContent) {
                 dt.Add(this, rect, DrivenTransformProperties.SizeDeltaY);
@@ -55,13 +55,13 @@ namespace Metamatic.UI {
             };
         }
 
-        void OnDisable()
+        protected override void OnDisable()
         {
             SetDirty();
             dt.Clear();
             OnBeforeDisable?.Invoke();
         }
-        void Start() {
+        protected override void Start() {
             foreach(RectTransform child in transform) {
                 if (child.gameObject.activeSelf == false) {
                     continue;
@@ -146,7 +146,7 @@ namespace Metamatic.UI {
         }
 
 #if UNITY_EDITOR
-        void OnValidate() {
+        protected override void OnValidate() {
             dt.Clear();
             if (fitContent) {
                 dt.Add(this, rect, DrivenTransformProperties.SizeDeltaY);

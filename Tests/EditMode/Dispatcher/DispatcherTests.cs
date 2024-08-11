@@ -214,7 +214,7 @@ namespace Metamatic
             var COUNTS = 10000;
             /* Create million registrations */
             /* Create tool to measure time */
-            IDispatcher.EventHandler<int> stub = (value) => { };
+            Action<int> stub = (value) => { };
             var randomInt = new System.Random();
             var watch = System.Diagnostics.Stopwatch.StartNew();
             for (var i = 0; i < COUNTS; i++)

@@ -21,7 +21,7 @@ public class DoubleImage : Image
         }
     }
 
-    public Color color
+    public new Color color
     {
         get => m_FirstColor;
         set

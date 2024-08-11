@@ -65,6 +65,7 @@ namespace Metamatic
             var interval = 1f / fps;
             var lastTime = Time.time;
             var active = true;
+            callback(0f);
             UniTask.WaitUntil(() =>
             {
                 if (!active) return true;

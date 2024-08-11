@@ -238,7 +238,6 @@ namespace Metamatic
     public class MicroState<TValue> : MicroStateReadOnly<TValue>
     {
         private TValue m_Value;
-        private readonly bool m_Unique = false;
         public delegate void MutateHandler(ref TValue value);
         
         public MicroState(TValue initialValue = default): base()
@@ -287,7 +286,6 @@ namespace Metamatic
         /// <param name="value"></param>
         public override void SetValue(TValue value)
         {
-            if (m_Unique && m_Value.Equals(value)) return;
             m_Value = value;
             EmitValue(value);
         }
@@ -421,9 +419,10 @@ namespace Metamatic
             m_Proxy.value = proxy;
         }
         
-        public void Dispose()
+        public new void Dispose()
         {
             m_Proxy.Dispose();
+            base.Dispose();
             GC.SuppressFinalize(this);
         }
     }

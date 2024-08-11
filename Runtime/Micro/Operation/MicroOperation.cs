@@ -25,9 +25,9 @@ namespace Metamatic
             m_Id = m_Operation.Inquire();
         }
 
-        private async UniTask AnyDispose(bool async)
+        private UniTask AnyDispose(bool async, bool ignoreExceptions = false)
         {
-            await m_Operation.Release(m_Id, async);
+            return m_Operation?.Release(m_Id, async, ignoreExceptions) ?? UniTask.CompletedTask;
         }
 
         public void Dispose()
@@ -48,6 +48,15 @@ namespace Metamatic
         public UniTask DisposeAsync()
         {
             return AnyDispose(true);
+        }
+        
+        /// <summary>
+        /// Dispose the operation synchronously. Ignores any exceptions.
+        /// </summary>
+        /// <returns></returns>
+        public void TryDispose()
+        {
+            AnyDispose(false, true).Forget();
         }
     }
 }

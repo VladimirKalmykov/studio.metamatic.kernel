@@ -12,7 +12,7 @@ namespace Metamatic.DevTools
         
     
         #if UNITY_EDITOR
-        private void OnDrawGizmos()
+        private new void OnDrawGizmos()
         {
             Handles.color = color;
             var rotationMatrix = Matrix4x4.TRS(transform.position, transform.rotation, transform.lossyScale);

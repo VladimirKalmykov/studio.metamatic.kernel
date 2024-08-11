@@ -7,14 +7,44 @@ namespace Metamatic
 {
     public abstract class AsyncBehaviour: AsyncBehaviourBase
     {
-        private bool m_IsReady;
+        protected bool AwakeIsReady;
+        protected bool IsReady;
+        private event Action OnAwakeReady;
         private event Action OnReady;
 
         private async UniTask InternalSetReady()
         {
-            m_IsReady = true;
+            IsReady = true;
             OnReady?.Invoke();
             await componentDisableCancellationToken;
+        }
+        private async UniTask InternalAwakeSetReady()
+        {
+            AwakeIsReady = true;
+            OnAwakeReady?.Invoke();
+            await componentDestroyToken;
+        }
+        
+        /// <summary>
+        /// Internal method to wait for Awake method to be ready. Use it only if AsyncAwake method is overridden
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private UniTask WaitForAwakeReady(CancellationToken cancellationToken)
+        {
+            var tcs = new UniTaskCompletionSource();
+
+            void AwakeReadyHandler()
+            {
+                tcs.TrySetResult();
+            }
+            OnAwakeReady += AwakeReadyHandler;
+            cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                OnAwakeReady -= AwakeReadyHandler;
+            });
+            return tcs.Task;
         }
         public async UniTask WhenReady(CancellationToken cancellationToken = default)
         {
@@ -51,7 +81,7 @@ namespace Metamatic
         // ReSharper disable once MemberCanBePrivate.Global
         public DisposableAction SubscribeReady(Action action)
         {
-            if (m_IsReady)
+            if (IsReady)
             {
                 action();
                 return DisposableAction.Empty;
@@ -97,7 +127,7 @@ namespace Metamatic
         private UniTaskCompletionSource m_DemandCompletionSource;
         protected sealed override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
-            var type = this.GetType();
+            
             cancellationToken.Register(() =>
             {
                 m_DemandCompletionSource?.TrySetCanceled();
@@ -106,18 +136,45 @@ namespace Metamatic
             try
             {
                 m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
+                if (!AwakeIsReady)
+                {
+                    await WaitForAwakeReady(cancellationToken);
+                }
                 await Run(InternalSetReady, cancellationToken);
             }
             catch (OperationCanceledException)
             {
-                Debug.Log($"Service {type} was canceled.");
+                var type = this.GetType();
+                Debug.Log($"Async behaviour {type} was canceled.");
             }
             catch (Exception e)
             {
+                var type = this.GetType();
                 #if METAMATIC_TERMINAL
                 Terminal.LogError($"AsyncBehaviour {type} failed to run: {e.Message}");
                 #endif
-                Debug.LogError($"Service {type} failed to run: {e}");
+                Debug.LogError($"Async behaviour {type} failed to run: {e}");
+            }
+        }
+
+        protected sealed override async UniTaskVoid RunUntilDestroy(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await AsyncAwake(InternalAwakeSetReady, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                var type = this.GetType();
+                Debug.Log($"Async behaviour async awake {type} was canceled.");
+            }
+            catch (Exception e)
+            {
+                var type = this.GetType();
+#if METAMATIC_TERMINAL
+                Terminal.LogError($"AsyncBehaviour {type} failed to run: {e.Message}");
+#endif
+                Debug.LogError($"Async behaviour async awake {type} failed to run: {e}");
             }
         }
 
@@ -141,5 +198,12 @@ namespace Metamatic
         private bool m_InitializedOnDemand;
 
         protected abstract UniTask Run(Ready ready, CancellationToken cancellationToken);
+        
+        protected virtual UniTask AsyncAwake(Ready ready, CancellationToken cancellationToken)
+        {
+            AwakeIsReady = true;
+            OnAwakeReady?.Invoke();
+            return UniTask.CompletedTask;
+        }
     }
 }

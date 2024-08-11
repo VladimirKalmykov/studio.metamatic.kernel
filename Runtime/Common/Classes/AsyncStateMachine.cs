@@ -617,7 +617,7 @@ namespace Metamatic
             CancellationToken externalCancellationToken = default,
             ulong id = 0)
         {
-            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Add state {state} (id #{id}) (Curren status is {m_Status})");
+            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Validate attempt to add state {state} (id #{id}) (Curren status is {m_Status})");
             /* Invalidate state */
             if (!m_NextStateValidator.Validate(currentState, state))
             {
@@ -628,6 +628,7 @@ namespace Metamatic
                 }
                 return (UniTask.CompletedTask, 0);
             }
+            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Add valid state {state} (id #{id}) (Curren status is {m_Status})");
 
             /* Generate unique Id the future transition */
             var nextId = id == 0 ? GenerateId() : id;

@@ -199,12 +199,12 @@ namespace Metamatic.Effects
         where TEffector: Effector
         where TProps: struct
     {
-        public UniTask RunEffect(EffectExecutionContext executionContext, CancellationToken cancellationToken)
+        public new UniTask RunEffect(EffectExecutionContext executionContext, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        public UniTask InternalRunEffect(EffectExecutionContext executionContext, CancellationToken cancellationToken)
+        public new UniTask InternalRunEffect(EffectExecutionContext executionContext, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }

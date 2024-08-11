@@ -32,7 +32,7 @@ namespace Metamatic {
         }
         
         private GameObject player;
-        public Camera camera;
+        public new Camera camera;
         Collider playerCollider;
         Renderer[] playerRenderers;
         Bounds playerBounds;

@@ -8,6 +8,7 @@ namespace Metamatic
     public abstract class AsyncBehaviourBase: MonoBehaviour
     {
         private CancellationTokenSource m_DisableCancellationTokenSource = new();
+        private CancellationTokenSource m_DestroyCancellationTokenSource;
         private bool m_IsDisabled;
         public delegate UniTask RunAsyncHandler(CancellationToken cancellationToken);
         internal CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource?.Token ?? CancellationToken.None;
@@ -17,6 +18,7 @@ namespace Metamatic
         
         protected bool isAboutToDestroy { get; private set; }
         
+        public CancellationToken componentDestroyToken => m_DestroyCancellationTokenSource.Token;
 
         public CancellationToken componentDisableToken
         {
@@ -28,6 +30,7 @@ namespace Metamatic
                     if (m_IsDisabled)
                     {
                         m_DisableCancellationTokenSource.Cancel();
+                        m_DisableCancellationTokenSource.Dispose();
                         m_DisableCancellationTokenSource = null;
                         return disableCancellationToken.Token;
                     }
@@ -37,6 +40,13 @@ namespace Metamatic
             }
         }
         public event Action OnDisabled;
+
+        protected virtual void Awake()
+        {
+            m_DestroyCancellationTokenSource = new CancellationTokenSource();
+            RunUntilDestroy(m_DestroyCancellationTokenSource.Token).Forget();
+        }
+        
         protected virtual void OnEnable()
         {
             m_IsDisabled = false;
@@ -47,6 +57,7 @@ namespace Metamatic
         {
             m_IsDisabled = true;
             m_DisableCancellationTokenSource.Cancel();
+            m_DisableCancellationTokenSource.Dispose();
             m_DisableCancellationTokenSource = null;
             OnDisabled?.Invoke();
         }
@@ -54,9 +65,20 @@ namespace Metamatic
         protected void OnDestroy()
         {
             isAboutToDestroy = true;
+            #if DEBUG
+            if (m_DestroyCancellationTokenSource == null)
+            {
+                Debug.Log($"m_DestroyCancellationTokenSource is null in component {name} {GetType().Name}");
+                return;
+            }
+            #endif
+            
+            m_DestroyCancellationTokenSource.Cancel();
+            m_DestroyCancellationTokenSource.Dispose();
         }
 
         protected abstract UniTaskVoid RunAsync(CancellationToken cancellationToken);
+        protected abstract UniTaskVoid RunUntilDestroy(CancellationToken cancellationToken);
         
         /// <summary>
         /// IDisposable object will be disposed on component disable

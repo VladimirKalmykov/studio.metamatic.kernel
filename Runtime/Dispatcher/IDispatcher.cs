@@ -10,8 +10,6 @@ namespace Metamatic.Actions
         delegate bool Condition<T>(T source) where T : notnull;
         delegate void AnnouncementsHandler<T>(T[] sources) where T : notnull;
         delegate void RetractionsHandler<T>(T source) where T : notnull;
-
-        delegate void EventHandler<T>(T source);
         delegate UniTask RequestHandler<T>(T source, CancellationToken token);
         /// <summary>
         /// Emit an event of type T
@@ -112,7 +110,7 @@ namespace Metamatic.Actions
         /// <typeparam name="TKey"></typeparam>
         /// <typeparam name="TValue"></typeparam>
         /// <returns></returns>
-        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : class;
+        public DisposableAction SubscribeRegistry<TValue>(Action<TValue> handler, bool skipInitial = false) where TValue : class;
         /// <summary>
         /// Wait for a registered object of type T with an id
         /// </summary>

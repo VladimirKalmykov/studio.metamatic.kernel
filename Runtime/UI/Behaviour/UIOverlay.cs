@@ -26,7 +26,7 @@ namespace Metamatic.UI
         private GraphicRaycaster m_GraphicRaycaster;
         public GraphicRaycaster graphicRaycaster => m_GraphicRaycaster != null ? m_GraphicRaycaster : m_GraphicRaycaster = GetComponent<GraphicRaycaster>();
 
-        private void Awake()
+        protected override void Awake()
         {
             if (_Instance.value != null)
             {
@@ -38,7 +38,7 @@ namespace Metamatic.UI
             gameObject.SetActive(false);
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
             m_RequireCancellationTokenSource?.Cancel();
             m_RequireCancellationTokenSource?.Dispose();

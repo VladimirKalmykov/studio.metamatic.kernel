@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
@@ -74,21 +75,50 @@ namespace Metamatic
                 subscriptionDisposable.Dispose();
             });
         }
+        public static DisposableAction Subscribe(Func<Action<T>, DisposableAction> subscribe, AsyncHandler asyncHandler)
+        {
+            var handlerDisposable = new SequentialHandler<T>(asyncHandler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
         public delegate void Handler(T value, CancellationToken token);
+        public delegate UniTaskVoid AsyncHandler(T value, CancellationToken token);
 
         private Handler m_Handler;
+        private AsyncHandler m_AsyncHandler;
+        // ReSharper disable once InconsistentNaming
+        public Action<T> Handle { get; private set; }
     
         public SequentialHandler(Handler handler, CancellationToken externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
+            Handle = SyncHandle;
         }
-        public void Handle(T value)
+        public SequentialHandler(AsyncHandler handler, CancellationToken externalCancellationToken = default)
+        {
+            m_AsyncHandler = handler;
+            externCancellationToken = externalCancellationToken;
+            Handle = AsyncHandle;
+        }
+        public void SyncHandle(T value)
         {
             Debug.Assert(!disposed, "SequentialHandler disposed but still used");
             CancelInternalToken();
             internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
             m_Handler(value, internalCancellationTokenSource.Token);
+        }
+        
+        public void AsyncHandle(T value)
+        {
+            Debug.Assert(!disposed, "SequentialHandler disposed but still used");
+            CancelInternalToken();
+            internalCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externCancellationToken);
+            m_AsyncHandler(value, internalCancellationTokenSource.Token).Forget();
         }
 
         protected override void EraseProps()

@@ -58,8 +58,8 @@ namespace Metamatic.Actions
        
         private readonly Dictionary<Type, LockedList<Delegate>> m_EventListeners = new();
         private readonly Dictionary<Type, List<object>> m_Announcements = new();
-        private readonly Dictionary<(object id, Type type), (object value, bool isActive, LockedList<IDispatcher.EventHandler<object>> handlers)> m_Registry = new();
-        private readonly Dictionary<object, (object value, bool isActive, LockedList<IDispatcher.EventHandler<object>> handlers)> m_RegistryLite = new();
+        private readonly Dictionary<(object id, Type type), (object value, bool isActive, LockedList<Action<object>> handlers)> m_Registry = new();
+        private readonly Dictionary<object, (object value, bool isActive, LockedList<Action<object>> handlers)> m_RegistryLite = new();
         private bool m_IsRegistrationProcessing = false;
         private DeferLock m_RegistrationLock = new();
         #endregion
@@ -76,13 +76,13 @@ namespace Metamatic.Actions
                 {
                     foreach (var handler in handlers)
                     {
-                        ((IDispatcher.EventHandler<T>)handler).Invoke(source);
+                        ((Action<T>)handler).Invoke(source);
                     }
                 }
             }
         }
 
-        public DisposableAction Subscribe<T>(IDispatcher.EventHandler<T> handler) where T : notnull
+        public DisposableAction Subscribe<T>(Action<T> handler) where T : notnull
         {
             Type eventType = typeof(T);
             LockedList<Delegate> handlers;
@@ -107,7 +107,7 @@ namespace Metamatic.Actions
             return new DisposableAction(() => Unsubscribe(handler));
         }
         
-        private async void Subscribe_Deferred<T>(LockedList<Delegate> handlers, IDispatcher.EventHandler<T> handler, CancellationToken token) where T : notnull
+        private async void Subscribe_Deferred<T>(LockedList<Delegate> handlers, Action<T> handler, CancellationToken token) where T : notnull
         {
             await handlers;
             if (token.IsCancellationRequested) return;
@@ -115,7 +115,7 @@ namespace Metamatic.Actions
             token.Register(() => dispose.Dispose());
         }
 
-        private void Unsubscribe<T>(IDispatcher.EventHandler<T> handler) where T : notnull
+        private void Unsubscribe<T>(Action<T> handler) where T : notnull
         {
             Type eventType = typeof(T);
             LockedList<Delegate> handlers;
@@ -134,7 +134,7 @@ namespace Metamatic.Actions
             }
         }
         
-        private async void Unsubscribe_Deferred<T>(LockedList<Delegate> handlers, IDispatcher.EventHandler<T> handler) where T : notnull
+        private async void Unsubscribe_Deferred<T>(LockedList<Delegate> handlers, Action<T> handler) where T : notnull
         {
             await handlers;
             Unsubscribe(handler);
@@ -255,7 +255,7 @@ namespace Metamatic.Actions
             var valueType = typeof(TValue);
             if (!m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                registry = (source, true, new LockedList<IDispatcher.EventHandler<object>>());
+                registry = (source, true, new LockedList<Action<object>>());
             }
             else
             {
@@ -288,7 +288,7 @@ namespace Metamatic.Actions
             });
         }
         
-        private async void Register_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, object id, TValue source, CancellationToken token) where TValue : notnull
+        private async void Register_Deferred<TValue>(LockedList<Action<object>> handlers, object id, TValue source, CancellationToken token) where TValue : notnull
         {
             await handlers;
             if (token.IsCancellationRequested) return;
@@ -324,7 +324,7 @@ namespace Metamatic.Actions
 #endif
         }
         
-        private async void Unregister_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, object id, TValue source) where TValue : notnull
+        private async void Unregister_Deferred<TValue>(LockedList<Action<object>> handlers, object id, TValue source) where TValue : notnull
         {
             await handlers;
             Unregister(id, source);
@@ -337,16 +337,16 @@ namespace Metamatic.Actions
 
         
 
-        public DisposableAction SubscribeRegistry<TValue>(object id, IDispatcher.EventHandler<TValue> handler, bool skipInitial = false)
+        public DisposableAction SubscribeRegistry<TValue>(object id, Action<TValue> handler, bool skipInitial = false)
         {
             var valueType = typeof(TValue);
             if (!m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                registry = (default, false, new LockedList<IDispatcher.EventHandler<object>>());
+                registry = (default, false, new LockedList<Action<object>>());
                 m_Registry[(id, valueType)] = registry;
             }
 
-            IDispatcher.EventHandler<object> handlerWrapper = (source) =>
+            Action<object> handlerWrapper = (source) =>
             {
                 handler(source == null ? default : (TValue)source);
             };
@@ -375,7 +375,7 @@ namespace Metamatic.Actions
             });
         }
         
-        private void UnsubscribeRegistry<TValue>(object id, IDispatcher.EventHandler<object> handlerWrapper)
+        private void UnsubscribeRegistry<TValue>(object id, Action<object> handlerWrapper)
         {
             var valueType = typeof(TValue);
             if (m_Registry.TryGetValue((id, valueType), out var reg))
@@ -399,13 +399,13 @@ namespace Metamatic.Actions
 #endif
         }
         
-        private async void UnsubscribeRegistry_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, object id, IDispatcher.EventHandler<object> handlerWrapper)
+        private async void UnsubscribeRegistry_Deferred<TValue>(LockedList<Action<object>> handlers, object id, Action<object> handlerWrapper)
         {
             await handlers;
             UnsubscribeRegistry<TValue>(id, handlerWrapper);
         }
         
-        private async void SubscribeRegistry_Deferred<TValue>(LockedList<IDispatcher.EventHandler<object>> handlers, IDispatcher.EventHandler<TValue> handler, CancellationToken token)
+        private async void SubscribeRegistry_Deferred<TValue>(LockedList<Action<object>> handlers, Action<TValue> handler, CancellationToken token)
         {
             await handlers;
             if (token.IsCancellationRequested) return;
@@ -418,7 +418,7 @@ namespace Metamatic.Actions
             return m_Registry.Count;
         }
 
-        public DisposableAction SubscribeRegistry<TValue>(IDispatcher.EventHandler<TValue> handler, bool skipInitial = false) where TValue : notnull
+        public DisposableAction SubscribeRegistry<TValue>(Action<TValue> handler, bool skipInitial = false) where TValue : notnull
         {
             return SubscribeRegistry(this, handler, skipInitial);
         }

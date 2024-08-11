@@ -7,20 +7,19 @@ namespace Metamatic
     using UnityEngine;
     using UnityEngine.UI;
 
-    public class DispatcherVariableToImage : AsyncBehaviourBase
+    public class DispatcherVariableToImage : AsyncBehaviour
     {
         public string variableName;
         public Sprite fallbackSprite;
 
         private Image m_Image;
 
-
-        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
+        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
         {
             m_Image = GetComponent<Image>();
             using var listener =
                 Dispatcher.global.SubscribeVariable<Sprite>(variableName, OnValueChange, fallbackSprite);
-            await cancellationToken;
+            await ready();
         }
 
         private void OnValueChange(Sprite value)

@@ -7,7 +7,7 @@ namespace Metamatic
     using Metamatic.Actions;
     using UnityEngine;
 
-    public class CameraController : AsyncBehaviourBase
+    public class CameraController : AsyncBehaviour
     {
         [SerializeField] float m_Weight = 1.0f;
         public event Action<CameraController, float> onWeightChanged;
@@ -23,11 +23,11 @@ namespace Metamatic
             }
         }
 
-        protected override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
+        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
         {
             camera = GetComponent<Camera>();
             using var announce = Dispatcher.global.Announce(this);
-            await cancellationToken;
+            await ready();
         }
 
         public DisposableAction SubscribeToWeightChanged(Action<CameraController, float> action,

@@ -15,7 +15,7 @@ namespace Metamatic
         private Dictionary<CameraController, IDisposable> m_CameraWeightSubscriptions = new();
         
         [ShowInInspector]
-        public Camera camera
+        public new Camera camera
         {
             get
             {

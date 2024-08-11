@@ -207,5 +207,10 @@ namespace Metamatic
         private bool m_InitializedOnDemand;
 
         protected abstract UniTask RunService(Ready ready, CancellationToken cancellationToken);
+        
+        protected override UniTaskVoid RunUntilDestroy(CancellationToken cancellationToken)
+        {
+            return new UniTaskVoid();
+        }
     }
 }
