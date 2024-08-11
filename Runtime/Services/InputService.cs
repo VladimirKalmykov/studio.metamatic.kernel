@@ -115,7 +115,7 @@ namespace Metamatic
                     }
                 });
                 await operation.cancellationToken;
-            });
+            }).ToIDisposable();
         }
 
         public async UniTask<InputAction.CallbackContext> WhenAction<T>(string actionName,

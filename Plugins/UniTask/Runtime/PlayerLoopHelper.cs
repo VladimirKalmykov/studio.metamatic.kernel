@@ -306,7 +306,12 @@ namespace Cysharp.Threading.Tasks
 #else
             if (runners != null) return; // already initialized
 #endif
-
+            
+            /*
+             * To understand the following code, you need to read comment in Packages/studio.metamatic.kernel/Runtime/PlayerLoop/PlayerLoop.cs
+             */
+#if !CUSTOM_PLAYERLOOP_INITIALIZATION
+            
             var playerLoop =
 #if UNITY_2019_3_OR_NEWER
                 PlayerLoop.GetCurrentPlayerLoop();
@@ -315,6 +320,7 @@ namespace Cysharp.Threading.Tasks
 #endif
 
             Initialize(ref playerLoop);
+#endif
         }
 
 

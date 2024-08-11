@@ -30,6 +30,13 @@ namespace Metamatic
         
         public ParamLessPool(int capacity = 0, int limit = Int32.MaxValue): this()
         {
+            #if DEBUG
+            /* Detect that the object is a class and it is derived from UnityEngine.Object */
+            if (typeof(T).IsClass && typeof(T).IsSubclassOf(typeof(UnityEngine.Object)))
+            {
+                throw new Exception("Do not use Unity objects in ParamLessPool. Use UnityObjectPool instead.");
+            }
+            #endif
             m_Capacity = capacity;
             m_Limit = limit;
             for (int i = 0; i < capacity; i++)
@@ -78,6 +85,10 @@ namespace Metamatic
                 #if DEBUG
                 Debug.LogWarning("Pool limit reached. Object will be destroyed");
                 #endif
+                if (obj is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
             }
         }
         

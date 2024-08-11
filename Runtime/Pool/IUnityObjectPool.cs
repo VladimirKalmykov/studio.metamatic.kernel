@@ -30,7 +30,7 @@ namespace Metamatic
     {
         T Get();
         void SetCapacity(int capacity);
-        void Release(T obj);
+        void Return(T obj);
         void TryRelease(T obj);
         
     }

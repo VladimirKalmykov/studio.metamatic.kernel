@@ -105,5 +105,19 @@ namespace Metamatic.Actions
         {
             return GetVariableSetter<T>(this, name);
         }
+        
+        public T ReadVariable<T>(object key, string name)
+        {
+            var type = typeof(T);
+            var dictionaryKey = (key, type, name);
+            if (!m_Variables.TryGetValue(dictionaryKey, out var inquirable))
+            {
+                throw new KeyNotFoundException($"Variable {name} not found for key {key}");
+            }
+            
+            var inquirableTyped = (Inquirable<MicroState<T>>)inquirable;
+            var microState = inquirableTyped.value;
+            return microState.value;
+        }
     }
 }

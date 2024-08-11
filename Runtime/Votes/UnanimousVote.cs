@@ -1,6 +1,4 @@
 using System;
-using Metamatic;
-using Unity.Plastic.Antlr3.Runtime.Misc;
 
 namespace Metamatic
 {

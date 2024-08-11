@@ -48,7 +48,7 @@ namespace Metamatic
             }
         }
         
-        public static IUnityObjectPool<GameObject> GetOrganicGameObjectPool(GameObject obj)
+        public static IUnityObjectPool<GameObject> GetOrganicGameObjectPool(GameObject obj, int capacity = 1)
         {
             if (m_Pools.TryGetValue(obj, out var pool))
             {
@@ -56,7 +56,7 @@ namespace Metamatic
             }
             else
             {
-                pool = new OrganicPool<GameObject>(() => UnityEngine.Object.Instantiate(obj), onDestroy: (instance) => UnityEngine.Object.Destroy(instance));
+                pool = new OrganicPool<GameObject>(() => UnityEngine.Object.Instantiate(obj), onDestroy: (instance) => UnityEngine.Object.Destroy(instance), capacity: capacity);
                 pool.OnReadyToRelease += () =>
                 {
                     m_Pools.Remove(obj);
@@ -182,9 +182,9 @@ namespace Metamatic
             return m_Pool.Get();
         }
 
-        public void Release(T obj)
+        public void Return(T obj)
         {
-            m_Pool.Release(obj);
+            m_Pool.Return(obj);
         }
 
         public void TryRelease(T obj)

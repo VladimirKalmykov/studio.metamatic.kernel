@@ -48,10 +48,10 @@ namespace Metamatic
             return obj;
         }
         
-        public override void Release(T obj)
+        public override void Return(T obj)
         {
             m_CountInPoolAtCountdownStart++;
-            base.Release(obj);
+            base.Return(obj);
             /* Start the lifetime countdown */
             StartCountdown();
         }

@@ -101,7 +101,7 @@ namespace Metamatic
         }
 
         private List<T> m_ReleaseHistory = new ();
-        public virtual void Release(T obj)
+        public virtual void Return(T obj)
         {
 #if DEBUG
             if (m_DisposeCancellationTokenSource.IsCancellationRequested) throw new ObjectDisposedException(nameof(UnityObjectPool<T>));
@@ -125,7 +125,7 @@ namespace Metamatic
         public void TryRelease(T obj)
         {
             if (objectsInPool.Contains(obj)) return;
-            Release(obj);
+            Return(obj);
         }
         
         private void DefaultDestroy(T obj)
