@@ -19,11 +19,12 @@ namespace Metamatic
 
         /// <summary>
         /// Get a pool for the specified component prefab. Dispose the pool when it is no longer needed (required).
+        /// Component game object will be disabled when released and enabled when get.
         /// </summary>
         /// <param name="obj"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static IUnityObjectPool<T> GetOrganicObjectPool<T>(T obj) where T: Component
+        public static IUnityObjectPool<T> GetOrganicComponentPool<T>(T obj) where T: Component
         {
             if (obj == null) throw new ArgumentNullException(nameof(obj));
             if (m_Pools.TryGetValue(obj, out var pool))
