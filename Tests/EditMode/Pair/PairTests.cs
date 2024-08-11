@@ -11,10 +11,11 @@ namespace Tests.EditMode.Pair
     {
         public readonly CancellationTokenSource disposeCancellationSource = new CancellationTokenSource();
         public MockVendor pairedVendor { get; private set; }
-        public void OnPaired(MockVendor vendor, CancellationToken cancellationToken)
+        public async UniTask OnPaired(MockVendor vendor, CancellationToken cancellationToken)
         {
             pairedVendor = vendor;
-            cancellationToken.Register(() => pairedVendor = null);
+            await cancellationToken;
+            pairedVendor = null;
         }
 
         public void Dispose()
@@ -32,15 +33,13 @@ namespace Tests.EditMode.Pair
         {
             this.client = client;
         }
-        public void OnPaired(MockClient client, CancellationToken cancellationToken)
+        public async UniTask OnPaired(MockClient client, CancellationToken cancellationToken)
         {
             pairedClient = client;
             clients.Add(client);
-            cancellationToken.Register(() =>
-            {
-                pairedClient = null;
-                clients.Remove(client);
-            });
+            await cancellationToken;
+            pairedClient = null;
+            clients.Remove(client);
         }
 
         public void Dispose()

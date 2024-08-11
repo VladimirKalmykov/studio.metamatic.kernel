@@ -1,5 +1,7 @@
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -29,6 +31,38 @@ namespace Metamatic
             using var clientProviderListener = m_ClientProvider.OnPairingRequest(OnAnnounceClient);
             await token;
         }
+        
+        private async UniTaskVoid OnAnnounceVendor(TVendor vendor, TClient client, CancellationToken vendorCancellationToken, CancellationToken clientCancellationToken)
+        {
+            var combinedCancellationTokenForVendor = CancellationTokenSource
+                .CreateLinkedTokenSource(clientCancellationToken, disposeCancellationToken).Token;
+            var combinedCancellationTokenForClient = CancellationTokenSource
+                .CreateLinkedTokenSource(vendorCancellationToken, disposeCancellationToken).Token;
+            
+            /*
+             * To client OnPaired methods passes cancellation token that combined from 1. client cancellation token, 2. vendor cancellation token, 3. pair dispose cancellation token.
+             * Thus, onPaired for client will be cancelled if client is disposed or vendor is disposed or pair is disposed.
+             */
+            var clientPairedTask = client.OnPaired(vendor, combinedCancellationTokenForClient);
+            /*
+             * To vendor OnPaired methods passes cancellation token that combined from 1. client cancellation token, 2. pair dispose cancellation token.
+             * Thus, onPaired for vendor will be cancelled if client is disposed or pair is disposed.
+             */
+            var vendorPairedTask = vendor.OnPaired(client, combinedCancellationTokenForVendor);
+            try
+            {
+               
+                await UniTask.WhenAll(clientPairedTask, vendorPairedTask);
+            }
+            catch (OperationCanceledException)
+            {
+                // Ignore
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError(e);
+            }
+        }
 
         private void OnAnnounceClient(TClient client, CancellationToken clientCancellationToken)
         {
@@ -36,18 +70,7 @@ namespace Metamatic
                 .CreateLinkedTokenSource(clientCancellationToken, disposeCancellationToken).Token;
             m_VendorProvider.OnPairingRequest(client, (vendor, vendorCancellationToken) =>
             {
-                var combinedPlusVendorToken = CancellationTokenSource
-                    .CreateLinkedTokenSource(vendorCancellationToken, disposeCancellationToken).Token;
-                /*
-                 * To client OnPaired methods passes cancellation token that combined from 1. client cancellation token, 2. vendor cancellation token, 3. pair dispose cancellation token.
-                 * Thus, onPaired for client will be cancelled if client is disposed or vendor is disposed or pair is disposed.
-                 */
-                client.OnPaired(vendor, combinedPlusVendorToken);
-                /*
-                 * To vendor OnPaired methods passes cancellation token that combined from 1. client cancellation token, 2. pair dispose cancellation token.
-                 * Thus, onPaired for vendor will be cancelled if client is disposed or pair is disposed.
-                 */
-                vendor.OnPaired(client, combinedToken);
+                OnAnnounceVendor(vendor, client, vendorCancellationToken, combinedToken).Forget();
             }, combinedToken);
         }
     }

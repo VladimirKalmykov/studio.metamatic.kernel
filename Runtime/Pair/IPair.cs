@@ -21,12 +21,12 @@ namespace Metamatic
     public interface IPairVendor<in TClient>
         where TClient: class
     {
-        public void OnPaired(TClient client, CancellationToken clientCancellationToken);
+        public UniTask OnPaired(TClient client, CancellationToken clientCancellationToken);
     }
 
     public interface IPairClient<in TVendor>
         where TVendor: class
     {
-        public void OnPaired(TVendor vendor, CancellationToken vendorCancellationToken);
+        public UniTask OnPaired(TVendor vendor, CancellationToken vendorCancellationToken);
     }
 }
