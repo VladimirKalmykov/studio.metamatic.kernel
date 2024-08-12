@@ -62,7 +62,7 @@ namespace Metamatic
             OnDisabled?.Invoke();
         }
 
-        protected void OnDestroy()
+        protected virtual void OnDestroy()
         {
             isAboutToDestroy = true;
             #if DEBUG

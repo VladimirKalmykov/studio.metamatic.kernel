@@ -69,6 +69,7 @@ namespace Metamatic
             while (objectsInPool.Count < newCapacity)
             {
                 T obj = m_OnCreate();
+                m_OnRelease?.Invoke(obj);
                 allProducedObjects.AddLast(obj);
                 objectsInPool.Push(obj);
             }

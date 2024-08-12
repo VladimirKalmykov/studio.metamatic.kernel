@@ -145,6 +145,29 @@ namespace Metamatic
             var target = await tcs.Task;
             return target;
         }
+
+        /// <summary>
+        /// Get player input actions scheme associated with the specific player index.
+        /// </summary>
+        /// <returns></returns>
+        public InputActionAsset GetPlayerInputActionAsset(int playerIndex)
+        {
+            if (playerIndex < 0 || playerIndex >= m_PlayerInputs.Count)
+                return null;
+            return m_PlayerInputs[playerIndex].actions;
+        }
+        
+        /// <summary>
+        /// Get player input control scheme associated with the specific player index.
+        /// </summary>
+        /// <param name="playerIndex"></param>
+        /// <returns></returns>
+        public string GetPlayerInputControlScheme(int playerIndex)
+        {
+            if (playerIndex < 0 || playerIndex >= m_PlayerInputs.Count)
+                return null;
+            return m_PlayerInputs[playerIndex].currentControlScheme;
+        }
     }
 
 }

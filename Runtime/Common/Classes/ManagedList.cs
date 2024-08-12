@@ -1,4 +1,5 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using System.Linq;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Metamatic
@@ -18,6 +19,27 @@ namespace Metamatic
         public ManagedList(Func<T, CancellationToken, UniTask> handler)
         {
             m_Handler = handler ?? throw new ArgumentNullException(nameof(handler));
+        }
+        
+        /// <summary>
+        /// Syncs the list with the new items. Removes items that are not in the new list and adds that are not in this list.
+        /// </summary>
+        /// <param name="items"></param>
+        public void Synchronize(T[] items)
+        {
+            /* Remove items that are not in the new list and add that are not in this list */
+            for (var i = m_List.Count - 1; i >= 0; i--)
+            {
+                var item = m_List[i];
+                if (!items.Contains(item))
+                {
+                    Remove(item);
+                }
+            }
+            foreach (var item in items)
+            {
+                TryAdd(item);
+            }
         }
 
         public async UniTask AddAsync(T item)
@@ -55,6 +77,20 @@ namespace Metamatic
 
             m_Handler(item, cts.Token).Forget();
         }
+        
+        public void TryAdd(T item)
+        {
+            if (m_Disposed)
+                throw new ObjectDisposedException(nameof(ManagedList<T>));
+            if (m_List.Contains(item))
+                return;
+
+            var cts = new CancellationTokenSource();
+            m_CancellationTokens[item] = cts;
+            m_List.Add(item);
+
+            m_Handler(item, cts.Token).Forget();
+        }
 
         public bool Remove(T item)
         {
@@ -66,6 +102,7 @@ namespace Metamatic
                 if (m_CancellationTokens.TryGetValue(item, out var cts))
                 {
                     cts.Cancel();
+                    cts.Dispose();
                     m_CancellationTokens.Remove(item);
                 }
 
@@ -83,6 +120,7 @@ namespace Metamatic
             foreach (var cts in m_CancellationTokens.Values)
             {
                 cts.Cancel();
+                cts.Dispose();
             }
             m_CancellationTokens.Clear();
             m_Disposed = true;

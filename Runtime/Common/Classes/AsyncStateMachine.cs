@@ -223,11 +223,26 @@ namespace Metamatic
             CancellationToken externalCancellationToken = default)
         {
             if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Reset (new prevState: {nextPrevState}, nextState: {nextState}");
+            #if DEBUG
+            try
+            {
+                /* Dispose prev state if it supports IDisposable */
+                if (m_StateIsDisposable && m_HasPrevState)
+                {
+                    (prevState as IDisposable)?.Dispose();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error while disposing prev state {prevState} during Reset to next state {nextState}: {e.Message}");
+            }
+            #else
             /* Dispose prev state if it supports IDisposable */
             if (m_StateIsDisposable && m_HasPrevState)
             {
                 (prevState as IDisposable)?.Dispose();
             }
+            #endif
             
             this.currentState = nextState;
             OnStateChange?.Invoke(nextState);
@@ -628,7 +643,17 @@ namespace Metamatic
                 /* As the state is invalid, we should dispose it if it supports IDisposable */
                 if (m_StateIsDisposable)
                 {
+                    #if DEBUG
+                    try
+                    {
+                        (state as IDisposable)?.Dispose();
+                    } catch (Exception e)
+                    {
+                        Debug.LogError($"[ASYNC-STATE-MACHINE] Error while disposing invalid state {state}: {e.Message}");
+                    }
+                    #else
                     (state as IDisposable)?.Dispose();
+                    #endif
                 }
                 return (UniTask.CompletedTask, 0);
             }
@@ -761,7 +786,17 @@ namespace Metamatic
                     /* Dispose state */
                     if (m_StateIsDisposable)
                     {
-                        (deqState.state as IDisposable)?.Dispose();
+#if DEBUG
+                        try
+                        {
+                            (state as IDisposable)?.Dispose();
+                        } catch (Exception e)
+                        {
+                            Debug.LogError($"[ASYNC-STATE-MACHINE] Error while disposing state {state} during enqueue filter: {e.Message}");
+                        }
+#else
+                        (state as IDisposable)?.Dispose();
+#endif
                     }
                 }
             }
@@ -939,6 +974,25 @@ namespace Metamatic
             /* Dispose active states */
             if (m_StateIsDisposable)
             {
+                #if DEBUG
+                try
+                {
+                    (prevState as IDisposable)?.Dispose();
+                    (currentState as IDisposable)?.Dispose();
+                    (nextState as IDisposable)?.Dispose();
+                    
+                    /* Dispose states in queue */
+                    foreach (var (_, state, _, _) in m_StatesQueue)
+                    {
+                        (state as IDisposable)?.Dispose();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("Error while disposing states during state machine disposing: " + e.Message);
+                }
+                
+                #else
                 (prevState as IDisposable)?.Dispose();
                 (currentState as IDisposable)?.Dispose();
                 (nextState as IDisposable)?.Dispose();
@@ -948,6 +1002,9 @@ namespace Metamatic
                 {
                     (state as IDisposable)?.Dispose();
                 }
+                #endif
+                
+                
             }
             if (!isAsync)
             {

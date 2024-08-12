@@ -63,12 +63,11 @@ namespace Metamatic
         /// <exception cref="Exception"></exception>
         public void Return(T obj)
         {
-            #if DEBUG
-            /* Check that returned object is not in pool */
             if (m_ObjectsInPool.Contains(obj))
             {
                 throw new Exception("Object is already in pool");
             }
+            #if DEBUG
             /* Check that returned object is contained in out of pool list */
             if (!m_OutOfPoolHashes.Contains(obj.GetHashCode()))
             {

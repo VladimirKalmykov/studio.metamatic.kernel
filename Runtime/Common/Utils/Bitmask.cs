@@ -79,6 +79,13 @@ namespace Metamatic
             return (value & flag) == flag;
         }
         
+        /// <summary>
+        /// Get difference between two versions of bit mask. It returns added and removed flags.
+        /// </summary>
+        /// <param name="oldFlags"></param>
+        /// <param name="newFlags"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
         public static (T added, T removed) GetFlagsDiff<T>(T oldFlags, T newFlags) where T : Enum
         {
             // Преобразуем enum в целочисленные значения
@@ -92,6 +99,20 @@ namespace Metamatic
             T removed = (T)Enum.ToObject(typeof(T), oldFlagsValue & ~newFlagsValue);
 
             return (added, removed);
+        }
+
+        public static T[] ExtractArray<T>(T flags) where T : Enum
+        {
+            // Проверяем, если flags равен 0 (что означает отсутствие установленных флагов)
+            if (Convert.ToInt32(flags) == 0)
+            {
+                return Array.Empty<T>(); // Возвращаем пустой массив
+            }
+
+            return Enum.GetValues(typeof(T))
+                .Cast<T>()
+                .Where(flag => Convert.ToInt32(flag) != 0 && flags.HasFlag(flag))
+                .ToArray();
         }
     }
 }

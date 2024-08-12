@@ -45,6 +45,11 @@ namespace Metamatic
             m_DisposeCancellationTokenSource = new CancellationTokenSource();
         }
 
+        ~MicroStateReadOnly()
+        {
+            Dispose();
+        }
+
         public abstract DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false);
         
         public Action SubscribeOnce(Action<TValue> handler)
@@ -232,6 +237,7 @@ namespace Metamatic
             m_DisposeCancellationTokenSource?.Cancel();
             m_DisposeCancellationTokenSource?.Dispose();
             OnChange = null;
+            GC.SuppressFinalize(this);
         }
     }
 
