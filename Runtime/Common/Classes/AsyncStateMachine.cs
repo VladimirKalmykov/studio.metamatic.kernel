@@ -216,6 +216,8 @@ namespace Metamatic
         public CancellationToken internalCancellationToken => m_InternalCancellationTokenSource.Token;
 
         private UniTask task => UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource?.Task ?? UniTask.CompletedTask, m_TransitionToNextStateCompletionSource?.Task ?? UniTask.CompletedTask);
+        
+        public event Action<TState> OnStateChange;
 
         private void Reset(TState nextState, TState nextPrevState = default,
             CancellationToken externalCancellationToken = default)
@@ -228,6 +230,7 @@ namespace Metamatic
             }
             
             this.currentState = nextState;
+            OnStateChange?.Invoke(nextState);
             this.prevState = nextPrevState;
             m_ExternalCancellationToken = externalCancellationToken;
             m_CancellationTokenSource =
@@ -521,6 +524,7 @@ namespace Metamatic
             this.m_SettingAutoCompleteWithDefaultState = autoCompleteWithDefaultState;
             this.m_SettingDebug = debug;
             this.currentState = defaultState;
+            OnStateChange?.Invoke(defaultState);
             this.m_StateIsDisposable = typeof(IDisposable).IsAssignableFrom(typeof(TState));
             
             #if DEBUG
@@ -915,6 +919,13 @@ namespace Metamatic
             OnTransitionStep += onTransition;
             onTransition(prevState, currentState);
             return new DisposableAction(() => OnTransitionStep -= onTransition);
+        }
+        
+        public DisposableAction SubscribeStateChange(Action<TState> onStateChange)
+        {
+            OnStateChange += onStateChange;
+            onStateChange(currentState);
+            return new DisposableAction(() => OnStateChange -= onStateChange);
         }
 
         private void Dispose(bool isAsync)

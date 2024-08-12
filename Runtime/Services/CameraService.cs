@@ -10,7 +10,7 @@ namespace Metamatic
     using UnityEngine;
 
     public class CameraService : Service
-    {
+    {   
         private readonly MicroState<CameraController> m_CameraController = new();
         private Dictionary<CameraController, IDisposable> m_CameraWeightSubscriptions = new();
         
