@@ -568,7 +568,10 @@ namespace Metamatic
 
         private ulong GenerateId()
         {
-            return ++m_LastId == ulong.MaxValue ? m_LastId = 0 : m_LastId;
+            unchecked
+            {
+                return ++m_LastId;
+            }
         }
 
         private Queue<(ulong id, TState state, CancellationToken cancellationToken, UniTaskCompletionSource tcs)>

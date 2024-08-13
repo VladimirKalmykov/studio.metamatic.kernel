@@ -21,25 +21,6 @@ namespace Metamatic
             FixedUpdate,
             LateUpdate
         }
-
-        private static BehaviourTicker ticker
-        {
-            get;
-            set;
-        }
-
-        public static BehaviourTicker GetTicker()
-        {
-            if (ticker != null) return ticker;
-            ticker = GameObject.Find("__CommonBahaviourTicker__")?.GetComponent<BehaviourTicker>();
-            if (ticker == null)
-            {
-                ticker = new GameObject("__CommonBahaviourTicker__", new[] {typeof(BehaviourTicker)})
-                    .GetComponent<BehaviourTicker>();
-            }
-
-            return ticker;
-        }
         
         public static DisposableAction PlayerLoopAction(Action callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, CancellationToken cancellationToken = default)
         {
@@ -131,21 +112,6 @@ namespace Metamatic
             }, timing, cancellationToken);
         }
 
-        public static IDisposable RunEveryFrame(Action callback, BehaviourTicker.FrameType frameType = BehaviourTicker.FrameType.Update)
-        {
-            return GetTicker().EveryFrame(callback, frameType);
-        }
-
-        public static CancellationToken TaskToCancellationToken(Task task, CancellationToken anotherCancellationToken = default)
-        {
-            var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(anotherCancellationToken);
-            AwaitCallback(task, () =>
-            {
-                tokenSource.Cancel();
-            });
-            return tokenSource.Token;
-        }
-
         public static async void AwaitCallback(Task awaitable, Action callback, bool allowCancellation = false)
         {
             try
@@ -212,6 +178,7 @@ namespace Metamatic
             if (tokenSource != null && !tokenSource.IsCancellationRequested)
             {
                 tokenSource.Cancel();
+                tokenSource.Dispose();
             }
             tokenSource = new CancellationTokenSource();
             return tokenSource;
@@ -228,6 +195,7 @@ namespace Metamatic
             if (tokenSource != null && !tokenSource.IsCancellationRequested)
             {
                 tokenSource.Cancel();
+                tokenSource.Dispose();
             }
 
             tokenSource = new CancellationTokenSource();
@@ -299,53 +267,6 @@ namespace Metamatic
             return taskCompletionSource.Task;
         }
 
-        
-        /// <summary>
-        /// Forget about task
-        /// </summary>
-        /// <param name="task"></param>
-        /// <param name="acceptableExceptions"></param>
-        public static async void Forget(this Task task, params Type[] acceptableExceptions)
-        {
-            try
-            {
-                await task.ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                if (acceptableExceptions == null || acceptableExceptions.Length == 0)
-                {
-                    if (ex is OperationCanceledException)
-                        return;
-                    throw;
-                }
-                else
-                {
-                    // TODO: consider whether derived types are also acceptable.
-                    if (!((IList) acceptableExceptions).Contains(ex.GetType()))
-                        throw;
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Forget about task except non-cancellation exceptions
-        /// </summary>
-        /// <param name="task"></param>
-        public static async Task ForgetCancellation(this Task task)
-        {
-            try
-            {
-                await task.ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                // ReSharper disable once UseNegatedPatternInIsExpression
-                if (!(ex is OperationCanceledException))
-                    throw;
-            }
-        }
-
         public readonly struct SimpleCancellationTokenAwaiter: ICriticalNotifyCompletion
         {
             public readonly CancellationToken token;
@@ -396,38 +317,6 @@ namespace Metamatic
         public static SimpleCancellationTokenAwaiter WhenCancelled(this CancellationToken token)
         {
             return new SimpleCancellationTokenAwaiter(token);
-        }
-        
-        public static IEnumerator EnumeratorAwaitable(Task task)
-        {
-            while (!task.IsCompleted) { yield return null; }
-            if (task.IsFaulted) { throw task.Exception ?? new Exception("Task failed, but has no exception"); }
-        }
-        
-        public static UniTask CustomAwaitable(Func<Action, Action> addHandler, CancellationToken cancellationToken = default)
-        {
-            var tcs = new UniTaskCompletionSource();
-            if (cancellationToken.IsCancellationRequested)
-            {
-                tcs.TrySetResult();
-                return tcs.Task;
-            }
-            Action complete = () =>
-            {
-                tcs.TrySetResult();
-            };
-            Action release = addHandler(complete);
-            
-            var registration = cancellationToken.Register(() =>
-            {
-                tcs.TrySetResult();
-            });
-            tcs.Task.GetAwaiter().OnCompleted(() =>
-            {
-                release();
-                registration.Dispose();
-            });
-            return tcs.Task;
         }
         
         /// <summary>

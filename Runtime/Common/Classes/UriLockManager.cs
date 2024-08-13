@@ -23,7 +23,7 @@ namespace Metamatic
         /// <param name="uri"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<IDisposable> GetAsyncUriLocker(string uri, CancellationToken cancellationToken)
+        public async UniTask<IDisposable> GetAsyncUriLocker(string uri, CancellationToken cancellationToken)
         {
             var locker = lockers.GetOrAdd(uri, _ => (new SemaphoreSlim(1, 1), 0));
             Interlocked.Increment(ref locker.count);
