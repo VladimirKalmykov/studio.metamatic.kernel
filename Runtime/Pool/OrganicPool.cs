@@ -18,7 +18,7 @@ namespace Metamatic
         private int m_CountInPoolAtCountdownStart = 0;
         private bool m_IsCountingDown = false;
         
-        internal OrganicPool(Func<T> onCreate, Action<T> onGet = null, Action<T> onRelease = null, Action<T> onDestroy = null, int capacity = 1, float lifetime = 30f) : base(onCreate, onGet, onRelease, onDestroy, capacity)
+        internal OrganicPool(Func<T> onCreate, Action<T> onGet = null, Action<T> onRelease = null, Action<T> onDestroy = null, int capacity = 0, float lifetime = 30f) : base(onCreate, onGet, onRelease, onDestroy, capacity)
         {   
             m_Lifetime = lifetime;
         }

@@ -173,7 +173,7 @@ namespace Metamatic
         /// <summary>
         /// State ID that is currently active
         /// </summary>
-        public ulong activeId { get; private set; }
+        private ulong activeId { get; set; }
 
         /// <summary>
         /// Determines that external cancellation token is canceled (thus SetState should throw OperationCanceledException)
@@ -192,6 +192,8 @@ namespace Metamatic
         /// Determines that this is the final state, therefore no next state
         /// </summary>
         public bool isFinalize => m_Status == TransitionStatus.Aborted;
+        
+        private bool m_Disposed;
 
         /// <summary>
         /// Returns current state or next state if it is defined
@@ -215,15 +217,18 @@ namespace Metamatic
         /// </summary>
         public CancellationToken internalCancellationToken => m_InternalCancellationTokenSource.Token;
 
-        private UniTask task => UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource?.Task ?? UniTask.CompletedTask, m_TransitionToNextStateCompletionSource?.Task ?? UniTask.CompletedTask);
-        
+        private UniTask task =>
+            UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource?.Task ?? UniTask.CompletedTask,
+                m_TransitionToNextStateCompletionSource?.Task ?? UniTask.CompletedTask);
+
         public event Action<TState> OnStateChange;
 
         private void Reset(TState nextState, TState nextPrevState = default,
             CancellationToken externalCancellationToken = default)
         {
-            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Reset (new prevState: {nextPrevState}, nextState: {nextState}");
-            #if DEBUG
+            if (m_SettingDebug)
+                Debug.Log($"[ASYNC-STATE-MACHINE] Reset (new prevState: {nextPrevState}, nextState: {nextState}");
+#if DEBUG
             try
             {
                 /* Dispose prev state if it supports IDisposable */
@@ -234,16 +239,17 @@ namespace Metamatic
             }
             catch (Exception e)
             {
-                Debug.LogError($"Error while disposing prev state {prevState} during Reset to next state {nextState}: {e.Message}");
+                Debug.LogError(
+                    $"Error while disposing prev state {prevState} during Reset to next state {nextState}: {e.Message}");
             }
-            #else
+#else
             /* Dispose prev state if it supports IDisposable */
             if (m_StateIsDisposable && m_HasPrevState)
             {
                 (prevState as IDisposable)?.Dispose();
             }
-            #endif
-            
+#endif
+
             this.currentState = nextState;
             OnStateChange?.Invoke(nextState);
             this.prevState = nextPrevState;
@@ -276,21 +282,18 @@ namespace Metamatic
         /// <param name="validator"></param>
         /// <returns></returns>
         public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator
-            #if DEBUG
+#if DEBUG
             ,
             string debugId = ""
-            #endif
+#endif
         )
         {
-            #if DEBUG
+#if DEBUG
             var dispose = m_NextStateValidator.Add(validator);
-            return new DisposableAction(() =>
-            {
-                dispose.Dispose();
-            });
-            #else
+            return new DisposableAction(() => { dispose.Dispose(); });
+#else
             return m_NextStateValidator.Add(validator);
-            #endif
+#endif
         }
 
         /// <summary>
@@ -360,7 +363,9 @@ namespace Metamatic
 
         private bool SetNextState(TState nextState, bool skipValidationCheck = false)
         {
+            #if DEBUG
             if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Set next state: {nextState}");
+            #endif
             /* Invalidate state */
             if (!skipValidationCheck && !m_NextStateValidator.Validate(state, nextState))
             {
@@ -369,6 +374,7 @@ namespace Metamatic
                 {
                     (nextState as IDisposable)?.Dispose();
                 }
+
                 return false;
             }
 
@@ -386,12 +392,12 @@ namespace Metamatic
 
             var memoizedCancellationTokenSource = m_CancellationTokenSource;
             OnNextState?.Invoke(nextState);
-            #if DEBUG
+#if DEBUG
             if (m_SettingDebug)
             {
                 Debug.Log($"[ASYNC-STATE-MACHINE] CANCEL because next state is defined: {nextState}");
             }
-            #endif
+#endif
             memoizedCancellationTokenSource.Cancel();
             return true;
         }
@@ -417,7 +423,8 @@ namespace Metamatic
         {
             if (!m_TransitionFromPrevStateResolved)
             {
-                if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from prev to current");
+                if (m_SettingDebug)
+                    Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from prev to current");
 #if DEBUG
                 SetStatus(TransitionStatus.FromPrevToCurrentCompleted, "SetTransitionFromPrevStateCompleted");
 #else
@@ -432,7 +439,8 @@ namespace Metamatic
         {
             if (!m_TransitionToNextStateResolved)
             {
-                if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from current to next");
+                if (m_SettingDebug)
+                    Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from current to next");
 #if DEBUG
                 SetStatus(TransitionStatus.FromCurrentToNextCompleted, "SetTransitionToNextStateCompleted");
 #else
@@ -514,14 +522,15 @@ namespace Metamatic
             DebugOnTransitionStatusChanged?.Invoke(status);
         }
 
-        public DisposableAction Debug_SubscribeTransitionStatusChanged(Action<TransitionStatus> onTransitionStatusChanged)
+        public DisposableAction Debug_SubscribeTransitionStatusChanged(
+            Action<TransitionStatus> onTransitionStatusChanged)
         {
             DebugOnTransitionStatusChanged += onTransitionStatusChanged;
             return new DisposableAction(() => DebugOnTransitionStatusChanged -= onTransitionStatusChanged);
         }
-        
+
         private DisposableAction m_Debug_UILoggerDisposable;
-        
+
 #endif
         /// <summary>
         /// 
@@ -541,14 +550,15 @@ namespace Metamatic
             this.currentState = defaultState;
             OnStateChange?.Invoke(defaultState);
             this.m_StateIsDisposable = typeof(IDisposable).IsAssignableFrom(typeof(TState));
-            
-            #if DEBUG
+
+#if DEBUG
             if (m_SettingDebug)
             {
                 m_NextStateValidator.debug = true;
-                m_Debug_UILoggerDisposable = UILog.Add("Async state machine", "Validator", () => m_NextStateValidator.ToString());
+                m_Debug_UILoggerDisposable = UILog.Add("Async state machine", "Validator",
+                    () => m_NextStateValidator.ToString());
             }
-            #endif
+#endif
         }
 
         ~AsyncStateMachine()
@@ -636,28 +646,42 @@ namespace Metamatic
             CancellationToken externalCancellationToken = default,
             ulong id = 0)
         {
-            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Validate attempt to add state {state} (id #{id}) (Curren status is {m_Status})");
+            if (m_Disposed)
+            {
+                throw new ObjectDisposedException(nameof(AsyncStateMachine<TState>));
+            }
+#if DEBUG
+            if (m_SettingDebug)
+                Debug.Log(
+                    $"[ASYNC-STATE-MACHINE] Validate attempt to add state {state} (id #{id}) (Curren status is {m_Status})");
+#endif
             /* Invalidate state */
             if (!m_NextStateValidator.Validate(currentState, state))
             {
                 /* As the state is invalid, we should dispose it if it supports IDisposable */
                 if (m_StateIsDisposable)
                 {
-                    #if DEBUG
+#if DEBUG
                     try
                     {
                         (state as IDisposable)?.Dispose();
-                    } catch (Exception e)
-                    {
-                        Debug.LogError($"[ASYNC-STATE-MACHINE] Error while disposing invalid state {state}: {e.Message}");
                     }
-                    #else
+                    catch (Exception e)
+                    {
+                        Debug.LogError(
+                            $"[ASYNC-STATE-MACHINE] Error while disposing invalid state {state}: {e.Message}");
+                    }
+#else
                     (state as IDisposable)?.Dispose();
-                    #endif
+#endif
                 }
+
                 return (UniTask.CompletedTask, 0);
             }
-            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Add valid state {state} (id #{id}) (Curren status is {m_Status})");
+#if DEBUG
+            if (m_SettingDebug)
+                Debug.Log($"[ASYNC-STATE-MACHINE] Add valid state {state} (id #{id}) (Curren status is {m_Status})");
+#endif
 
             /* Generate unique Id the future transition */
             var nextId = id == 0 ? GenerateId() : id;
@@ -782,7 +806,7 @@ namespace Metamatic
                 {
                     var deqState = m_StatesQueue.Dequeue();
                     deqState.tcs.TrySetResult();
-                    
+
                     /* Dispose state */
                     if (m_StateIsDisposable)
                     {
@@ -790,9 +814,11 @@ namespace Metamatic
                         try
                         {
                             (state as IDisposable)?.Dispose();
-                        } catch (Exception e)
+                        }
+                        catch (Exception e)
                         {
-                            Debug.LogError($"[ASYNC-STATE-MACHINE] Error while disposing state {state} during enqueue filter: {e.Message}");
+                            Debug.LogError(
+                                $"[ASYNC-STATE-MACHINE] Error while disposing state {state} during enqueue filter: {e.Message}");
                         }
 #else
                         (state as IDisposable)?.Dispose();
@@ -810,7 +836,8 @@ namespace Metamatic
             try
             {
                 if (m_SettingDebug)
-                    Debug.Log($"[ASYNC-STATE-MACHINE][TRANSITION] Perform transition #{id} {prevState} -> {currentState}");
+                    Debug.Log(
+                        $"[ASYNC-STATE-MACHINE][TRANSITION] Perform transition #{id} {prevState} -> {currentState}");
 #if DEBUG
                 SetStatus(TransitionStatus.FromPrevToCurrentProcessing, "PerformTransition");
 #else
@@ -874,10 +901,10 @@ namespace Metamatic
                         $"[WINGS BEHAVIOUR] Transition #{id} finalized  (prev: {prevState}, current: {currentState}, next: {nextState})");
                 OnTransitionCompleted?.Invoke();
                 SetStatus(TransitionStatus.Idle
-                    #if DEBUG
+#if DEBUG
                     , "Transition finalizer"
-                    #endif
-                    );
+#endif
+                );
                 m_LatestTransitionId = id;
                 DeferCallNextStateOnCurrentTransitionReady();
             }
@@ -955,7 +982,7 @@ namespace Metamatic
             onTransition(prevState, currentState);
             return new DisposableAction(() => OnTransitionStep -= onTransition);
         }
-        
+
         public DisposableAction SubscribeStateChange(Action<TState> onStateChange)
         {
             OnStateChange += onStateChange;
@@ -965,22 +992,23 @@ namespace Metamatic
 
         private void Dispose(bool isAsync)
         {
-            #if DEBUG
+#if DEBUG
             m_Debug_UILoggerDisposable.Dispose();
-            #endif
+#endif
+            m_Disposed = true;
             m_InternalCancellationTokenSource.Cancel();
             m_InternalCancellationTokenSource.Dispose();
-            
+
             /* Dispose active states */
             if (m_StateIsDisposable)
             {
-                #if DEBUG
+#if DEBUG
                 try
                 {
                     (prevState as IDisposable)?.Dispose();
                     (currentState as IDisposable)?.Dispose();
                     (nextState as IDisposable)?.Dispose();
-                    
+
                     /* Dispose states in queue */
                     foreach (var (_, state, _, _) in m_StatesQueue)
                     {
@@ -991,8 +1019,8 @@ namespace Metamatic
                 {
                     Debug.LogError("Error while disposing states during state machine disposing: " + e.Message);
                 }
-                
-                #else
+
+#else
                 (prevState as IDisposable)?.Dispose();
                 (currentState as IDisposable)?.Dispose();
                 (nextState as IDisposable)?.Dispose();
@@ -1002,10 +1030,9 @@ namespace Metamatic
                 {
                     (state as IDisposable)?.Dispose();
                 }
-                #endif
-                
-                
+#endif
             }
+
             if (!isAsync)
             {
                 m_TransitionFromPrevStateResolved = true;
