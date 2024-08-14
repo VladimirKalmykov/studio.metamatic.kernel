@@ -1010,11 +1010,13 @@ namespace Metamatic
                 var taskToWait = PushStateAsync(newNextState, externalCancellationToken, id).task;
                 await taskToWait;
                 tcs.TrySetResult();
-                tcs.TryReturn();
             }
             catch (Exception e)
             {
                 tcs.TrySetException(e);
+            }
+            finally
+            {
                 tcs.TryReturn();
             }
         }
@@ -1077,12 +1079,12 @@ namespace Metamatic
                 (nextState as IDisposable)?.Dispose();
                 
                 /* Dispose states in queue */
-                foreach (var (_, state, _, _) in m_StatesQueue)
-                {
+                foreach (var (_, state, _, tcs) in m_StatesQueue)
+                    {
                         tcs.TrySetCanceled(); // TODO: Cancel or Resolve?
                         tcs.TryReturn();
-                    (state as IDisposable)?.Dispose();
-                }
+                        (state as IDisposable)?.Dispose();
+                    }
 #endif
             }
 

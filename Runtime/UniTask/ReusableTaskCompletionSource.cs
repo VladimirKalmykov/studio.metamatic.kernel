@@ -26,12 +26,12 @@ namespace Metamatic
 
         ~ReusableUniTaskCompletionSource()
         {
-            #if DEBUG
+            /*#if DEBUG
             if (core.UnsafeGetStatus() == UniTaskStatus.Pending)
             {
                 UnityEngine.Debug.LogError("You must call SetResult, SetException, or SetCanceled in ReusableUniTaskCompletionSource. Forget to call?");
             }
-            #endif
+            #endif*/
         }
 
         public static ReusableUniTaskCompletionSource Create()
@@ -163,17 +163,18 @@ namespace Metamatic
         private void InternalReset()
         {
 #if DEBUG
-            if (!m_Handled)
+            /*
+             if (!m_Handled)
             {
                 UnityEngine.Debug.LogError("You must call GetResult in ReusableUniTaskCompletionSource before Reset.");
             }
+            */
             if (core.UnsafeGetStatus() == UniTaskStatus.Pending)
             {
                 UnityEngine.Debug.LogError($"Task status is {core.UnsafeGetStatus()}. You must call SetResult, SetException, or SetCanceled in ReusableUniTaskCompletionSource before Reset.");
                 TrySetException(new Exception("You must call SetResult, SetException, or SetCanceled in ReusableUniTaskCompletionSource before Reset."));
             }
 #endif
-            Debug.Log($"About to clear Continuation when reset (count = {continuations?.Count})");
             continuations?.Clear();
         }
         

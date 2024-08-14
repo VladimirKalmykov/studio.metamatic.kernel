@@ -146,7 +146,9 @@ namespace Metamatic
 
             shouldDisposedAsync = false;
             isInquired = false;
+            #if DEBUG
             _InstanceCount--;
+            #endif
             Pool2.Return(this);
         }
 

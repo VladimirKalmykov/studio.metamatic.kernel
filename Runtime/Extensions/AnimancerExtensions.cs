@@ -52,18 +52,6 @@ namespace Metamatic
             });*/
             return tcs.Task;
         }
-        
-        public static async UniTask WhenEndsOrChanged(this AnimancerState state, CancellationToken cancellationToken = default, string debugID = "")
-        {
-            var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var currentClip = state.Clip;
-            var waitClipChanged = UniTask.WaitWhile(() =>
-            {
-                return state.Clip == currentClip;
-            }, cancellationToken: cancellationTokenSource.Token);
-            await UniTask.WhenAny(waitClipChanged, state.WhenEnds(cancellationTokenSource.Token, debugID));
-            cancellationTokenSource.CancelAndDispose();
-        }
     }
 }
 #endif
