@@ -2,7 +2,8 @@
     "name": "studio.metamatic.kernel.editor",
     "rootNamespace": "",
     "references": [
-        "GUID:d01de68c50643b942a4ca541c1a31fb3"
+        "GUID:d01de68c50643b942a4ca541c1a31fb3",
+        "GUID:5ce45f4ed38321444a8b352f1d931b2f"
     ],
     "includePlatforms": [
         "Editor"

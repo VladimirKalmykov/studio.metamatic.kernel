@@ -174,6 +174,8 @@ namespace Cysharp.Threading.Tasks
                 core.OnCompleted(continuation, state, token);
             }
 
+            public int version => core.Version;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return core.GetStatus(token);
@@ -491,6 +493,8 @@ namespace Cysharp.Threading.Tasks
             {
                 core.OnCompleted(continuation, state, token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {

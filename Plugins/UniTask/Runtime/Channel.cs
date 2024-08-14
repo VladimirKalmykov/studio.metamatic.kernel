@@ -339,6 +339,8 @@ namespace Cysharp.Threading.Tasks
                 core.GetResult(token);
             }
 
+            public int version => core.Version;
+
             UniTaskStatus IUniTaskSource.GetStatus(short token)
             {
                 return core.GetStatus(token);

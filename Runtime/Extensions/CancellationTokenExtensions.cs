@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
@@ -8,12 +9,13 @@ namespace Metamatic
 
     public static class CancellationTokenExtensions
     {
-        public static CancellationTokenAwaiter GetAwaiter(this CancellationToken cancellationToken)
+        public static CancellationTokenAwaitable.Awaiter GetAwaiter(this CancellationToken cancellationToken)
         {
-            return new CancellationTokenAwaiter(cancellationToken);
+            return new CancellationTokenAwaitable.Awaiter(cancellationToken);
         }
-
-        public struct CancellationTokenAwaiter : INotifyCompletion
+        
+        [Obsolete("Use CancellationTokenAwaitable.Awaiter instead")]
+        public struct CancellationTokenAwaiter : INotifyCompletion, ICriticalNotifyCompletion
         {
             private readonly CancellationToken cancellationToken;
 
@@ -25,6 +27,10 @@ namespace Metamatic
             public bool IsCompleted => cancellationToken.IsCancellationRequested;
 
             public void OnCompleted(Action continuation) => cancellationToken.Register(continuation);
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                throw new NotImplementedException();
+            }
 
             public void GetResult()
             {

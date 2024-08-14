@@ -29,11 +29,11 @@ namespace Metamatic
         [SerializeField] private bool m_InitializeOnDemand;
         #endregion
         
-        protected async UniTask InternalServiceReady()
+        protected CancellationTokenAwaitable InternalServiceReady()
         {
             _IsReady = true;
             OnReady?.Invoke();
-            await componentDisableCancellationToken;
+            return componentDisableCancellationToken.WaitUntilCanceled();
         }
         public UniTask WhenReady(CancellationToken cancellationToken = default)
         {
@@ -203,7 +203,7 @@ namespace Metamatic
             return new DisposableAction(() => _HandleServiceAdded -= handler);
         }
         
-        protected delegate UniTask Ready();
+        protected delegate CancellationTokenAwaitable Ready();
         private bool m_InitializedOnDemand;
 
         protected abstract UniTask RunService(Ready ready, CancellationToken cancellationToken);

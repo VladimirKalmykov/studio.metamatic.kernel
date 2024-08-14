@@ -12,11 +12,11 @@ namespace Metamatic
         private event Action OnAwakeReady;
         private event Action OnReady;
 
-        private async UniTask InternalSetReady()
+        private CancellationTokenAwaitable InternalSetReady()
         {
             IsReady = true;
             OnReady?.Invoke();
-            await componentDisableCancellationToken;
+            return componentDisableCancellationToken.WaitUntilCanceled();
         }
         private async UniTask InternalAwakeSetReady()
         {
@@ -48,9 +48,9 @@ namespace Metamatic
         }
         public async UniTask WhenReady(CancellationToken cancellationToken = default)
         {
-            if (!m_Demanded)
+            if (IsReady)
             {
-                Demand();
+                return;
             }
             var tcs = new UniTaskCompletionSource();
             IDisposable readyListener = null;
@@ -69,13 +69,16 @@ namespace Metamatic
                 tcs.TrySetResult();
             });
 
-            var timeoutTask = UniTask.Delay(TimeSpan.FromSeconds(30), DelayType.Realtime, PlayerLoopTiming.TimeUpdate,
+            var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var timeoutTask = UniTask.Delay(TimeSpan.FromSeconds(30), DelayType.DeltaTime, PlayerLoopTiming.TimeUpdate,
                 cancellationToken);
             var result = await UniTask.WhenAny(timeoutTask, tcs.Task);
             if (result == 0)
             {
                 throw new TimeoutException($"Async behaviour {this.GetType().Name} initialization timeout");
             }
+            timeoutCancellationTokenSource.Cancel();
+            timeoutCancellationTokenSource.Dispose();
         }
         
         // ReSharper disable once MemberCanBePrivate.Global
@@ -89,53 +92,10 @@ namespace Metamatic
             OnReady += action;
             return new DisposableAction(() => OnReady -= action);
         }
-        
-        /// <summary>
-        /// Demand service initialization (only if InitializeOnDemand is true)
-        /// </summary>
-        private void Demand()
-        {
-            if (!m_Demanded)
-            {
-                m_Demanded = true;
-                m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
-                m_DemandCompletionSource.TrySetResult();
-            }
-        }
-        
-        /// <summary>
-        /// Demand async behaviour initialization (gives any effect only if Run method is awaited demand request by calling await WhenDemand() method)
-        /// </summary>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        private UniTask Demand(CancellationToken cancellationToken)
-        {
-            Demand();
-            return WhenReady(cancellationToken);
-        }
-
-        /// <summary>
-        /// Wait for demand
-        /// </summary>
-        /// <returns></returns>
-        public UniTask WhenDemand()
-        {
-            return m_DemandCompletionSource.Task;
-        }
-
-        private bool m_Demanded;
-        private UniTaskCompletionSource m_DemandCompletionSource;
         protected sealed override async UniTaskVoid RunAsync(CancellationToken cancellationToken)
         {
-            
-            cancellationToken.Register(() =>
-            {
-                m_DemandCompletionSource?.TrySetCanceled();
-                m_DemandCompletionSource = null;
-            });
             try
             {
-                m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
                 if (!AwakeIsReady)
                 {
                     await WaitForAwakeReady(cancellationToken);
@@ -161,7 +121,7 @@ namespace Metamatic
         {
             try
             {
-                await AsyncAwake(InternalAwakeSetReady, cancellationToken);
+                await AsyncAwake(InternalSetReady, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -194,7 +154,7 @@ namespace Metamatic
             return behaviour;
         }
         
-        protected delegate UniTask Ready();
+        protected delegate CancellationTokenAwaitable Ready();
         private bool m_InitializedOnDemand;
 
         protected abstract UniTask Run(Ready ready, CancellationToken cancellationToken);

@@ -111,13 +111,13 @@ namespace Metamatic
         /// <summary>
         /// Completion source for the transition from previous state to current state (will be completed when handler call WaitNextState() method or right after setting next state)
         /// </summary>
-        private UniTaskCompletionSource m_TransitionFromPrevStateCompletionSource;
+        private ReusableUniTaskCompletionSource m_TransitionFromPrevStateCompletionSource;
 
         /// <summary>
         /// Completion source for the transition from current state to next state
         /// TODO: Consider to remove this completion source and use only m_TransitionFromPrevStateCompletionSource, because it is not in use
         /// </summary>
-        private UniTaskCompletionSource m_TransitionToNextStateCompletionSource;
+        private ReusableUniTaskCompletionSource m_TransitionToNextStateCompletionSource;
 
         /// <summary>
         /// Indicated that transition from previous state to current state is resolved (to avoid using return value of TrySetResult)
@@ -254,11 +254,44 @@ namespace Metamatic
             OnStateChange?.Invoke(nextState);
             this.prevState = nextPrevState;
             m_ExternalCancellationToken = externalCancellationToken;
+            m_CancellationTokenSource?.Dispose();
             m_CancellationTokenSource =
                 CancellationTokenSource.CreateLinkedTokenSource(m_InternalCancellationTokenSource.Token,
                     externalCancellationToken);
-            m_TransitionFromPrevStateCompletionSource = new UniTaskCompletionSource();
-            m_TransitionToNextStateCompletionSource = new UniTaskCompletionSource();
+            
+            if (m_TransitionFromPrevStateCompletionSource == null)
+            {
+                m_TransitionFromPrevStateCompletionSource = ReusableUniTaskCompletionSource.Create();
+                #if DEBUG
+                if (m_SettingDebug)
+                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init transition from prev state completion source #{m_TransitionFromPrevStateCompletionSource.debugVersion}");
+                #endif
+            }
+            else
+            {
+                m_TransitionFromPrevStateCompletionSource.Reset();
+#if DEBUG
+                if (m_SettingDebug)
+                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Reset transition from prev state completion source #{m_TransitionFromPrevStateCompletionSource.debugVersion}");
+#endif
+            }
+            
+            if (m_TransitionToNextStateCompletionSource == null)
+            {
+                m_TransitionToNextStateCompletionSource = ReusableUniTaskCompletionSource.Create();
+#if DEBUG
+                if (m_SettingDebug)
+                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init transition from current state to next state completion source #{m_TransitionToNextStateCompletionSource.debugVersion}");
+#endif
+            }
+            else
+            {
+                m_TransitionToNextStateCompletionSource.Reset();
+#if DEBUG
+                if (m_SettingDebug)
+                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Reset transition from current state to next state completion source #{m_TransitionToNextStateCompletionSource.debugVersion}");
+#endif
+            }
             m_TransitionFromPrevStateResolved = false;
             m_TransitionToNextStateResolved = false;
             m_Status = TransitionStatus.Idle;
@@ -568,13 +601,10 @@ namespace Metamatic
 
         private ulong GenerateId()
         {
-            unchecked
-            {
-                return ++m_LastId;
-            }
+            return ++m_LastId == ulong.MaxValue ? m_LastId = 1 : m_LastId;
         }
 
-        private Queue<(ulong id, TState state, CancellationToken cancellationToken, UniTaskCompletionSource tcs)>
+        private Queue<(ulong id, TState state, CancellationToken cancellationToken, ReusableUniTaskCompletionSource tcs)>
             m_StatesQueue =
                 new();
 
@@ -697,7 +727,11 @@ namespace Metamatic
                     {
                         /* Transition is being processed, therefore we should add next state and defer this state */
                         /* Bet first we should check if queue already has next state */
-                        var tcs = new UniTaskCompletionSource();
+                        var tcs = ReusableUniTaskCompletionSource.Create();
+                        #if DEBUG
+                        if (m_SettingDebug)
+                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {state}(id #{id}) (Curren status is {m_Status})");
+                        #endif
                         var isFirstInQueue = m_StatesQueue.Count == 0;
                         EnqueueState(nextId, state, externalCancellationToken, tcs);
                         if (isFirstInQueue)
@@ -713,7 +747,11 @@ namespace Metamatic
                     case TransitionStatus.Error:
                     {
                         /* Transition is in state of transitioning between current state and next state. We should add this state to queue */
-                        var tcs = new UniTaskCompletionSource();
+                        var tcs = ReusableUniTaskCompletionSource.Create();
+#if DEBUG
+                        if (m_SettingDebug)
+                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {state}(id #{id}) (Curren status is {m_Status})");
+#endif
                         EnqueueState(nextId, state, externalCancellationToken, tcs);
                         return (tcs.Task, nextId);
                     }
@@ -735,6 +773,7 @@ namespace Metamatic
                 if (!SetNextState(nextState))
                 {
                     tcs.TrySetResult();
+                    tcs.TryReturn();
                     /* Remove from queue */
                     m_StatesQueue.Dequeue();
                 }
@@ -800,7 +839,7 @@ namespace Metamatic
         }
 
         private void EnqueueState(ulong id, TState state, CancellationToken externalCancellationToken,
-            UniTaskCompletionSource tcs)
+            ReusableUniTaskCompletionSource tcs)
         {
             if (m_SettingKeepOnlyLatestState && m_StatesQueue.Count > 1)
             {
@@ -809,6 +848,7 @@ namespace Metamatic
                 {
                     var deqState = m_StatesQueue.Dequeue();
                     deqState.tcs.TrySetResult();
+                    deqState.tcs.TryReturn();
 
                     /* Dispose state */
                     if (m_StateIsDisposable)
@@ -952,11 +992,14 @@ namespace Metamatic
             if (!previousIsSuccess)
             {
                 tcs.TrySetException(exception);
+                tcs.TryReturn();
 
                 /* Throw every next state in queue */
                 while (m_StatesQueue.Count > 0)
                 {
-                    m_StatesQueue.Dequeue().tcs.TrySetException(exception); // TODO: Cover this moment with unit tests
+                    var nextTcs = m_StatesQueue.Dequeue().tcs;
+                    nextTcs.TrySetException(exception); // TODO: Cover this moment with unit tests
+                    nextTcs.TryReturn();
                 }
 
                 return;
@@ -964,12 +1007,15 @@ namespace Metamatic
 
             try
             {
-                await PushLegacy(newNextState, externalCancellationToken, id);
+                var taskToWait = PushStateAsync(newNextState, externalCancellationToken, id).task;
+                await taskToWait;
                 tcs.TrySetResult();
+                tcs.TryReturn();
             }
             catch (Exception e)
             {
                 tcs.TrySetException(e);
+                tcs.TryReturn();
             }
         }
 
@@ -1013,8 +1059,10 @@ namespace Metamatic
                     (nextState as IDisposable)?.Dispose();
 
                     /* Dispose states in queue */
-                    foreach (var (_, state, _, _) in m_StatesQueue)
+                    foreach (var (_, state, _, tcs) in m_StatesQueue)
                     {
+                        tcs.TrySetCanceled(); // TODO: Cancel or Resolve?
+                        tcs.TryReturn();
                         (state as IDisposable)?.Dispose();
                     }
                 }
@@ -1031,6 +1079,8 @@ namespace Metamatic
                 /* Dispose states in queue */
                 foreach (var (_, state, _, _) in m_StatesQueue)
                 {
+                        tcs.TrySetCanceled(); // TODO: Cancel or Resolve?
+                        tcs.TryReturn();
                     (state as IDisposable)?.Dispose();
                 }
 #endif
@@ -1042,6 +1092,8 @@ namespace Metamatic
                 m_TransitionToNextStateResolved = true;
                 m_TransitionFromPrevStateCompletionSource?.TrySetCanceled();
                 m_TransitionToNextStateCompletionSource?.TrySetCanceled();
+                m_TransitionFromPrevStateCompletionSource?.TryReturn();
+                m_TransitionToNextStateCompletionSource?.TryReturn();
             }
 
             GC.SuppressFinalize(this);
@@ -1063,6 +1115,15 @@ namespace Metamatic
             catch (OperationCanceledException)
             {
                 // Ignore
+            }
+            finally
+            {
+                m_TransitionFromPrevStateResolved = true;
+                m_TransitionToNextStateResolved = true;
+                m_TransitionFromPrevStateCompletionSource?.TrySetCanceled();
+                m_TransitionToNextStateCompletionSource?.TrySetCanceled();
+                m_TransitionFromPrevStateCompletionSource?.TryReturn();
+                m_TransitionToNextStateCompletionSource?.TryReturn();
             }
             // TODO: Consider do not throw exception of current transition
         }

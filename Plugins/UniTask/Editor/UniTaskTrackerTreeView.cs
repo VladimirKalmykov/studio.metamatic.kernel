@@ -15,6 +15,7 @@ namespace Cysharp.Threading.Tasks.Editor
     {
         static Regex removeHref = new Regex("<a href.+>(.+)</a>", RegexOptions.Compiled);
 
+        public string Id { get; set; }
         public string TaskType { get; set; }
         public string Elapsed { get; set; }
         public string Status { get; set; }
@@ -129,9 +130,9 @@ namespace Cysharp.Threading.Tasks.Editor
 
             var children = new List<TreeViewItem>();
 
-            TaskTracker.ForEachActiveTask((trackingId, awaiterType, status, created, stackTrace) =>
+            TaskTracker.ForEachActiveTask((trackingId, sourceId, awaiterType, status, created, stackTrace) =>
             {
-                children.Add(new UniTaskTrackerViewItem(trackingId) { TaskType = awaiterType, Status = status.ToString(), Elapsed = (DateTime.UtcNow - created).TotalSeconds.ToString("00.00"), Position = stackTrace });
+                children.Add(new UniTaskTrackerViewItem(trackingId) { Id = sourceId, TaskType = $"{awaiterType} #{sourceId}", Status = status.ToString(), Elapsed = (DateTime.UtcNow - created).TotalSeconds.ToString("00.00"), Position = stackTrace });
             });
 
             CurrentBindingItems = children;

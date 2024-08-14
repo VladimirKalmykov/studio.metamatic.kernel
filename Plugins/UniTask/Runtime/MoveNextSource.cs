@@ -11,6 +11,8 @@ namespace Cysharp.Threading.Tasks
             return completionSource.GetResult(token);
         }
 
+        public int version => completionSource.Version;
+
         public UniTaskStatus GetStatus(short token)
         {
             return completionSource.GetStatus(token);

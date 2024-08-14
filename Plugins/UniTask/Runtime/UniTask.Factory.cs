@@ -203,6 +203,8 @@ namespace Cysharp.Threading.Tasks
                 exception.Throw();
             }
 
+            public int version => 0;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return UniTaskStatus.Faulted;
@@ -239,6 +241,8 @@ namespace Cysharp.Threading.Tasks
                 exception.Throw();
             }
 
+            public int version => 0;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return UniTaskStatus.Faulted;
@@ -268,6 +272,8 @@ namespace Cysharp.Threading.Tasks
             {
                 throw new OperationCanceledException(cancellationToken);
             }
+
+            public int version => 0;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -304,6 +310,8 @@ namespace Cysharp.Threading.Tasks
                 throw new OperationCanceledException(cancellationToken);
             }
 
+            public int version => 0;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return UniTaskStatus.Canceled;
@@ -335,6 +343,8 @@ namespace Cysharp.Threading.Tasks
             {
                 awaiter.GetResult();
             }
+
+            public int version => 0;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -379,6 +389,8 @@ namespace Cysharp.Threading.Tasks
             {
                 awaiter.GetResult();
             }
+
+            public int version => 0;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -429,6 +441,8 @@ namespace Cysharp.Threading.Tasks
             {
                 return core.GetResult(token);
             }
+
+            public int version => 0;
 
             public UniTaskStatus GetStatus(short token)
             {

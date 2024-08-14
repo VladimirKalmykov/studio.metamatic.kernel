@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Debug = UnityEngine.Debug;
 
 namespace Cysharp.Threading.Tasks
 {
@@ -253,8 +254,7 @@ namespace Cysharp.Threading.Tasks
         /// <param name="continuation">The continuation to invoke when the operation has completed.</param>
         /// <param name="state">The state object to pass to <paramref name="continuation"/> when it's invoked.</param>
         /// <param name="token">Opaque value that was provided to the <see cref="UniTask"/>'s constructor.</param>
-        [DebuggerHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnCompleted(Action<object> continuation, object state, short token /*, ValueTaskSourceOnCompletedFlags flags */)
         {
             if (continuation == null)
@@ -287,7 +287,10 @@ namespace Cysharp.Threading.Tasks
                 // It will cause call OnCompleted multiple time, invalid.
                 if (!ReferenceEquals(oldContinuation, UniTaskCompletionSourceCoreShared.s_sentinel))
                 {
-                    throw new InvalidOperationException("Already continuation registered, can not await twice or get Status after await.");
+                    #if DEBUG
+                    Debug.LogError($"[TASK] Task {version} already continuation registered, can not await twice or get Status after await.");
+                    #endif
+                    throw new InvalidOperationException($"Task {version} already continuation registered, can not await twice or get Status after await.");
                 }
 
                 continuation(state);
@@ -410,6 +413,8 @@ namespace Cysharp.Threading.Tasks
             }
 
         }
+
+        public int version => core.Version;
 
         [DebuggerHidden]
         public UniTaskStatus GetStatus(short token)
@@ -539,6 +544,8 @@ namespace Cysharp.Threading.Tasks
             GetResult(token);
         }
 
+        public int version => this.core.Version;
+
         [DebuggerHidden]
         public UniTaskStatus GetStatus(short token)
         {
@@ -651,6 +658,8 @@ namespace Cysharp.Threading.Tasks
                     throw new InvalidOperationException("not yet completed.");
             }
         }
+
+        public int version => 0;
 
         [DebuggerHidden]
         public UniTaskStatus GetStatus(short token)
@@ -843,6 +852,8 @@ namespace Cysharp.Threading.Tasks
             GetResult(token);
         }
 
+        public int version => 0;
+
         [DebuggerHidden]
         public UniTaskStatus GetStatus(short token)
         {
@@ -855,7 +866,6 @@ namespace Cysharp.Threading.Tasks
             return (UniTaskStatus)intStatus;
         }
 
-        [DebuggerHidden]
         public void OnCompleted(Action<object> continuation, object state, short token)
         {
             if (gate == null)

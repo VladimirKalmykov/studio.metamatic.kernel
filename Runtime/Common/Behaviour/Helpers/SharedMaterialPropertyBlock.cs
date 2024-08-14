@@ -24,10 +24,10 @@ namespace Metamatic
             base.Awake();
         }
 
-        protected override UniTask Run(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
         {
             m_Renderer.GetPropertyBlock(m_Value);
-            return ready();
+            await ready();
         }
         
         /// <summary>

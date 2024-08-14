@@ -108,6 +108,8 @@ namespace Cysharp.Threading.Tasks
                 return core.GetResult(token);
             }
 
+            public int version => core.Version;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return core.GetStatus(token);
@@ -264,6 +266,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -458,6 +462,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -689,6 +695,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -957,6 +965,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -1262,6 +1272,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -1604,6 +1616,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -1983,6 +1997,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -2399,6 +2415,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -2852,6 +2870,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -3342,6 +3362,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -3869,6 +3891,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -4433,6 +4457,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -5034,6 +5060,8 @@ namespace Cysharp.Threading.Tasks
                 GC.SuppressFinalize(this);
                 return core.GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {

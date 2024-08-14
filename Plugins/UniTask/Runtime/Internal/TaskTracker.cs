@@ -107,7 +107,7 @@ namespace Cysharp.Threading.Tasks
         }
 
         /// <summary>(trackingId, awaiterType, awaiterStatus, createdTime, stackTrace)</summary>
-        public static void ForEachActiveTask(Action<int, string, UniTaskStatus, DateTime, string> action)
+        public static void ForEachActiveTask(Action<int, string, string, UniTaskStatus, DateTime, string> action)
         {
             lock (listPool)
             {
@@ -116,7 +116,7 @@ namespace Cysharp.Threading.Tasks
                 {
                     for (int i = 0; i < count; i++)
                     {
-                        action(listPool[i].Value.trackingId, listPool[i].Value.formattedType, listPool[i].Key.UnsafeGetStatus(), listPool[i].Value.addTime, listPool[i].Value.stackTrace);
+                        action(listPool[i].Value.trackingId, listPool[i].Key.version.ToString(), listPool[i].Value.formattedType, listPool[i].Key.UnsafeGetStatus(), listPool[i].Value.addTime, listPool[i].Value.stackTrace);
                         listPool[i] = default;
                     }
                 }

@@ -90,6 +90,8 @@ namespace Cysharp.Threading.Tasks
                 }
             }
 
+            public int version => core.Version;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return core.GetStatus(token);
@@ -195,6 +197,8 @@ namespace Cysharp.Threading.Tasks
                 }
             }
 
+            public int version => core.Version;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return core.GetStatus(token);
@@ -297,6 +301,8 @@ namespace Cysharp.Threading.Tasks
                     TryReturn();
                 }
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -401,6 +407,8 @@ namespace Cysharp.Threading.Tasks
             {
                 GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -523,6 +531,8 @@ namespace Cysharp.Threading.Tasks
             {
                 GetResult(token);
             }
+
+            public int version => core.Version;
 
             public UniTaskStatus GetStatus(short token)
             {

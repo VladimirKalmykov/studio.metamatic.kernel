@@ -105,6 +105,8 @@ namespace Cysharp.Threading.Tasks.CompilerServices
 
         // dummy interface implementation for TaskTracker.
 
+        public int version => 0;
+
         UniTaskStatus IUniTaskSource.GetStatus(short token)
         {
             return UniTaskStatus.Pending;
@@ -226,6 +228,8 @@ namespace Cysharp.Threading.Tasks.CompilerServices
 #endif
             }
         }
+
+        public int version => core.Version;
 
         [DebuggerHidden]
         public UniTaskStatus GetStatus(short token)
@@ -356,6 +360,8 @@ namespace Cysharp.Threading.Tasks.CompilerServices
         {
             GetResult(token);
         }
+
+        public int version => core.Version;
 
         [DebuggerHidden]
         public UniTaskStatus GetStatus(short token)

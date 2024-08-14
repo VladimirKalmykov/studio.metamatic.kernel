@@ -24,6 +24,7 @@ namespace Cysharp.Threading.Tasks
 #pragma warning disable CS0108
 #endif
     {
+        int version { get; }
         UniTaskStatus GetStatus(short token);
         void OnCompleted(Action<object> continuation, object state, short token);
         void GetResult(short token);

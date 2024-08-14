@@ -13,8 +13,7 @@ namespace Cysharp.Threading.Tasks
     internal static class AwaiterActions
     {
         internal static readonly Action<object> InvokeContinuationDelegate = Continuation;
-
-        [DebuggerHidden]
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static void Continuation(object state)
         {
@@ -141,6 +140,8 @@ namespace Cysharp.Threading.Tasks
                 return AsyncUnit.Default;
             }
 
+            public int version => source.version;
+
             public UniTaskStatus GetStatus(short token)
             {
                 return source.GetStatus(token);
@@ -186,6 +187,8 @@ namespace Cysharp.Threading.Tasks
             {
                 GetResult(token);
             }
+
+            public int version => source.version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -249,6 +252,8 @@ namespace Cysharp.Threading.Tasks
                     }
                 }
             }
+
+            public int version => source.version;
 
             public UniTaskStatus GetStatus(short token)
             {
@@ -325,8 +330,7 @@ namespace Cysharp.Threading.Tasks
                     task.source.OnCompleted(AwaiterActions.InvokeContinuationDelegate, continuation, task.token);
                 }
             }
-
-            [DebuggerHidden]
+            
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void UnsafeOnCompleted(Action continuation)
             {
@@ -398,7 +402,6 @@ namespace Cysharp.Threading.Tasks
             }
         }
 
-        [DebuggerHidden]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Awaiter GetAwaiter()
         {
@@ -508,6 +511,8 @@ namespace Cysharp.Threading.Tasks
                 GetResult(token);
             }
 
+            public int version => source.version;
+
             [DebuggerHidden]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public UniTaskStatus GetStatus(short token)
@@ -585,6 +590,8 @@ namespace Cysharp.Threading.Tasks
                 GetResult(token);
             }
 
+            public int version => source.version;
+
             public UniTaskStatus GetStatus(short token)
             {
                 if (source == null)
@@ -631,15 +638,13 @@ namespace Cysharp.Threading.Tasks
 
             public bool IsCompleted
             {
-                [DebuggerHidden]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
                     return task.Status.IsCompleted();
                 }
             }
-
-            [DebuggerHidden]
+            
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public T GetResult()
             {
@@ -653,8 +658,7 @@ namespace Cysharp.Threading.Tasks
                     return s.GetResult(task.token);
                 }
             }
-
-            [DebuggerHidden]
+            
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void OnCompleted(Action continuation)
             {
@@ -669,7 +673,6 @@ namespace Cysharp.Threading.Tasks
                 }
             }
 
-            [DebuggerHidden]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void UnsafeOnCompleted(Action continuation)
             {

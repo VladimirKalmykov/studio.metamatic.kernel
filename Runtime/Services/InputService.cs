@@ -16,8 +16,8 @@ namespace Metamatic
         protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
         {
             /* Prepare handler for player inputs */
-            m_PlayerInputs = new ManagedList<PlayerInput>(HandlePlayerInput);
-            var cameraService = m_CameraService = await Resolve<CameraService>();
+            using var playerInputs = m_PlayerInputs = new ManagedList<PlayerInput>(HandlePlayerInput);
+            var cameraService = m_CameraService = await Resolve<CameraService>(cancellationToken);
             /* Subscribe to main camera */
             using var mainCameraSubscription = cameraService.SubscribeToMainCamera(HandleMainCamera);
 
