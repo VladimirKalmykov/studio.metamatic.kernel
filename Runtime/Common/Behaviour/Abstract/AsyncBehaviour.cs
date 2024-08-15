@@ -18,11 +18,11 @@ namespace Metamatic
             OnReady?.Invoke();
             return componentDisableCancellationToken.WaitUntilCanceled();
         }
-        private async UniTask InternalAwakeSetReady()
+        private CancellationTokenAwaitable InternalAwakeSetReady()
         {
             AwakeIsReady = true;
             OnAwakeReady?.Invoke();
-            await componentDestroyToken;
+            return componentDestroyToken.WaitUntilCanceled();
         }
         
         /// <summary>
@@ -105,7 +105,6 @@ namespace Metamatic
             catch (OperationCanceledException)
             {
                 var type = this.GetType();
-                Debug.Log($"Async behaviour {type} was canceled.");
             }
             catch (Exception e)
             {
@@ -121,7 +120,7 @@ namespace Metamatic
         {
             try
             {
-                await AsyncAwake(InternalSetReady, cancellationToken);
+                await AsyncAwake(InternalAwakeSetReady, cancellationToken);
             }
             catch (OperationCanceledException)
             {

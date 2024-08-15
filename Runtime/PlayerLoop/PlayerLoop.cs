@@ -5,7 +5,7 @@ namespace PlayerLoop
 {
     public class PlayerLoop: MonoBehaviour
     {
-        public static InjectPlayerLoopTimings InjectPlayerLoopTimings = InjectPlayerLoopTimings.All;
+        public static InjectPlayerLoopTimings InjectPlayerLoopTimings = InjectPlayerLoopTimings.Minimum;
         private static PlayerLoop _Instance;
         void Start()
         {
@@ -25,7 +25,7 @@ namespace PlayerLoop
         }
         
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void Initialize()
+        public static void InitializeCustomPlayerLoop()
         {
             #if CUSTOM_PLAYERLOOP_INITIALIZATION
             /*
@@ -50,8 +50,13 @@ namespace PlayerLoop
              *
              * TODO: investigate modern versions of UniTask to see if this bug is fixed
             */
-            var loop =  UnityEngine.LowLevel.PlayerLoop.GetCurrentPlayerLoop();
-            PlayerLoopHelper.Initialize(ref loop, InjectPlayerLoopTimings);
+            var playerLoop =
+#if UNITY_2019_3_OR_NEWER
+                UnityEngine.LowLevel.PlayerLoop.GetCurrentPlayerLoop();
+#else
+                UnityEngine.LowLevel.PlayerLoop.GetDefaultPlayerLoop();
+#endif
+            PlayerLoopHelper.Initialize(ref playerLoop, InjectPlayerLoopTimings);
             Debug.Log($"Custom <color=blue>UniTask</color> player loop initialized and set to <color=blue>{InjectPlayerLoopTimings}</color>");
             #else
             Debug.Log("You can define CUSTOM_PLAYERLOOP_INITIALIZATION in Player Settings to configure custom player loop");

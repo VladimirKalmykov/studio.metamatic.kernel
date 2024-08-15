@@ -188,9 +188,9 @@ namespace Metamatic
             m_Pool.Return(obj);
         }
 
-        public void TryRelease(T obj)
+        public void TryReturn(T obj)
         {
-            m_Pool.TryRelease(obj);
+            m_Pool.TryReturn(obj);
         }
 
         public void Dispose()

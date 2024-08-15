@@ -31,7 +31,7 @@ namespace Metamatic
         T Get();
         void SetCapacity(int capacity);
         void Return(T obj);
-        void TryRelease(T obj);
+        void TryReturn(T obj);
         
     }
 }

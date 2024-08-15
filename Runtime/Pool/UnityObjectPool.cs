@@ -123,9 +123,9 @@ namespace Metamatic
             }
         }
         
-        public void TryRelease(T obj)
+        public void TryReturn(T obj)
         {
-            if (objectsInPool.Contains(obj)) return;
+            if (m_DisposeCancellationTokenSource.IsCancellationRequested || !(obj != null && !obj.Equals(null)) || objectsInPool.Contains(obj)) return;
             Return(obj);
         }
         

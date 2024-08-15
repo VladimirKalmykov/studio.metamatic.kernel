@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class AsyncBehaviourBase: MonoBehaviour
+    public abstract class AsyncBehaviourBase: MonoBehaviour, IExposedDisposed
     {
         private CancellationTokenSource m_DisableCancellationTokenSource = new();
         private CancellationTokenSource m_DestroyCancellationTokenSource;
@@ -75,6 +75,7 @@ namespace Metamatic
             
             m_DestroyCancellationTokenSource.Cancel();
             m_DestroyCancellationTokenSource.Dispose();
+            OnDisposed?.Invoke();
         }
 
         protected abstract UniTaskVoid RunAsync(CancellationToken cancellationToken);
@@ -122,5 +123,7 @@ namespace Metamatic
             OnDrawGizmosEvent?.Invoke();
         }
         #endif
+        public bool isDisposed => m_DestroyCancellationTokenSource.IsCancellationRequested;
+        public event Action OnDisposed;
     }
 }

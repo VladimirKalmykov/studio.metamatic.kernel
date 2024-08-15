@@ -319,7 +319,7 @@ namespace Cysharp.Threading.Tasks
                 PlayerLoop.GetDefaultPlayerLoop();
 #endif
 
-            Initialize(ref playerLoop);
+            Initialize(ref playerLoop, InjectPlayerLoopTimings.Standard);
 #endif
         }
 

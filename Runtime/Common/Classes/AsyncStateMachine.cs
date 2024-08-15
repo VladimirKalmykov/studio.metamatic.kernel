@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
+using Metamtic.Exceptions;
 using UnityEngine;
 
 namespace Metamatic
@@ -73,6 +74,7 @@ namespace Metamatic
             public bool isFinalize => m_StateMachine.m_Status == TransitionStatus.Aborted;
             public CancellationToken cancellationToken => m_StateMachine.cancellationToken;
             public CancellationToken generalCancellationToken => m_StateMachine.internalCancellationToken;
+            public bool isAborted => m_StateMachine.m_Status == TransitionStatus.Aborted;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public UniTask<TState> WaitNextState() => m_StateMachine.WaitNextState();
@@ -377,12 +379,26 @@ namespace Metamatic
 #if DEBUG
             string statusHistoryText = string.Join(" -> ",
                 System.Linq.Enumerable.Select(m_TransitionStatusQueue.originalQueue, x => $"{x.Item1} ({x.Item2})"));
-            Debug.Assert(m_Status == TransitionStatus.FromPrevToCurrentProcessing,
-                $"Transition is not processing, therefore it is not possible to wait for the next state and set status to Processed. Got status: {m_Status}, prevState: {prevState}, currentState: {currentState}, nextState: {nextState} ({(m_HasNextState ? "defined" : "default")}) Status history: {statusHistoryText}");
+            if (m_Status == TransitionStatus.Aborted)
+            {
+                var abortedTask = AutoResetUniTaskCompletionSource<TState>.Create();
+                abortedTask.TrySetException(new OperationAborted("Async state machine is aborted"));
+                return abortedTask.Task;
+            }
+            else
+            {
+                Debug.Assert(m_Status == TransitionStatus.FromPrevToCurrentProcessing,
+                    $"Transition is not processing, therefore it is not possible to wait for the next state and set status to Processed. Got status: {m_Status}, prevState: {prevState}, currentState: {currentState}, nextState: {nextState} ({(m_HasNextState ? "defined" : "default")}) Status history: {statusHistoryText}");
+            }
 #endif
 
-            var tsc = new UniTaskCompletionSource<TState>();
-            OnNextState += newNextState => { tsc.TrySetResult(newNextState); };
+            var tsc = AutoResetUniTaskCompletionSource<TState>.Create();
+            OnNextState += newNextState =>
+            {
+                /* If we are here, it means that the transition from previous state is already completed. But we still cancel token, because it should be cancelled before resolving next state waiter task */
+                m_CancellationTokenSource.Cancel();
+                tsc.TrySetResult(newNextState);
+            };
             OnAborted += () =>
             {
                 Debug.Log("Abort wait next state");
@@ -397,6 +413,7 @@ namespace Metamatic
         private bool SetNextState(TState nextState, bool skipValidationCheck = false)
         {
             #if DEBUG
+            if (m_HasNextState) Debug.LogError("Already has next state");
             if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Set next state: {nextState}");
             #endif
             /* Invalidate state */
@@ -431,7 +448,11 @@ namespace Metamatic
                 Debug.Log($"[ASYNC-STATE-MACHINE] CANCEL because next state is defined: {nextState}");
             }
 #endif
-            memoizedCancellationTokenSource.Cancel();
+            if (!memoizedCancellationTokenSource.IsCancellationRequested)
+            {
+                memoizedCancellationTokenSource.Cancel();
+            }
+            
             return true;
         }
 
@@ -679,17 +700,13 @@ namespace Metamatic
             CancellationToken externalCancellationToken = default,
             ulong id = 0)
         {
-            if (m_Disposed)
-            {
-                throw new ObjectDisposedException(nameof(AsyncStateMachine<TState>));
-            }
 #if DEBUG
             if (m_SettingDebug)
                 Debug.Log(
                     $"[ASYNC-STATE-MACHINE] Validate attempt to add state {state} (id #{id}) (Curren status is {m_Status})");
 #endif
             /* Invalidate state */
-            if (!m_NextStateValidator.Validate(currentState, state))
+            if (m_Disposed || !m_NextStateValidator.Validate(currentState, state))
             {
                 /* As the state is invalid, we should dispose it if it supports IDisposable */
                 if (m_StateIsDisposable)
@@ -708,7 +725,9 @@ namespace Metamatic
                     (state as IDisposable)?.Dispose();
 #endif
                 }
-
+                var resultTask = m_Disposed
+                    ? UniTask.FromException(new OperationCanceledException("State machine is disposed"))
+                    : UniTask.CompletedTask;
                 return (UniTask.CompletedTask, 0);
             }
 #if DEBUG

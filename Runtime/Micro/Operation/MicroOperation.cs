@@ -6,14 +6,27 @@ namespace Metamatic
 {
     public readonly struct MicroOperation: IDisposableOperation
     {
-        public static MicroOperation Call(InternalMicroOperation.AsyncAction action)
+        /// <summary>
+        /// Call an async action with cancellation token
+        /// </summary>
+        /// <param name="action">Async action to execute</param>
+        /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
+        /// <returns></returns>
+        public static MicroOperation Call(InternalMicroOperation.AsyncAction action, object[] dependencies = null)
         {
-            return InternalMicroOperation.Call(action);
+            return InternalMicroOperation.Call(action, dependencies);
         }
-        
-        public static MicroOperation Run(InternalMicroOperation.AsyncOperationAction action)
+
+        /// <summary>
+        /// Run an async operation
+        /// </summary>
+        /// <param name="action">Async action to execute</param>
+        /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
+        /// <param name="debug">Debug operation (use this in development purposes)</param>
+        /// <returns></returns>
+        public static MicroOperation Run(InternalMicroOperation.AsyncOperationAction action, object[] dependencies = null, bool debug = false)
         {
-            return InternalMicroOperation.Run(action);
+            return InternalMicroOperation.Run(action, dependencies, debug);
         }
         
         private readonly InternalMicroOperation m_Operation;
