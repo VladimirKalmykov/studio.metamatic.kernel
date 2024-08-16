@@ -163,5 +163,89 @@ namespace Tests.EditMode
             Assert.IsFalse(reservationAborted, "Reservation should be aborted");
             Assert.IsTrue(reservationDisposingCancelled, "Reservation disposing should be cancelled");
         });
+        
+        [UnityTest]
+        public IEnumerator AbortMotel() => UniTask.ToCoroutine(async () =>
+        {
+            var exposedDisposable = new ExposedDisposable();
+            bool reservationCancelled = false;
+            bool reservationAborted = false;
+            await using var motel = new Motel<MotelRoom>(dependencies: new object[] { exposedDisposable });
+            await using var reservation1 = motel.Reserve(MotelRoom.Room1, async (room, reservation) =>
+            {
+                try
+                {
+                    await UniTask.WaitWhile(() => true, cancellationToken: reservation.cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    reservationCancelled = true;
+                }
+                finally
+                {
+                    if (reservation.checkOutCancellationToken.IsCancellationRequested)
+                    {
+                        reservationAborted = true;
+                    }
+                }
+            });
+            Assert.AreEqual(MotelRoom.Room1, reservation1.room, "Reservation 1 should be in Room 1");
+            exposedDisposable.Dispose();
+            await UniTask.Delay(1000);
+            Assert.IsTrue(motel.IsFree(MotelRoom.Room1), "Room 1 should be free");
+            Assert.IsTrue(reservationCancelled, "Reservation should be cancelled");
+            Assert.IsTrue(reservationAborted, "Reservation should be aborted");
+        });
+        
+        [UnityTest]
+        public IEnumerator ChangePreferredRooms() => UniTask.ToCoroutine(async () =>
+        {
+            await using var motel = new Motel<MotelRoom>();
+            var reservation1CancelledCount = 0;
+            var reservation2IsSettled = false;
+            await using var reservation1 = motel.Reserve(MotelRoom.Room1 | MotelRoom.Room2, async (room, reservation) =>
+            {
+                try
+                {
+                    await UniTask.Delay(10000, cancellationToken: reservation.cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    reservation1CancelledCount++;
+                }
+                finally
+                {
+                    
+                }
+            }, strict: true);
+            await using var reservation2 = motel.Reserve(MotelRoom.Room1, async (room, reservation) =>
+            {
+                try
+                {
+                    reservation2IsSettled = true;
+                    await UniTask.Delay(10000, cancellationToken: reservation.cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignored
+                }
+                finally
+                {
+                    
+                }
+            }, strict: true);
+            Assert.AreEqual(MotelRoom.Room1, reservation1.room, "Reservation 1 should be in Room 1");
+            Assert.IsTrue(!motel.IsFree(MotelRoom.Room1));
+            Assert.IsTrue(motel.IsFree(MotelRoom.Room3));
+            Assert.IsFalse(reservation2IsSettled, "Reservation 2 should not be settled");
+            Assert.IsTrue(reservation2.room.Equals(default(MotelRoom)));
+            reservation1.SetPreferredRooms(MotelRoom.Room3);
+            await UniTask.Delay(100);
+            Assert.AreEqual(1, reservation1CancelledCount, "Reservation should be cancelled");
+            Assert.IsTrue(!motel.IsFree(MotelRoom.Room3));
+            Assert.AreEqual(MotelRoom.Room3, reservation1.room);
+            Assert.IsTrue(reservation2IsSettled, "Reservation 2 should be settled");
+            Assert.IsTrue(reservation2.room.Equals(MotelRoom.Room1));
+        });
     }
 }

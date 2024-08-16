@@ -19,8 +19,8 @@ namespace Metamatic
         
         #region User Preferences and Settings
         private readonly Func<T, MotelReservation<T>, UniTask> m_Handler;
-        private readonly T m_Preference_PreferredRooms;
-        private readonly bool m_Preference_Strict;
+        public T preferredRooms { get; private set; }
+        public bool strict { get; private set; }
         #endregion
         
         #region Exposed Properties
@@ -76,11 +76,29 @@ namespace Metamatic
             Motel = motel;
             m_CheckOutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(Motel.abortToken);
             m_Handler = handler;
-            m_Preference_PreferredRooms = preferredRooms;
-            m_Preference_Strict = strict;
+            this.preferredRooms = preferredRooms;
+            this.strict = strict;
             if (dependencies != null)
             {
                 OnDisposed += new ObserveExposedDisposable(dependencies, Abort);
+            }
+        }
+        
+        /// <summary>
+        /// Change preferred rooms.
+        /// </summary>
+        /// <param name="preferredRooms"></param>
+        public void SetPreferredRooms(T preferredRooms)
+        {
+            this.preferredRooms = preferredRooms;
+            isSatisfied = this.preferredRooms.HasFlag(m_Status == Status.CheckingOut ? nextRoom : room);
+            if (!isSatisfied)
+            {
+                if (!Motel.TryResettleReservation(this) && strict)
+                {
+                    CheckOut().Forget();
+                    Motel.AddToWaitingList(this);
+                }
             }
         }
         
@@ -95,7 +113,7 @@ namespace Metamatic
             {
                 throw new InvalidOperationException("The reservation is aborted.");
             }
-            isSatisfied = m_Preference_PreferredRooms.HasFlag(next);
+            isSatisfied = preferredRooms.HasFlag(next);
             if (m_Status is Status.CheckingOut or Status.CheckedOut)
             {
                 /* If the reservation is checking out, then we need to override the next room, thus after checked out it accept correct next room */
@@ -113,14 +131,15 @@ namespace Metamatic
             }
 
             if (m_IsDisposed || m_IsAborted) return;
-    
+            room = nextRoom;
+            nextRoom = default;
+            m_Status = Status.CheckingIn;
             /* Create linked token source for the check-in process that will be cancelled if the abort token (checking out) cancelled */
             m_CheckInCancellationTokenSource =
                 CancellationTokenSource.CreateLinkedTokenSource(checkOutCancellationToken);
-            m_Status = Status.CheckingIn;
-            room = nextRoom;
-            m_CheckOutTask = m_Handler(nextRoom, this);
-            nextRoom = default;
+            
+            m_CheckOutTask = m_Handler(room, this);
+            
             m_Status = Status.CheckedIn;
         }
 
@@ -128,8 +147,10 @@ namespace Metamatic
         {
             if (m_Status is Status.Waiting)
             {
+                /* Check out before check-in */
                 m_AsyncDisposingTaskCompletionSource = AutoResetUniTaskCompletionSource.Create();
                 m_AsyncDisposingTaskCompletionSource.TrySetResult();
+                Motel.ReleaseReservation(this);
                 return;
             }
             if (m_Status is Status.CheckedOut) return;
@@ -181,6 +202,7 @@ namespace Metamatic
                 finally
                 {
                     m_CheckOutTask = null;
+                    Motel.ReleaseReservation(this);
                 }
             }
             m_CheckInCancellationTokenSource?.Dispose();
@@ -194,14 +216,13 @@ namespace Metamatic
         /// <returns></returns>
         public bool IsSuitable(T someRoom)
         {
-            return m_Preference_PreferredRooms.HasFlag(someRoom);
+            return preferredRooms.HasFlag(someRoom);
         }
         
         private void Abort()
         {
             m_IsAborted = true;
             CheckOut(true).Forget();
-            Motel.ReleaseReservation(this);
         }
 
         public async UniTask DisposeAsync()
@@ -231,10 +252,6 @@ namespace Metamatic
             }
             m_CheckInCancellationTokenSource?.Dispose();
             m_CheckOutCancellationTokenSource?.Dispose();
-            if (!m_IsAborted)
-            {
-                Motel.ReleaseReservation(this);
-            }
             OnDisposed?.Invoke();
         }
 
