@@ -12,13 +12,29 @@ namespace Metamatic
     public class ManagedList<T> : IList<T>, IDisposable
     {
         private readonly List<T> m_List = new List<T>();
-        private readonly Func<T, CancellationToken, UniTask> m_Handler;
+        private Func<T, CancellationToken, UniTask> m_Handler;
         private readonly Dictionary<T, CancellationTokenSource> m_CancellationTokens = new Dictionary<T, CancellationTokenSource>();
         private bool m_Disposed = false;
 
         public ManagedList(Func<T, CancellationToken, UniTask> handler)
         {
             m_Handler = handler ?? throw new ArgumentNullException(nameof(handler));
+        }
+        
+        public void SetHandler(Func<T, CancellationToken, UniTask> handler)
+        {
+            if (m_Disposed)
+                throw new ObjectDisposedException(nameof(ManagedList<T>));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            m_Handler = handler;
+        }
+        
+        private static UniTask DefaultHandler(T item, CancellationToken token)
+        {
+            return UniTask.CompletedTask;
         }
         
         /// <summary>
@@ -28,6 +44,22 @@ namespace Metamatic
         public void Synchronize(T[] items)
         {
             /* Remove items that are not in the new list and add that are not in this list */
+            for (var i = m_List.Count - 1; i >= 0; i--)
+            {
+                var item = m_List[i];
+                if (!items.Contains(item))
+                {
+                    Remove(item);
+                }
+            }
+            foreach (var item in items)
+            {
+                TryAdd(item);
+            }
+        }
+        
+        public void Synchronize(List<T> items)
+        {
             for (var i = m_List.Count - 1; i >= 0; i--)
             {
                 var item = m_List[i];

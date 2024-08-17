@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -11,11 +13,22 @@ namespace Metamatic
     /// </summary>
     public class ObserveExposedDisposable: IDisposable, IExposedDisposed
     {
-        private Action m_OnFire;
-        private readonly object[] m_NotExposedDisposedDependencies;
-        public ObserveExposedDisposable(object[] disposables, Action onFire, bool trackNotExposed = true)
+        private static ParamLessPool<ObserveExposedDisposable> _Pool = new(10);
+        private bool m_IsDisposed;
+        public bool isDisposed => m_IsDisposed;
+        public event Action OnDisposed;
+        public static ObserveExposedDisposable Create(object[] disposables, Action onFire, bool trackNotExposed = true)
         {
-            m_NotExposedDisposedDependencies = new object[disposables.Length];
+            var instance = _Pool.Get();
+            instance.m_IsDisposed = false;
+            instance.Initialize(disposables, onFire, trackNotExposed);
+            return instance;
+        }
+        private Action m_OnFire;
+        private readonly List<object> m_NotExposedDisposedDependencies = new(5);
+        public void Initialize(object[] disposables, Action onFire, bool trackNotExposed = true)
+        {
+            m_NotExposedDisposedDependencies.Clear();
             var notExposedCount = 0;
             m_OnFire = onFire;
             foreach (var d in disposables)
@@ -44,11 +57,9 @@ namespace Metamatic
                 else
                 {
                     notExposedCount++;
-                    m_NotExposedDisposedDependencies[m_NotExposedDisposedDependencies.Length] = d;
+                    m_NotExposedDisposedDependencies.Add(d);
                 }
             }
-            
-            Array.Resize(ref m_NotExposedDisposedDependencies, notExposedCount);
 
             if (trackNotExposed)
             {
@@ -81,13 +92,19 @@ namespace Metamatic
         
         public void Dispose()
         {
+            if (m_IsDisposed)
+            {
+                #if DEBUG
+                Debug.LogError("Already disposed");
+                #endif
+                return;
+            }
             m_IsDisposed = true;
             OnDisposed?.Invoke();
+            OnDisposed = null;
+            m_NotExposedDisposedDependencies.Clear();
+            _Pool.Return(this);
         }
-        
-        private bool m_IsDisposed;
-        public bool isDisposed => m_IsDisposed;
-        public event Action OnDisposed;
         
         public static implicit operator Action(ObserveExposedDisposable self) => self.Dispose;
     }

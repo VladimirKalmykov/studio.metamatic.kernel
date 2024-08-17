@@ -68,6 +68,69 @@ namespace Tests.EditMode
         });
         
         [UnityTest]
+        public IEnumerator EnsureThatNextReservationWaitFinishPrevious() => UniTask.ToCoroutine(async () =>
+        {
+            var firstReservationFinished = false;
+            var secondReservationStarted = false;
+            var secondReservationStartedWithFirstReservationFinished = false;
+            await using var motel = new Motel<MotelRoom>();
+            var reservation1 = motel.Reserve(MotelRoom.Room1, async (room, reservation) =>
+            {
+                try
+                {
+                    await UniTask.Delay(500, cancellationToken: reservation.cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignored
+                }
+                finally
+                {
+                    if (!reservation.isCheckOutAborted)
+                    {
+                        await UniTask.Delay(1000, cancellationToken: reservation.checkOutCancellationToken);
+                        firstReservationFinished = true;
+                    }
+                }
+            }, strict: true);
+            Assert.AreEqual(MotelRoom.Room1, reservation1.room, "Reservation 1 should be in Room 1");
+            Assert.IsTrue(!motel.IsFree(MotelRoom.Room1));
+            Assert.IsTrue(motel.IsFree(MotelRoom.Room2));
+            await using var reservation2 = motel.Reserve(MotelRoom.Room1, async (room, reservation) =>
+            {
+                try
+                {
+                    secondReservationStarted = true;
+                    if (firstReservationFinished)
+                    {
+                        secondReservationStartedWithFirstReservationFinished = true;
+                    }
+                    await UniTask.Delay(500, cancellationToken: reservation.cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignored
+                }
+                finally
+                {
+                    if (!reservation.isCheckOutAborted)
+                    {
+                        await UniTask.Delay(1000, cancellationToken: reservation.checkOutCancellationToken);
+                        firstReservationFinished = true;
+                    }
+                }
+            }, strict: true);
+            Assert.IsTrue(!motel.IsFree(MotelRoom.Room1));
+            Assert.AreEqual(MotelRoom.None, reservation2.room, "Reservation 2 should be out of rooms");
+            Assert.AreEqual(MotelRoom.Room1, reservation1.room);
+            /* Dispose room 1 */
+            await reservation1.DisposeAsync();
+            Assert.IsTrue(firstReservationFinished);
+            Assert.IsTrue(secondReservationStarted);
+            Assert.IsTrue(secondReservationStartedWithFirstReservationFinished);
+        });
+        
+        [UnityTest]
         public IEnumerator NonStrictReservation() => UniTask.ToCoroutine(async () =>
         {
             await using var motel = new Motel<MotelRoom>();

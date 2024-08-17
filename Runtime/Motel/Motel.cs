@@ -31,7 +31,7 @@ namespace Metamatic
             m_Rooms = new Dictionary<T, MotelReservation<T>>();
             if (dependencies != null)
             {
-                OnDisposed += new ObserveExposedDisposable(dependencies, Abort);
+                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
             }
         }
 

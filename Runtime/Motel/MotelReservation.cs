@@ -80,7 +80,7 @@ namespace Metamatic
             this.strict = strict;
             if (dependencies != null)
             {
-                OnDisposed += new ObserveExposedDisposable(dependencies, Abort);
+                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
             }
         }
         

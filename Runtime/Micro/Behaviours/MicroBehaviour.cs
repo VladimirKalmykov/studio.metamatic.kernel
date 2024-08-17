@@ -38,7 +38,7 @@ namespace Metamatic
         {
             if (isFromFinalizer)
             {
-                throw new Exception("You should dispose MicroOperation manually to avoid jumping to finalizer thread");
+                Debug.LogError("You should dispose MicroOperation manually to avoid jumping to finalizer thread");
             }
             if (m_Disposed)
             {
