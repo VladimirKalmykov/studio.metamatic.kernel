@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
-using Metamtic.Exceptions;
+using Metamatic.Exceptions;
 using UnityEngine;
 
 namespace Metamatic

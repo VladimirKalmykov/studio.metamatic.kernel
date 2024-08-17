@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Debug = UnityEngine.Debug;
 
 namespace Metamatic
 {

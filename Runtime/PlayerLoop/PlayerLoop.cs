@@ -1,7 +1,8 @@
+using System;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace PlayerLoop
+namespace Metamatic
 {
     public class PlayerLoop: MonoBehaviour
     {
@@ -13,6 +14,21 @@ namespace PlayerLoop
             PlayerLoopHelper.DumpCurrentPlayerLoop();
         }
 
+        // ReSharper disable once InconsistentNaming
+        public static PlayerLoop Instance
+        {
+            get
+            {
+                if (_Instance == null)
+                {
+                    _Instance = new GameObject("PLAYER_LOOP").AddComponent<PlayerLoop>();
+                    DontDestroyOnLoad(_Instance.gameObject);
+                }
+
+                return _Instance;
+            }
+        }
+        
         [RuntimeInitializeOnLoadMethod]
         private static void Instantiate()
         {
@@ -62,5 +78,157 @@ namespace PlayerLoop
             Debug.Log("You can define CUSTOM_PLAYERLOOP_INITIALIZATION in Player Settings to configure custom player loop");
             #endif
         }
+        
+        [Flags]
+        public enum MicroSteps: byte
+        {
+            Zero = 0,
+            Alfa = 1 << 1,
+            Beta = 1 << 2,
+            Gamma = 1 << 3,
+            Delta = 1 << 4,
+            Epsilon = 1 << 5,
+            Zeta = 1 << 6,
+            Eta = 1 << 7
+        }
+        
+        private const int ActionCapacityStep = 50;
+
+        private MicroSteps m_CurrentMicroSteps = MicroSteps.Zero;
+        private MicroSteps m_CurrentMicroFixedSteps = MicroSteps.Zero;
+        private Action<MicroSteps>[] m_UpdateActions = new Action<MicroSteps>[50];
+        private Action<MicroSteps>[] m_FixedUpdateActions = new Action<MicroSteps>[50];
+        private int m_UpdateActionsCount = 0;
+        private int m_FixedUpdateActionsCount = 0;
+        
+        public MicroSteps currentMicroStep => m_CurrentMicroSteps;
+        public MicroSteps currentMicroFixedStep => m_CurrentMicroFixedSteps;
+        
+        private void Update()
+        {
+            /* Set next micro step */
+            unchecked
+            {
+                var next = (MicroSteps)((byte)m_CurrentMicroSteps << 1);
+                m_CurrentMicroSteps = next == MicroSteps.Zero ? MicroSteps.Alfa : next;
+                for (var i = 0; i < m_UpdateActionsCount; i++)
+                {
+                    m_UpdateActions[i].Invoke(m_CurrentMicroSteps);
+                }
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            /* Set next micro fixed step */
+            unchecked
+            {
+                var next = (MicroSteps)((byte)m_CurrentMicroFixedSteps << 1);
+                m_CurrentMicroFixedSteps = next == MicroSteps.Zero ? MicroSteps.Alfa : next;
+                for (var i = 0; i < m_FixedUpdateActionsCount; i++)
+                {
+                    m_FixedUpdateActions[i].Invoke(m_CurrentMicroFixedSteps);
+                }
+            }
+        }
+
+        public static DisposableAction MicroStep(MicroSteps steps, Action action)
+        {
+            var instance = Instance;
+            if (!instance.enabled)
+            {
+                instance.enabled = true;
+            }
+            void Handler(MicroSteps currentSteps)
+            {
+                if ((steps & currentSteps) == currentSteps)
+                {
+                    action();
+                }
+            }
+            instance.m_UpdateActions[_Instance.m_UpdateActionsCount] = Handler;
+            
+            /* Detect that current action capacity is not enough */
+            if (++instance.m_UpdateActionsCount >= instance.m_UpdateActions.Length)
+            {
+                Array.Resize(ref instance.m_UpdateActions, instance.m_UpdateActions.Length + ActionCapacityStep);
+            }
+            
+            return new DisposableAction(() =>
+            {
+                for (int i = 0; i < instance.m_UpdateActionsCount; i++)
+                {
+                    if (instance.m_UpdateActions[i] == Handler)
+                    {
+                        instance.m_UpdateActions[i] = null;
+                        
+                        /* Shift rest of the actions */
+                        for (int j = i; j < instance.m_UpdateActionsCount - 1; j++)
+                        {
+                            instance.m_UpdateActions[j] = instance.m_UpdateActions[j + 1];
+                        }
+                        instance.m_UpdateActionsCount--;
+                        
+                        if (instance.m_UpdateActionsCount == 0 && instance.m_FixedUpdateActionsCount == 0)
+                        {
+                            instance.enabled = false;
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+        
+        public static DisposableAction FixedMicroStep(MicroSteps steps, Action action)
+        {
+            
+            var instance = Instance;
+            if (!instance.enabled)
+            {
+                instance.enabled = true;
+            }
+            void Handler(MicroSteps currentSteps)
+            {
+                if ((steps & currentSteps) == currentSteps)
+                {
+                    action();
+                }
+            }
+            instance.m_FixedUpdateActions[_Instance.m_FixedUpdateActionsCount] = Handler;
+            
+            /* Detect that current action capacity is not enough */
+            if (++instance.m_FixedUpdateActionsCount >= instance.m_FixedUpdateActions.Length)
+            {
+                Array.Resize(ref instance.m_FixedUpdateActions, instance.m_FixedUpdateActions.Length + ActionCapacityStep);
+            }
+            
+            return new DisposableAction(() =>
+            {
+                if (instance.Equals(null)) return;
+                for (int i = 0; i < instance.m_FixedUpdateActionsCount; i++)
+                {
+                    if (instance.m_FixedUpdateActions[i] == Handler)
+                    {
+                        instance.m_FixedUpdateActions[i] = null;
+                        
+                        /* Shift rest of the actions */
+                        for (int j = i; j < instance.m_FixedUpdateActionsCount - 1; j++)
+                        {
+                            instance.m_FixedUpdateActions[j] = instance.m_FixedUpdateActions[j + 1];
+                        }
+                        instance.m_FixedUpdateActionsCount--;
+                        
+                        if (instance.m_UpdateActionsCount == 0 && instance.m_FixedUpdateActionsCount == 0)
+                        {
+                            instance.enabled = false;
+                        }
+                        
+                        break;
+                    }
+                }
+            });
+        }
+        
+        
     }
 }

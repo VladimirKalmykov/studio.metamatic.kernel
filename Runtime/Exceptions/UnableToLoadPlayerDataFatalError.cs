@@ -1,4 +1,4 @@
-﻿namespace Metamtic.Exceptions
+﻿namespace Metamatic.Exceptions
 {
     public class UnableToLoadPlayerDataFatalError: FatalError
     {

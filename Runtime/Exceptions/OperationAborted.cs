@@ -1,6 +1,6 @@
 using System;
 
-namespace Metamtic.Exceptions
+namespace Metamatic.Exceptions
 {
     /// <summary>
     /// Derived from class OperationCanceledException this exception is thrown when operation is aborted

@@ -1,5 +1,5 @@
 ﻿using Metamatic.Actions;
-using Metamtic.Exceptions;
+using Metamatic.Exceptions;
 using UnityEngine;
 
 namespace Metamatic

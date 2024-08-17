@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Metamtic.Exceptions
+namespace Metamatic.Exceptions
 {
     public class FatalError: Exception
     {

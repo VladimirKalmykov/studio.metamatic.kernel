@@ -6,7 +6,7 @@ using Metamatic;
 using Metamatic.StorageDriver;
 using System.Linq;
 using Metamatic.Actions;
-using Metamtic.Exceptions;
+using Metamatic.Exceptions;
 
 namespace DuckJumper2024
 {

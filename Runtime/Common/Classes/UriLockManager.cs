@@ -5,8 +5,7 @@ namespace Metamatic
     using System;
     using System.Collections.Concurrent;
     using System.Threading;
-    using System.Threading.Tasks;
-    
+
     /// <summary>
     /// Handle concurrent access to the same URI.
     /// </summary>

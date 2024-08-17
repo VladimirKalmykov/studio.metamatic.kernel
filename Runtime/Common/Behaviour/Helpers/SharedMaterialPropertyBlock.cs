@@ -2,7 +2,6 @@ namespace Metamatic
 {
     using System.Threading;
     using Cysharp.Threading.Tasks;
-    using Metamatic;
     using UnityEngine;
 
     public class SharedMaterialPropertyBlock : AsyncBehaviour
