@@ -248,5 +248,74 @@ namespace Tests.EditMode.MictoMotel
             Assert.AreEqual(ReserveStage.Abort, reserveStage1);
             Assert.AreEqual(ReserveStage.Abort, reserveStage2);
         });
+        
+        [UnityTest]
+        public IEnumerator AlternatePreferredCell() => UniTask.ToCoroutine(async () =>
+        {
+            var guest1Cell = -1;
+            var guest2Cell = -1;
+            var guest3Cell = -1;
+            var guest4Cell = -1;
+            await using var motel = new MicroMotel(8, cellCapacity: 1);
+            var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                guest1Cell = cell;
+                await operation.cancellationToken;
+            });
+            var reservation2 = motel.Reserve(new int[] { 1, 5 }, async (cell, operation) =>
+            {
+                guest2Cell = cell;
+                await operation.cancellationToken;
+            });
+            var reservation3 = motel.Reserve(new int[] { 5, 3 }, async (cell, operation) =>
+            {
+                guest3Cell = cell;
+                await operation.cancellationToken;
+            });
+            var reservation4 = motel.Reserve(new int[] { 3, 7 }, async (cell, operation) =>
+            {
+                guest4Cell = cell;
+                await operation.cancellationToken;
+            });
+            Assert.AreEqual(1, guest1Cell);
+            Assert.AreEqual(5, guest2Cell);
+            Assert.AreEqual(3, guest3Cell);
+            Assert.AreEqual(7, guest4Cell);
+        });
+        
+        [UnityTest]
+        public IEnumerator MultipleGuestAtTheSameCell() => UniTask.ToCoroutine(async () =>
+        {
+            var exposedDisposable = new ExposedDisposable();
+            var guest1Cell = -1;
+            var guest2Cell = -1;
+            var guest3Cell = -1;
+            var guest4Cell = -1;
+            await using var motel = new MicroMotel(4, cellCapacity: 2, dependencies: new object[] { exposedDisposable });
+            var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                guest1Cell = cell;
+                await operation.cancellationToken;
+            });
+            var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                guest2Cell = cell;
+                await operation.cancellationToken;
+            });
+            var reservation3 = motel.Reserve(new int[] { 2 }, async (cell, operation) =>
+            {
+                guest3Cell = cell;
+                await operation.cancellationToken;
+            });
+            var reservation4 = motel.Reserve(new int[] { 2 }, async (cell, operation) =>
+            {
+                guest4Cell = cell;
+                await operation.cancellationToken;
+            });
+            Assert.AreEqual(1, guest1Cell);
+            Assert.AreEqual(1, guest2Cell);
+            Assert.AreEqual(2, guest3Cell);
+            Assert.AreEqual(2, guest4Cell);
+        });
     }
 }

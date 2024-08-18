@@ -8,12 +8,6 @@ namespace Metamatic
 {
     public class MicroMotel: IExposedDisposed, IUniTaskAsyncDisposableAbortable
     {
-        private enum CellStatus
-        {
-            Busy,
-            Free
-        }
-        
         private class Guest
         {
             public int Version;
@@ -65,7 +59,7 @@ namespace Metamatic
         
         private static readonly ParamLessPool<Guest> GuestPool = new ();
         
-        private readonly Dictionary<int, CellStatus> m_Cells = new();
+        private readonly Dictionary<int, int> m_Cells = new();
         private readonly List<Guest> m_Guests = new();
         /// <summary>
         /// List of checked in guests (that already have a cell).
@@ -75,12 +69,14 @@ namespace Metamatic
         /// Queue of guests waiting for a cell.
         /// </summary>
         private readonly List<Guest> m_WaitingQueue = new();
+        private readonly int m_Config_CellCapacity;
         
-        public MicroMotel(int cellsCount, object[] dependencies = null)
+        public MicroMotel(int cellsCount, int cellCapacity = 1, object[] dependencies = null)
         {
+            m_Config_CellCapacity = cellCapacity;
             for (var i = 0; i < cellsCount; i++)
             {
-                m_Cells.Add(i, CellStatus.Free);
+                m_Cells.Add(i, 0);
             }
             
             if (dependencies != null)
@@ -163,7 +159,7 @@ namespace Metamatic
         
         private void CheckIn(Guest guest, int cellId)
         {
-            m_Cells[cellId] = CellStatus.Busy;
+            m_Cells[cellId]++;
             guest.CellId = cellId;
             var onCheckIn = guest.OnCheckIn;
             
@@ -198,7 +194,7 @@ namespace Metamatic
                 
                 guest.CellId = -1;
                 guest.Operation = default;
-                m_Cells[cellId] = CellStatus.Free;
+                m_Cells[cellId]--;
                 if (m_CheckedInUnsatisfiedGuests.Contains(guest))
                 {
                     m_CheckedInUnsatisfiedGuests.Remove(guest);
@@ -247,7 +243,7 @@ namespace Metamatic
         private async UniTaskVoid RecheckInGuest(Guest guest, int cellId)
         {
             var version = guest.Version;
-            m_Cells[cellId] = CellStatus.Busy;
+            m_Cells[cellId]++;
             /* Check out guest */
             try
             {
@@ -261,7 +257,7 @@ namespace Metamatic
             {
                 if (version != guest.Version || isDisposed || guest.IsDisposed)
                 {
-                    m_Cells[cellId] = CellStatus.Free;
+                    m_Cells[cellId]--;
                 }
                 else
                 {
@@ -280,7 +276,7 @@ namespace Metamatic
         {
             foreach (var preferredCell in preferredCells)
             {
-                if (m_Cells.TryGetValue(preferredCell, out var cellStatus) && cellStatus == CellStatus.Free)
+                if (m_Cells.TryGetValue(preferredCell, out var countInCell) && countInCell < m_Config_CellCapacity)
                 {
                     return preferredCell;
                 }
@@ -293,7 +289,7 @@ namespace Metamatic
 
             foreach (var cell in m_Cells)
             {
-                if (cell.Value == CellStatus.Free)
+                if (cell.Value < m_Config_CellCapacity)
                 {
                     return cell.Key;
                 }
