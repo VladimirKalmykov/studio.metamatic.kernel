@@ -8,16 +8,41 @@ namespace Metamatic
 {
     public class MotelT<T>: IExposedDisposed, IUniTaskAsyncDisposableAbortable
     {
+        private class Cell
+        {
+            public int Version;
+            public int Capacity;
+            public int Count;
+            public bool IsDisposed;
+            
+            public void Reset()
+            {
+                unchecked
+                {
+                    Version++;
+                }
+                Capacity = 0;
+                Count = 0;
+                IsDisposed = false;
+            }
+        }
         private class Guest
         {
+            public enum CheckStatus
+            {
+                Idle,
+                Waiting,
+                CheckedIn,
+                CheckingOut
+            }
             public int Version;
             public object[] Dependencies;
             public MicroOperation Operation;
             public Func<T, InternalMicroOperation, UniTask> OnCheckIn;
             public T[] PreferredCells;
             public bool Strict;
-            public bool IsCheckedIn;
             public T CellId = default;
+            public CheckStatus Status;
             /// <summary>
             /// This flag is set to true when the guest is disposed by outside.
             /// </summary>
@@ -34,9 +59,9 @@ namespace Metamatic
                 OnCheckIn = null;
                 PreferredCells = null;
                 Strict = false;
-                IsCheckedIn = false;
                 CellId = default;
                 IsDisposed = false;
+                Status = CheckStatus.Idle;
             }
             
             public bool IsSatisfied(T cell)
@@ -59,8 +84,9 @@ namespace Metamatic
         }
         
         private static readonly ParamLessPool<Guest> GuestPool = new ();
+        private static readonly ParamLessPool<Cell> CellPool = new ();
         
-        private readonly Dictionary<T, int> m_Cells = new();
+        private readonly Dictionary<T, Cell> m_Cells = new();
         private readonly List<Guest> m_Guests = new();
         /// <summary>
         /// List of checked in guests (that already have a cell).
@@ -82,9 +108,107 @@ namespace Metamatic
             }
         }
 
-        public void AddCell(T cell)
+        public void AddCell(T cell, int capacity = 0)
         {
-            m_Cells[cell] = 0;
+            Debug.Assert(capacity > -1, "Capacity should be greater or equal to 0");
+            var normalizedCapacity = capacity == 0 ? m_Config_CellCapacity : capacity;
+            if (m_Cells.ContainsKey(cell))
+            {
+                var existingCell = m_Cells[cell];
+                existingCell.IsDisposed = false; // Cancel disposing
+                ChangeCellCapacity(cell, normalizedCapacity).Forget();
+            }
+            var newCell = CellPool.Get();
+            newCell.Capacity = normalizedCapacity;
+            if (!m_Cells.TryAdd(cell, newCell))
+            {
+                throw new Exception($"Cell {cell} already exists");
+            }
+        }
+
+        private Action m_ChangeCellQueue;
+        private bool m_IsBeingChanged;
+        public async UniTaskVoid ChangeCellCapacity(T cell, int capacity)
+        {
+            Debug.Assert(capacity > -1, "Capacity should be greater or equal to 0");
+            if (m_IsBeingChanged)
+            {
+                m_ChangeCellQueue += () => ChangeCellCapacity(cell, capacity).Forget();
+            }
+            m_IsBeingChanged = true;
+            if (m_Cells.TryGetValue(cell, out var cellData))
+            {
+                cellData.Capacity = capacity;
+                if (cellData.Count > capacity)
+                {
+                    var countToEvict = cellData.Count - capacity;
+                    var evictionTasks = new List<UniTask>();
+                    foreach (var guest in m_Guests)
+                    {
+                        if (countToEvict == 0) break;
+                        if (guest.Status == Guest.CheckStatus.CheckedIn && guest.CellId.Equals(cell))
+                        {
+                            evictionTasks.Add(Eviction(guest));
+                            countToEvict--;
+                        }
+                    }
+
+                    try
+                    {
+                        await UniTask.WhenAll(evictionTasks);    
+                    } catch (Exception e)
+                    {
+                        Debug.LogError($"Error was thrown during eviction: {e}");
+                    }
+                } else if (cellData.Count < capacity)
+                {
+                    var countToCheckIn = capacity - cellData.Count;
+                    CheckInNextGuest(cell, countToCheckIn);
+                }
+            }
+            m_IsBeingChanged = false;
+            
+            if (m_ChangeCellQueue != null)
+            {
+                m_ChangeCellQueue();
+                m_ChangeCellQueue = null;
+            }
+        }
+        
+        public async UniTask RemoveCell(T cell)
+        {
+            if (m_Cells.TryGetValue(cell, out var cellData))
+            {
+                cellData.IsDisposed = true;
+                if (cellData.Count > 0)
+                {
+                    var evictionTasks = new List<UniTask>();
+                    foreach (var guest in m_Guests)
+                    {
+                        if (guest.Status == Guest.CheckStatus.CheckedIn && guest.CellId.Equals(cell))
+                        {
+                            evictionTasks.Add(Eviction(guest));
+                        }
+                    }
+
+                    try
+                    {
+                        await UniTask.WhenAll(evictionTasks);    
+                    } catch (Exception e)
+                    {
+                        Debug.LogError($"Error was thrown during eviction: {e}");
+                    }
+                }
+
+                if (!cellData.IsDisposed)
+                {
+                    /* Removing cell is cancelled */
+                    return;
+                }
+                m_Cells.Remove(cell);
+                cellData.Reset();
+                CellPool.Return(cellData);
+            }
         }
         
         
@@ -117,7 +241,7 @@ namespace Metamatic
                     m_CheckedInUnsatisfiedGuests.Remove(guest);
                 }
                 UniTask asyncDisposeTask;
-                if (guest.IsCheckedIn)
+                if (guest.Status == Guest.CheckStatus.CheckedIn || guest.Status == Guest.CheckStatus.CheckingOut)
                 {
                     if (!guest.Operation.isDisposed)
                     {
@@ -158,9 +282,10 @@ namespace Metamatic
         
         private void CheckIn(Guest guest, T cellId)
         {
-            m_Cells[cellId]++;
+            m_Cells[cellId].Count++;
             guest.CellId = cellId;
-            guest.IsCheckedIn = true;
+            guest.Status = Guest.CheckStatus.CheckedIn;
+            var guestVersion = guest.Version;
             var onCheckIn = guest.OnCheckIn;
             
             UniTask Handler(InternalMicroOperation op)
@@ -181,6 +306,10 @@ namespace Metamatic
             }
             guest.Operation.OnDisposedAsync += exception =>
             {
+                if (guest.Version != guestVersion)
+                {
+                    Debug.LogError("Guest version mismatch. It seems that guest was disposed and returned to pool, but operation was not disposed");
+                }
                 if (exception != null)
                 {
                     Debug.LogError($"Error was thrown during guest operation disposing: {exception}");
@@ -193,9 +322,9 @@ namespace Metamatic
                 }
                 
                 guest.CellId = default;
-                guest.IsCheckedIn = false;
+                guest.Status = Guest.CheckStatus.Idle;
                 guest.Operation = default;
-                m_Cells[cellId]--;
+                m_Cells[cellId].Count--;
                 if (m_CheckedInUnsatisfiedGuests.Contains(guest))
                 {
                     m_CheckedInUnsatisfiedGuests.Remove(guest);
@@ -208,47 +337,143 @@ namespace Metamatic
             };
         }
         
-        private void CheckInNextGuest(T cellId)
+        private async UniTask Eviction(Guest guest)
+        {
+            /* Get guest cell */
+            if (!(guest.Status == Guest.CheckStatus.CheckedIn || guest.Status == Guest.CheckStatus.CheckingOut)) return;
+            /* Find free cell */
+            if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+            {
+                try
+                {
+                    /* Just checkout guest */
+                    await SoftCheckOut(guest);
+                } catch (Exception e)
+                {
+                    Debug.LogError($"Error was thrown during eviction: {e}");
+                }
+                finally
+                {
+                    /* And add it to waiting queue */
+                    m_WaitingQueue.Add(guest);
+                }
+            }
+            else
+            {
+                await RecheckInGuest(guest, freeCellId);
+            }
+        }
+        
+        /// <summary>
+        /// Checkout guest from motel. Support checkouting when guest is not checked in, and also if guest is being checkout. Simply put, this method guaranties that guest will be checked out.
+        /// </summary>
+        /// <param name="guest"></param>
+        /// <returns></returns>
+        private async UniTask SoftCheckOut(Guest guest)
+        {
+            
+            if (!(guest.Status == Guest.CheckStatus.CheckedIn || guest.Status == Guest.CheckStatus.CheckingOut))
+            {
+                return;
+            }
+            
+            guest.Status = Guest.CheckStatus.CheckingOut;
+            UniTask asyncDisposeTask;
+            
+            if (!guest.Operation.isDisposed)
+            {
+                asyncDisposeTask = guest.Operation.DisposeAsync();
+            }
+            else
+            {
+                var tsc = AutoResetUniTaskCompletionSource.Create();
+                guest.Operation.OnDisposedAsync += exception =>
+                {
+                    if (exception != null)
+                    {
+                        tsc.TrySetException(exception);
+                    }
+                    else
+                    {
+                        tsc.TrySetResult();
+                    }
+                };
+                asyncDisposeTask = tsc.Task;
+            }
+            
+            await asyncDisposeTask;
+            guest.Status = Guest.CheckStatus.Idle;
+            /* We don't need to decrement cell count here, because it will be decremented in OnDisposedAsync event */
+        }
+        
+        private void CheckInNextGuest(T cellId, int countToCheckIn = 1)
         {
             lock (m_Cells)
             {
-                lock (m_CheckedInUnsatisfiedGuests)
+                while (countToCheckIn > 0)
                 {
-                    /* First, look for guests that are already checked in and unsatisfied */
-                    for (var i = 0; i < m_CheckedInUnsatisfiedGuests.Count; i++)
+                    var guestCheckedIn = false;
+                    lock (m_CheckedInUnsatisfiedGuests)
                     {
-                        var guest = m_CheckedInUnsatisfiedGuests[i];
-                        if (!guest.IsDisposed && guest.IsSatisfied(cellId))
+                        /* First, look for guests that are already checked in and unsatisfied */
+                        for (var i = 0; i < m_CheckedInUnsatisfiedGuests.Count; i++)
                         {
-                            m_CheckedInUnsatisfiedGuests.RemoveAt(i);
-                            RecheckInGuest(guest, cellId).Forget();
-                    
-                            return;
+                            var guest = m_CheckedInUnsatisfiedGuests[i];
+                            if (!guest.IsDisposed && guest.IsSatisfied(cellId))
+                            {
+                                m_CheckedInUnsatisfiedGuests.RemoveAt(i);
+                                RecheckInGuest(guest, cellId).Forget();
+                                
+                                guestCheckedIn = true;
+                                --countToCheckIn;
+                                break;
+                            }
                         }
                     }
-                }
-            
-                for (var i = 0; i < m_WaitingQueue.Count; i++)
-                {
-                    var guest = m_WaitingQueue[i];
-                    if (!guest.Strict || guest.IsSatisfied(cellId))
+
+                    if (!guestCheckedIn)
                     {
-                        m_WaitingQueue.RemoveAt(i);
-                        CheckIn(guest, cellId);
+                        for (var i = 0; i < m_WaitingQueue.Count; i++)
+                        {
+                            var guest = m_WaitingQueue[i];
+                            if (!guest.Strict || guest.IsSatisfied(cellId))
+                            {
+                                m_WaitingQueue.RemoveAt(i);
+                                CheckIn(guest, cellId);
+                                --countToCheckIn;
+                                break;
+                            }
+                        }
+                    }
+                    if (!guestCheckedIn)
+                    {
                         break;
                     }
                 }
             }
         }
 
-        private async UniTaskVoid RecheckInGuest(Guest guest, T cellId)
+        /// <summary>
+        /// Move guest to another cell.
+        /// </summary>
+        /// <param name="guest"></param>
+        /// <param name="cellId"></param>
+        private async UniTask RecheckInGuest(Guest guest, T cellId)
         {
+            var startCellData = m_Cells[guest.CellId];
+            if (startCellData == null || startCellData.IsDisposed)
+            {
+                /* Eviction guest again */
+                Eviction(guest).Forget();
+                return;
+            }
             var version = guest.Version;
-            m_Cells[cellId]++;
+            var cellDataVersion = startCellData.Version;
+            startCellData.Count++;
             /* Check out guest */
             try
             {
-                await guest.Operation.DisposeAsync();
+                await SoftCheckOut(guest);
             }
             catch
             {
@@ -256,9 +481,20 @@ namespace Metamatic
             }
             finally
             {
-                if (version != guest.Version || isDisposed || guest.IsDisposed)
+                var cellData = m_Cells[guest.CellId];
+                if (cellData == null || cellData.IsDisposed || cellData.Version != cellDataVersion || version != guest.Version || isDisposed || guest.IsDisposed)
                 {
-                    m_Cells[cellId]--;
+                    if (cellData != null && cellData.Version == cellDataVersion)
+                    {
+                        cellData.Count--;
+                    }
+                    
+                    /* If guest is still here: not disposed, motel is not disposed and guest has the same version, then eviction it again */
+                    if (version == guest.Version && !isDisposed && !guest.IsDisposed)
+                    {
+                        /* Eviction guest again */
+                        Eviction(guest).Forget();
+                    }
                 }
                 else
                 {
@@ -278,7 +514,7 @@ namespace Metamatic
         {
             foreach (var preferredCell in preferredCells)
             {
-                if (m_Cells.TryGetValue(preferredCell, out var countInCell) && countInCell < m_Config_CellCapacity)
+                if (m_Cells.TryGetValue(preferredCell, out var cellData) && cellData.Count < cellData.Capacity)
                 {
                     cell = preferredCell;
                     return true;
@@ -293,7 +529,7 @@ namespace Metamatic
 
             foreach (var c in m_Cells)
             {
-                if (c.Value < m_Config_CellCapacity)
+                if (c.Value.Count < c.Value.Capacity)
                 {
                     cell = c.Key;
                     return true;

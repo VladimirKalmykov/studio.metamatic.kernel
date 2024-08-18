@@ -5,7 +5,8 @@ using Metamatic;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace Tests.EditMode.MictoMotel
+// TODO: Write test for RemoveCall, ChangeCellCapacity and AddCell right after RemoveCall
+namespace Tests.EditMode.MicroMotel
 {
     [TestFixture]
     public class MotelTTests
