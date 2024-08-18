@@ -6,7 +6,7 @@ using Action = System.Action;
 
 namespace Metamatic
 {
-    public class MicroMotel: IExposedDisposed, IUniTaskAsyncDisposableAbortable
+    public class IntMotel: IExposedDisposed, IUniTaskAsyncDisposableAbortable
     {
         private class Guest
         {
@@ -71,7 +71,7 @@ namespace Metamatic
         private readonly List<Guest> m_WaitingQueue = new();
         private readonly int m_Config_CellCapacity;
         
-        public MicroMotel(int cellsCount, int cellCapacity = 1, object[] dependencies = null)
+        public IntMotel(int cellsCount, int cellCapacity = 1, object[] dependencies = null)
         {
             m_Config_CellCapacity = cellCapacity;
             for (var i = 0; i < cellsCount; i++)

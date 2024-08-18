@@ -8,7 +8,7 @@ using UnityEngine.TestTools;
 namespace Tests.EditMode.MictoMotel
 {
     [TestFixture]
-    public class MicroMotelTests
+    public class IntMotelTests
     {
         private class ExposedDisposable: IDisposable, IExposedDisposed
         {
@@ -36,7 +36,7 @@ namespace Tests.EditMode.MictoMotel
         {
             var checkedIn = false;
             var checkedOut = false;
-            await using var motel = new MicroMotel(4);
+            await using var motel = new IntMotel(4);
             var a = motel.isDisposed;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
@@ -59,7 +59,7 @@ namespace Tests.EditMode.MictoMotel
             var guest2CheckedIn = false;
             var guest2CheckedOut = false;
             var guest2Cell = 0;
-            await using var motel = new MicroMotel(4);
+            await using var motel = new IntMotel(4);
             var a = motel.isDisposed;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
@@ -91,7 +91,7 @@ namespace Tests.EditMode.MictoMotel
             var guest2CheckedOut = false;
             var guest1CheckedOutBeforeCheckIn = false;
             var guest2Cell = 0;
-            await using var motel = new MicroMotel(4);
+            await using var motel = new IntMotel(4);
             var a = motel.isDisposed;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
@@ -128,7 +128,7 @@ namespace Tests.EditMode.MictoMotel
             var checkedIn = false;
             var checkedOut = false;
             var disposable = new ExposedDisposable();
-            await using var motel = new MicroMotel(4);
+            await using var motel = new IntMotel(4);
             var a = motel.isDisposed;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
@@ -148,7 +148,7 @@ namespace Tests.EditMode.MictoMotel
         public IEnumerator DisposeAsyncAlreadyDisposed() => UniTask.ToCoroutine(async () =>
         {
             var reserveStage = ReserveStage.Waiting;
-            await using var motel = new MicroMotel(4);
+            await using var motel = new IntMotel(4);
             var a = motel.isDisposed;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
@@ -190,7 +190,7 @@ namespace Tests.EditMode.MictoMotel
             var exposedDisposable = new ExposedDisposable();
             var reserveStage1 = ReserveStage.Waiting;
             var reserveStage2 = ReserveStage.Waiting;
-            await using var motel = new MicroMotel(4, dependencies: new object[] { exposedDisposable });
+            await using var motel = new IntMotel(4, dependencies: new object[] { exposedDisposable });
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 try
@@ -256,7 +256,7 @@ namespace Tests.EditMode.MictoMotel
             var guest2Cell = -1;
             var guest3Cell = -1;
             var guest4Cell = -1;
-            await using var motel = new MicroMotel(8, cellCapacity: 1);
+            await using var motel = new IntMotel(8, cellCapacity: 1);
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1Cell = cell;
@@ -291,7 +291,7 @@ namespace Tests.EditMode.MictoMotel
             var guest2Cell = -1;
             var guest3Cell = -1;
             var guest4Cell = -1;
-            await using var motel = new MicroMotel(4, cellCapacity: 2, dependencies: new object[] { exposedDisposable });
+            await using var motel = new IntMotel(4, cellCapacity: 2, dependencies: new object[] { exposedDisposable });
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1Cell = cell;
