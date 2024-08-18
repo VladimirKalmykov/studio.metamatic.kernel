@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public readonly struct MicroOperation: IDisposableOperation
+    public readonly struct MicroOperation: IDisposableOperation, IExposedAsyncDisposed, IExposedDisposed
     {
         /// <summary>
         /// Call an async action with cancellation token
@@ -29,17 +29,22 @@ namespace Metamatic
         }
         
         private readonly InternalMicroOperation m_Operation;
-        private readonly int m_Id;
+        public readonly int Id;
+        public bool isInitialized => m_Operation != null;
+        public bool isDisposedAsync => m_Operation.isDisposedAsync;
+        public bool isDisposed => m_Operation.isDisposed;
+        public event Action OnDisposed { add => m_Operation.OnDisposed += value; remove => m_Operation.OnDisposed -= value; }
+        public event Action<Exception> OnDisposedAsync { add => m_Operation.OnDisposedAsync += value; remove => m_Operation.OnDisposedAsync -= value; }
         
         public MicroOperation(InternalMicroOperation operation)
         {
             m_Operation = operation;
-            m_Id = m_Operation.Inquire();
+            Id = m_Operation.Inquire();
         }
 
         private UniTask AnyDispose(bool async, bool ignoreExceptions = false)
         {
-            return m_Operation?.Release(m_Id, async, ignoreExceptions) ?? UniTask.CompletedTask;
+            return m_Operation?.Release(Id, async, ignoreExceptions) ?? UniTask.CompletedTask;
         }
 
         public void Dispose()
@@ -70,5 +75,7 @@ namespace Metamatic
         {
             AnyDispose(false, true).Forget();
         }
+
+        
     }
 }

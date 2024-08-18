@@ -10,4 +10,10 @@ namespace Metamatic
         bool isDisposed { get; }
         event Action OnDisposed;
     }
+    
+    public interface IExposedAsyncDisposed
+    {
+        bool isDisposedAsync { get; }
+        event Action<Exception> OnDisposedAsync;
+    }
 }

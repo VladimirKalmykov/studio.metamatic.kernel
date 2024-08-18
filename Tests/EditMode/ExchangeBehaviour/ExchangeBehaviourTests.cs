@@ -30,9 +30,10 @@ namespace Metamatic.Tests
         public IEnumerator TestSimpleSend() => UniTask.ToCoroutine(async () =>
         {
             var state = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = ExchangeBehaviour.Run((exchanger, token) =>
             {
                 exchanger.Send(1);
+                return UniTask.CompletedTask;
             });
             Assert.AreEqual(0, state);
             state = await exchange.Receive<int>();
@@ -186,10 +187,11 @@ namespace Metamatic.Tests
             var wasError = false;
             try
             {
-                await using var test = ExchangeBehaviour.Run(async (exchanger, token) =>
+                await using var test = ExchangeBehaviour.Run((exchanger, token) =>
                 {
                     exchanger.Send(1);
                     exchanger.Send(2);
+                    return UniTask.CompletedTask;
                 });
             } catch (System.Exception e)
             {
@@ -205,10 +207,7 @@ namespace Metamatic.Tests
             var wasError = false;
             try
             {
-                await using var test = ExchangeBehaviour.Run(async (exchanger, token) =>
-                {
-                    
-                });
+                await using var test = ExchangeBehaviour.Run((exchanger, token) => UniTask.CompletedTask);
                 test.Send(1);
                 test.Send(2);
             } catch (System.Exception e)
@@ -226,15 +225,12 @@ namespace Metamatic.Tests
             var errorIsCancellation = false;
             try
             {
-                var test = ExchangeBehaviour.Run(async (exchanger, token) =>
-                {
-                    
-                });
+                var test = ExchangeBehaviour.Run((exchanger, token) => UniTask.CompletedTask);
                 /* Dispose after 100 ms */
                 UniTask.Delay(100).ContinueWith(() =>
                 {
                     test.Dispose();
-                });
+                }).Forget();
                 await test.Receive();
             } catch (System.Exception e)
             {
@@ -268,7 +264,7 @@ namespace Metamatic.Tests
             UniTask.Delay(100).ContinueWith(() =>
             {
                 test.Dispose();
-            });
+            }).Forget();
             await test.task;
             Assert.IsTrue(wasError, "Must throw an exception");
             Assert.IsTrue(errorIsCancellation, "Must throw a cancellation exception");

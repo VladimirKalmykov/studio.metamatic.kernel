@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class InternalMicroOperation : IExposedDisposed
+    public class InternalMicroOperation : IExposedDisposed, IExposedAsyncDisposed
     {
 #if DEBUG
         private static int _LastInstanceID;
@@ -115,7 +115,7 @@ namespace Metamatic
         /// <summary>
         /// Contains id for current inquire. Id is incremented after release.
         /// </summary>
-        private int inquireId { get; set; }
+        private int inquireId { get; set; } = 1;
 
         private bool isInquired { get; set; }
 
@@ -202,12 +202,21 @@ namespace Metamatic
                 }
                 catch (Exception e)
                 {
+                    isDisposedAsync = true;
+                    OnDisposedAsync?.Invoke(e);
                     Debug.LogError($"Error was thrown during operation async disposing: {e}");
                 }
             }
 
+            if (!isDisposedAsync)
+            {
+                isDisposedAsync = true;
+                OnDisposedAsync?.Invoke(null);
+            }
+            
             inquireId++;
-
+            
+            OnDisposedAsync = null;
             m_AsyncDisposeCancellationTokenSource?.Dispose();
             m_AsyncDisposeCancellationTokenSource = null;
             m_ExecuteTask = null;
@@ -217,10 +226,10 @@ namespace Metamatic
             m_IsAborted = false;
 #if DEBUG
             isDebug = false;
-#endif
-#if DEBUG
             _InstanceCount--;
 #endif
+            
+            isDisposedAsync = false;
             OnBeforeReturn?.Invoke();
             OnBeforeReturn = null;
             Pool2.Return(this);
@@ -263,6 +272,8 @@ namespace Metamatic
          }
 
         public bool isDisposed { get; private set; }
+        public bool isDisposedAsync { get; private set; }
         public event Action OnDisposed;
+        public event Action<Exception> OnDisposedAsync;
     }
 }

@@ -94,9 +94,6 @@ namespace Metamatic
         {
             if (m_IsDisposed)
             {
-                #if DEBUG
-                Debug.LogError("Already disposed");
-                #endif
                 return;
             }
             m_IsDisposed = true;

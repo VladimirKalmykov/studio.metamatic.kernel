@@ -2,7 +2,6 @@
 
 namespace Metamatic
 {
-    // TODO: consider changing to struct
     public readonly struct DisposableAction : IDisposable
     {
         #if DEBUG
