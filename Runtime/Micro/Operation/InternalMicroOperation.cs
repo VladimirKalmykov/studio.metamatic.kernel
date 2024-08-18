@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class InternalMicroOperation : IExposedDisposed, IExposedAsyncDisposed
+    public class InternalMicroOperation : IExposedDisposed, IExposedAsyncDisposed, IAbortable
     {
 #if DEBUG
         private static int _LastInstanceID;
@@ -100,14 +100,15 @@ namespace Metamatic
         private bool m_IsAborted;
 
         /// <summary>
-        /// Determines if operation is concluding without aborting by dependency invalidation.
-        /// </summary>
-        public bool isConcluded { get; private set; } = true;
-
-        /// <summary>
         /// Determines if operation is aborted by dependency invalidation.
         /// </summary>
         public bool isAborted => m_IsAborted;
+
+        public event Action OnAborted;
+        public void Abort()
+        {
+            Abort(inquireId);
+        }
 #if DEBUG
         public bool isDebug { get; private set; }
 #endif
@@ -126,7 +127,7 @@ namespace Metamatic
 #endif
         }
 
-        private void CancelAsyncDispose(int id)
+        public void Abort(int id)
         {
             if (id != inquireId)
             {
@@ -164,7 +165,7 @@ namespace Metamatic
             return inquireId;
         }
 
-        internal async UniTask Release(int id, bool async = false, bool ignoreExceptions = false)
+        internal async UniTask Release(int id, bool ignoreExceptions = false)
         {
             if (id != inquireId)
             {
@@ -174,15 +175,13 @@ namespace Metamatic
 
             isDisposed = true;
             OnDisposed?.Invoke();
-
-
-            isConcluded = async && !m_IsAborted;
-            if (isConcluded)
+            
+            if (!isAborted && m_AsyncDisposeCancellationTokenSource == null)
             {
                 m_AsyncDisposeCancellationTokenSource = new CancellationTokenSource();
             }
 
-            if (!m_PerformCancellationTokenSource.IsCancellationRequested)
+            if (m_PerformCancellationTokenSource is { IsCancellationRequested: false })
             {
                 m_PerformCancellationTokenSource.Cancel();
             }
@@ -221,7 +220,6 @@ namespace Metamatic
             m_AsyncDisposeCancellationTokenSource = null;
             m_ExecuteTask = null;
             dependencies = null;
-            isConcluded = false;
             isInquired = false;
             m_IsAborted = false;
 #if DEBUG
@@ -246,7 +244,7 @@ namespace Metamatic
             if (dependencies != null)
             {
                 OnBeforeReturn +=
-                    ObserveExposedDisposable.Create(dependencies, () => CancelAsyncDispose(currentId), true);
+                    ObserveExposedDisposable.Create(dependencies, () => Abort(currentId), true);
             }
 
             m_PerformCancellationTokenSource = new CancellationTokenSource();
@@ -264,7 +262,7 @@ namespace Metamatic
             if (dependencies != null)
             {
                 OnBeforeReturn +=
-                    ObserveExposedDisposable.Create(dependencies, () => CancelAsyncDispose(currentId), true);
+                    ObserveExposedDisposable.Create(dependencies, () => Abort(currentId), true);
             }
 
             m_PerformCancellationTokenSource = new CancellationTokenSource();

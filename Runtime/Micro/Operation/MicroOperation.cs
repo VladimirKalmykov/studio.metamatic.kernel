@@ -42,14 +42,14 @@ namespace Metamatic
             Id = m_Operation.Inquire();
         }
 
-        private UniTask AnyDispose(bool async, bool ignoreExceptions = false)
+        private UniTask AnyDispose(bool ignoreExceptions = false)
         {
-            return m_Operation?.Release(Id, async, ignoreExceptions) ?? UniTask.CompletedTask;
+            return m_Operation?.Release(Id, ignoreExceptions) ?? UniTask.CompletedTask;
         }
 
         public void Dispose()
         {
-            AnyDispose(false).Forget();
+            m_Operation.Abort(Id);
         }
         
         public static implicit operator DisposableAction(MicroOperation operation)
@@ -73,7 +73,7 @@ namespace Metamatic
         /// <returns></returns>
         public void TryDispose()
         {
-            AnyDispose(false, true).Forget();
+            AnyDispose(false).Forget();
         }
 
         

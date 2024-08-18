@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Action = System.Action;
 
 namespace Metamatic
 {
-    public class MicroMotel: IExposedDisposed, IExposedAsyncDisposed, IUniTaskAsyncDisposable
+    public class MicroMotel: IExposedDisposed, IUniTaskAsyncDisposableAbortable
     {
         private enum CellStatus
         {
@@ -17,6 +16,7 @@ namespace Metamatic
         
         private class Guest
         {
+            public int Version;
             public object[] Dependencies;
             public MicroOperation Operation;
             public Func<int, InternalMicroOperation, UniTask> OnCheckIn;
@@ -30,6 +30,10 @@ namespace Metamatic
 
             public void Reset()
             {
+                unchecked
+                {
+                    Version++;
+                }
                 Dependencies = null;
                 Operation = default;
                 OnCheckIn = null;
@@ -72,11 +76,16 @@ namespace Metamatic
         /// </summary>
         private readonly List<Guest> m_WaitingQueue = new();
         
-        public MicroMotel(int cellsCount)
+        public MicroMotel(int cellsCount, object[] dependencies = null)
         {
             for (var i = 0; i < cellsCount; i++)
             {
                 m_Cells.Add(i, CellStatus.Free);
+            }
+            
+            if (dependencies != null)
+            {
+                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
             }
         }
         
@@ -105,7 +114,7 @@ namespace Metamatic
                 CheckIn(guest, freeCellId);
             }
             
-            return new AsyncDisposableFunc(() =>
+            return new AsyncDisposableFunc(async () =>
             {
                 guest.IsDisposed = true;
                 if (m_CheckedInUnsatisfiedGuests.Contains(guest))
@@ -141,14 +150,14 @@ namespace Metamatic
                     asyncDisposeTask = UniTask.CompletedTask;
                     m_WaitingQueue.Remove(guest);
                 }
+
+                await asyncDisposeTask;
                 /* Remove guest from list */
                 m_Guests.Remove(guest);
                 /* Reset guest */
                 guest.Reset();
                 /* Return guest to pool */
                 GuestPool.Return(guest);
-
-                return asyncDisposeTask;
             });
         }
         
@@ -163,7 +172,13 @@ namespace Metamatic
                 return onCheckIn(cellId, op);
             }
             
-            guest.Operation = MicroOperation.Run(Handler, dependencies: guest.Dependencies);;
+            var combinedDependencies = guest.Dependencies != null ? new object[guest.Dependencies.Length + 1] : new object[1];
+            combinedDependencies[0] = this;
+            if (guest.Dependencies != null)
+            {
+                Array.Copy(guest.Dependencies, 0, combinedDependencies, 1, guest.Dependencies.Length);
+            }
+            guest.Operation = MicroOperation.Run(Handler, dependencies: combinedDependencies);
             if (!guest.IsSatisfied(cellId))
             {
                 m_CheckedInUnsatisfiedGuests.Add(guest);
@@ -219,7 +234,7 @@ namespace Metamatic
                 for (var i = 0; i < m_WaitingQueue.Count; i++)
                 {
                     var guest = m_WaitingQueue[i];
-                    if (guest.IsSatisfied(cellId))
+                    if (!guest.Strict || guest.IsSatisfied(cellId))
                     {
                         m_WaitingQueue.RemoveAt(i);
                         CheckIn(guest, cellId);
@@ -231,6 +246,7 @@ namespace Metamatic
 
         private async UniTaskVoid RecheckInGuest(Guest guest, int cellId)
         {
+            var version = guest.Version;
             m_Cells[cellId] = CellStatus.Busy;
             /* Check out guest */
             try
@@ -243,7 +259,7 @@ namespace Metamatic
             }
             finally
             {
-                if (isDisposed || guest.IsDisposed)
+                if (version != guest.Version || isDisposed || guest.IsDisposed)
                 {
                     m_Cells[cellId] = CellStatus.Free;
                 }
@@ -259,7 +275,6 @@ namespace Metamatic
         /// </summary>
         /// <param name="preferredCells"></param>
         /// <param name="strict"></param>
-        /// <param name="cancellationToken"></param>
         /// <returns></returns>
         private int GetFreeCell(int[] preferredCells, bool strict)
         {
@@ -308,6 +323,17 @@ namespace Metamatic
             
         public event Action OnDisposed;
         public event Action<Exception> OnDisposedAsync;
+        
+        /// <summary>
+        /// All guests operations have Motel instance as dependency, therefore, disposing Motel will abort all guests.
+        /// </summary>
+        public void Abort()
+        {
+            isAborted = true;
+            OnAborted?.Invoke();
+            DisposeAsync().Forget();
+        }
+        
         public async UniTask DisposeAsync()
         {
             if (m_IsDisposed)
@@ -347,7 +373,14 @@ namespace Metamatic
 
               try
               {
-                  await UniTask.WhenAll(tasks);
+                  if (!isAborted)
+                  {
+                      await UniTask.WhenAll(tasks);
+                  }
+                  else
+                  {
+                      UniTask.WhenAll(tasks).Forget();
+                  }
               } catch (Exception e)
               {
                   Debug.LogError($"Error was thrown during disposing: {e}");
@@ -361,5 +394,10 @@ namespace Metamatic
                     OnDisposedAsync?.Invoke(null);
               }
         }
+
+        #region IUniTaskAsyncDisposableAbortable
+        public bool isAborted { get; private set;  }
+        public event Action OnAborted;
+        #endregion
     }
 }

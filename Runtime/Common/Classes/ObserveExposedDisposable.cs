@@ -29,7 +29,6 @@ namespace Metamatic
         public void Initialize(object[] disposables, Action onFire, bool trackNotExposed = true)
         {
             m_NotExposedDisposedDependencies.Clear();
-            var notExposedCount = 0;
             m_OnFire = onFire;
             foreach (var d in disposables)
             {
@@ -38,7 +37,39 @@ namespace Metamatic
                     Fire();
                     break;
                 }
-                if (d is IExposedDisposed exposedDisposed)
+                if (d is IAbortable uniTaskAsyncDisposableAbortable)
+                {
+                    if (uniTaskAsyncDisposableAbortable.isAborted)
+                    {
+                        Fire();
+                        break;
+                    }
+                    uniTaskAsyncDisposableAbortable.OnAborted += Fire;
+                    OnDisposed += () =>
+                    {
+                        if (!uniTaskAsyncDisposableAbortable.Equals(null))
+                        {
+                            uniTaskAsyncDisposableAbortable.OnAborted -= Fire;
+                        }
+                    };
+                }
+                if (d is IExposedAsyncDisposed exposedAsyncDisposed)
+                {
+                    /* If the object supports async disposal, we should fire only on async dispose event, unlike the sync dispose event in IExposedDisposed */
+                    if (exposedAsyncDisposed.isDisposedAsync)
+                    {
+                        Fire();
+                        break;
+                    }
+                    exposedAsyncDisposed.OnDisposedAsync += FireAsync;
+                    OnDisposed += () =>
+                    {
+                        if (!exposedAsyncDisposed.Equals(null))
+                        {
+                            exposedAsyncDisposed.OnDisposedAsync -= FireAsync;
+                        }
+                    };
+                } else if (d is IExposedDisposed exposedDisposed)
                 {
                     if (exposedDisposed.isDisposed)
                     {
@@ -56,7 +87,6 @@ namespace Metamatic
                 }
                 else
                 {
-                    notExposedCount++;
                     m_NotExposedDisposedDependencies.Add(d);
                 }
             }
@@ -84,6 +114,13 @@ namespace Metamatic
         }
 
         private void Fire()
+        {
+            m_OnFire?.Invoke();
+            m_OnFire = null;
+            Dispose();
+        }
+
+        private void FireAsync(Exception exception)
         {
             m_OnFire?.Invoke();
             m_OnFire = null;

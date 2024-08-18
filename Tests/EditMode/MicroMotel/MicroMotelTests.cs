@@ -20,7 +20,16 @@ namespace Tests.EditMode.MictoMotel
 
             public bool isDisposed { get; private set; }
             public event Action OnDisposed;
-        }   
+        }
+
+        public enum ReserveStage
+        {
+            Waiting,
+            CheckedIn,
+            CheckingOut,
+            CheckedOut,
+            Abort
+        }
         
         [UnityTest]
         public IEnumerator SimpleReservation() => UniTask.ToCoroutine(async () =>
@@ -133,6 +142,111 @@ namespace Tests.EditMode.MictoMotel
             disposable.Dispose();
             await UniTask.Delay(100);
             Assert.IsTrue(checkedOut, "Must be checkout after disposable is disposed");
+        });
+        
+        [UnityTest]
+        public IEnumerator DisposeAsyncAlreadyDisposed() => UniTask.ToCoroutine(async () =>
+        {
+            var reserveStage = ReserveStage.Waiting;
+            await using var motel = new MicroMotel(4);
+            var a = motel.isDisposed;
+            var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                await operation.cancellationToken;
+            });
+            var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                try
+                {
+                    reserveStage = ReserveStage.CheckedIn;
+                    await operation.cancellationToken;
+                }
+                catch (OperationCanceledException e)
+                {
+                    // Skip
+                }
+                finally
+                {
+                    reserveStage = ReserveStage.CheckingOut;
+                    if (!operation.isAborted)
+                    {
+                        await UniTask.Delay(1000);
+                        reserveStage = ReserveStage.CheckedOut;
+                    }
+                }
+            });
+            await UniTask.Delay(100);
+            Assert.AreEqual(ReserveStage.CheckedIn, reserveStage);
+            await reservation1.DisposeAsync();
+            Assert.AreEqual(ReserveStage.CheckingOut, reserveStage);
+            await reservation2.DisposeAsync();
+            await UniTask.Delay(100);
+            Assert.AreEqual(ReserveStage.CheckedOut, reserveStage);
+        });
+
+        [UnityTest]
+        public IEnumerator DisposeMotelShouldAbortAllGuests() => UniTask.ToCoroutine(async () =>
+        {
+            var exposedDisposable = new ExposedDisposable();
+            var reserveStage1 = ReserveStage.Waiting;
+            var reserveStage2 = ReserveStage.Waiting;
+            await using var motel = new MicroMotel(4, dependencies: new object[] { exposedDisposable });
+            var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                try
+                {
+                    reserveStage1 = ReserveStage.CheckedIn;
+                    await operation.cancellationToken;
+                }
+                catch (OperationCanceledException e)
+                {
+                    // Skip
+                }
+                finally
+                {
+                    reserveStage1 = ReserveStage.CheckingOut;
+                    if (!operation.isAborted)
+                    {
+                        await UniTask.Delay(1000);
+                        reserveStage1 = ReserveStage.CheckedOut;
+                    }
+                    else
+                    {
+                        reserveStage1 = ReserveStage.Abort;
+                    }
+                }
+            });
+            var reservation2 = motel.Reserve(new int[] { 2 }, async (cell, operation) =>
+            {
+                try
+                {
+                    reserveStage2 = ReserveStage.CheckedIn;
+                    await operation.cancellationToken;
+                }
+                catch (OperationCanceledException e)
+                {
+                    // Skip
+                }
+                finally
+                {
+                    reserveStage2 = ReserveStage.CheckingOut;
+                    if (!operation.isAborted)
+                    {
+                        await UniTask.Delay(1000);
+                        reserveStage2 = ReserveStage.CheckedOut;
+                    }
+                    else
+                    {
+                        reserveStage2 = ReserveStage.Abort;
+                    }
+                }
+            });
+            await UniTask.Delay(100);
+            Assert.AreEqual(ReserveStage.CheckedIn, reserveStage1);
+            Assert.AreEqual(ReserveStage.CheckedIn, reserveStage2);
+            exposedDisposable.Dispose();
+            Assert.AreEqual(ReserveStage.Abort, reserveStage1);
+            Assert.AreEqual(ReserveStage.Abort, reserveStage2);
         });
     }
 }
