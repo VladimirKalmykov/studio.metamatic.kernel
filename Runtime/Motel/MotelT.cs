@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Action = System.Action;
@@ -35,6 +37,7 @@ namespace Metamatic
                 CheckedIn,
                 CheckingOut
             }
+            public string Id = Guid.NewGuid().ToString();
             public int Version;
             public int ProcessVersion;
             public object[] Dependencies;
@@ -90,6 +93,8 @@ namespace Metamatic
             private readonly IUniTaskAsyncDisposable m_Operation;
             private readonly MotelT<T> m_Motel;
             private readonly Guest m_Guest;
+            // ReSharper disable once InconsistentNaming
+            public string Id => m_Guest.Id;
             
             internal Reservation(IUniTaskAsyncDisposable operation, MotelT<T> motel, Guest guest)
             {
@@ -98,14 +103,14 @@ namespace Metamatic
                 m_Guest = guest;
             }
             
-            public void SetPreferredCells(T[] preferredCells)
+            public void SetPreferredCells(T[] preferredCells, bool strict = false)
             {
-                m_Motel.ChangeGuestPreferredPosition(m_Guest, preferredCells);
+                m_Motel.ChangeGuestPreferredPosition(m_Guest, preferredCells, strict);
             }
             
-            public void SetPreferredCells(T preferredCell)
+            public void SetPreferredCells(T preferredCell, bool strict = false)
             {
-                m_Motel.ChangeGuestPreferredPosition(m_Guest, new [] { preferredCell });
+                m_Motel.ChangeGuestPreferredPosition(m_Guest, new [] { preferredCell }, strict);
             }
 
             public UniTask DisposeAsync()
@@ -178,9 +183,10 @@ namespace Metamatic
         private bool m_IsBeingChanged;
         
         
-        private void ChangeGuestPreferredPosition(Guest guest, T[] preferredCells)
+        private void ChangeGuestPreferredPosition(Guest guest, T[] preferredCells, bool strict = false)
         {
             guest.PreferredCells = preferredCells;
+            guest.Strict = strict;
             Recheck(guest).Forget();
         }
         
@@ -286,6 +292,7 @@ namespace Metamatic
             guest.OnCheckIn = onCheckIn;
             guest.PreferredCells = preferredCells;
             guest.Strict = strict;
+            
             m_Guests.Add(guest);
             
             if (!GetFreeCell(preferredCells, strict, out var freeCellId))
@@ -310,6 +317,9 @@ namespace Metamatic
                 {
 
                     asyncDisposeTask = SoftCheckOut(guest);
+                    #if DEBUG
+                    Debug.Assert(!m_WaitingQueue.Contains(guest), $"Waiting queue should not contain guest {guest.Id}");
+                    #endif
                 }
                 else
                 {
@@ -318,18 +328,38 @@ namespace Metamatic
                     m_WaitingQueue.Remove(guest);
                 }
 
-                await asyncDisposeTask;
-                /* Remove guest from list */
-                m_Guests.Remove(guest);
-                /* Check for empty motel */
-                if (m_Guests.Count == 0)
+                try
                 {
-                    OnEmpty?.Invoke();
+                    var competitiveTask = UniTask.Delay(5000);
+                    var result = await UniTask.WhenAny(asyncDisposeTask, competitiveTask);
+                    if (result == 1)
+                    {
+                        throw new Exception("Guest was not disposed in time");
+                    }
                 }
-                /* Reset guest */
-                guest.Reset();
-                /* Return guest to pool */
-                GuestPool.Return(guest);
+                catch (Exception e)
+                {
+                    Debug.LogError($"<color=red>[HINT]</color> Error: {e}");
+                }
+                finally
+                {
+                    
+                    /* Remove guest from list */
+                    m_Guests.Remove(guest);
+                    /* Check for empty motel */
+                    if (m_Guests.Count == 0)
+                    {
+                        OnEmpty?.Invoke();
+                    }
+#if DEBUG
+                    var memoizedGuestId = guest.Id;
+#endif
+                    
+                    /* Reset guest */
+                    guest.Reset();
+                    /* Return guest to pool */
+                    GuestPool.Return(guest);
+                }
             });
             
             return new Reservation(operation, this, guest);
@@ -342,6 +372,7 @@ namespace Metamatic
             guest.Status = Guest.CheckStatus.CheckedIn;
             var guestVersion = guest.Version;
             var onCheckIn = guest.OnCheckIn;
+            Debug.Assert(onCheckIn != null && !onCheckIn.Equals(null), $"[DEBUG-HINT] onCheckIn is null before handling (guestId: {guest.Id})");
             
             UniTask Handler(InternalMicroOperation op)
             {
@@ -457,6 +488,9 @@ namespace Metamatic
                 }
                 else
                 {
+                    /* Remove from waiting queue */
+                    m_WaitingQueue.Remove(guest);
+                    guest.Status = Guest.CheckStatus.Idle;
                     /* Check in guest */
                     CheckIn(guest, freeCellId);
                 }
@@ -644,6 +678,7 @@ namespace Metamatic
                 if (memoizedProcessVersion != guest.ProcessVersion)
                 {
                     /* Some other process was started, so we need to break */
+                    startCellData.Count--;
                 }
                 else
                 {
@@ -665,6 +700,7 @@ namespace Metamatic
                     }
                     else
                     {
+                        cellData.Count--;
                         if (cellsVersions != m_CellsVersion)
                         {
                             /* If cells were changed during eviction, then we need to recheck guest */
@@ -795,6 +831,24 @@ namespace Metamatic
                     m_IsAsyncDisposed = true;
                     OnDisposedAsync?.Invoke(null);
               }
+        }
+        
+        public static string PrettyPrintPreferredCells(T[] preferredCells)
+        {
+            if (preferredCells == null || preferredCells.Length == 0)
+            {
+                return "null";
+            }
+            return $"[{string.Join(", ", preferredCells)}]";
+        }
+        
+        public static string PrettyPrintObjectArray(object[] items)
+        {
+            if (items == null || items.Length == 0)
+            {
+                return "null";
+            }
+            return $"[{string.Join(", ", items)}]";
         }
 
         #region IUniTaskAsyncDisposableAbortable
