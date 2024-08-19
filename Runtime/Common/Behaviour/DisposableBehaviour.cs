@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Metamatic
@@ -14,47 +15,75 @@ namespace Metamatic
         private int m_Version;
         private readonly List<Func<UniTask>> m_AsyncDisposalActions = new List<Func<UniTask>>();
         
-        public DisposableAction AddAsyncDisposalAction(Func<UniTask> action)
+        public DisposableAction AddAsyncDisposalActionOnce(Func<UniTask> action)
         {
             var version = m_Version;
             m_AsyncDisposalActions.Add(action);
             return new DisposableAction(() =>
             {
-                if (m_Version != version) return;
+                if (this.Equals(null) || m_Version != version) return;
                 m_AsyncDisposalActions.Remove(action);
+            });
+        }
+
+        public DisposableAction AddAsyncDisposeListenerOnce(Action<Exception> action)
+        {
+            var version = m_Version;
+            void Handler(Exception e)
+            {
+                OnAsyncDisposed -= Handler;
+                action(e);
+            }
+            OnAsyncDisposed += Handler;
+            return new DisposableAction(() =>
+            {
+                if (this.Equals(null) || m_Version != version) return;
+                OnAsyncDisposed -= Handler;
             });
         }
 
         public DisposableAction AddDisposeListenerOnce(Action action)
         {
             var version = m_Version;
-            OnDisposed += action;
+
+            void Handler()
+            {
+                OnDisposed -= Handler;
+                action();
+            }
+            OnDisposed += Handler;
             return new DisposableAction(() =>
             {
-                if (m_Version != version) return;
-                OnDisposed -= action;
+                if (this.Equals(null) || m_Version != version) return;
+                OnDisposed -= Handler;
             });
         }
         
         public async UniTask DisposeAsync()
         {
             Dispose(true);
-            isAsyncDisposed = true;
-            OnAsyncDisposed?.Invoke();
-            if (m_AsyncDisposalActions.Count == 0)
-            {
-                return;
-            }
 
             try
             {
                 await UniTask.WhenAll(m_AsyncDisposalActions.Select(action => action()));
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 Debug.LogError(e);
+                isAsyncDisposed = true;
+                OnAsyncDisposed?.Invoke(e);
+                OnAsyncDisposed = null;
+            }
+            finally
+            {
+                if (!isAsyncDisposed)
+                {
+                    OnAsyncDisposed?.Invoke(null);
+                }
             }
         }
         
+        [Button]
         public void Dispose()
         {
             Dispose(false);
@@ -66,8 +95,10 @@ namespace Metamatic
             {
                 return;
             }
-            OnDisposed?.Invoke();
             isDisposed = true;
+            OnDisposed?.Invoke();
+            OnDisposed = null;
+            
             if (!isFromAsync)
             {
                 DisposeAsync().Forget();
@@ -75,9 +106,21 @@ namespace Metamatic
             }
         }
 
+        public void Reset()
+        {
+            unchecked
+            {
+                m_Version++;
+            }
+            isDisposed = false;
+            isAsyncDisposed = false;
+            OnDisposed = null;
+            OnAsyncDisposed = null;
+        }
+
         public bool isDisposed { get; private set; }
         public bool isAsyncDisposed { get; private set; }
         public event Action OnDisposed;
-        public event Action OnAsyncDisposed;
+        public event Action<Exception> OnAsyncDisposed;
     }
 }

@@ -57,7 +57,21 @@ namespace Metamatic
             }
             else
             {
-                pool = new OrganicPool<GameObject>(() => UnityEngine.Object.Instantiate(obj), onDestroy: (instance) => UnityEngine.Object.Destroy(instance), capacity: capacity);
+                pool = new OrganicPool<GameObject>(() =>
+                {
+                    var instance = UnityEngine.Object.Instantiate(obj);
+                    return instance;
+                }, onGet: instance =>
+                {
+                    instance.TryAddComponent<DisposableBehaviour>().AddAsyncDisposeListenerOnce((Exception ex) =>
+                    {
+                        instance.gameObject.SetActive(false);
+                        (pool as OrganicPool<GameObject>).Return(instance);
+                    });
+                }, onRelease: instance =>
+                {
+                    instance.GetComponent<DisposableBehaviour>().Reset();
+                }, onDestroy: (instance) => UnityEngine.Object.Destroy(instance), capacity: capacity);
                 pool.OnReadyToRelease += () =>
                 {
                     m_Pools.Remove(obj);
