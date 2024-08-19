@@ -6,6 +6,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
+    [Obsolete("Use MotelT instead", true)]
     public class Motel<T> : IUniTaskAsyncDisposable, IExposedDisposed where T : Enum
     {
         private readonly Dictionary<T, MotelReservation<T>> m_Rooms;

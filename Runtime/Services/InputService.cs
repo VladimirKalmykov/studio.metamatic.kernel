@@ -12,6 +12,11 @@ namespace Metamatic
         private ManagedList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
         private event Action<int, InputAction.CallbackContext> m_OnPlayerActionTriggered;
+        
+        #region Events
+        public event Action<PlayerInput> OnPlayerJoined;
+        public event Action<PlayerInput> OnPlayerLeft;
+        #endregion
 
         protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
         {
@@ -26,12 +31,12 @@ namespace Metamatic
             playerInputManager.joinBehavior = PlayerJoinBehavior.JoinPlayersWhenButtonIsPressed;
             playerInputManager.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
             playerInputManager.playerPrefab = m_PlayerInputPrefab.gameObject;
-            playerInputManager.onPlayerJoined += OnPlayerJoined;
-            playerInputManager.onPlayerLeft += OnPlayerLeft;
+            playerInputManager.onPlayerJoined += InternalOnPlayerJoined;
+            playerInputManager.onPlayerLeft += InternalOnPlayerLeft;
 
             await ready();
-            playerInputManager.onPlayerJoined -= OnPlayerJoined;
-            playerInputManager.onPlayerLeft -= OnPlayerLeft;
+            playerInputManager.onPlayerJoined -= InternalOnPlayerJoined;
+            playerInputManager.onPlayerLeft -= InternalOnPlayerLeft;
         }
 
         private async UniTask HandlePlayerInput(PlayerInput playerInput, CancellationToken cancellationToken)
@@ -45,18 +50,69 @@ namespace Metamatic
             await cancellationToken;
             playerInput.onActionTriggered -= handler;
         }
-
-        private void OnPlayerJoined(PlayerInput playerInput)
+        
+        public DisposableAction SubscribePlayerJoined(int playerIndex, Action<PlayerInput> action)
         {
-            Debug.Log($"Player joined: {playerInput.playerIndex}");
-            playerInput.camera = m_CameraService.camera;
-            m_PlayerInputs.Add(playerInput);
+            Action<PlayerInput> handler = (PlayerInput playerInput) =>
+            {
+                if (playerInput.playerIndex == playerIndex)
+                {
+                    action(playerInput);
+                }
+            };
+            foreach (var playerInput in m_PlayerInputs)
+            {
+                if (playerInput.playerIndex == playerIndex)
+                {
+                    action(playerInput);
+                }
+            }
+            OnPlayerJoined += handler;
+
+            return new DisposableAction(() => OnPlayerJoined -= handler);
+        }
+        
+        public DisposableAction SubscribePlayerLeft(int playerIndex, Action<PlayerInput> action)
+        {
+            Action<PlayerInput> handler = (PlayerInput playerInput) =>
+            {
+                if (playerInput.playerIndex == playerIndex)
+                {
+                    action(playerInput);
+                }
+            };
+            OnPlayerLeft += handler;
+
+            return new DisposableAction(() => OnPlayerLeft -= handler);
+        }
+        
+        public UniTask<PlayerInput> WaitUntilPlayerJoined(int playerIndex, CancellationToken cancellationToken)
+        {
+            var tcs = new UniTaskCompletionSource<PlayerInput>();
+            DisposableAction subscription = default;
+            subscription = SubscribePlayerJoined(playerIndex, (playerInput) =>
+            {
+                // ReSharper disable once AccessToModifiedClosure
+                subscription.Dispose();
+                tcs.TrySetResult(playerInput);
+            });
+            return tcs.Task;
         }
 
-        private void OnPlayerLeft(PlayerInput playerInput)
+        private void InternalOnPlayerJoined(PlayerInput playerInput)
+        {
+            Debug.Log($"Player joined: {playerInput.playerIndex}");
+            
+            playerInput.camera = m_CameraService.camera;
+            m_PlayerInputs.Add(playerInput);
+            OnPlayerJoined?.Invoke(playerInput);
+        }
+
+        private void InternalOnPlayerLeft(PlayerInput playerInput)
         {
             Debug.Log($"Player left: {playerInput.playerIndex}");
             m_PlayerInputs.Remove(playerInput);
+            OnPlayerLeft?.Invoke(playerInput);
         }
 
         private void HandleMainCamera(CameraController mainCamera)

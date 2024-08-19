@@ -26,7 +26,7 @@ namespace Metamatic
                 IsDisposed = false;
             }
         }
-        private class Guest
+        internal class Guest
         {
             public enum CheckStatus
             {
@@ -36,6 +36,7 @@ namespace Metamatic
                 CheckingOut
             }
             public int Version;
+            public int ProcessVersion;
             public object[] Dependencies;
             public MicroOperation Operation;
             public Func<T, InternalMicroOperation, UniTask> OnCheckIn;
@@ -54,6 +55,7 @@ namespace Metamatic
                 {
                     Version++;
                 }
+                ProcessVersion = 0;
                 Dependencies = null;
                 Operation = default;
                 OnCheckIn = null;
@@ -82,6 +84,35 @@ namespace Metamatic
                 return false;
             }
         }
+
+        public readonly struct Reservation: IUniTaskAsyncDisposable
+        {
+            private readonly IUniTaskAsyncDisposable m_Operation;
+            private readonly MotelT<T> m_Motel;
+            private readonly Guest m_Guest;
+            
+            internal Reservation(IUniTaskAsyncDisposable operation, MotelT<T> motel, Guest guest)
+            {
+                m_Operation = operation;
+                m_Motel = motel;
+                m_Guest = guest;
+            }
+            
+            public void SetPreferredCells(T[] preferredCells)
+            {
+                m_Motel.ChangeGuestPreferredPosition(m_Guest, preferredCells);
+            }
+            
+            public void SetPreferredCells(T preferredCell)
+            {
+                m_Motel.ChangeGuestPreferredPosition(m_Guest, new [] { preferredCell });
+            }
+
+            public UniTask DisposeAsync()
+            {
+                return m_Operation.DisposeAsync();
+            }
+        }
         
         private static readonly ParamLessPool<Guest> GuestPool = new ();
         private static readonly ParamLessPool<Cell> CellPool = new ();
@@ -97,6 +128,14 @@ namespace Metamatic
         /// </summary>
         private readonly List<Guest> m_WaitingQueue = new();
         private readonly int m_Config_CellCapacity;
+        private int m_CellsVersion;
+        
+        #region Public events
+        /// <summary>
+        /// The event is called when the motel is empty (no guests).
+        /// </summary>
+        public event Action OnEmpty;
+        #endregion
         
         public MotelT(int cellCapacity = 1, object[] dependencies = null)
         {
@@ -117,17 +156,34 @@ namespace Metamatic
                 var existingCell = m_Cells[cell];
                 existingCell.IsDisposed = false; // Cancel disposing
                 ChangeCellCapacity(cell, normalizedCapacity).Forget();
+                return;
             }
             var newCell = CellPool.Get();
             newCell.Capacity = normalizedCapacity;
+            
+            /* Increase cells versions that will be used for guests that still in process recheck after complete processing */
+            unchecked
+            {
+                m_CellsVersion++;
+            }
             if (!m_Cells.TryAdd(cell, newCell))
             {
                 throw new Exception($"Cell {cell} already exists");
             }
+
+            CheckInNextGuest(cell, normalizedCapacity);
         }
 
         private Action m_ChangeCellQueue;
         private bool m_IsBeingChanged;
+        
+        
+        private void ChangeGuestPreferredPosition(Guest guest, T[] preferredCells)
+        {
+            guest.PreferredCells = preferredCells;
+            Recheck(guest).Forget();
+        }
+        
         public async UniTaskVoid ChangeCellCapacity(T cell, int capacity)
         {
             Debug.Assert(capacity > -1, "Capacity should be greater or equal to 0");
@@ -165,6 +221,10 @@ namespace Metamatic
                     var countToCheckIn = capacity - cellData.Count;
                     CheckInNextGuest(cell, countToCheckIn);
                 }
+            }
+            unchecked
+            {
+                m_CellsVersion++;
             }
             m_IsBeingChanged = false;
             
@@ -208,11 +268,15 @@ namespace Metamatic
                 m_Cells.Remove(cell);
                 cellData.Reset();
                 CellPool.Return(cellData);
+                unchecked
+                {
+                    m_CellsVersion++;
+                }
             }
         }
         
         
-        public IUniTaskAsyncDisposable Reserve(T[] preferredCells, Func<T, InternalMicroOperation, UniTask> onCheckIn, bool strict = false, object[] dependencies = null)
+        public Reservation Reserve(T[] preferredCells, Func<T, InternalMicroOperation, UniTask> onCheckIn, bool strict = false, object[] dependencies = null)
         {
             /*
              * Create guest
@@ -226,6 +290,7 @@ namespace Metamatic
             
             if (!GetFreeCell(preferredCells, strict, out var freeCellId))
             {
+                guest.Status = Guest.CheckStatus.Waiting;
                 m_WaitingQueue.Add(guest);
             }
             else
@@ -233,7 +298,7 @@ namespace Metamatic
                 CheckIn(guest, freeCellId);
             }
             
-            return new AsyncDisposableFunc(async () =>
+            var operation = new AsyncDisposableFunc(async () =>
             {
                 guest.IsDisposed = true;
                 if (m_CheckedInUnsatisfiedGuests.Contains(guest))
@@ -243,41 +308,31 @@ namespace Metamatic
                 UniTask asyncDisposeTask;
                 if (guest.Status == Guest.CheckStatus.CheckedIn || guest.Status == Guest.CheckStatus.CheckingOut)
                 {
-                    if (!guest.Operation.isDisposed)
-                    {
-                        asyncDisposeTask = guest.Operation.DisposeAsync();
-                    }
-                    else
-                    {
-                        var tsc = AutoResetUniTaskCompletionSource.Create();
-                        guest.Operation.OnDisposedAsync += exception =>
-                        {
-                            if (exception != null)
-                            {
-                                tsc.TrySetException(exception);
-                            }
-                            else
-                            {
-                                tsc.TrySetResult();
-                            }
-                        };
-                        asyncDisposeTask = tsc.Task;
-                    }
+
+                    asyncDisposeTask = SoftCheckOut(guest);
                 }
                 else
                 {
                     asyncDisposeTask = UniTask.CompletedTask;
+                    guest.Status = Guest.CheckStatus.Idle;
                     m_WaitingQueue.Remove(guest);
                 }
 
                 await asyncDisposeTask;
                 /* Remove guest from list */
                 m_Guests.Remove(guest);
+                /* Check for empty motel */
+                if (m_Guests.Count == 0)
+                {
+                    OnEmpty?.Invoke();
+                }
                 /* Reset guest */
                 guest.Reset();
                 /* Return guest to pool */
                 GuestPool.Return(guest);
             });
+            
+            return new Reservation(operation, this, guest);
         }
         
         private void CheckIn(Guest guest, T cellId)
@@ -336,14 +391,99 @@ namespace Metamatic
                 }
             };
         }
-        
+    
+        /// <summary>
+        /// Find more suitable cell for the guest.
+        /// </summary>
+        /// <param name="guest"></param>
+        private async UniTask Recheck(Guest guest)
+        {
+            if (guest.Status == Guest.CheckStatus.CheckedIn)
+            {
+                if (guest.IsSatisfied(guest.CellId)) return; // Guest is already satisfied of current cell
+                if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+                {
+                    /* No suitable cell found */
+                    return;
+                }
+                else
+                {
+                    await RecheckInGuest(guest, freeCellId);
+                }
+            }
+            else if (guest.Status == Guest.CheckStatus.CheckingOut)
+            {
+                /*
+                 * Guest is already checking out for some reason. It can be because of Eviction or RecheckinGuest, or Disposing guest.
+                 * Thus first we need to check if guest is being disposed. If so, then we cancel recheck as well.
+                 * If not, we need to cancel Eviction or RecheckInGuest, because it may have wrong cell calculation.
+                 */
+                unchecked
+                {
+                    guest.ProcessVersion++;
+                }
+                var memoizedProcessVersion = guest.ProcessVersion;
+                /* Now we should wait until check out is completed */
+                await SoftCheckOut(guest);
+                /* Add guest to waiting queue */
+                if (memoizedProcessVersion != guest.ProcessVersion)
+                {
+                    /* Some other process was started, so we need to break */
+                }
+                else
+                {
+                    if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+                    {
+                        /* No suitable cell found. Add user to waiting queue */
+                        guest.Status = Guest.CheckStatus.Waiting;
+                        m_WaitingQueue.Add(guest);
+                        return;
+                    }
+                    else
+                    {
+                        /* Check in guest */
+                        CheckIn(guest, freeCellId);
+                    }
+                }
+            } else if (guest.Status == Guest.CheckStatus.Waiting)
+            {
+                /*
+                 * Guest in a waiting queue. We need to check if there is a suitable cell for it.
+                 */
+                if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+                {
+                    /* No suitable cell found. Add user to waiting queue */
+                    return;
+                }
+                else
+                {
+                    /* Check in guest */
+                    CheckIn(guest, freeCellId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Forced eviction of a guest from an occupied cell. Unlike the checking out, this method additionally searches for another suitable cell for the guest
+        /// The result of the eviction is that guest left current cell and either checked in to another cell or added to waiting queue.
+        /// </summary>
+        /// <param name="guest"></param>
         private async UniTask Eviction(Guest guest)
         {
             /* Get guest cell */
-            if (!(guest.Status == Guest.CheckStatus.CheckedIn || guest.Status == Guest.CheckStatus.CheckingOut)) return;
+            if (!(guest.Status == Guest.CheckStatus.CheckedIn || guest.Status == Guest.CheckStatus.CheckingOut))
+            {
+                return;
+            };
+            var cellsVersions = m_CellsVersion;
             /* Find free cell */
             if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
             {
+                unchecked
+                {
+                    guest.ProcessVersion++;
+                }
+                var memoizedProcessVersion = guest.ProcessVersion;
                 try
                 {
                     /* Just checkout guest */
@@ -354,8 +494,21 @@ namespace Metamatic
                 }
                 finally
                 {
-                    /* And add it to waiting queue */
-                    m_WaitingQueue.Add(guest);
+                    if (memoizedProcessVersion != guest.ProcessVersion)
+                    {
+                        /* Some other process was started, so we need to break */
+                    }
+                    else
+                    {
+                        /* And add it to waiting queue */
+                        guest.Status = Guest.CheckStatus.Waiting;
+                        m_WaitingQueue.Add(guest);
+                        if (cellsVersions != m_CellsVersion)
+                        {
+                            /* If cells were changed during eviction, then we need to recheck guest */
+                            Recheck(guest).Forget();
+                        }
+                    }
                 }
             }
             else
@@ -438,6 +591,7 @@ namespace Metamatic
                             var guest = m_WaitingQueue[i];
                             if (!guest.Strict || guest.IsSatisfied(cellId))
                             {
+                                guest.Status = Guest.CheckStatus.Idle;
                                 m_WaitingQueue.RemoveAt(i);
                                 CheckIn(guest, cellId);
                                 --countToCheckIn;
@@ -460,7 +614,7 @@ namespace Metamatic
         /// <param name="cellId"></param>
         private async UniTask RecheckInGuest(Guest guest, T cellId)
         {
-            var startCellData = m_Cells[guest.CellId];
+            var startCellData = m_Cells[cellId];
             if (startCellData == null || startCellData.IsDisposed)
             {
                 /* Eviction guest again */
@@ -471,6 +625,12 @@ namespace Metamatic
             var cellDataVersion = startCellData.Version;
             startCellData.Count++;
             /* Check out guest */
+            unchecked
+            {
+                guest.ProcessVersion++;
+            }
+            var memoizedProcessVersion = guest.ProcessVersion;
+            var cellsVersions = m_CellsVersion;
             try
             {
                 await SoftCheckOut(guest);
@@ -481,24 +641,41 @@ namespace Metamatic
             }
             finally
             {
-                var cellData = m_Cells[guest.CellId];
-                if (cellData == null || cellData.IsDisposed || cellData.Version != cellDataVersion || version != guest.Version || isDisposed || guest.IsDisposed)
+                if (memoizedProcessVersion != guest.ProcessVersion)
                 {
-                    if (cellData != null && cellData.Version == cellDataVersion)
-                    {
-                        cellData.Count--;
-                    }
-                    
-                    /* If guest is still here: not disposed, motel is not disposed and guest has the same version, then eviction it again */
-                    if (version == guest.Version && !isDisposed && !guest.IsDisposed)
-                    {
-                        /* Eviction guest again */
-                        Eviction(guest).Forget();
-                    }
+                    /* Some other process was started, so we need to break */
                 }
                 else
                 {
-                    CheckIn(guest, cellId);
+                    var cellData = m_Cells[cellId];
+                    if (cellData == null || cellData.IsDisposed || cellData.Version != cellDataVersion ||
+                        version != guest.Version || isDisposed || guest.IsDisposed)
+                    {
+                        if (cellData != null && cellData.Version == cellDataVersion)
+                        {
+                            cellData.Count--;
+                        }
+
+                        /* If guest is still here: not disposed, motel is not disposed and guest has the same version, then eviction it again */
+                        if (version == guest.Version && !isDisposed && !guest.IsDisposed)
+                        {
+                            /* Eviction guest again */
+                            Eviction(guest).Forget();
+                        }
+                    }
+                    else
+                    {
+                        if (cellsVersions != m_CellsVersion)
+                        {
+                            /* If cells were changed during eviction, then we need to recheck guest */
+                            Recheck(guest).Forget();
+                        }
+                        else
+                        {
+                            /* Check in guest */
+                            CheckIn(guest, cellId);
+                        }
+                    }
                 }
             }
         }
@@ -514,7 +691,7 @@ namespace Metamatic
         {
             foreach (var preferredCell in preferredCells)
             {
-                if (m_Cells.TryGetValue(preferredCell, out var cellData) && cellData.Count < cellData.Capacity)
+                if (m_Cells.TryGetValue(preferredCell, out var cellData) && !cellData.IsDisposed && cellData.Count < cellData.Capacity)
                 {
                     cell = preferredCell;
                     return true;

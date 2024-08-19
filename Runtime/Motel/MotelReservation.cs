@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Use MotelT instead", true)]
     public class MotelReservation<T>: IUniTaskAsyncDisposable, IExposedDisposed where T : Enum
     {
         public enum Status
