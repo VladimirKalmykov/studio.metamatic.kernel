@@ -1136,5 +1136,27 @@ namespace Metamatic
             cts?.Dispose();
             cts = new CancellationTokenSource();
         }
+        
+        /// <summary>
+        /// Get texture
+        /// </summary>
+        /// <param name="spriteRenderer"></param>
+        /// <returns></returns>
+        public static (Texture2D texture, Sprite sprite) ExtractTextureFromSpriteRenderer(SpriteRenderer spriteRenderer)
+        {
+            var sprite = spriteRenderer.sprite;
+            // Получаем текстуру и координаты текстуры из спрайта
+            Texture2D texture = sprite.texture;
+            Rect rect = sprite.textureRect;
+
+            // Создаем новую текстуру с размерами соответствующими спрайту
+            Texture2D newTexture = new Texture2D((int)rect.width, (int)rect.height);
+
+            // Копируем пиксели из текстуры спрайта
+            Color[] pixels = texture.GetPixels((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
+            newTexture.SetPixels(pixels);
+            newTexture.Apply();
+            return (newTexture, sprite);
+        }
     }
 }

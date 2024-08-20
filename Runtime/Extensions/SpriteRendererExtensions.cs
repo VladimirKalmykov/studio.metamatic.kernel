@@ -6,6 +6,44 @@ namespace Metamatic
     public static class SpriteRendererExtensions
     {
         /// <summary>
+        /// Get color palette from sprite renderer. It requires image to be read/write enabled.
+        /// </summary>
+        /// <param name="spriteRenderer"></param>
+        /// <param name="cellSize">Increase cell size to make it less expensive (1 - best for quality, greater than 1 - for best performance)</param>
+        /// <returns></returns>
+        public static ColorPalette ExtractColorPalette(this SpriteRenderer spriteRenderer, float cellSize = 1f)
+        {
+            var sprite = spriteRenderer.sprite;
+            Texture2D texture = sprite.texture;
+            Rect rect = sprite.textureRect;
+
+            HashSet<Color> uniqueColors = new HashSet<Color>();
+
+            // Получаем размеры текстуры
+            int width = (int)rect.width;
+            int height = (int)rect.height;
+
+            // Пробегаемся по всей текстуре пиксель за пикселем
+            for (float x = 0; x < width; x += cellSize)
+            {
+                for (float y = 0; y < height; y += cellSize)
+                {
+                    // Преобразуем координаты в пиксельные координаты текстуры
+                    int pixelX = (int)(rect.x + x);
+                    int pixelY = (int)(rect.y + y);
+
+                    // Получаем цвет пикселя
+                    Color color = texture.GetPixel(pixelX, pixelY);
+
+                    // Добавляем цвет в HashSet
+                    uniqueColors.Add(color);
+                }
+            }
+
+            return new ColorPalette(uniqueColors);
+        }
+        
+        /// <summary>
         /// Get color matrix from sprite renderer. It requires image to be read/write enabled.
         /// </summary>
         /// <param name="spriteRenderer"></param>
@@ -13,15 +51,18 @@ namespace Metamatic
         /// <returns></returns>
         public static (Vector2 position, Color color)[] GetColorMatrix(this SpriteRenderer spriteRenderer, float cellSize)
         {
-            var texture = ExtractTextureFromSprite(spriteRenderer);
+            var sprite = spriteRenderer.sprite;
+            Texture2D texture = sprite.texture;
+            Rect rect = sprite.textureRect;
+
             List<(Vector2 position, Color color)> colorMatrix = new List<(Vector2 position, Color color)>();
 
             // Получаем размеры текстуры
-            int width = texture.width;
-            int height = texture.height;
+            int width = (int)rect.width;
+            int height = (int)rect.height;
 
             // Получаем pivot, чтобы учитывать его при расчете позиции
-            Vector2 pivot = spriteRenderer.sprite.pivot;
+            Vector2 pivot = sprite.pivot;
             Vector2 pivotOffset = new Vector2(pivot.x / width, pivot.y / height);
 
             // Пробегаемся по текстуре сеткой с заданным размером ячеек
@@ -30,8 +71,8 @@ namespace Metamatic
                 for (float y = 0; y < height; y += cellSize)
                 {
                     // Преобразуем координаты ячейки в пиксельные координаты
-                    int pixelX = Mathf.FloorToInt(x);
-                    int pixelY = Mathf.FloorToInt(y);
+                    int pixelX = Mathf.FloorToInt(rect.x + x);
+                    int pixelY = Mathf.FloorToInt(rect.y + y);
 
                     // Получаем цвет пикселя
                     Color color = texture.GetPixel(pixelX, pixelY);
@@ -41,8 +82,8 @@ namespace Metamatic
                         continue;
 
                     // Преобразуем координаты в локальные координаты спрайта
-                    Vector2 localPos = new Vector2((x - pivot.x) / width * spriteRenderer.sprite.bounds.size.x, 
-                        (y - pivot.y) / height * spriteRenderer.sprite.bounds.size.y);
+                    Vector2 localPos = new Vector2((x - pivot.x) / width * sprite.bounds.size.x, 
+                        (y - pivot.y) / height * sprite.bounds.size.y);
 
                     // Учитываем масштаб объекта
                     localPos = Vector2.Scale(localPos, spriteRenderer.transform.lossyScale);

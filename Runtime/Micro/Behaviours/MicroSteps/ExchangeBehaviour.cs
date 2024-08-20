@@ -4,9 +4,9 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public class ExchangeBehaviour : IDisposable, IUniTaskAsyncDisposable
+    public class ExchangeBehaviour : IUniTaskAsyncDisposable, IExposedDisposed, IExposedAsyncDisposed, IAbortable
     {
-        public class Exchanger
+        public class Exchanger: IUniTaskAsyncDisposable
         {
             private readonly ExchangeBehaviour m_Master;
             public bool isDisposedAsync => m_Master.isDisposedAsync;
@@ -14,6 +14,7 @@ namespace Metamatic
             {
                 m_Master = master;
             }
+            public bool isAborted => m_Master.isAborted;
             
             /// <summary>
             /// Wait for the input value
@@ -117,14 +118,10 @@ namespace Metamatic
             {
                 Send<object>(null);
             }
-            
-            /// <summary>
-            /// Dispose the exchange behaviour. Call this method at the end of the exchange.
-            /// TODO: Consider to call this method automatically at the end of the exchange
-            /// </summary>
-            public void SelfDispose()
+
+            public UniTask DisposeAsync()
             {
-                m_Master.Dispose();
+                return m_Master.DisposeAsync();
             }
         } 
         
@@ -160,22 +157,28 @@ namespace Metamatic
         /// Disposing is called asynchronously (DisposeAsync() method is called), otherwise it is called synchronously (Dispose() method is called)
         /// </summary>
         public bool isDisposedAsync { get; private set; }
+
+        public event Action<Exception> OnDisposedAsync;
         public UniTask task => m_GeneralCompletionSource.Task;
         
 
         public delegate UniTask AsyncAction(Exchanger exchange, CancellationToken cancellationToken);
 
-        public static ExchangeBehaviour Run(AsyncAction action)
+        public static ExchangeBehaviour Run(AsyncAction action, object[] dependencies = null)
         {
-            return new ExchangeBehaviour(action);
+            return new ExchangeBehaviour(action, dependencies);
         }
 
         private AsyncAction m_Action;
 
-        public ExchangeBehaviour(AsyncAction action)
+        public ExchangeBehaviour(AsyncAction action, object[] dependencies = null)
         {
             m_Action = action;
             m_CancellationTokenSource = new CancellationTokenSource();
+            if (dependencies != null)
+            {
+                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
+            }
             RunAsync();
         }
 
@@ -310,7 +313,7 @@ namespace Metamatic
                 throw new InvalidOperationException("You should dispose ExchangeBehaviour manually");
             }
 
-            if (m_CancellationTokenSource.IsCancellationRequested)
+            if (isDisposed)
             {
 #if DEBUG
                 throw new InvalidOperationException("ExchangeBehaviour is already disposed");
@@ -318,16 +321,56 @@ namespace Metamatic
                 return;
             }
             
-            isDisposedAsync = isAsync;
+            isDisposed = true;
+            OnDisposed?.Invoke();
 
             m_CancellationTokenSource.Cancel();
+            m_CancellationTokenSource.Dispose();
+
+            if (!isAsync)
+            {
+                DisposeAsync().Forget();
+            }
+            
             GC.SuppressFinalize(this);
         }
 
         public async UniTask DisposeAsync()
         {
             Dispose(false, true);
-            await m_GeneralCompletionSource.Task;
+            try
+            {
+                await m_GeneralCompletionSource.Task;
+            }
+            catch (Exception e)
+            {
+                OnDisposedAsync?.Invoke(e);
+                isDisposedAsync = true;
+            }
+            finally
+            {
+                if (!isDisposedAsync)
+                {
+                    isDisposedAsync = true;
+                    OnDisposedAsync?.Invoke(null);
+                }
+            }
         }
+
+        public bool isAborted { get; private set; }
+        public event Action OnAborted;
+        public void Abort()
+        {
+            if (isAborted)
+            {
+                return;
+            }
+            isAborted = true;
+            OnAborted?.Invoke();
+            m_CancellationTokenSource.Cancel();
+        }
+
+        public bool isDisposed { get; private set;  }
+        public event Action OnDisposed;
     }
 }
