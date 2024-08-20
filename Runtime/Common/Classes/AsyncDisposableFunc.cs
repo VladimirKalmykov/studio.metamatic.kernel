@@ -71,7 +71,7 @@ namespace Metamatic
 #if DEBUG
             return disposableFunc.DisposeAsync;
 #else
-            return disposableAction._action;
+            return disposableFunc.DisposeAsync;
 #endif
         }
     }

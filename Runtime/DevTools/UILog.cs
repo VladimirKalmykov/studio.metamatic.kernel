@@ -189,12 +189,16 @@ namespace Metamatic.DevTools {
             _text = string.Join("\n ", lines.ToArray());
         }
 
+#if METAMATIC_GUI_LOG
         private void OnGUI() {
+            
             CompileMessages();
 
             Draw();
             DrawShadow();
+            
         }
+#endif
 
         private void Draw()
         {
