@@ -32,7 +32,7 @@ namespace Metamatic
                 if (disposed) return;
                 disposed = true;
                 m_InquiryCount--;
-                ReleaseTemporaryConfig(id);
+                ReleaseTemporaryConfig(id, m_InquiryCount == 0);
                 if (m_InquiryCount == 0)
                 {
                     m_LifetimeCancellationTokenSource.Cancel();

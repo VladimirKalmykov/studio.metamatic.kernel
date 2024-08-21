@@ -832,24 +832,6 @@ namespace Metamatic
                     OnDisposedAsync?.Invoke(null);
               }
         }
-        
-        public static string PrettyPrintPreferredCells(T[] preferredCells)
-        {
-            if (preferredCells == null || preferredCells.Length == 0)
-            {
-                return "null";
-            }
-            return $"[{string.Join(", ", preferredCells)}]";
-        }
-        
-        public static string PrettyPrintObjectArray(object[] items)
-        {
-            if (items == null || items.Length == 0)
-            {
-                return "null";
-            }
-            return $"[{string.Join(", ", items)}]";
-        }
 
         #region IUniTaskAsyncDisposableAbortable
         public bool isAborted { get; private set;  }

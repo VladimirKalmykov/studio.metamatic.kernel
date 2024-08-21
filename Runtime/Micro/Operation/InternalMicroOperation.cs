@@ -72,7 +72,7 @@ namespace Metamatic
         /// Contains dependencies for the current operation. When it disposed all dependencies should not be null to dispose async.
         /// </summary>
         // ReSharper disable once InconsistentNaming
-        private object[] dependencies;
+        public object[] dependencies { get; private set; }
 
         private CancellationTokenSource m_PerformCancellationTokenSource;
 
@@ -136,6 +136,7 @@ namespace Metamatic
             }
 
             m_IsAborted = true;
+            OnAborted?.Invoke();
 
             if (m_AsyncDisposeCancellationTokenSource == null)
             {
@@ -244,7 +245,10 @@ namespace Metamatic
             if (dependencies != null)
             {
                 OnBeforeReturn +=
-                    ObserveExposedDisposable.Create(dependencies, () => Abort(currentId), true);
+                    ObserveExposedDisposable.Create(dependencies, () =>
+                    {
+                        Abort(currentId);
+                    }, true);
             }
 
             m_PerformCancellationTokenSource = new CancellationTokenSource();
@@ -262,7 +266,10 @@ namespace Metamatic
             if (dependencies != null)
             {
                 OnBeforeReturn +=
-                    ObserveExposedDisposable.Create(dependencies, () => Abort(currentId), true);
+                    ObserveExposedDisposable.Create(dependencies, () =>
+                    {
+                        Abort(currentId);
+                    }, true);
             }
 
             m_PerformCancellationTokenSource = new CancellationTokenSource();

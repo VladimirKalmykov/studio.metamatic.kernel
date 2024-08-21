@@ -105,12 +105,13 @@ namespace Metamatic
                 {
                     if (d == null || d.Equals(null))
                     {
+                        Debug.Log($"[MICRO-OPERATION] ObserveNotExposed: Fire because of null");
                         Fire();
                         return true;
                     }
                 }
                 return m_IsDisposed;
-            });
+            }, PlayerLoopTiming.EarlyUpdate);
         }
 
         private void Fire()

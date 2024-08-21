@@ -35,6 +35,7 @@ namespace Metamatic
         public bool isDisposed => m_Operation.isDisposed;
         public event Action OnDisposed { add => m_Operation.OnDisposed += value; remove => m_Operation.OnDisposed -= value; }
         public event Action<Exception> OnDisposedAsync { add => m_Operation.OnDisposedAsync += value; remove => m_Operation.OnDisposedAsync -= value; }
+        public object[] dependencies => m_Operation.dependencies;
         
         public MicroOperation(InternalMicroOperation operation)
         {

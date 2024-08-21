@@ -49,14 +49,17 @@ namespace Metamatic
         /// Release all configurations associated with the specific unique id. This method is used in pull reservation and provide ability to release temporary configurations created by SetCapacity.
         /// </summary>
         /// <param name="id"></param>
-        protected void ReleaseTemporaryConfig(string id)
+        protected void ReleaseTemporaryConfig(string id, bool beforeRelease = false)
         {
             if (m_CapacityOverrides.ContainsKey(id))
             {
                 m_CapacityOverrides.Remove(id);
             }
 
-            UpdateCapacity(m_CapacityOverrides.Values.Sum() + m_DefaultCapacity);
+            if (!beforeRelease)
+            {
+                UpdateCapacity(m_CapacityOverrides.Values.Sum() + m_DefaultCapacity);
+            }
         }
         
         private void UpdateCapacity(int newCapacity)

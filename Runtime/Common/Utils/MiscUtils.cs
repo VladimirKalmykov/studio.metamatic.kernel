@@ -1158,5 +1158,23 @@ namespace Metamatic
             newTexture.Apply();
             return (newTexture, sprite);
         }
+        
+        public static string PrettyPrintArray<T>(T[] preferredCells)
+        {
+            if (preferredCells == null || preferredCells.Length == 0)
+            {
+                return "null";
+            }
+            return $"[{string.Join(", ", preferredCells)}]";
+        }
+        
+        public static string PrettyPrintObjectArray(object[] items)
+        {
+            if (items == null || items.Length == 0)
+            {
+                return "null";
+            }
+            return $"[{string.Join(", ", items)}]";
+        }
     }
 }
