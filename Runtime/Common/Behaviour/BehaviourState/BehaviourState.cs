@@ -3,9 +3,11 @@ namespace Metamatic {
     using System.Collections.Generic;
     using UnityEngine;
 
+    
     /// <summary>
     /// Allows you to keep some key/values
     /// </summary>
+    [Obsolete("Use Dispatcher events instead", true)]
     public class BehaviourState: MonoBehaviour {
         public ScriptableBehaviourStateRegistry registry;
         public event Action<Dictionary<string, StateValueBase>> OnChange;

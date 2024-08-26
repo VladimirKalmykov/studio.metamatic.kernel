@@ -2,7 +2,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace Metamatic {
-    [CustomPropertyDrawer(typeof(Metamatic.MinMaxValue), true)]
+    [CustomPropertyDrawer(typeof(MinMaxValue), true)]
     public class MinMaxValueDrawer: PropertyDrawer {
         /// <summary>
         /// OnGUI is called for rendering and handling GUI events.

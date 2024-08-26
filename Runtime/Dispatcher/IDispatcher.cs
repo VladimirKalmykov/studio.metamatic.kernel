@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Metamatic.Actions
+namespace Metamatic
 {
     public interface IDispatcher
     {

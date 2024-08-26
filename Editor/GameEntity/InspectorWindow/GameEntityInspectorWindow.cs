@@ -1,10 +1,10 @@
 using System.Linq;
+using Metamatic.Extensions;
 namespace Metamatic {
     using System.Collections.Generic;
     using UnityEngine;
     using UnityEngine.UIElements;
     using UnityEditor;
-    using Metamatic.Extensions;
     using System.IO;
 
     class GameEntityInspectorWindow : EditorWindow {

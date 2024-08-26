@@ -2,11 +2,10 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Threading;
-using Metamatic.Actions;
-using Metamatic.MicroBehaviours;
 using UnityEngine;
+using MicroBehaviours;
 
 public class FOV2DService : Service
 {

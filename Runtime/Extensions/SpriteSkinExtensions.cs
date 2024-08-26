@@ -35,7 +35,7 @@ namespace Metamatic.Extensions
 
             Vector3[] deformedVertices = spriteSkin.GetDeformedVertexPositionData().ToArray();
             Vector2[] vertices2D = deformedVertices.Select(v => new Vector2(v.x, v.y)).ToArray();
-            int[] hullIndices = Metamatic.Trigf.FindJarvisGreedyHull(vertices2D, findingHullSteps);
+            int[] hullIndices = Trigf.FindJarvisGreedyHull(vertices2D, findingHullSteps);
 
             Vector2[] hullVertices = hullIndices.Select(index => (Vector2)deformedVertices[index]).ToArray();
             List<(Vector2, Vector2, Vector3Int, Vector3)> randomPointsWithUVs = null;

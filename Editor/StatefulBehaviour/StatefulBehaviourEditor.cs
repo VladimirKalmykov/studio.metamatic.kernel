@@ -6,7 +6,7 @@ using UnityEditor;
 
 namespace Metamatic
 {
-    [CustomEditor(typeof(Metamatic.StatefulBehaviour), true)]
+    [CustomEditor(typeof(StatefulBehaviour), true)]
     public class StatefulBehaviourEditor : UnityEditor.Editor
     {
         private Type m_StateMachineType;

@@ -17,7 +17,7 @@ namespace Metamatic
             float maxY = hull.Max(p => p.y);
 
             // Используем триангулятор для получения треугольников
-            Metamatic.Triangulator triangulator = new Metamatic.Triangulator(hull);
+            Triangulator triangulator = new Triangulator(hull);
             int[] indices = triangulator.Triangulate();
 
             // Создаем список треугольников
@@ -66,7 +66,7 @@ namespace Metamatic
             List<(Vector2, Vector2, Vector3Int, Vector3)> points = new List<(Vector2, Vector2, Vector3Int, Vector3)>();
 
             // Используем триангулятор для получения треугольников
-            Metamatic.Triangulator triangulator = new Metamatic.Triangulator(hull);
+            Triangulator triangulator = new Triangulator(hull);
             int[] indices = triangulator.Triangulate();
 
             List<(Vector2[] triangle, Vector3Int indices)> triangles = new List<(Vector2[] triangle, Vector3Int indices)>();
@@ -138,7 +138,7 @@ namespace Metamatic
             List<Vector2> points = new List<Vector2>();
 
             // Используем триангулятор для получения треугольников
-            Metamatic.Triangulator triangulator = new Metamatic.Triangulator(hull);
+            Triangulator triangulator = new Triangulator(hull);
             int[] indices = triangulator.Triangulate();
 
             List<Vector2[]> triangles = new List<Vector2[]>();

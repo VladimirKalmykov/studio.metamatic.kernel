@@ -1,6 +1,8 @@
+using System;
 using UnityEngine;
 
 namespace Metamatic.Experimental {
+    [Obsolete("Use Dispatcher events instead", true)]
     public abstract class Registrator<T>: MonoBehaviour
         where T: UnityEngine.Object
     {

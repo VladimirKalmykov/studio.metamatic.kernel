@@ -1,5 +1,8 @@
+using System;
+
 namespace Metamatic {
     using UnityEngine;
 
-    public class TansformRegistrator: Metamatic.Experimental.Registrator<Transform> {}
+    [Obsolete("Use Dispatcher events instead", true)]
+    public class TansformRegistrator: Experimental.Registrator<Transform> {}
 }

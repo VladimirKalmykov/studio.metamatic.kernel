@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Metamatic.Actions
+namespace Metamatic
 {
     [Obsolete("Use Dispatcher events instead", true)]
     public class ActionSource

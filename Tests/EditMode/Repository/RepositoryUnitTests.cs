@@ -189,7 +189,7 @@ namespace Tests.EditMode
         });
         
         [UnityTest]
-        public IEnumerator NoValidDataFound() => UniTask.ToCoroutine(async () =>
+        public IEnumerator NoValidDataFound() => UniTask.ToCoroutine(() =>
         {
             var repository = new Repository();
             var nativeStorageA = new LocalMemoryStorage();
@@ -207,6 +207,7 @@ namespace Tests.EditMode
                 await repository.synchronizer.Sync("key", GetDefaultTestData, CancellationToken.None);
             });
             Assert.AreEqual("Every driver returned error", exception.Message);
+            return UniTask.CompletedTask;
         });
         
         [UnityTest]

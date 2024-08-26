@@ -4,7 +4,6 @@ namespace Metamatic
 {
     using System;
     using System.Threading;
-    using Metamatic.Actions;
     using UnityEngine;
 
     public class CameraController : AsyncBehaviour
@@ -26,7 +25,7 @@ namespace Metamatic
         protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
         {
             camera = GetComponent<Camera>();
-            using var announce = Dispatcher.global.Announce(this);
+            using var announce = Dispatcher.global.AnnounceLegacy(this);
             await ready();
         }
 

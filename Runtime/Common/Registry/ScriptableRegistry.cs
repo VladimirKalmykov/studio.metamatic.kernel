@@ -8,6 +8,7 @@ namespace Metamatic {
         public virtual Type GetRegistryType() { return default(Type); }
     }
 
+    [Obsolete("Use Dispatcher instead", true)]
     public abstract class ScriptableRegistry<T>: ScriptableRegistry, IRegistry<T> {
         [Title("Description", bold: false)]
         [HideLabel]

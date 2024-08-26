@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
@@ -13,9 +15,23 @@ namespace Metamatic
         public bool isLocked => m_Lock.IsLocked;
         public DeferLock GetAwaiter() => m_Lock;
         
+        /// <summary>
+        /// Sync Lock List for a period of time. 
+        /// </summary>
+        /// <returns></returns>
         public IDisposable Lock()
         {
             return m_Lock.Lock();
+        }
+        
+        /// <summary>
+        /// Await for the lock to be released and then lock the list again.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public UniTask<DisposableAction> Lock(CancellationToken cancellationToken)
+        {
+            return m_Lock.Lock(cancellationToken);
         }
         
         ~LockedList()

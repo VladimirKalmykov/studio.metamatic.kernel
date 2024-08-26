@@ -1,6 +1,9 @@
+using System;
+
 namespace Metamatic {
     using UnityEngine;
 
+    [Obsolete("Use Dispatcher events instead", true)]
     [PluginFor(typeof(BehaviourState))]
     public class GameObjectNameToBehaviourState: MonoBehaviour {
         BehaviourState behaviourState;

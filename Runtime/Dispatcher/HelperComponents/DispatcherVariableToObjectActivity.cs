@@ -1,7 +1,6 @@
 namespace Metamatic
 {
     using System;
-    using Metamatic.Actions;
     using UnityEngine;
 
     public class DispatcherVariableToObjectActivity : MonoBehaviour

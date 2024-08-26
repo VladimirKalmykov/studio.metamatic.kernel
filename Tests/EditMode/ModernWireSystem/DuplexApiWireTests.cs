@@ -214,7 +214,7 @@ namespace Tests.EditMode.ModernWireSystem
         });
         
         [UnityTest]
-        public IEnumerator MultipleClientsTest() => UniTask.ToCoroutine(async () =>
+        public IEnumerator MultipleClientsTest() => UniTask.ToCoroutine(() =>
         {
             var vendorApi = new VendorApi();
             var clientApi1 = new ClinetApi();
@@ -241,6 +241,7 @@ namespace Tests.EditMode.ModernWireSystem
             
             Assert.AreEqual("Foo", client1.vendors[0].Foo());
             Assert.AreEqual("Foo", client2.vendors[0].Foo());
+            return UniTask.CompletedTask;
         });
         
         [UnityTest]

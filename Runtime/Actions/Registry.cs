@@ -2,7 +2,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Metamatic.Actions
+namespace Metamatic
 {
     public class RegistrySource<T>: IDisposable
     where T : notnull

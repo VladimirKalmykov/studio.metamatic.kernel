@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Metamatic.Actions
+namespace Metamatic
 {
     public partial class Dispatcher
     {
@@ -106,6 +106,14 @@ namespace Metamatic.Actions
             return GetVariableSetter<T>(this, name);
         }
         
+        /// <summary>
+        /// Read variable from the dispatcher. Use it only if you are sure that variable exists. In most cases you should use SubscribeVariable instead.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="name"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
         public T ReadVariable<T>(object key, string name)
         {
             var type = typeof(T);
@@ -118,6 +126,17 @@ namespace Metamatic.Actions
             var inquirableTyped = (Inquirable<MicroState<T>>)inquirable;
             var microState = inquirableTyped.value;
             return microState.value;
+        }
+        
+        /// <summary>
+        /// Read variable from the dispatcher (using dispatcher as a variable owner)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public T ReadVariable<T>(string name)
+        {
+            return ReadVariable<T>(this, name);
         }
     }
 }

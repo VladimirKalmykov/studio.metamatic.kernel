@@ -22,10 +22,10 @@ namespace Metamatic
             }
             
             public async UniTask<DisposableAction> Lock(CancellationToken token = default) {
-                await this;
+                await WhenUnlocked(token);
                 if (token.IsCancellationRequested)
                 {
-                    return new DisposableAction(() => { });
+                    return DisposableAction.Empty;
                 }
                 return Lock();
             }
@@ -38,6 +38,7 @@ namespace Metamatic
                 if (_lockCount == 0)
                 {
                     OnUnlock?.Invoke();
+                    OnUnlock = null;
                 }
             }
 
@@ -55,9 +56,18 @@ namespace Metamatic
                     return UniTask.CompletedTask;
                 }
 
-                var tcs = new UniTaskCompletionSource();
-                OnUnlock += () =>
+                var tcs = AutoResetUniTaskCompletionSource.Create();
+                CancellationTokenRegistration registration = default;
+
+                registration = cancellationToken.Register(() =>
                 {
+                    registration.Dispose();
+                    OnUnlock -= Handler;
+                    tcs.TrySetCanceled(cancellationToken);
+                });
+                void Handler()
+                {
+                    registration.Dispose();
                     if (cancellationToken.IsCancellationRequested)
                     {
                         tcs.TrySetCanceled(cancellationToken);
@@ -66,7 +76,8 @@ namespace Metamatic
                     {
                         tcs.TrySetResult();
                     }
-                };
+                }
+                OnUnlock += Handler;
                 return tcs.Task;
             }
 
@@ -113,6 +124,18 @@ namespace Metamatic
                 {
                     continuation();
                 }
+            }
+            
+            /// <summary>
+            /// Use Reset instead of Dispose to reset the lock state. Probably in the future, we will change Dispose logic to actually dispose the object.
+            /// </summary>
+            public void Reset()
+            {
+                _isDisposed = true;
+                _lockCount = 0;
+                
+                OnUnlock?.Invoke();
+                OnUnlock = null;
             }
 
             public void Dispose()

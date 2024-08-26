@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Metamatic.Actions
+namespace Metamatic
 {
     public partial class Dispatcher
     {
@@ -57,7 +56,6 @@ namespace Metamatic.Actions
         }
        
         private readonly Dictionary<Type, LockedList<Delegate>> m_EventListeners = new();
-        private readonly Dictionary<Type, List<object>> m_Announcements = new();
         private readonly Dictionary<(object id, Type type), (object value, bool isActive, LockedList<Action<object>> handlers)> m_Registry = new();
         private readonly Dictionary<object, (object value, bool isActive, LockedList<Action<object>> handlers)> m_RegistryLite = new();
         private bool m_IsRegistrationProcessing = false;
@@ -166,89 +164,7 @@ namespace Metamatic.Actions
             return task;
         }
         #endregion
-        #region Announcements
-        public DisposableAction Announce<T>(T source) where T : notnull
-        {
-            if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
-            {
-                announcements = new List<object>();
-                m_Announcements[typeof(T)] = announcements;
-            }
-            announcements.Add(source);
-            Emit(new Announcement<T>(source));
-            return new DisposableAction(() => Retract(source));
-        }
-
-        public void Retract<T>(T source) where T : notnull
-        {
-            if (m_Announcements.TryGetValue(typeof(T), out var announcements))
-            {
-                announcements.Remove(source);
-                if (announcements.Count == 0)
-                {
-                    m_Announcements.Remove(typeof(T));
-                }
-                Emit(new Retraction<T>(source));
-            }
-        }
-
-        public IReadOnlyList<T> GetAnnouncements<T>() where T : notnull
-        {
-            if (m_Announcements.TryGetValue(typeof(T), out var announcements))
-            {
-                return announcements.Cast<T>().ToList();
-            }
-            return new List<T>();
-        }
-
-        public UniTask<T> WhenAnnounce<T>(IDispatcher.Condition<T> condition, CancellationToken cancellationToken) where T : notnull
-        {
-            var tcs = new UniTaskCompletionSource<T>();
-            UniTask<T> task = tcs.Task;
-            System.Action releaseSubscription = null;
-            CancellationTokenRegistration cancellationTokenRegistration = cancellationToken.Register(() =>
-            {
-                releaseSubscription?.Invoke();
-                tcs.TrySetCanceled(cancellationToken);
-            });
-            releaseSubscription = SubscribeAnnouncements<T>(sources =>
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-                foreach (var source in sources)
-                {
-                    if (condition(source))
-                    {
-                        releaseSubscription?.Invoke();
-                        cancellationTokenRegistration.Dispose();
-                        tcs.TrySetResult(source);
-                        return;
-                    }
-                }
-            });
-            return task;
-        }
-
-        public DisposableAction SubscribeAnnouncements<T>(IDispatcher.AnnouncementsHandler<T> handler) where T : notnull
-        {
-            handler(GetAnnouncements<T>().ToArray());
-            return Subscribe<Announcement<T>>(announcement =>
-            {
-                handler(new []{announcement.source});
-            });
-        }
-
-        public DisposableAction SubscribeRetractions<T>(IDispatcher.RetractionsHandler<T> handler) where T : notnull
-        {
-            return Subscribe<Retraction<T>>(retraction =>
-            {
-                handler(retraction.source);
-            });
-        }
-
-        #endregion
+        
         
         public IDisposable Register<TValue>(object id, TValue source) where TValue : notnull
         {

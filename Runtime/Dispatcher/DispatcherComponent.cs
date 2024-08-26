@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace Metamatic.Actions
+namespace Metamatic
 {
     [DisallowMultipleComponent]
     public class DispatcherComponent: MonoBehaviour

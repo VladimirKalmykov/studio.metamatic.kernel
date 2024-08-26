@@ -1,7 +1,10 @@
+using System;
+
 namespace Metamatic {
     using UnityEngine;
     using UnityEngine.Events;
-
+    
+    [Obsolete("Use Dispatcher events instead", true)]
     public class WatchGameObjectRegistryTransform: MonoBehaviour {
         [System.Serializable]
         public class TransformEvent: UnityEvent<Transform> {}

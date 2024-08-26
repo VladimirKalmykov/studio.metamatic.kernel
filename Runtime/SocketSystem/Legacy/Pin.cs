@@ -147,7 +147,7 @@ namespace Metamatic
             debug_Inspect = s_Inspect.Contains(this);
             if (debug_Color == default(Color)) // Проверяем, не установлен ли уже цвет
             {
-                debug_Color = Metamatic.DebugOnly.Utils.DebugGetRandomSaturatedColor();
+                debug_Color = DebugOnly.Utils.DebugGetRandomSaturatedColor();
             }
             #endif
         }

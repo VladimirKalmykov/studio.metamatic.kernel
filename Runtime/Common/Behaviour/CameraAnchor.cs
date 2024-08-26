@@ -4,7 +4,6 @@ namespace Metamatic
 {
     using System.Threading;
     using UnityEngine;
-    using Metamatic.Actions;
 
     public class CameraAnchor : AsyncBehaviour
     {

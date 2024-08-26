@@ -1,3 +1,4 @@
+
 using Sirenix.OdinInspector;
 
 namespace Metamatic
@@ -6,7 +7,6 @@ namespace Metamatic
     using System.Collections.Generic;
     using System.Threading;
     using Cysharp.Threading.Tasks;
-    using Metamatic.Actions;
     using UnityEngine;
 
     public class CameraService : Service
@@ -27,9 +27,9 @@ namespace Metamatic
         protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
         {
             using var cameraAnnounceSubscription =
-                Dispatcher.global.SubscribeAnnouncements<CameraController>(HandlerCamerasAnnounce);
+                Dispatcher.global.SubscribeAnnouncementsLegacy<CameraController>(HandlerCamerasAnnounce);
             using var cameraRetractSubscription =
-                Dispatcher.global.SubscribeRetractions<CameraController>(HandlerCamerasRetract);
+                Dispatcher.global.SubscribeRetractionsLegacy<CameraController>(HandlerCamerasRetract);
             await ready();
         }
 

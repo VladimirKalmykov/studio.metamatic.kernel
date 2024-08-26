@@ -1,5 +1,8 @@
+using System;
+
 namespace Metamatic {
     using UnityEngine;
 
-    public class GameObjectRegistrator: Metamatic.Experimental.Registrator<GameObject> {}
+    [Obsolete("Use Dispatcher events instead", true)]
+    public class GameObjectRegistrator: Experimental.Registrator<GameObject> {}
 }
