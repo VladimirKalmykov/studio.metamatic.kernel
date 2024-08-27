@@ -151,7 +151,14 @@ namespace Metamatic
             });
         }
         
-        public DisposableAction SubscribeAnnouncementEach<T>(object key, Func<T, CancellationToken, UniTaskVoid> action) where T : notnull
+        /// <summary>
+        /// Subscribe to each announced object of type T with a key
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="action"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public DisposableAction ObserveAnnouncementEach<T>(object key, Func<T, CancellationToken, UniTaskVoid> action) where T : notnull
         {
             if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
             {
@@ -164,8 +171,8 @@ namespace Metamatic
                 announcements[key] = observableDict;
             }
 
-            var cancellationTokenSources = ParamLessPool.Get<List<CancellationTokenSource>>();
-            var registrations = ParamLessPool.Get<List<CancellationTokenRegistration>>();
+            var cancellationTokenSources = ParamLessPool<List<CancellationTokenSource>>.GetShared();
+            var registrations = ParamLessPool<List<CancellationTokenRegistration>>.GetShared();
             /* Iterate through all items */
             observableDict.GetEach((id, announcement) =>
             {
@@ -213,10 +220,89 @@ namespace Metamatic
                 dispose.Dispose();
                 cancellationTokenSources.Clear();
                 registrations.Clear();
-                ParamLessPool.Return(cancellationTokenSources);
-                ParamLessPool.Return(registrations);
+                ParamLessPool<List<CancellationTokenSource>>.ReturnShared(cancellationTokenSources);
+                ParamLessPool<List<CancellationTokenRegistration>>.ReturnShared(registrations);
             });
         }
+        
+        /// <summary>
+        /// Subscribe to each announced object of type T with a key and a condition
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="condition"></param>
+        /// <param name="action"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public DisposableAction ObserveAnnouncementConditional<T>(object key, Func<T, bool> condition, Func<T, CancellationToken, UniTaskVoid> action) where T : notnull
+        {
+            if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
+            {
+                announcements = new Dictionary<object, ObservableLockedDictionaryContainer>();
+                m_Announcements[typeof(T)] = announcements;
+            }
+            if (!announcements.TryGetValue(key, out var observableDict))
+            {
+                observableDict = ObservableLockedDictionaryContainer.Create();
+                announcements[key] = observableDict;
+            }
+
+            var cancellationTokenSources = ParamLessPool<List<CancellationTokenSource>>.GetShared();
+            var registrations = ParamLessPool<List<CancellationTokenRegistration>>.GetShared();
+            /* Iterate through all items */
+            observableDict.GetEach((id, announcement) =>
+            {
+                if (!condition((T)announcement.Item)) return;
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(announcement.ReleaseToken);
+                cancellationTokenSources.Add(cts);
+                var token = cts.Token;
+                CancellationTokenRegistration registration = default;
+                registration = token.Register(() =>
+                {
+                    registration.Dispose();
+                    registrations.Remove(registration);
+                    cancellationTokenSources.Remove(cts);
+                    cts.Dispose();
+                });
+                registrations.Add(registration);
+                action((T)announcement.Item, token).Forget();
+            });
+            var dispose = observableDict.Subscribe((id, announcement) =>
+            {
+                if (!condition((T)announcement.Item)) return;
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(announcement.ReleaseToken);
+                cancellationTokenSources.Add(cts);
+                var token = cts.Token;
+                CancellationTokenRegistration registration = default;
+                registration = token.Register(() =>
+                {
+                    registration.Dispose();
+                    registrations.Remove(registration);
+                    cancellationTokenSources.Remove(cts);
+                    cts.Dispose();
+                });
+                registrations.Add(registration);
+                action((T)announcement.Item, token).Forget();
+            });
+            return new DisposableAction(() =>
+            {
+                foreach (var registration in registrations)
+                {
+                    registration.Dispose();
+                }
+                foreach (var cts in cancellationTokenSources)
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                }
+                dispose.Dispose();
+                cancellationTokenSources.Clear();
+                registrations.Clear();
+                ParamLessPool<List<CancellationTokenSource>>.ReturnShared(cancellationTokenSources);
+                ParamLessPool<List<CancellationTokenRegistration>>.ReturnShared(registrations);
+            });
+        }
+        
+        
         
         #region Internal
         private async UniTaskVoid Internal_AddAnnouncement<T>(ObservableLockedDictionaryContainer dict, string id, T item, System.Threading.CancellationToken cancellationToken) where T : notnull
@@ -242,7 +328,6 @@ namespace Metamatic
                 {
                     var item = dict.Get(id);
                     dict.Remove(id);
-                    item.Dispose();
                 }
             }
             catch (OperationCanceledException)

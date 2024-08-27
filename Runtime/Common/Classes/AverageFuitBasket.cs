@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Metamatic
 {
     using System;
@@ -19,6 +21,7 @@ namespace Metamatic
             // Удаляем устаревшие записи
             while (m_Records.Count > 0 && time - m_Records.Peek().time > m_BurningTime)
             {
+                Debug.Log($"[AUTO-SHRINK] Removing record: {m_Records.Peek().count}");
                 var oldestRecord = m_Records.Dequeue();
                 m_TotalFruits -= oldestRecord.count;
             }
