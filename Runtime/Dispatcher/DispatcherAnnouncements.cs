@@ -15,22 +15,62 @@ namespace Metamatic
         public class Announcement: IDisposable
         {
             private static readonly ParamLessPool<Announcement> Pool = new ParamLessPool<Announcement>();
+            /// <summary>
+            /// CancellationToken should be initialized only if it is required by observer to reduce count of allocated objects
+            /// </summary>
             private CancellationTokenSource m_CancellationTokenSource;
             public object Item;
-            public CancellationToken ReleaseToken => m_CancellationTokenSource.Token;
+
+            public CancellationToken ReleaseToken
+            {
+                get
+                {
+                    /* Lazy initialization on demand */
+                    if (m_CancellationTokenSource == null)
+                    {
+                        m_CancellationTokenSource = new CancellationTokenSource();
+                    }
+                    return m_CancellationTokenSource.Token;
+                }
+            }
+            
+            /// <summary>
+            /// Get announcement object from the pool
+            /// </summary>
+            /// <param name="item"></param>
+            /// <returns></returns>
             public static Announcement Create(object item)
             {
                 var announcement = Pool.Get();
-                announcement.m_CancellationTokenSource = new CancellationTokenSource();
+                announcement.m_CancellationTokenSource = null;
                 announcement.Item = item;
                 return announcement;
             }
-
+            
+            /// <summary>
+            /// Return announcement object to the pool
+            /// </summary>
+            public void Return()
+            {
+                if (m_CancellationTokenSource != null)
+                {
+                    m_CancellationTokenSource.Cancel();
+                    m_CancellationTokenSource.Dispose();
+                    m_CancellationTokenSource = null;
+                }
+                Pool.Return(this);
+            }
+            
+            /// <summary>
+            /// Dispose will be called from the pool when the object is released (totally removed from pool)
+            /// </summary>
             public void Dispose()
             {
-                m_CancellationTokenSource.Cancel();
-                m_CancellationTokenSource.Dispose();
-                Pool.Return(this);
+                if (m_CancellationTokenSource != null)
+                {
+                    m_CancellationTokenSource.Cancel();
+                    m_CancellationTokenSource.Dispose();
+                }
             }
         }
 
@@ -327,6 +367,7 @@ namespace Metamatic
                 using (await dict.Lock(CancellationToken.None))
                 {
                     var item = dict.Get(id);
+                    item.Return();
                     dict.Remove(id);
                 }
             }

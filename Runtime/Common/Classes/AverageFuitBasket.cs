@@ -10,7 +10,11 @@ namespace Metamatic
         private readonly float m_BurningTime;
         private readonly Queue<(int count, float time)> m_Records = new Queue<(int count, float time)>();
         private int m_TotalFruits = 0;
-
+        
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="burningTime"></param>
         public AverageFruitBasket(float burningTime)
         {
             this.m_BurningTime = burningTime;
@@ -21,7 +25,6 @@ namespace Metamatic
             // Удаляем устаревшие записи
             while (m_Records.Count > 0 && time - m_Records.Peek().time > m_BurningTime)
             {
-                Debug.Log($"[AUTO-SHRINK] Removing record: {m_Records.Peek().count}");
                 var oldestRecord = m_Records.Dequeue();
                 m_TotalFruits -= oldestRecord.count;
             }
@@ -47,7 +50,7 @@ namespace Metamatic
         }
 
         /// <summary>
-        /// Get the maximum count of fruits in the basket for the last burningTime minutes
+        /// Get the maximum count of fruits in the basket for the last burningTime minutes.
         /// </summary>
         /// <returns></returns>
         public int GetMaxCount()

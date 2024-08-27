@@ -96,5 +96,39 @@ namespace Tests.EditMode.Announcements
             
             Assert.AreEqual(2, observedValuesCancelled.Count);
         }
+
+        [Test]
+        public void ConditionalObserver()
+        {
+            List<int> observedValues = new List<int>();
+            List<bool> observedValuesCancelled = new List<bool>();
+            
+            var dispatcher = new Dispatcher();
+            var release1 = dispatcher.Announce("test", 3);
+            var release2 = dispatcher.Announce("test", 7);
+            var release3 = dispatcher.Announce("test", 10);
+            var disposeObserver = dispatcher.ObserveAnnouncementConditional<int>("test", (value) => value < 5, async (value, token) =>
+            {
+                observedValues.Add(value);
+                await token;
+                observedValues.Remove(value);
+                observedValuesCancelled.Add(token.IsCancellationRequested);
+            });
+            Assert.AreEqual(1, observedValues.Count);
+            Assert.AreEqual(3, observedValues[0]);
+            Assert.AreEqual(0, observedValuesCancelled.Count);
+            
+            var release4 = dispatcher.Announce("test", 1);
+            
+            Assert.AreEqual(2, observedValues.Count);
+            Assert.AreEqual(1, observedValues[1]);
+            Assert.AreEqual(0, observedValuesCancelled.Count);
+            
+            release1.Dispose();
+            
+            Assert.AreEqual(1, observedValues.Count);
+            Assert.AreEqual(1, observedValues[0]);
+            Assert.AreEqual(1, observedValuesCancelled.Count);
+        }
     }
 }

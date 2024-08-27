@@ -279,17 +279,17 @@ namespace Metamatic
             {
                 case ShrinkTimestampType.Analysis:
                     m_FruitBasket.SetCount(OutOfPoolCount, Time.time);
-                    Debug.Log($"[AUTOSHRINK] Analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
+                    Debug.Log($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
                     break;
                 case ShrinkTimestampType.Shrinking:
                     var maxCount = m_FruitBasket.GetMaxCount();
                     Debug.Log(
-                        $"[AUTOSHRINK] Shrinking is active. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount})");
+                        $"[AUTOSHRINK] ParamLessPool<${typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount})");
                     var countInPool = m_ObjectsInPool.Count;
                     var countToRemove = (countInPool + OutOfPoolCount) - maxCount;
                     if (countToRemove > 0 && countToRemove >= countInPool)
                     {
-                        Debug.Log($"[AUTOSHRINK] Decided to remove {countToRemove} objects from pool");
+                        Debug.Log($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> decided to release {countToRemove} objects from pool");
                         for (var i = 0; i < countToRemove; i++)
                         {
                             if (m_ObjectsInPool.Count > 0)
@@ -305,7 +305,7 @@ namespace Metamatic
 
                     if (maxCount == 0 && m_ObjectsInPool.Count == 0 && OutOfPoolCount == 0)
                     {
-                        Debug.Log("[AUTOSHRINK] Pool is useless. Triggering OnPoolIsEmpty event");
+                        Debug.Log($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> is useless. Triggering OnPoolIsEmpty event");
                         OnPoolIsUseless?.Invoke();
                     }
 
