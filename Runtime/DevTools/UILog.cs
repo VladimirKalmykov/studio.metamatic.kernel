@@ -31,6 +31,10 @@ namespace Metamatic.DevTools {
         }
         private static GameObject InstantiateGo() {
             var go = new GameObject("__METAMATIC.UILOG__");
+            
+#if !METAMATIC_GUI_LOG
+    Debug.Log("You can enable METAMATIC_GUI_LOG in the project settings to use UILog.Add and see the UILog in the game view");
+#endif
 
             if (go != null) {
                 go.AddComponent<UILog>();   
