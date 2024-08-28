@@ -159,10 +159,15 @@ namespace Metamatic
             else
             {
                 Debug.LogWarning("CancellationSignalSource was not disposed");
+                Dispose();
             }
         }
         
-        internal void TryCancel()
+        /// <summary>
+        /// Try cancel signal
+        /// </summary>
+        /// <param name="isFinal">Is called from finalizer or dispose</param>
+        internal void TryCancel(bool isFinal = false)
         {
             if (IsCancellationRequested) return;
             IsCancellationRequested = true;
@@ -182,9 +187,13 @@ namespace Metamatic
                 m_CancellationTokenSource.Dispose();
                 m_CancellationTokenSource = null;
             }
-            IsCancellationRequested = false;
+            
             Version++;
-            Pool.Return(this);
+            IsCancellationRequested = false;
+            if (!isFinal)
+            {
+                Pool.Return(this);
+            }
         }
 
         internal CancellationToken GetCancellationToken()
@@ -241,11 +250,11 @@ namespace Metamatic
 
         public void Dispose()
         {
-            TryCancel();
+            TryCancel(true);
             #if DEBUG
             if (Pool.IsBelongsToPool(this))
             {
-                Debug.Log($"Can not dispose CancellationSignalSource because it belongs to pool. Return it to the pool instead");
+                Debug.LogError($"Can not dispose CancellationSignalSource because it belongs to pool. Return it to the pool instead");
             }
             #endif
             GC.SuppressFinalize(this);
