@@ -30,7 +30,13 @@ namespace Metamatic
         {
             if (m_Source != null && m_Source.Version == Version)
             {
-                return m_Source.Register(onCancelled);
+                var memoizedSource = m_Source;
+                void OnCancelled(int version)
+                {
+                    if (memoizedSource == null || memoizedSource.Version != version) return;
+                    onCancelled?.Invoke();
+                }
+                return m_Source.Register(OnCancelled);
             }
             onCancelled?.Invoke();
             return DisposableAction.Empty;
@@ -74,9 +80,15 @@ namespace Metamatic
                 }
             }
             var source = InternalCancellationSignalSource.Pool.Get();
+            var memoizedVersion = source.Version;
+            void Cancel()
+            {
+                if (memoizedVersion != source.Version) return;
+                source.TryCancel();
+            }
             foreach (var signal in signals)
             {
-                source.Register(() => signal.Register(source.TryCancel));
+                signal.Register(Cancel);
             }
             return new CancellationSignalSource(source);
         }
@@ -84,7 +96,7 @@ namespace Metamatic
         private readonly InternalCancellationSignalSource m_InternalSource;
         private readonly int m_Version;
         
-        public CancellationSignal Signal => new CancellationSignal(m_InternalSource);
+        public CancellationSignal Signal => new CancellationSignal(GetSource());
         
         public CancellationSignalSource(InternalCancellationSignalSource source)
         {
@@ -107,6 +119,15 @@ namespace Metamatic
             }
         }
         
+        private InternalCancellationSignalSource GetSource()
+        {
+            if (m_InternalSource != null && m_InternalSource.Version == m_Version)
+            {
+                return m_InternalSource;
+            }
+            return null;
+        }
+        
         /// <summary>
         /// Dispose the source and cancel all the signals. You do not need to call this method if you already called TryCancel, but it is safe to call it multiple times.
         /// </summary>
@@ -127,7 +148,7 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public CancellationSignal Signal => new CancellationSignal(this);
         private CancellationTokenSource m_CancellationTokenSource;
-        private event Action m_OnCancelled;
+        private event Action<int> m_OnCancelled;
         
         ~InternalCancellationSignalSource()
         {
@@ -148,7 +169,7 @@ namespace Metamatic
             
             if (m_OnCancelled != null)
             {
-                m_OnCancelled.Invoke();
+                m_OnCancelled.Invoke(Version);
                 m_OnCancelled = null;
             }
 
@@ -187,8 +208,9 @@ namespace Metamatic
                 return cancelOnCancellationRequest ? UniTask.FromCanceled() : UniTask.CompletedTask;
             }
             var tcs = AutoResetUniTaskCompletionSource.Create();
-            m_OnCancelled += () =>
+            m_OnCancelled += (version) =>
             {
+                if (version != Version) return; // TODO: Do I need to check version?
                 if (cancelOnCancellationRequest)
                 {
                     tcs.TrySetCanceled();
@@ -201,11 +223,11 @@ namespace Metamatic
             return tcs.Task;
         }
         
-        internal DisposableAction Register(Action onCancelled)
+        internal DisposableAction Register(Action<int> onCancelled)
         {
             if (IsCancellationRequested)
             {
-                onCancelled?.Invoke();
+                onCancelled?.Invoke(Version);
                 return DisposableAction.Empty;
             }
             m_OnCancelled += onCancelled;
