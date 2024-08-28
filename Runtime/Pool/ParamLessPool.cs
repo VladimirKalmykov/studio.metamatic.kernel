@@ -364,9 +364,19 @@ namespace Metamatic
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
-        public bool BelongsToPool(T obj)
+        public bool IsBelongsToPool(T obj)
         {
-            return m_OutOfPoolHashes.Contains(obj.GetHashCode());
+            return m_OutOfPoolHashes.Contains(obj.GetHashCode()) || m_ObjectsInPool.Contains(obj);
+        }
+        
+        /// <summary>
+        /// Determines whether object is in pool
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public bool IsInPool(T obj)
+        {
+            return m_ObjectsInPool.Contains(obj);
         }
 
         /// <summary>

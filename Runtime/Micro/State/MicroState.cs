@@ -296,6 +296,12 @@ namespace Metamatic
             EmitValue(value);
         }
         
+        public void SetUniqValue(TValue value)
+        {
+            if (m_Value.Equals(value)) return;
+            m_Value = value;
+        }
+        
         public void Mutate(MutateHandler mutationHandler)
         {
             mutationHandler(ref m_Value);

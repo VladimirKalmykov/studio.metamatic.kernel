@@ -126,7 +126,8 @@ namespace Metamatic
                 Debug.LogError($"Service {type} failed to run: {e}");
             }
         }
-
+        
+        // TODO: Replace CancellationToken with CancellationSignal
         public static async UniTask<T> Resolve<T>(CancellationToken cancellationToken = default, float timeout = 10f)
             where T : Service
         {

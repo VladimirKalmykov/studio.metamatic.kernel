@@ -12,27 +12,51 @@ namespace Metamatic
     public class ManagedList<T> : IList<T>, IDisposable
     {
         private readonly List<T> m_List = new List<T>();
-        private Func<T, CancellationToken, UniTask> m_Handler;
-        private readonly Dictionary<T, CancellationTokenSource> m_CancellationTokens = new Dictionary<T, CancellationTokenSource>();
+        private Func<T, CancellationSignal, UniTask> m_Handler;
+        private readonly Dictionary<T, CancellationSignalSource> m_CancellationTokens = new Dictionary<T, CancellationSignalSource>();
         private bool m_Disposed = false;
+        public event Action<T, CancellationSignal> OnItemAdded;
 
-        public ManagedList(Func<T, CancellationToken, UniTask> handler)
+        public ManagedList(Func<T, CancellationSignal, UniTask> handler = null)
         {
-            m_Handler = handler ?? throw new ArgumentNullException(nameof(handler));
+            m_Handler = handler ?? DefaultHandler;
         }
         
-        public void SetHandler(Func<T, CancellationToken, UniTask> handler)
+        public void SetHandler(Func<T, CancellationSignal, UniTask> handler)
         {
             if (m_Disposed)
                 throw new ObjectDisposedException(nameof(ManagedList<T>));
 
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            m_Handler = handler;
+            m_Handler = handler ?? DefaultHandler;
         }
         
-        private static UniTask DefaultHandler(T item, CancellationToken token)
+        public DisposableAction Observe(Func<T, CancellationSignal, UniTaskVoid> handler)
+        {
+            var cssList = new List<CancellationSignalSource>();
+            void ForgetAsyncHandler(T item, CancellationSignal signal)
+            {
+                var css = CancellationSignalSource.CreateLinked(signal);
+                cssList.Add(css);
+                handler(item, css.Signal).Forget();
+            }
+            /*
+             * First, iterate over existing items and call the handler for each item.
+             */
+            foreach (var item in m_List)
+            {
+                var css = CancellationSignalSource.CreateLinked(m_CancellationTokens[item].Signal);
+                cssList.Add(css);
+                ForgetAsyncHandler(item, css.Signal);
+            }
+            OnItemAdded += ForgetAsyncHandler;
+            return new DisposableAction(() =>
+            {
+                cssList.ForEach(css => css.TryCancel());
+                OnItemAdded -= ForgetAsyncHandler;
+            });
+        }
+        
+        private static UniTask DefaultHandler(T item, CancellationSignal signal)
         {
             return UniTask.CompletedTask;
         }
@@ -78,14 +102,16 @@ namespace Metamatic
         {
             if (m_Disposed)
                 throw new ObjectDisposedException(nameof(ManagedList<T>));
+            if (m_Handler == null)
+                m_Handler = DefaultHandler;
 
-            var cts = new CancellationTokenSource();
+            var cts = CancellationSignalSource.Create();
             m_CancellationTokens[item] = cts;
             m_List.Add(item);
 
             try
             {
-                await m_Handler(item, cts.Token);
+                await m_Handler(item, cts.Signal);
             }
             catch (OperationCanceledException)
             {
@@ -102,12 +128,30 @@ namespace Metamatic
         {
             if (m_Disposed)
                 throw new ObjectDisposedException(nameof(ManagedList<T>));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
 
-            var cts = new CancellationTokenSource();
+            var cts = CancellationSignalSource.Create();
             m_CancellationTokens[item] = cts;
             m_List.Add(item);
-
-            m_Handler(item, cts.Token).Forget();
+            
+            var signal = cts.Signal;
+            m_Handler(item, signal).Forget();
+            OnItemAdded?.Invoke(item, signal);
+        }
+        
+        /// <summary>
+        /// Add item and get a disposable action to remove it when it's no longer needed.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public DisposableAction AddManaged(T item)
+        {
+            Add(item);
+            return new DisposableAction(() =>
+            {
+                Remove(item);
+            });
         }
         
         public void TryAdd(T item)
@@ -117,24 +161,27 @@ namespace Metamatic
             if (m_List.Contains(item))
                 return;
 
-            var cts = new CancellationTokenSource();
+            var cts = CancellationSignalSource.Create();
             m_CancellationTokens[item] = cts;
             m_List.Add(item);
-
-            m_Handler(item, cts.Token).Forget();
+            
+            var signal = cts.Signal;
+            m_Handler(item, signal).Forget();
+            OnItemAdded?.Invoke(item, signal);
         }
 
         public bool Remove(T item)
         {
             if (m_Disposed)
                 throw new ObjectDisposedException(nameof(ManagedList<T>));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
 
             if (m_List.Remove(item))
             {
                 if (m_CancellationTokens.TryGetValue(item, out var cts))
                 {
-                    cts.Cancel();
-                    cts.Dispose();
+                    cts.TryCancel();
                     m_CancellationTokens.Remove(item);
                 }
 
@@ -151,8 +198,7 @@ namespace Metamatic
 
             foreach (var cts in m_CancellationTokens.Values)
             {
-                cts.Cancel();
-                cts.Dispose();
+                cts.TryCancel();
             }
             m_CancellationTokens.Clear();
             m_Disposed = true;
@@ -174,16 +220,18 @@ namespace Metamatic
 
                 if (m_CancellationTokens.TryGetValue(m_List[index], out var cts))
                 {
-                    cts.Cancel();
+                    cts.TryCancel();
                     m_CancellationTokens.Remove(m_List[index]);
                 }
 
                 m_List[index] = value;
 
-                cts = new CancellationTokenSource();
+                cts = CancellationSignalSource.Create();
                 m_CancellationTokens[value] = cts;
 
-                m_Handler(value, cts.Token).Forget();
+                var signal = cts.Signal;
+                m_Handler(value, signal).Forget();
+                OnItemAdded?.Invoke(value, signal);
             }
         }
 
@@ -193,23 +241,27 @@ namespace Metamatic
         {
             if (m_Disposed)
                 throw new ObjectDisposedException(nameof(ManagedList<T>));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
 
             if (index < m_List.Count)
             {
                 var existingItem = m_List[index];
                 if (m_CancellationTokens.TryGetValue(existingItem, out var cts))
                 {
-                    cts.Cancel();
+                    cts.TryCancel();
                     m_CancellationTokens.Remove(existingItem);
                 }
             }
 
             m_List.Insert(index, item);
 
-            var newCts = new CancellationTokenSource();
+            var newCts = CancellationSignalSource.Create();
             m_CancellationTokens[item] = newCts;
-
-            m_Handler(item, newCts.Token).Forget();
+            
+            var signal = newCts.Signal;
+            m_Handler(item, signal).Forget();
+            OnItemAdded?.Invoke(item, signal);
         }
 
         public void RemoveAt(int index)
@@ -222,7 +274,7 @@ namespace Metamatic
 
             if (m_CancellationTokens.TryGetValue(item, out var cts))
             {
-                cts.Cancel();
+                cts.TryCancel();
                 m_CancellationTokens.Remove(item);
             }
         }
@@ -234,7 +286,7 @@ namespace Metamatic
 
             foreach (var cts in m_CancellationTokens.Values)
             {
-                cts.Cancel();
+                cts.TryCancel();
             }
             m_CancellationTokens.Clear();
             m_List.Clear();

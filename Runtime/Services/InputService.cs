@@ -39,7 +39,7 @@ namespace Metamatic
             playerInputManager.onPlayerLeft -= InternalOnPlayerLeft;
         }
 
-        private async UniTask HandlePlayerInput(PlayerInput playerInput, CancellationToken cancellationToken)
+        private async UniTask HandlePlayerInput(PlayerInput playerInput, CancellationSignal cancellationSignal)
         {
             /* Subscribe to player input actions */
             Action<InputAction.CallbackContext> handler = (InputAction.CallbackContext ctx) =>
@@ -47,7 +47,7 @@ namespace Metamatic
                 m_OnPlayerActionTriggered?.Invoke(playerInput.playerIndex, ctx);
             };
             playerInput.onActionTriggered += handler;
-            await cancellationToken;
+            await cancellationSignal;
             playerInput.onActionTriggered -= handler;
         }
         
