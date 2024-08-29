@@ -47,7 +47,7 @@ namespace Metamatic
             return m_Source?.ToUniTask().GetAwaiter() ?? UniTask.CompletedTask.GetAwaiter();
         }
         
-        public UniTask ToUniTask(bool cancelOnCancellationRequest = true)
+        public UniTask ToUniTask(bool cancelOnCancellationRequest = false)
         {
             return m_Source?.ToUniTask(cancelOnCancellationRequest) ?? UniTask.CompletedTask;
         }
@@ -92,13 +92,37 @@ namespace Metamatic
             }
             return new CancellationSignalSource(source);
         }
+
+        public static CancellationSignalSource CreateLinked(params CancellationToken[] tokens)
+        {
+            /* First, check if all tokens are not cancelled */
+            foreach (var token in tokens)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    return new CancellationSignalSource();
+                }
+            }
+            var source = InternalCancellationSignalSource.Pool.Get();
+            var memoizedVersion = source.Version;
+            void Cancel()
+            {
+                if (memoizedVersion != source.Version) return;
+                source.TryCancel();
+            }
+            foreach (var token in tokens)
+            {
+                token.Register(Cancel);
+            }
+            return new CancellationSignalSource(source);
+        }
         
         private readonly InternalCancellationSignalSource m_InternalSource;
         private readonly int m_Version;
         
         public CancellationSignal Signal => new CancellationSignal(GetSource());
         
-        public CancellationSignalSource(InternalCancellationSignalSource source)
+        private CancellationSignalSource(InternalCancellationSignalSource source)
         {
             m_InternalSource = source;
             m_Version = source.Version;
@@ -106,14 +130,8 @@ namespace Metamatic
         
         public void TryCancel()
         {
-            #if DEBUG
-            if (m_InternalSource == null)
-            {
-                Debug.LogError("CancellationSignalSource is null, but it should not be null. This is a bug");
-                return;
-            }
-            #endif
-            if (m_InternalSource.Version == m_Version)
+            /* m_InternalSource can be null, because this struct can be created by default */
+            if (m_InternalSource != null && m_InternalSource.Version == m_Version)
             {
                 m_InternalSource.TryCancel();
             }
@@ -210,7 +228,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="cancelOnCancellationRequest"></param>
         /// <returns></returns>
-        internal UniTask ToUniTask(bool cancelOnCancellationRequest = true)
+        internal UniTask ToUniTask(bool cancelOnCancellationRequest = false)
         {
             if (IsCancellationRequested)
             {
