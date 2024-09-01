@@ -1,0 +1,10 @@
+.TopBar {
+    flex-grow: 0;
+    height: 24px;
+    flex-direction: row;
+    border-bottom-width: 1px;
+    border-left-color: rgb(0, 0, 0);
+    border-right-color: rgb(0, 0, 0);
+    border-top-color: rgb(0, 0, 0);
+    border-bottom-color: var(--resource-helper-line-color);
+}

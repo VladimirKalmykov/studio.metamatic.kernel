@@ -45,9 +45,9 @@ namespace Metamatic
         /// Create loading task at initialization to allow to create splash screen loader
         /// </summary>
         /// <returns></returns>
-        public static async UniTask<LoadingTask> CreateLoadingTask(string name, CancellationToken cancellationToken)
+        public static async UniTask<LoadingTask> CreateLoadingTask(string name, CancellationSignal signal)
         {
-            var instance = await Resolve<LoadService>(cancellationToken);
+            var instance = await Resolve<LoadService>(signal);
             return new LoadingTask(instance, name);
         }
 
@@ -81,7 +81,7 @@ namespace Metamatic
             });
         }
 #endif
-        protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
         {
 #if DEBUG
             using var displayLoadingTasks = DisplayLoadingTasksInTerminal();

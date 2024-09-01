@@ -14,7 +14,7 @@ namespace Metamatic
             private bool m_PersistOnDispose;
             private readonly string m_Pattern;
             private object[] m_Args;
-            private CancellationTokenSource m_LifecycleTokenSource = new CancellationTokenSource();
+            private CancellationSignalSource m_LifecycleTokenSource = CancellationSignalSource.Create();
             private MicroState<bool> m_UpdateInProgress = new ();
             private bool m_IsDisposed;
             private bool m_Peristed;
@@ -35,7 +35,7 @@ namespace Metamatic
             {
                 try
                 {
-                    var ui = await WaitForUITerminal(m_LifecycleTokenSource.Token);
+                    var ui = await WaitForUITerminal(m_LifecycleTokenSource.Signal);
                     m_TextRow.value = ui.AddTextRow("");
                 }
                 catch (OperationCanceledException)
@@ -72,7 +72,7 @@ namespace Metamatic
                 try
                 {
                     m_UpdateInProgress.value = true;
-                    var row = await m_TextRow.WaitUntilValueIsNotNull(m_LifecycleTokenSource.Token);
+                    var row = await m_TextRow.WaitUntilValueIsNotNull(m_LifecycleTokenSource.Signal);
                     Debug.Log($"Set new text: {GetFormattedText()}");
                     row.SetText(GetFormattedText());
                 }
@@ -131,7 +131,7 @@ namespace Metamatic
                 m_IsDisposed = true;
                 m_TextRow.value.Dispose();
                 m_TextRow.Dispose();
-                m_LifecycleTokenSource.Cancel();
+                m_LifecycleTokenSource.TryCancel();
                 m_LifecycleTokenSource.Dispose();
                 GC.SuppressFinalize(this);
             }
@@ -202,9 +202,9 @@ namespace Metamatic
         }
 
         private static MicroState<UITerminal> m_CachedUITerminal = new ();
-        public static UniTask<UITerminal> WaitForUITerminal(CancellationToken cancellationToken)
+        public static UniTask<UITerminal> WaitForUITerminal(CancellationSignal signal)
         {
-            return m_CachedUITerminal.WaitUntilValueIsNotNull(cancellationToken);
+            return m_CachedUITerminal.WaitUntilValueIsNotNull(signal);
         }
         
         /* Execute method on initialization */

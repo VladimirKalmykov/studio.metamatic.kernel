@@ -12,7 +12,7 @@ namespace Metamatic
         
         public UITerminal terminal => m_Terminal;
 
-        protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
         {
             #if DEBUG
             m_Terminal.gameObject.SetActive(true);

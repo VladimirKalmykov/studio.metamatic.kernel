@@ -52,6 +52,8 @@ namespace Metamatic
 
         public abstract DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false);
         
+        public abstract DisposableAction Subscribe(Action<TValue> handler);
+        
         public Action SubscribeOnce(Action<TValue> handler)
         {
             Action<TValue> onceHandler = null;
@@ -181,13 +183,12 @@ namespace Metamatic
             return tcs.Task;
         }
         
-        public UniTask<TValue> WaitUntilValueIsNotNull(CancellationToken cancellationToken = default)
+        public UniTask<TValue> WaitUntilValueIsNotNull(CancellationSignal signal = default)
         {
-            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
+            if (signal.IsCancellationRequested) return UniTask.FromCanceled<TValue>(signal);
             if (GetValue() != null) return UniTask.FromResult(value);
-            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
-                { m_DisposeCancellationTokenSource.Token, cancellationToken });
-            var combinedCancellationToken = combinedCancellationTokenSource.Token;
+            var combinedCancellationTokenSource = CancellationSignalSource.CreateLinked(m_DisposeCancellationTokenSource.Token, signal);
+            var combinedCancellationToken = combinedCancellationTokenSource.Signal;
             var tcs = new UniTaskCompletionSource<TValue>();
             Action<TValue> handler = null;
             handler = v =>
@@ -204,7 +205,7 @@ namespace Metamatic
             var unregister= combinedCancellationToken.Register(() =>
             {
                 OnChange -= handler;
-                tcs.TrySetCanceled(cancellationToken);
+                tcs.TrySetCanceled(signal);
             });
             tcs.Task.GetAwaiter().OnCompleted(() =>
             {
@@ -256,7 +257,7 @@ namespace Metamatic
             return true;
         }
 
-        public DisposableAction Subscribe(Action<TValue> handler)
+        public override DisposableAction Subscribe(Action<TValue> handler)
         {
             return Subscribe(handler, false);
         }
@@ -322,6 +323,11 @@ namespace Metamatic
         }
 
         public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override DisposableAction Subscribe(Action<TValue> handler)
         {
             throw new NotImplementedException();
         }
@@ -392,7 +398,12 @@ namespace Metamatic
 
             return commonDisposable;
         }
-        
+
+        public override DisposableAction Subscribe(Action<TValue> handler)
+        {
+            return Subscribe(handler, false);
+        }
+
         public override bool HasValue()
         {
             return m_Proxy.value != null;

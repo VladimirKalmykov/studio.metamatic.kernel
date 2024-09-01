@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public partial class Dispatcher
+    public partial class Dispatcher: IDisposable
     {
         #region Global
         private static DispatcherComponent _globalDispatcher;
@@ -552,5 +552,18 @@ namespace Metamatic
         }
 
         #endregion
+
+        public void Dispose()
+        {
+            /* Dispose all announcements */
+            foreach (var announcementDictionary in m_Announcements)
+            {
+                foreach (var announcement in announcementDictionary.Value)
+                {
+                    announcement.Value.Dispose();
+                }
+            }
+            m_Announcements.Clear();
+        }
     }
 }

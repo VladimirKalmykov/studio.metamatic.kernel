@@ -1,0 +1,24 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/ConsoleDark.uss?fileID=7433441132597879392&amp;guid=c6ec830d7dbe4e72bd0373ab502e9db2&amp;type=3#ConsoleDark" />
+    <engine:VisualElement name="Container" style="flex-grow: 1; height: 100%;">
+        <engine:VisualElement name="TopBar" class="TopBar">
+            <engine:VisualElement name="Left" style="flex-grow: 1; flex-direction: row;">
+                <engine:Button text="Clear" name="ClearButton" triple-click-selects-line="false" double-click-selects-word="false" emoji-fallback-support="false" enable-rich-text="false" style="margin-bottom: 0; margin-right: 0; margin-top: 0; margin-left: 0;" />
+                <engine:Toggle tooltip="Display Unity build-in log" text="Build-in log" name="BuiltInLogCheckbox" style="font-size: 14px; -unity-text-align: middle-left;" />
+                <engine:VisualElement name="Space" style="flex-grow: 1;" />
+            </engine:VisualElement>
+            <engine:VisualElement name="Right" style="flex-grow: 1; flex-direction: row-reverse;">
+                <engine:VisualElement name="Filters" style="flex-grow: 1; flex-direction: row;" />
+                <engine:VisualElement name="Search" style="flex-grow: 2; padding-left: 0;">
+                    <engine:TextField placeholder-text="Search" name="SearchInput" is-delayed="false" emoji-fallback-support="false" />
+                </engine:VisualElement>
+            </engine:VisualElement>
+        </engine:VisualElement>
+        <engine:VisualElement name="TagsFilter" class="TagsFilter" />
+        <engine:ScrollView mode="VerticalAndHorizontal" name="Content" style="flex-shrink: initial; flex-grow: 10;" />
+        <engine:VisualElement name="Details" class="StackTrace" style="flex-grow: 1;" />
+        <engine:VisualElement name="BottomBar" style="flex-grow: 0; height: 32px; flex-shrink: 0;">
+            <engine:TextField style="margin-bottom: 0; margin-top: 0; margin-left: 0; margin-right: 0; font-size: 12px;" />
+        </engine:VisualElement>
+    </engine:VisualElement>
+</engine:UXML>

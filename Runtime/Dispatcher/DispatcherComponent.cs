@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Metamatic
 {
@@ -11,6 +12,11 @@ namespace Metamatic
         private void Awake()
         {
             DontDestroyOnLoad(gameObject);
+        }
+
+        private void OnDestroy()
+        {
+            m_Dispatcher?.Dispose();
         }
     }
 }

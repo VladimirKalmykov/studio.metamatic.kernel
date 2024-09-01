@@ -37,11 +37,32 @@ namespace Metamatic
             }
         }
         
-        public static Task AsTask(this CancellationToken cancellationToken)
+        /// <summary>
+        /// Be careful, this method is not recommended to use if this token may never be canceled. Otherwise, it will cause a memory leak.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public static UniTask ToCompletionUniTask(this CancellationToken cancellationToken)
         {
-            var tcs = new TaskCompletionSource<bool>();
-            cancellationToken.Register(s => ((TaskCompletionSource<bool>)s).SetResult(true), tcs);
-            return tcs.Task;
+            if (cancellationToken.IsCancellationRequested || !cancellationToken.CanBeCanceled)
+            {
+                return UniTask.CompletedTask;
+            }
+            
+            var tsc = AutoResetUniTaskCompletionSource.Create();
+            
+            cancellationToken.Register(state =>
+            {
+                var source = (AutoResetUniTaskCompletionSource)state;
+                source.TrySetResult();
+            }, tsc);
+            
+            return tsc.Task;
+        }
+        
+        public static CancellationSignal ToCancellationSignal(this CancellationToken cancellationToken)
+        {
+            return new CancellationSignal(cancellationToken);
         }
         
         public static void CancelAndDispose(this CancellationTokenSource cts)

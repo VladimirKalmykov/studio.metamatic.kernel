@@ -22,7 +22,7 @@ namespace Metamatic
             }
         }
 
-        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask Run(Ready ready, CancellationSignal signal)
         {
             camera = GetComponent<Camera>();
             using var announce = Dispatcher.global.AnnounceLegacy(this);

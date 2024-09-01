@@ -18,11 +18,11 @@ namespace Metamatic
         public event Action<PlayerInput> OnPlayerLeft;
         #endregion
 
-        protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
         {
             /* Prepare handler for player inputs */
             using var playerInputs = m_PlayerInputs = new ManagedList<PlayerInput>(HandlePlayerInput);
-            var cameraService = m_CameraService = await Resolve<CameraService>(cancellationToken);
+            var cameraService = m_CameraService = await Resolve<CameraService>(signal);
             /* Subscribe to main camera */
             using var mainCameraSubscription = cameraService.SubscribeToMainCamera(HandleMainCamera);
 
@@ -156,7 +156,7 @@ namespace Metamatic
         {
             return MicroOperation.Run(async (operation) =>
             {
-                var cameraService = await Resolve<CameraService>(operation.cancellationToken);
+                var cameraService = await Resolve<CameraService>(operation.cancellationToken.ToCancellationSignal());
                 using var listener = SubscribeToActionTriggered(ctx =>
                 {
                     if (ctx.action.name != actionName || ctx.action.phase != phase)

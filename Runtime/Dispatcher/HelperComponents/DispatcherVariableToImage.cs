@@ -13,7 +13,7 @@ namespace Metamatic
 
         private Image m_Image;
 
-        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask Run(Ready ready, CancellationSignal signal)
         {
             m_Image = GetComponent<Image>();
             using var listener =

@@ -1,0 +1,12 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/ConsoleDark.uss?fileID=7433441132597879392&amp;guid=c6ec830d7dbe4e72bd0373ab502e9db2&amp;type=3#ConsoleDark" />
+    <engine:VisualElement name="Line" class="Line" style="flex-direction: column;">
+        <engine:VisualElement name="Message" style="flex-grow: 1; flex-direction: row;">
+            <engine:VisualElement name="Icon" class="LineIcon" />
+            <engine:VisualElement name="Tags" class="Tags">
+                <engine:Label text="Label" class="Tag" />
+            </engine:VisualElement>
+            <engine:Label text="Label" name="Content" class="LineContent" />
+        </engine:VisualElement>
+    </engine:VisualElement>
+</engine:UXML>

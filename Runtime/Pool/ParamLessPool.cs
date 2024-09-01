@@ -150,10 +150,10 @@ namespace Metamatic
             _BackgroundTrackingInquiryCount++;
             if (!_BackgroundTimeIsEnabled)
             {
-                Debug.Log($"[AUTO-SHRINK] Enabling background tracking.");
+                Console.Log($"[AUTO-SHRINK] Enabling background tracking.", Console.LogLevel.Verbose);
                 EnableBackgroundTracking();
             }
-            Debug.Log($"[AUTO-SHRINK] Subscribed to auto shrink event. Current subscribers: {_BackgroundTrackingInquiryCount}");
+            Console.Log($"[AUTO-SHRINK] Subscribed to auto shrink event. Current subscribers: {_BackgroundTrackingInquiryCount}", Console.LogLevel.Verbose);
 
             m_NextShrinkTime = Time.time + DefaultShrinkingPeriod;
 
@@ -183,7 +183,7 @@ namespace Metamatic
         {
             if (_BackgroundTimeIsEnabled)
             {
-                Debug.LogError("Cannot enable auto shrink for global pool twice");
+                Console.Error("[AUTO-SHRINK] Cannot enable auto shrink for global pool twice");
                 return;
             }
 
@@ -194,7 +194,7 @@ namespace Metamatic
 
         private void DisableBackgroundTracking()
         {
-            Debug.Log($"[AUTO-SHRINK] Disabling background tracking.");
+            Console.Verbose($"[AUTO-SHRINK] Disabling background tracking.");
             _BackgroundTimeIsEnabled = false;
             m_BackgroundRecheckTimer?.Dispose();
         }
@@ -266,7 +266,10 @@ namespace Metamatic
 
         ~ParamLessPool()
         {
-            Dispose();
+            #if DEBUG
+            Console.Error($"[POOL] ParamLessPool<${typeof(T)}> is not disposed properly. Use Dispose method to release resources.");
+            #endif
+            DisposeFromMainThread().Forget();
         }
 
         /// <summary>
@@ -279,17 +282,23 @@ namespace Metamatic
             {
                 case ShrinkTimestampType.Analysis:
                     m_FruitBasket.SetCount(OutOfPoolCount, Time.time);
-                    Debug.Log($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
+                    #if DEBUG
+                    Console.Verbose($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
+                    #endif
                     break;
                 case ShrinkTimestampType.Shrinking:
                     var maxCount = m_FruitBasket.GetMaxCount();
-                    Debug.Log(
+                    #if DEBUG
+                    Console.Verbose(
                         $"[AUTOSHRINK] ParamLessPool<${typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount})");
+                    #endif
                     var countInPool = m_ObjectsInPool.Count;
                     var countToRemove = (countInPool + OutOfPoolCount) - maxCount;
                     if (countToRemove > 0 && countToRemove >= countInPool)
                     {
-                        Debug.Log($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> decided to release {countToRemove} objects from pool");
+                        #if DEBUG
+                        Console.Verbose($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> decided to release {countToRemove} objects from pool");
+                        #endif
                         for (var i = 0; i < countToRemove; i++)
                         {
                             if (m_ObjectsInPool.Count > 0)
@@ -305,7 +314,9 @@ namespace Metamatic
 
                     if (maxCount == 0 && m_ObjectsInPool.Count == 0 && OutOfPoolCount == 0)
                     {
-                        Debug.Log($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> is useless. Triggering OnPoolIsEmpty event");
+                        #if DEBUG
+                        Console.Verbose($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> is useless. Triggering OnPoolIsEmpty event");
+                        #endif
                         OnPoolIsUseless?.Invoke();
                     }
 
@@ -390,13 +401,15 @@ namespace Metamatic
             /* Check released object is not present in pool */
             if (m_ObjectsInPool.Contains(obj))
             {
-                throw new Exception("Object is in pool, you can not release. Get it from pool first.");
+                global::Metamatic.Console.Error("Object is in pool, you can not release. Get it from pool first.");
+                return;
             }
 #endif
-            /* Check that released object is exists in pool or out of pool lists */
+            /* Check that released object is exists outside the pool */
             if (!m_OutOfPoolHashes.Contains(obj.GetHashCode()))
             {
-                throw new Exception("Object is not belong to this pool");
+                global::Metamatic.Console.Error("Object is not belong to this pool");
+                return;
             }
 
             var hashCode = obj.GetHashCode();
@@ -431,9 +444,23 @@ namespace Metamatic
                 }
             }
         }
+        
+        private async UniTaskVoid DisposeFromMainThread()
+        {
+            await UniTask.SwitchToMainThread();
+            Dispose();
+        }
 
         public void Dispose()
         {
+            /* Dispose all objects in pool */
+            foreach (var obj in m_ObjectsInPool)
+            {
+                if (obj is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
             m_OnDisposeHandler?.Invoke();
             /* Clear pool */
             m_ObjectsInPool.Clear();

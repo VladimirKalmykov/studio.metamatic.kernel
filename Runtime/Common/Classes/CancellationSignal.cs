@@ -14,21 +14,70 @@ namespace Metamatic
     /// </summary>
     public readonly struct CancellationSignal
     {
-        public static readonly CancellationSignal Cancelled = new CancellationSignal();
+        public static readonly CancellationSignal Cancelled = new CancellationSignal(true);
+        public static readonly CancellationSignal None = new CancellationSignal(false);
         
         private readonly InternalCancellationSignalSource m_Source;
+        private readonly CancellationToken m_CancellationToken;
+        // ReSharper disable once MemberCanBePrivate.Global
         public readonly int Version;
         // ReSharper disable once InconsistentNaming
         public bool IsCancellationRequested => GetSource()?.IsCancellationRequested ?? true;
+        // ReSharper disable once InconsistentNaming
+        public bool CanBeCanceled => m_Source != null;
         public CancellationSignal(InternalCancellationSignalSource source = null)
         {
             m_Source = source;
             Version = source?.Version ?? 0;
         }
         
+        public CancellationSignal(bool cancelled)
+        {
+            m_Source = null;
+            Version = cancelled ? -1 : 0;
+        }
+        
+        public CancellationSignal(CancellationToken token)
+        {
+            m_Source = null;
+            m_CancellationToken = token;
+            Version = -2;
+        }
+        
         public DisposableAction Register(Action onCancelled)
         {
-            if (m_Source != null && m_Source.Version == Version)
+            if (Version == -1)
+            {
+                /* Forever cancelled */
+                onCancelled?.Invoke();
+                return DisposableAction.Empty;
+            }
+            
+            if (Version == -2)
+            {
+                /* Register to CancellationToken */
+                if (m_CancellationToken.IsCancellationRequested)
+                {
+                    onCancelled?.Invoke();
+                    return DisposableAction.Empty;
+                }
+                void OnCancelled()
+                {
+                    onCancelled?.Invoke();
+                }
+                var registration = m_CancellationToken.Register(OnCancelled);
+                return new DisposableAction(() =>
+                {
+                    registration.Dispose();
+                });
+            }
+
+            if (m_Source == null)
+            {
+                return DisposableAction.Empty;
+            }
+            
+            if (m_Source.Version == Version)
             {
                 var memoizedSource = m_Source;
                 void OnCancelled(int version)
@@ -38,23 +87,66 @@ namespace Metamatic
                 }
                 return m_Source.Register(OnCancelled);
             }
-            onCancelled?.Invoke();
             return DisposableAction.Empty;
         }
         
         public UniTask.Awaiter GetAwaiter()
         {
-            return m_Source?.ToUniTask().GetAwaiter() ?? UniTask.CompletedTask.GetAwaiter();
+            if (Version == -1)
+            {
+                /* Fixed value, to return completed task */
+                return UniTask.CompletedTask.GetAwaiter();
+            }
+            if (Version == -2)
+            {
+                /* Register to CancellationToken */
+                if (!m_CancellationToken.CanBeCanceled || m_CancellationToken.IsCancellationRequested)
+                {
+                    return UniTask.CompletedTask.GetAwaiter();
+                }
+                
+                return m_CancellationToken.ToCompletionUniTask().GetAwaiter();
+            }
+            
+            /* Signal without source is always cancelled because fixed non-cancelled signal will be awaited forever */
+            if (m_Source == null)
+            {
+                return UniTask.CompletedTask.GetAwaiter();
+            }
+            
+            return GetSource()?.ToUniTask().GetAwaiter() ?? UniTask.CompletedTask.GetAwaiter();
         }
         
         public UniTask ToUniTask(bool cancelOnCancellationRequest = false)
         {
-            return m_Source?.ToUniTask(cancelOnCancellationRequest) ?? UniTask.CompletedTask;
+            if (Version == -1)
+            {
+                /* Fixed value, to return completed task */
+                return UniTask.CompletedTask;
+            }
+            if (Version == -2)
+            {
+                /* Register to CancellationToken */
+                if (!m_CancellationToken.CanBeCanceled || m_CancellationToken.IsCancellationRequested)
+                {
+                    return UniTask.CompletedTask;
+                }
+                
+                return m_CancellationToken.ToCompletionUniTask();
+            }
+            
+            /* Signal without source is always cancelled because fixed non-cancelled signal will be awaited forever */
+            if (m_Source == null)
+            {
+                return UniTask.CompletedTask;
+            }
+            
+            return GetSource()?.ToUniTask(cancelOnCancellationRequest) ?? UniTask.CompletedTask;
         }
 
         private InternalCancellationSignalSource GetSource()
         {
-            if (m_Source != null && m_Source.Version == Version)
+            if (Version >= 0 && m_Source != null && m_Source.Version == Version)
             {
                 return m_Source;
             }
@@ -62,7 +154,25 @@ namespace Metamatic
         }
         
         /* Make it convertable to CancellationToken */
-        public static implicit operator CancellationToken(CancellationSignal signal) => signal.GetSource()?.GetCancellationToken() ?? new CancellationToken(true);
+        public static implicit operator CancellationToken(CancellationSignal signal)
+        {
+            if (signal.Version == -2)
+            {
+                return signal.m_CancellationToken;
+            }
+            
+            if (signal.Version == -1)
+            {
+                return new CancellationToken(true);
+            }
+            
+            if (signal.m_Source == null)
+            {
+                return CancellationToken.None;
+            }
+
+            return signal.GetSource()?.GetCancellationToken() ?? CancellationToken.None;
+        }
     }
 
     public readonly struct CancellationSignalSource: IDisposable
@@ -120,9 +230,12 @@ namespace Metamatic
         private readonly InternalCancellationSignalSource m_InternalSource;
         private readonly int m_Version;
         
+        // ReSharper disable once InconsistentNaming
         public CancellationSignal Signal => new CancellationSignal(GetSource());
+        // ReSharper disable once InconsistentNaming
+        public bool IsCancellationRequested => GetSource()?.IsCancellationRequested ?? true;
         
-        private CancellationSignalSource(InternalCancellationSignalSource source)
+        internal CancellationSignalSource(InternalCancellationSignalSource source)
         {
             m_InternalSource = source;
             m_Version = source.Version;
@@ -170,9 +283,15 @@ namespace Metamatic
         
         ~InternalCancellationSignalSource()
         {
+            FinalizeFromMainThread().Forget();
+        }
+        
+        private async UniTaskVoid FinalizeFromMainThread()
+        {
+            await UniTask.SwitchToMainThread();
             if (Pool.IsBelongsToPool(this))
             {
-                Debug.LogError("CancellationSignalSource belongs to pool but was destroyed. It should be returned to the pool before destruction");
+                Pool.HardDetach(this);
             }
             else
             {
@@ -205,8 +324,11 @@ namespace Metamatic
                 m_CancellationTokenSource.Dispose();
                 m_CancellationTokenSource = null;
             }
-            
-            Version++;
+
+            unchecked
+            {
+                Version++;
+            }
             IsCancellationRequested = false;
             if (!isFinal)
             {

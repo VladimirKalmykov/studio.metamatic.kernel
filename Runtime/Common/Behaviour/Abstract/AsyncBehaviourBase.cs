@@ -7,79 +7,62 @@ namespace Metamatic
 {
     public abstract class AsyncBehaviourBase: MonoBehaviour, IExposedDisposed
     {
-        private CancellationTokenSource m_DisableCancellationTokenSource = new();
-        private CancellationTokenSource m_DestroyCancellationTokenSource;
+        private CancellationSignalSource m_DisableCancellationSignalSource;
+        private CancellationSignalSource m_DestroyCancellationSignalSource;
         private bool m_IsDisabled;
-        public delegate UniTask RunAsyncHandler(CancellationToken cancellationToken);
-        internal CancellationToken componentDisableCancellationToken => m_DisableCancellationTokenSource?.Token ?? CancellationToken.None;
+        public delegate UniTask RunAsyncHandler(CancellationSignal cancellationToken);
+        internal CancellationSignal componentDisableCancellationToken => m_DisableCancellationSignalSource.Signal;
         
         private event Action OnValidateEvent;
         private event Action OnDrawGizmosEvent;
         
         protected bool isAboutToDestroy { get; private set; }
         
-        public CancellationToken componentDestroyToken => m_DestroyCancellationTokenSource.Token;
+        public CancellationSignal componentDestroyToken => m_DestroyCancellationSignalSource.Signal;
 
-        public CancellationToken componentDisableToken
+        public CancellationSignal componentDisableToken
         {
             get
             {
-                if (m_DisableCancellationTokenSource == null)
+                if (m_IsDisabled)
                 {
-                    var disableCancellationToken = m_DisableCancellationTokenSource = new CancellationTokenSource();
-                    if (m_IsDisabled)
-                    {
-                        m_DisableCancellationTokenSource.Cancel();
-                        m_DisableCancellationTokenSource.Dispose();
-                        m_DisableCancellationTokenSource = null;
-                        return disableCancellationToken.Token;
-                    }
+                    return CancellationSignal.Cancelled;
                 }
 
-                return m_DisableCancellationTokenSource.Token;
+                return m_DisableCancellationSignalSource.Signal;
             }
         }
         public event Action OnDisabled;
 
         protected virtual void Awake()
         {
-            m_DestroyCancellationTokenSource = new CancellationTokenSource();
-            RunUntilDestroy(m_DestroyCancellationTokenSource.Token).Forget();
+            m_DestroyCancellationSignalSource = CancellationSignalSource.Create();
+            RunUntilDestroy(m_DestroyCancellationSignalSource.Signal).Forget();
         }
         
         protected virtual void OnEnable()
         {
             m_IsDisabled = false;
+            m_DisableCancellationSignalSource = CancellationSignalSource.Create();
             RunAsync(componentDisableToken).Forget();
         }
 
         protected virtual void OnDisable()
         {
             m_IsDisabled = true;
-            m_DisableCancellationTokenSource.Cancel();
-            m_DisableCancellationTokenSource.Dispose();
-            m_DisableCancellationTokenSource = null;
+            m_DisableCancellationSignalSource.TryCancel();
             OnDisabled?.Invoke();
         }
 
         protected virtual void OnDestroy()
         {
             isAboutToDestroy = true;
-            #if DEBUG
-            if (m_DestroyCancellationTokenSource == null)
-            {
-                Debug.Log($"m_DestroyCancellationTokenSource is null in component {name} {GetType().Name}");
-                return;
-            }
-            #endif
-            
-            m_DestroyCancellationTokenSource.Cancel();
-            m_DestroyCancellationTokenSource.Dispose();
+            m_DestroyCancellationSignalSource.TryCancel();
             OnDisposed?.Invoke();
         }
 
-        protected abstract UniTaskVoid RunAsync(CancellationToken cancellationToken);
-        protected abstract UniTaskVoid RunUntilDestroy(CancellationToken cancellationToken);
+        protected abstract UniTaskVoid RunAsync(CancellationSignal signal);
+        protected abstract UniTaskVoid RunUntilDestroy(CancellationSignal signal);
         
         /// <summary>
         /// IDisposable object will be disposed on component disable
@@ -123,7 +106,7 @@ namespace Metamatic
             OnDrawGizmosEvent?.Invoke();
         }
         #endif
-        public bool isDisposed => m_DestroyCancellationTokenSource.IsCancellationRequested;
+        public bool isDisposed => m_DestroyCancellationSignalSource.IsCancellationRequested;
         public event Action OnDisposed;
     }
 }

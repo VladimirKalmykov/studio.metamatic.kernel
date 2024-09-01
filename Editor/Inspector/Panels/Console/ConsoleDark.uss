@@ -1,0 +1,105 @@
+.TopBar {
+    flex-grow: 0;
+    flex-basis: 24px;
+    min-height: 24px;
+    flex-direction: row;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(38, 38, 38);
+}
+
+.Line {
+    flex-grow: 0;
+    padding: 6px 2px;
+    background-color: #323636;
+    white-space: nowrap;
+    flex-shrink: 1;
+    flex-direction: row;
+    border-bottom-color: rgb(47, 47, 47);
+    border-bottom-width: 1px;
+}
+
+.Line.Selected {
+    background-color: rgb(63, 63, 63);
+}
+
+.Line.odd {
+    background-color: rgb(77, 77, 77);
+}
+
+.LineIcon {
+    flex-grow: 0;
+    width: 17px;
+    margin-right: 8px;
+    margin-left: 8px;
+}
+
+.Tag {
+    padding-bottom: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-left: 0;
+    margin-top: 0;
+    margin-left: 2px;
+    margin-right: 2px;
+    color: rgb(255, 255, 255);
+}
+
+.LineContent {
+    flex-grow: 1;
+    padding-left: 7px;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 2px;
+    color: rgb(255, 255, 255);
+}
+
+.TagLabel {
+}
+
+.Tag {
+    flex-grow: 0;
+    flex-shrink: 1;
+    flex-direction: row;
+    align-content: center;
+    justify-content: flex-start;
+    align-items: flex-end;
+    background-color: rgb(63, 121, 197);
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    padding-left: 3px;
+    padding-right: 3px;
+    max-height: 30px;
+    cursor: link;
+}
+
+.Tags {
+    flex-grow: 0;
+    flex-direction: row;
+    max-width: 760px;
+    flex-wrap: nowrap;
+}
+
+.StackTrace {
+    flex-grow: 1;
+    padding: 12px;
+    background-color: rgb(30, 31, 31);
+    color: rgb(95, 113, 140);
+    display: none;
+    flex-basis: 300px;
+    border-top-color: rgb(63, 63, 63);
+    border-top-width: 1px;
+}
+
+.TagsFilter {
+    flex-grow: 0;
+    flex-basis: 26px;
+    min-height: 26px;
+    padding-bottom: 4px;
+    padding-top: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    flex-direction: row;
+    flex-wrap: wrap;
+}

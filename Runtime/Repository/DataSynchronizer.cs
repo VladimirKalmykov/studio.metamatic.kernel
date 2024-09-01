@@ -7,7 +7,7 @@ using Metamatic.StorageDriver;
 using System.Linq;
 using Metamatic.Exceptions;
 
-namespace DuckJumper2024
+namespace Metamatic
 {
     /// <summary>
     /// Storages synchronizer is a special tool that helps to synchronize data between different storages.

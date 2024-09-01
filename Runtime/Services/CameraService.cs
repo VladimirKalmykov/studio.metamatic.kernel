@@ -24,7 +24,7 @@ namespace Metamatic
             }
         }
 
-        protected override async UniTask RunService(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
         {
             using var cameraAnnounceSubscription =
                 Dispatcher.global.SubscribeAnnouncementsLegacy<CameraController>(HandlerCamerasAnnounce);
@@ -33,9 +33,9 @@ namespace Metamatic
             await ready();
         }
 
-        public UniTask<CameraController> WaitForCamera(CancellationToken cancellationToken)
+        public UniTask<CameraController> WaitForCamera(CancellationSignal signal)
         {
-            return m_CameraController.WaitUntilValueIsNotNull(cancellationToken);
+            return m_CameraController.WaitUntilValueIsNotNull(signal);
         }
 
         public DisposableAction SubscribeToMainCamera(Action<CameraController> action)

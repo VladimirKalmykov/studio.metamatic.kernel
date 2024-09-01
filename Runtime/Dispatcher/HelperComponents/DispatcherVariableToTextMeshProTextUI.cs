@@ -11,7 +11,7 @@ namespace Metamatic
         public string fallbackText;
         private TextMeshProUGUI m_TextMeshProUGUI;
 
-        protected override async UniTask Run(Ready ready, CancellationToken cancellationToken)
+        protected override async UniTask Run(Ready ready, CancellationSignal signal)
         {
             m_TextMeshProUGUI = GetComponent<TextMeshProUGUI>();
             using var listener = Dispatcher.global.SubscribeVariable<string>(variableName, OnValueChange, fallbackText);

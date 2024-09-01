@@ -56,25 +56,4 @@ namespace Metamatic
         }
     }
 
-// Пример использования
-    public class Program
-    {
-        public static void Main()
-        {
-            var limitedQueue = new LimitedQueue<int>(10);
-
-            for (int i = 0; i < 15; i++)
-            {
-                limitedQueue.Enqueue(i);
-                Console.WriteLine($"Added {i}, Queue size: {limitedQueue.count}");
-            }
-
-            Console.WriteLine("Queue contents:");
-            foreach (var item in limitedQueue.ToArray())
-            {
-                Console.WriteLine(item);
-            }
-        }
-    }
-
 }
