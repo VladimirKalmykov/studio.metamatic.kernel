@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using Cysharp.Threading.Tasks;
 using JetBrains.Annotations;
 using UnityEngine;
 
@@ -39,8 +40,19 @@ namespace Metamatic
             {
                 return;
             }
-            
             var stackTrace = new StackTrace();
+            LogOnTheMainThread(message, logLevel, stackTrace).Forget();
+        }
+        
+        private static async UniTaskVoid LogOnTheMainThread(string message, LogLevel logLevel, StackTrace stackTrace)
+        {
+            /* Get current thread */
+            var currentThread = System.Threading.Thread.CurrentThread;
+            if (currentThread.ManagedThreadId != 1)
+            {
+                await UniTask.SwitchToMainThread();
+                return;
+            }
             
             OnLog?.Invoke(message, stackTrace.ToString(), logLevel);
             if ((LogLevelTranslateToUnityConsole & logLevel) == logLevel)

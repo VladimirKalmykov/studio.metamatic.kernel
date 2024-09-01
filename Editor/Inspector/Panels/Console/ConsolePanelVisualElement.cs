@@ -84,23 +84,57 @@ namespace Metamatic.EditorInspector
             OnTagsFilterChanged?.Invoke(Array.Empty<string>(), tags.ToArray());
         }
 
-        public static void ToggleTagFilter(string tag)
+        public static void ToggleTagFilter(string tag, int nextState)
         {
             if (TagsFilter.TryGetValue(tag, out var state))
             {
-                if (state == 1)
+                if (state == nextState)
                 {
                     TagsFilter.Remove(tag);
                     OnTagsFilterChanged?.Invoke(Array.Empty<string>(), new[] { tag });
+                } else if (nextState == 0)
+                {
+                    TagsFilter[tag] = 0;
+                    OnTagsFilterChanged?.Invoke(new[] { tag }, new[] { tag });
+                }
+                else
+                {
+                    TagsFilter[tag] = 1;
+                    OnTagsFilterChanged?.Invoke(new[] { tag }, new[] { tag });
                 }
             }
             else
             {
-                TagsFilter[tag] = 1;
+                TagsFilter[tag] = nextState;
                 OnTagsFilterChanged?.Invoke(new[] { tag }, Array.Empty<string>());
             }
             /* Save tags filter to preferences */
-            PlayerPrefs.SetString("MetamaticConsoleTagsFilter", string.Join(",", TagsFilter.Keys));
+            PersistentSaveTagsFilter();
+        }
+        
+        private static void PersistentSaveTagsFilter()
+        {
+            /* Converts tags filter to string by template {tagName}:{value}, e.g tag1:1,tag2:0 */
+            var tags = TagsFilter.Select(pair => $"{pair.Key}:{pair.Value}");
+            PlayerPrefs.SetString("MetamaticConsoleTagsFilter", string.Join(",", tags));
+        }
+        
+        private static void PersistentLoadTagsFilter()
+        {
+            TagsFilter.Clear();
+            var prefTags = PlayerPrefs.GetString("MetamaticConsoleTagsFilter", "");
+            if (prefTags.Length > 0)
+            {
+                var tags = prefTags.Split(',');
+                foreach (var tag in tags)
+                {
+                    var parts = tag.Split(':');
+                    if (parts.Length == 2)
+                    {
+                        TagsFilter[parts[0]] = int.Parse(parts[1]);
+                    }
+                }
+            }
         }
         
         public static void SetTagsFilter(string[] tags)
@@ -111,8 +145,8 @@ namespace Metamatic.EditorInspector
                 TagsFilter[tag] = 1;
             }
             OnTagsFilterChanged?.Invoke(tags, Array.Empty<string>());
-            /* Save tags filter to preferences */
-            PlayerPrefs.SetString("MetamaticConsoleTagsFilter", string.Join(",", tags));
+            
+            PersistentSaveTagsFilter();
         }
 
         public static event Action<string[], string[]> OnTagsFilterChanged;
@@ -123,15 +157,17 @@ namespace Metamatic.EditorInspector
             {"Error", new Color(0.78f, 0.16f, 0.07f)},
         };
         
-        public static VisualElement CreateTagElement(string tag)
+        public static VisualElement CreateTagElement(string tag, bool disabled = false)
         {
-            if (!TagColors.TryGetValue(tag, out var color))
+            Color color = new Color(0.14f, 0.12f, 0.11f);
+            
+            if (!disabled && !TagColors.TryGetValue(tag, out color))
             {
                 /* Generate random color with green and blue dominant */
                 var isGreenDominant = Random.Range(0, 2) == 0;
                 var firstNonDominant = Random.Range(41, 162);
                 var secondNonDominant = Random.Range(41, 162);
-                color = new Color((float)firstNonDominant / 255f, isGreenDominant ? (161f / 255f) : (float)secondNonDominant / 255f, isGreenDominant ? (float)secondNonDominant / 255f : (161f / 255f));
+                color = new Color(firstNonDominant / 255f, isGreenDominant ? (161f / 255f) : secondNonDominant / 255f, isGreenDominant ? secondNonDominant / 255f : (161f / 255f));
                 TagColors[tag] = color;
             }
             var tagElement = new Label(tag);
@@ -140,7 +176,15 @@ namespace Metamatic.EditorInspector
             /* Detect click on tag */
             tagElement.RegisterCallback<MouseUpEvent>(evt =>
             {
-                ToggleTagFilter(tag);
+                /* Detect right click */
+                if (evt.button == 1)
+                {
+                    ToggleTagFilter(tag, 0);
+                }
+                else
+                {
+                    ToggleTagFilter(tag, 1);
+                }
             });
             return tagElement;
         }
@@ -180,11 +224,10 @@ namespace Metamatic.EditorInspector
         
         protected override async UniTaskVoid InitializeAsync(CancellationToken cancellationToken)
         {
+            
+            
             /* Set height 100% */
             style.height = new StyleLength(Length.Percent(100));
-            
-            /* Read preferences */
-            var prefTags = PlayerPrefs.GetString("MetamaticConsole_TagsFilter", "");
             
             /* Read layout from uxml */
             var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/Console.uxml");
@@ -240,10 +283,15 @@ namespace Metamatic.EditorInspector
             /* Listen tags filter changes */
             OnTagsFilterChanged += TagsFilterChanged;
             
-            /* Apply preferred tags filter to GUI */
-            if (prefTags.Length > 0)
+            /* Load tags filter from preferences */
+            PersistentLoadTagsFilter();
+            
+            /* Apply tags filter */
+            m_TagsFilterContainer.Clear();
+            foreach (var tag in TagsFilter)
             {
-                SetTagsFilter(prefTags.Split(','));
+                var tagElement = CreateTagElement(tag.Key, tag.Value == 0);
+                m_TagsFilterContainer.Add(tagElement);
             }
             
             /* Subscribe to log events */
@@ -301,17 +349,24 @@ namespace Metamatic.EditorInspector
                 Vector2 scrollPos = Vector2.zero;
                 var imguiContainer = new IMGUIContainer(() =>
                 {
-                    GUIStyle guiStyle = new GUIStyle ();
-                    guiStyle.richText = true;
-                    guiStyle.normal.textColor = Color.white;
-                    var options = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) };
-
-                    scrollPos = EditorGUILayout.BeginScrollView(scrollPos, true, true);
-                    EditorGUILayout.SelectableLabel(richText, guiStyle, options);
+                    var scrollOptions = new GUILayoutOption[] {GUILayout.Height(280) };
+                    scrollPos = EditorGUILayout.BeginScrollView(scrollPos, false, true, scrollOptions);
+                    GUIStyle guiStyle = new GUIStyle
+                    {
+                        richText = true,
+                        normal =
+                        {
+                            textColor = Color.white
+                        },
+                        wordWrap = true
+                    };
+                    var guiContent = new GUIContent(richText);
+                    var size = guiStyle.CalcHeight(guiContent, EditorGUIUtility.currentViewWidth);
+                    var textOptions = new GUILayoutOption[] {GUILayout.Height(size) };
+                    EditorGUILayout.SelectableLabel(richText, guiStyle, textOptions);
                     
                     EditorGUILayout.EndScrollView();
                 });
-                imguiContainer.style.height = new StyleLength(Length.Percent(100));
                 m_Details.Add(imguiContainer);
             }
             else
@@ -363,9 +418,9 @@ namespace Metamatic.EditorInspector
             ApplyLogsListFilter();
             
             m_TagsFilterContainer.Clear();
-            foreach (var tag in TagsFilter.Keys)
+            foreach (var tag in TagsFilter)
             {
-                var tagElement = CreateTagElement(tag);
+                var tagElement = CreateTagElement(tag.Key, tag.Value == 0);
                 m_TagsFilterContainer.Add(tagElement);
             }
         }
@@ -376,33 +431,37 @@ namespace Metamatic.EditorInspector
         private void ApplyLogsListFilter()
         {
             var logHistory = StaticLogsCollector.logHistory;
+            var filtersContainsSoloTags = TagsFilter.Count > 0 && TagsFilter.Values.Contains(1);
             foreach (var log in logHistory)
             {
-                var visibleByTags = false;
+                var visibleBySoloTags = true;
+                var hiddenBySkipTags = false;
                 if (TagsFilter.Count > 0)
                 {
-                    foreach (var tag in log.Tags)
+                    visibleBySoloTags = !filtersContainsSoloTags;
+                    foreach (var tagFilter in TagsFilter)
                     {
-                        if (TagsFilter.TryGetValue(tag, out var state))
+                        if (log.Tags.Contains(tagFilter.Key))
                         {
-                            if (state == 1)
+                            if (tagFilter.Value == 0)
                             {
-                                visibleByTags = true;
+                                hiddenBySkipTags = true;
                                 break;
+                            }
+                            if (tagFilter.Value == 1)
+                            {
+                                visibleBySoloTags = true;
                             }
                         }
                     }
                 }
-                else
-                {
-                    visibleByTags = true;
-                }
                 
+                var summaryVisible = visibleBySoloTags && !hiddenBySkipTags;
                 var builtInFilter = StaticLogsCollector.isBuiltInLogEnabled || !log.IsBuiltInLog;
 
-                var visibleBySearch = builtInFilter && visibleByTags && (m_SearchState.Length == 0 || log.Text.Contains(m_SearchState));
+                var visibleBySearch = builtInFilter && summaryVisible && (m_SearchState.Length == 0 || log.Text.Contains(m_SearchState));
                 
-                if (visibleByTags && builtInFilter && visibleBySearch)
+                if (summaryVisible && builtInFilter && visibleBySearch)
                 {
                     m_LogRepresentation[log.Id].style.display = DisplayStyle.Flex;
                 }
@@ -433,27 +492,38 @@ namespace Metamatic.EditorInspector
 
         private void OnLogReceived(LogMetadata logMetadata)
         {
-            /* Filter log by tags */
-            bool hasTags = true;
+            var filtersContainsSoloTags = TagsFilter.Count > 0 && TagsFilter.Values.Contains(1);
+            var visibleBySoloTags = true;
+            var hiddenBySkipTags = false;
             if (TagsFilter.Count > 0)
             {
-                hasTags = false;
-                foreach (var tag in logMetadata.Tags)
+                visibleBySoloTags = !filtersContainsSoloTags;
+                foreach (var tagFilter in TagsFilter)
                 {
-                    if (TagsFilter.TryGetValue(tag, out var state))
+                    if (logMetadata.Tags.Contains(tagFilter.Key))
                     {
-                        if (state == 1)
+                        if (tagFilter.Value == 0)
                         {
-                            hasTags = true;
+                            hiddenBySkipTags = true;
                             break;
+                        }
+                        if (tagFilter.Value == 1)
+                        {
+                            visibleBySoloTags = true;
                         }
                     }
                 }
             }
+            
+            var summaryVisible = visibleBySoloTags && !hiddenBySkipTags;
+            var builtInFilter = StaticLogsCollector.isBuiltInLogEnabled || !logMetadata.IsBuiltInLog;
+
+            var visibleBySearch = builtInFilter && summaryVisible && (m_SearchState.Length == 0 || logMetadata.Text.Contains(m_SearchState));
+
             var element = new LogLine(this, logMetadata);
             m_LogRepresentation[logMetadata.Id] = element;
             m_Content.Add(element);
-            if (!hasTags)
+            if (!visibleBySearch)
             {
                 element.style.display = DisplayStyle.None;
             }

@@ -8,9 +8,8 @@
                 <engine:VisualElement name="Space" style="flex-grow: 1;" />
             </engine:VisualElement>
             <engine:VisualElement name="Right" style="flex-grow: 1; flex-direction: row-reverse;">
-                <engine:VisualElement name="Filters" style="flex-grow: 1; flex-direction: row;" />
-                <engine:VisualElement name="Search" style="flex-grow: 2; padding-left: 0;">
-                    <engine:TextField placeholder-text="Search" name="SearchInput" is-delayed="false" emoji-fallback-support="false" />
+                <engine:VisualElement name="Search" style="flex-grow: 2; padding-left: 0; flex-direction: row; align-content: flex-start; justify-content: flex-start; align-items: center;">
+                    <engine:TextField placeholder-text="Search" name="SearchInput" is-delayed="false" emoji-fallback-support="false" style="align-self: auto; align-content: center; flex-grow: 1;" />
                 </engine:VisualElement>
             </engine:VisualElement>
         </engine:VisualElement>
