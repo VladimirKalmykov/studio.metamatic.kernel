@@ -15,7 +15,7 @@
         </engine:VisualElement>
         <engine:VisualElement name="TagsFilter" class="TagsFilter" />
         <engine:ScrollView mode="VerticalAndHorizontal" name="Content" style="flex-shrink: initial; flex-grow: 10;" />
-        <engine:VisualElement name="Details" class="StackTrace" style="flex-grow: 1;" />
+        <engine:VisualElement name="Details" class="StackTrace" style="flex-grow: 1; height: 300px;" />
         <engine:VisualElement name="BottomBar" style="flex-grow: 0; height: 32px; flex-shrink: 0;">
             <engine:TextField style="margin-bottom: 0; margin-top: 0; margin-left: 0; margin-right: 0; font-size: 12px;" />
         </engine:VisualElement>

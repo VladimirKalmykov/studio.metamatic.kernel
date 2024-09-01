@@ -349,7 +349,7 @@ namespace Metamatic.EditorInspector
                 Vector2 scrollPos = Vector2.zero;
                 var imguiContainer = new IMGUIContainer(() =>
                 {
-                    var scrollOptions = new GUILayoutOption[] {GUILayout.Height(280) };
+                    var scrollOptions = new GUILayoutOption[] {GUILayout.Height(290) };
                     scrollPos = EditorGUILayout.BeginScrollView(scrollPos, false, true, scrollOptions);
                     GUIStyle guiStyle = new GUIStyle
                     {
