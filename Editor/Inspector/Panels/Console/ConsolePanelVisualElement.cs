@@ -153,6 +153,7 @@ namespace Metamatic.EditorInspector
         public MicroState<bool> DetailsVisible = new();
         private Dictionary<string, VisualElement> m_LogRepresentation = new Dictionary<string, VisualElement>();
         private string m_PrevSelectedLogId = "";
+        private string m_SearchState = "";
         /// <summary>
         /// Contains log id of currently selected log
         /// </summary>
@@ -206,7 +207,12 @@ namespace Metamatic.EditorInspector
             clearBottom.clicked += ClearHistory;
             
             /* Search input */
-            var searchInput = this.Query<UnityEngine.UIElements.TextField>("SearchInput");
+            var searchInput = this.Query<UnityEngine.UIElements.TextField>("SearchInput").First();
+            searchInput.RegisterValueChangedCallback(evt =>
+            {
+                m_SearchState = evt.newValue;
+                ApplyLogsListFilter();
+            });
             
             /* Content */
             m_Content = this.Query<ScrollView>("Content");
@@ -223,6 +229,12 @@ namespace Metamatic.EditorInspector
             using var detailsVisibleListener = DetailsVisible.Subscribe(OnDetailsVisibleChanged);
             /* Listen for selected log changes */
             using var selectedLogListener = m_SelectedLogId.Subscribe(ApplySelectedLog);
+            /* Subscribe built-in log flag */
+            using var builtInSubscription = StaticLogsCollector.builtInLogEnabled.Subscribe(value =>
+            {
+                builtInLogCheckbox.value = value;
+                ApplyLogsListFilter();
+            });
            
             
             /* Listen tags filter changes */
@@ -348,44 +360,56 @@ namespace Metamatic.EditorInspector
         
         private void TagsFilterChanged(string[] added, string[] removed)
         {
-            var logHistory = StaticLogsCollector.logHistory;
-            foreach (var log in logHistory)
-            {
-                if (TagsFilter.Count > 0)
-                {
-                    var hasTags = false;
-                    foreach (var tag in log.Tags)
-                    {
-                        if (TagsFilter.TryGetValue(tag, out var state))
-                        {
-                            if (state == 1)
-                            {
-                                hasTags = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!hasTags)
-                    {
-                        m_LogRepresentation[log.Id].style.display = DisplayStyle.None;
-                    }
-                    else
-                    {
-                        m_LogRepresentation[log.Id].style.display = DisplayStyle.Flex;
-                    }
-                }
-                else
-                {
-                    m_LogRepresentation[log.Id].style.display = DisplayStyle.Flex;
-                }
-            }
+            ApplyLogsListFilter();
             
             m_TagsFilterContainer.Clear();
             foreach (var tag in TagsFilter.Keys)
             {
                 var tagElement = CreateTagElement(tag);
                 m_TagsFilterContainer.Add(tagElement);
+            }
+        }
+        
+        /// <summary>
+        /// Apply all filters to log list (tags, search, built-in toggle)
+        /// </summary>
+        private void ApplyLogsListFilter()
+        {
+            var logHistory = StaticLogsCollector.logHistory;
+            foreach (var log in logHistory)
+            {
+                var visibleByTags = false;
+                if (TagsFilter.Count > 0)
+                {
+                    foreach (var tag in log.Tags)
+                    {
+                        if (TagsFilter.TryGetValue(tag, out var state))
+                        {
+                            if (state == 1)
+                            {
+                                visibleByTags = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    visibleByTags = true;
+                }
+                
+                var builtInFilter = StaticLogsCollector.isBuiltInLogEnabled || !log.IsBuiltInLog;
+
+                var visibleBySearch = builtInFilter && visibleByTags && (m_SearchState.Length == 0 || log.Text.Contains(m_SearchState));
+                
+                if (visibleByTags && builtInFilter && visibleBySearch)
+                {
+                    m_LogRepresentation[log.Id].style.display = DisplayStyle.Flex;
+                }
+                else
+                {
+                    m_LogRepresentation[log.Id].style.display = DisplayStyle.None;
+                }
             }
         }
 
