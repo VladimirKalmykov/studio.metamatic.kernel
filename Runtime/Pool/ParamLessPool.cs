@@ -2,12 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Metamatic.DevTools;
 using UnityEngine;
 
 namespace Metamatic
 {
-    public class ParamLessPool
+    public abstract class ParamLessPool
     {
+        #if DEBUG
+        public static int PoolsCount;
+        public static int SharedPoolsCount;
+
+        static ParamLessPool()
+        {
+            Monitoring.Create("ParamLessPool", "Total count", () => PoolsCount, PlayerLoopTiming.FixedUpdate);
+            Monitoring.Create("ParamLessPool", "Shared count", () => SharedPoolsCount, PlayerLoopTiming.FixedUpdate);
+        }
+#endif
     }
 
     public class ParamLessPool<T> : ParamLessPool, IDisposable
@@ -33,8 +44,10 @@ namespace Metamatic
             if (_SharedPool == null)
             {
                 var pool = _SharedPool = new ParamLessPool<T>(autoShrink: true, capacity: 0);
+                ParamLessPool.SharedPoolsCount++;
                 pool.OnPoolIsUseless += () =>
                 {
+                    ParamLessPool.SharedPoolsCount--;
                     /* Remove useless pool */
                     Debug.Log($"[POOL] Global pool of type {typeof(T)} is useless. Removing from global pool");
                     _SharedPool.Dispose();
@@ -237,6 +250,11 @@ namespace Metamatic
 
         public ParamLessPool()
         {
+            ParamLessPool.PoolsCount++;
+            m_OnDisposeHandler += () =>
+            {
+                ParamLessPool.PoolsCount--;
+            };
         }
 
         public ParamLessPool(int capacity = 0, int limit = Int32.MaxValue, bool autoShrink = false) : this()

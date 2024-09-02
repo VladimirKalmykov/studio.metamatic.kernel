@@ -8,16 +8,16 @@ namespace Metamatic.EditorTools
 {
     public abstract class AsyncVisualElement: VisualElement
     {
-        public AsyncVisualElement(CancellationToken cancellationToken): base()
+        public AsyncVisualElement(CancellationSignal signal): base()
         {
-            InternalInitializeAsync(cancellationToken);
+            InternalInitializeAsync(signal);
         }
         
-        private void InternalInitializeAsync(CancellationToken cancellationToken)
+        private void InternalInitializeAsync(CancellationSignal cancellationSignal)
         {
-            InitializeAsync(cancellationToken).Forget();
+            InitializeAsync(cancellationSignal).Forget();
         }
         
-        protected abstract UniTaskVoid InitializeAsync(CancellationToken cancellationToken);
+        protected abstract UniTaskVoid InitializeAsync(CancellationSignal signal);
     }
 }

@@ -143,6 +143,14 @@ namespace Metamatic
             
             return GetSource()?.ToUniTask(cancelOnCancellationRequest) ?? UniTask.CompletedTask;
         }
+        
+        public void ThrowIfCancellationRequested()
+        {
+            if (IsCancellationRequested)
+            {
+                throw new OperationCanceledException();
+            }
+        }
 
         private InternalCancellationSignalSource GetSource()
         {
@@ -234,6 +242,8 @@ namespace Metamatic
         public CancellationSignal Signal => new CancellationSignal(GetSource());
         // ReSharper disable once InconsistentNaming
         public bool IsCancellationRequested => GetSource()?.IsCancellationRequested ?? true;
+        // ReSharper disable once InconsistentNaming
+        public bool CanBeCancelled => m_InternalSource != null;
         
         internal CancellationSignalSource(InternalCancellationSignalSource source)
         {

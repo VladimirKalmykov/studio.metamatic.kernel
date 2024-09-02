@@ -9,7 +9,7 @@ namespace Metamatic.EditorTools
     {
         private readonly MicroState<T> m_Context;
         public MicroStateReadOnly<T> context => m_Context;
-        public AsyncVisualElementContextProvider(MicroState<T> context, CancellationToken cancellationToken): base(cancellationToken)
+        public AsyncVisualElementContextProvider(MicroState<T> context, CancellationSignal signal): base(signal)
         {
             m_Context = context;
         }

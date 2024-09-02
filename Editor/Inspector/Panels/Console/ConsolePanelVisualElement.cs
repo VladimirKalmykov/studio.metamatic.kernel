@@ -218,11 +218,11 @@ namespace Metamatic.EditorInspector
         private const string KLightStylePath = "Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/ConsoleDark.uss";
         private const string KDarkStylePath = "Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/ConsoleDark.uss";
         
-        public ConsolePanelVisualElement(CancellationToken cancellationToken) : base(cancellationToken)
+        public ConsolePanelVisualElement(CancellationSignal signal) : base(signal)
         {
         }
         
-        protected override async UniTaskVoid InitializeAsync(CancellationToken cancellationToken)
+        protected override async UniTaskVoid InitializeAsync(CancellationSignal signal)
         {
             
             
@@ -267,7 +267,7 @@ namespace Metamatic.EditorInspector
             m_Content.RegisterCallback<WheelEvent>(evt => OnUserScrollStart());
             
             /* Get player loop update */
-            using var playerLoopUpdate = AsyncUtils.PlayerLoopAction(FrameUpdate, cancellationToken: cancellationToken);
+            using var playerLoopUpdate = AsyncUtils.PlayerLoopAction(FrameUpdate, cancellationToken: signal);
             /* Details visible state */
             using var detailsVisibleListener = DetailsVisible.Subscribe(OnDetailsVisibleChanged);
             /* Listen for selected log changes */
@@ -298,7 +298,7 @@ namespace Metamatic.EditorInspector
             using var logEventListener = StaticLogsCollector.SubscribeToLogHistory(OnLogReceived);
             EditorGUI.hyperLinkClicked += EditorGUI_HyperLinkClicked;
 
-            await cancellationToken;
+            await signal;
             EditorGUI.hyperLinkClicked -= EditorGUI_HyperLinkClicked;
         }
 

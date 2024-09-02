@@ -8,30 +8,30 @@ namespace Metamatic.EditorTools
 {
     public abstract class AsyncEditorWindow: EditorWindow
     {
-        private CancellationTokenSource m_LifetimeCancellationTokenSource;
-        private CancellationTokenSource m_EnableCancellationTokenSource;
+        private CancellationSignalSource m_LifetimeCancellationTokenSource;
+        private CancellationSignalSource m_EnableCancellationTokenSource;
         private MicroState<bool> m_IsInitialized = new MicroState<bool>(false);
         private MicroState<bool> m_IsRendered = new MicroState<bool>(false);
         
-        public CancellationTokenSource lifetimeCancellationTokenSource
+        public CancellationSignalSource lifetimeCancellationTokenSource
         {
             get
             {
-                if (m_LifetimeCancellationTokenSource == null)
+                if (!m_LifetimeCancellationTokenSource.CanBeCancelled)
                 {
-                    m_LifetimeCancellationTokenSource = new CancellationTokenSource();
+                    m_LifetimeCancellationTokenSource = CancellationSignalSource.Create();
                 }
 
                 return m_LifetimeCancellationTokenSource;
             }
         }
-        public CancellationTokenSource enableCancellationTokenSource
+        public CancellationSignalSource enableCancellationTokenSource
         {
             get
             {
-                if (m_EnableCancellationTokenSource == null)
+                if (!m_EnableCancellationTokenSource.CanBeCancelled)
                 {
-                    m_EnableCancellationTokenSource = new CancellationTokenSource();
+                    m_EnableCancellationTokenSource = CancellationSignalSource.Create();
                 }
 
                 return m_EnableCancellationTokenSource;
@@ -40,47 +40,37 @@ namespace Metamatic.EditorTools
         
         private void Awake()
         {
-            InitializeAsync(InitializationReady, lifetimeCancellationTokenSource.Token).Forget();
+            InitializeAsync(InitializationReady, lifetimeCancellationTokenSource.Signal).Forget();
         }
 
         public void CreateGUI()
         {
-            CreateGUIAsync(CreateGuiReady, enableCancellationTokenSource.Token).Forget();
+            CreateGUIAsync(CreateGuiReady, enableCancellationTokenSource.Signal).Forget();
         }
 
         private void OnDisable()
         {
-            if (m_LifetimeCancellationTokenSource != null)
-            {
-                m_LifetimeCancellationTokenSource.Cancel();
-                m_LifetimeCancellationTokenSource.Dispose();
-                m_LifetimeCancellationTokenSource = null;
-            }
+            m_LifetimeCancellationTokenSource.TryCancel();
         }
 
         private void OnDestroy()
         {
-            if (m_LifetimeCancellationTokenSource != null)
-            {
-                m_LifetimeCancellationTokenSource.Cancel();
-                m_LifetimeCancellationTokenSource.Dispose();
-                m_LifetimeCancellationTokenSource = null;
-            }
+            m_LifetimeCancellationTokenSource.TryCancel();
         }
 
         private CancellationTokenAwaitable InitializationReady()
         {
             m_IsInitialized.value = true;
-            return new CancellationTokenAwaitable(lifetimeCancellationTokenSource.Token);
+            return new CancellationTokenAwaitable(lifetimeCancellationTokenSource.Signal);
         }
         
         private CancellationTokenAwaitable CreateGuiReady()
         {
             m_IsRendered.value = true;
-            return new CancellationTokenAwaitable(enableCancellationTokenSource.Token);
+            return new CancellationTokenAwaitable(enableCancellationTokenSource.Signal);
         }
         
-        protected abstract UniTaskVoid InitializeAsync(Func<CancellationTokenAwaitable> ready, CancellationToken cancellationToken);
-        protected abstract UniTaskVoid CreateGUIAsync(Func<CancellationTokenAwaitable> ready, CancellationToken cancellationToken);
+        protected abstract UniTaskVoid InitializeAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal);
+        protected abstract UniTaskVoid CreateGUIAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal);
     }
 }

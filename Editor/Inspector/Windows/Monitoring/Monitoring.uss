@@ -1,0 +1,62 @@
+.Panel {
+    flex-grow: 1;
+    min-height: 40px;
+    background-color: rgb(65, 65, 65);
+    align-items: stretch;
+    margin: 3px 6px 3px 3px;
+    border-radius: 6px;
+    border-bottom-width: 1px;
+    -unity-text-outline-color: rgba(38, 38, 38, 0);
+    -unity-text-outline-width: 0;
+    border-bottom-color: rgb(55, 55, 55);
+    border-left-color: rgb(55, 55, 55);
+    border-left-width: 1px;
+    border-right-width: 2px;
+    border-right-color: rgb(67, 67, 67);
+    min-width: 260px;
+    transition-property: all;
+    transition-duration: 0.45s;
+    transition-timing-function: ease;
+    transition-delay: 0s;
+    transform-origin: center;
+    translate: 0 0;
+    rotate: 0;
+    scale: 1 1;
+}
+
+.Row {
+    flex-grow: 1;
+    flex-direction: row;
+    padding-bottom: 0;
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+}
+
+.ScrollArea {
+    padding: 3px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: 0;
+    white-space: normal;
+}
+
+.KeyValue {
+    flex-grow: 1;
+    flex-direction: row;
+}
+
+.KeyValueLabel {
+    color: rgb(255, 255, 255);
+    margin-right: 12px;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-top: 0;
+    padding-left: 0;
+    margin-left: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.KeyValueValue {
+    flex-grow: 1;
+}

@@ -1,0 +1,10 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <engine:Template name="Row" src="project://database/Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Row.uxml?fileID=9197481963319205126&amp;guid=5aefd1a033b02094fae6cd4963b61276&amp;type=3#Row" />
+    <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Monitoring.uss?fileID=7433441132597879392&amp;guid=fa5316deac8f5bf47b6ef0fc0600a564&amp;type=3#Monitoring" />
+    <engine:VisualElement name="TopBar" style="flex-grow: 0; height: 30px; background-color: rgb(67, 67, 67);">
+        <engine:SliderInt label="Cols&#10;" value="42" high-value="4" name="SliderInt" style="color: rgb(255, 255, 255);" />
+    </engine:VisualElement>
+    <engine:ScrollView name="Content" class="ScrollArea">
+        <engine:Instance template="Row" name="Row" />
+    </engine:ScrollView>
+</engine:UXML>

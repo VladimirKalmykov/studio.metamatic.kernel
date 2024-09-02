@@ -1,0 +1,9 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Monitoring.uss?fileID=7433441132597879392&amp;guid=fa5316deac8f5bf47b6ef0fc0600a564&amp;type=3#Monitoring" />
+    <engine:VisualElement name="Panel" class="Panel">
+        <engine:VisualElement name="Header" style="flex-grow: 1; height: 28px; max-height: 28px; justify-content: center; padding-left: 14px; padding-right: 14px; border-bottom-width: 1px; border-bottom-color: rgb(71, 71, 71);">
+            <engine:Label text="Label" name="Title" style="font-size: 12px; -unity-font-style: bold; color: rgb(255, 255, 255); margin-top: 0; padding-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;" />
+        </engine:VisualElement>
+        <engine:VisualElement name="Content" style="flex-grow: 1; padding-top: 6px; padding-bottom: 6px; padding-right: 6px; padding-left: 6px;" />
+    </engine:VisualElement>
+</engine:UXML>
