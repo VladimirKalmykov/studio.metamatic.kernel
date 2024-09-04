@@ -57,6 +57,7 @@ namespace Metamatic
             if (source != null)
             {
                 source.OnCompleted(continuation, state, token);
+                return;
             }
             // TODO: Should we throw an exception here?
             Debug.LogWarning("[SafeTaskCompletionSource] Where are here. And what?"); // TODO: Remove this warning after testing.

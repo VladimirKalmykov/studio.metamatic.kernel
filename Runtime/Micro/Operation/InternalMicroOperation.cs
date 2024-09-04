@@ -23,7 +23,7 @@ namespace Metamatic
         [RuntimeInitializeOnLoadMethod]
         private static void Initialize()
         {
-            UILog.Add("MicroOperation", "Instances count", () => _InstanceCount);
+            Monitoring.Create("MicroOperation", "Instances count", () => _InstanceCount);
         }
 #endif
         public delegate UniTask AsyncAction(CancellationToken cancellationToken);

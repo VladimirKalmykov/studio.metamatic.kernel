@@ -608,7 +608,7 @@ namespace Metamatic
             if (m_SettingDebug)
             {
                 m_NextStateValidator.debug = true;
-                m_Debug_UILoggerDisposable = UILog.Add("Async state machine", "Validator",
+                m_Debug_UILoggerDisposable = Monitoring.Create("Async state machine", "Validator",
                     () => m_NextStateValidator.ToString());
             }
 #endif

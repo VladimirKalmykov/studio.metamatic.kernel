@@ -193,6 +193,7 @@ namespace Metamatic.UI {
             #if DEBUG
             if (debug)
             {
+                /*
                 UILog.Add("Swipe", "magnitudeRatio", () => magnitudeRatio);
                 UILog.Add("Swipe", "ratio", () => ratio);
                 UILog.Add("Swipe", "magnitude", () => magnitude);
@@ -200,6 +201,7 @@ namespace Metamatic.UI {
                 UILog.Add("Swipe", "allowInteractPointer", () => allowInteractPointer);
                 UILog.Add("Swipe", "Pointers count", () => m_PointerEnteredCount);
                 UILog.Add("Swipe", "Touchscreen support", () => IsTouchScreenActive());
+                */
             }
             #endif
         }
