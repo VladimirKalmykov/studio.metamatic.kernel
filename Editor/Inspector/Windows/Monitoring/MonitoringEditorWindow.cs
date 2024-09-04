@@ -11,7 +11,7 @@ namespace Metamatic.Inspector
     {
         [MenuItem ("Window/Metamatic/Monitoring")]
         public static void ShowWindow () {
-            GetWindow(typeof(MonitoringEditorWindow), false, "Metamatic Console");
+            GetWindow(typeof(MonitoringEditorWindow), false, "Metamatic Monitoring");
         }
         
         private VisualTreeAsset m_RowTemplate;
@@ -37,8 +37,7 @@ namespace Metamatic.Inspector
             
             /* Add row */
             var content = rootVisualElement.Q<ScrollView>("Content");
-            var row = m_RowElement = m_RowTemplate.CloneTree();
-            content.Add(row);
+            m_RowElement = content.Query<VisualElement>("Row").Last();
             
             /* Listen for monitoring data */
             using var observeGroups = Monitoring.ObserveGroups(OnGroupAdded);
@@ -54,8 +53,8 @@ namespace Metamatic.Inspector
         private async UniTaskVoid OnGroupAdded(Monitoring.Group group, CancellationSignal signal)
         {
             /* Add panel */
-            var panel = m_PanelTemplate.CloneTree();
-            m_RowElement.Add(panel);
+            m_PanelTemplate.CloneTree(m_RowElement);
+            var panel = m_RowElement.Query<VisualElement>("Panel").Last();
             panel.Q<Label>("Title").text = group.Name;
             /* Observe items */
             using var observeItems = group.ObserveItems((item, cancellationSignal) => OnItemAdded(panel, item, cancellationSignal));
@@ -66,11 +65,13 @@ namespace Metamatic.Inspector
         private async UniTaskVoid OnItemAdded(VisualElement panel, Monitoring.MonitoringItem item, CancellationSignal signal)
         {
             /* Add key value */
-            var keyValue = m_KeyValueTemplate.CloneTree();
-            panel.Q<VisualElement>("Content").Add(keyValue);
+            var panelContent = panel.Q<VisualElement>("Content");
+            m_KeyValueTemplate.CloneTree(panelContent);
+            var keyValue = panelContent.Query<VisualElement>("KeyValue").Last();
             keyValue.Q<Label>("Key").text = item.Key;
             var value = keyValue.Q<VisualElement>("Value");
             var drawer = DrawerVisualElement.Create(item.Type, false, signal);
+            await drawer.ReadyTask;
             value.Add(drawer);
             void UpdateHandler()
             {

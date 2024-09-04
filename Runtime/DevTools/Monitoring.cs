@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace Metamatic.DevTools
 {
@@ -63,7 +64,7 @@ namespace Metamatic.DevTools
             public static Group Create(string name)
             {
                 var group = ParamLessPool<Group>.GetShared();
-                group.Initialize();
+                group.Initialize(name);
                 return group;
             }
             public string Name;
@@ -73,9 +74,10 @@ namespace Metamatic.DevTools
             public int count => Items.Count;
             private event Action<MonitoringItem> OnItemAdded;
             
-            private void Initialize()
+            private void Initialize(string name)
             {
-                m_CancellationSignalSource = CancellationSignalSource.Create();
+                Name = name;
+                m_CancellationSignalSource = CancellationSignalSource.Create(name);
             }
             
             public DisposableAction Add<T>(string key, Func<T> accessor, PlayerLoopTiming timing = PlayerLoopTiming.Update)
@@ -131,6 +133,7 @@ namespace Metamatic.DevTools
             
             public void Return()
             {
+                Debug.Log("Cancel group 12345");
                 m_CancellationSignalSource.TryCancel();
                 Items.Clear();
                 ParamLessPool<Group>.ReturnShared(this);

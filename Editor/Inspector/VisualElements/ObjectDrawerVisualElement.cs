@@ -22,7 +22,7 @@ namespace Metamatic.Inspector
             m_Label.text = value.ToString();
         }
 
-        public override async UniTaskVoid OnRender(bool editable, CancellationSignal cancellationSignal)
+        public override async UniTask OnRender(Action ready, bool editable, CancellationSignal cancellationSignal)
         {
             /* This drawer can not be editable */
             m_Label = new Label
@@ -30,6 +30,7 @@ namespace Metamatic.Inspector
                 text = ""
             };
             Add(m_Label);
+            ready();
             await cancellationSignal;
             Remove(m_Label);
         }

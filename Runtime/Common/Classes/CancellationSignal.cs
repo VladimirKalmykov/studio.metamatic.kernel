@@ -185,8 +185,22 @@ namespace Metamatic
 
     public readonly struct CancellationSignalSource: IDisposable
     {
-        public static CancellationSignalSource Create() => new CancellationSignalSource(InternalCancellationSignalSource.Pool.Get());
-        
+        public static CancellationSignalSource Create(
+            #if DEBUG
+            string debugId = null
+            #endif
+            )
+        {
+            var icss = InternalCancellationSignalSource.Pool.Get();
+            #if DEBUG
+            if (debugId != null)
+            {
+                icss.debugId = debugId;
+            }
+            #endif
+            return new CancellationSignalSource(icss);
+        }
+
         public static CancellationSignalSource CreateLinked(params CancellationSignal[] signals)
         {
             /* First, check if all signals are not cancelled */
@@ -282,6 +296,10 @@ namespace Metamatic
     {
         internal static readonly ParamLessPool<InternalCancellationSignalSource> Pool = new(autoShrink: true, capacity: 10);
         
+        #if DEBUG
+        public string debugId = null;
+        #endif
+        
         // ReSharper disable once InconsistentNaming
         public bool IsCancellationRequested { get; private set; }
         // ReSharper disable once InconsistentNaming
@@ -298,6 +316,12 @@ namespace Metamatic
         
         private async UniTaskVoid FinalizeFromMainThread()
         {
+            #if DEBUG
+            if (debugId != null)
+            {
+                Debug.Log($"[CancellationSignalSource] Finalize {debugId}");
+            }
+            #endif
             await UniTask.SwitchToMainThread();
             if (Pool.IsBelongsToPool(this))
             {
@@ -316,6 +340,12 @@ namespace Metamatic
         /// <param name="isFinal">Is called from finalizer or dispose</param>
         internal void TryCancel(bool isFinal = false)
         {
+#if DEBUG
+            if (debugId != null)
+            {
+                Debug.Log($"[CancellationSignalSource] TryCancel {debugId}");
+            }
+#endif
             if (IsCancellationRequested) return;
             IsCancellationRequested = true;
             
@@ -366,7 +396,7 @@ namespace Metamatic
             {
                 return cancelOnCancellationRequest ? UniTask.FromCanceled() : UniTask.CompletedTask;
             }
-            var tcs = AutoResetUniTaskCompletionSource.Create();
+            var tcs = SafeTaskCompletionSource.Create();
             m_OnCancelled += (version) =>
             {
                 if (version != Version) return; // TODO: Do I need to check version?
@@ -400,6 +430,12 @@ namespace Metamatic
 
         public void Dispose()
         {
+#if DEBUG
+            if (debugId != null)
+            {
+                Debug.Log($"[CancellationSignalSource] Dispose {debugId}");
+            }
+#endif
             TryCancel(true);
             #if DEBUG
             if (Pool.IsBelongsToPool(this))

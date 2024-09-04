@@ -222,10 +222,8 @@ namespace Metamatic.EditorInspector
         {
         }
         
-        protected override async UniTaskVoid InitializeAsync(CancellationSignal signal)
+        protected override async UniTask InitializeAsync(Func<UniTask> ready, CancellationSignal signal)
         {
-            
-            
             /* Set height 100% */
             style.height = new StyleLength(Length.Percent(100));
             
@@ -298,7 +296,7 @@ namespace Metamatic.EditorInspector
             using var logEventListener = StaticLogsCollector.SubscribeToLogHistory(OnLogReceived);
             EditorGUI.hyperLinkClicked += EditorGUI_HyperLinkClicked;
 
-            await signal;
+            await ready();
             EditorGUI.hyperLinkClicked -= EditorGUI_HyperLinkClicked;
         }
 

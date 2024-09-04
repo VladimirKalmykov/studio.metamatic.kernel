@@ -28,7 +28,7 @@ namespace Metamatic.Inspector
             }
         }
 
-        public override async UniTaskVoid OnRender(bool editable, CancellationSignal cancellationSignal)
+        public override async UniTask OnRender(Action ready, bool editable, CancellationSignal cancellationSignal)
         {
             if (editable)
             {
@@ -37,10 +37,11 @@ namespace Metamatic.Inspector
             }
             else
             {
-                m_Label = new Label();
+                m_Label = new Label(); // This is a comment, it should be removed
                 Add(m_Label);
             }
 
+            ready();
             await cancellationSignal;
             if (editable)
             {
@@ -67,11 +68,6 @@ namespace Metamatic.Inspector
             }
             OnReleaseRender += Dispose;
             return new DisposableAction(Dispose);
-        }
-
-        protected override UniTaskVoid InitializeAsync(CancellationSignal signal)
-        {
-            throw new NotImplementedException();
         }
     }
 }

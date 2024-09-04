@@ -41,10 +41,11 @@ namespace Metamatic.Inspector
                     m_RenderCancellationSignalSource.TryCancel();
                     OnReleaseRender?.Invoke();
                     m_RenderCancellationSignalSource = CancellationSignalSource.Create();
-                    OnRender(editable, m_RenderCancellationSignalSource.Signal);
+                    OnRender(Empty, editable, m_RenderCancellationSignalSource.Signal);
                 }
             }
         }
+        private static void Empty() { }
         public T value
         {
             set => SetValue(value);
@@ -54,11 +55,16 @@ namespace Metamatic.Inspector
             m_Editable = editable;
         }
 
-        protected override async UniTaskVoid InitializeAsync(CancellationSignal signal)
+        protected override async UniTask InitializeAsync(Func<UniTask> ready, CancellationSignal signal)
         {
-            m_RenderCancellationSignalSource = CancellationSignalSource.Create();
-            OnRender(editable, m_RenderCancellationSignalSource.Signal);
-            await signal;
+            m_RenderCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
+            var renderReadyTask = SafeTaskCompletionSource.Create();
+            OnRender(() => renderReadyTask.TrySetResult(), m_Editable, m_RenderCancellationSignalSource.Signal)
+                .Then(() => renderReadyTask.TrySetResult())
+                .Catch(e => renderReadyTask.TrySetException(e))
+                .Forget();
+            await renderReadyTask.Task;
+            await ready();
             m_RenderCancellationSignalSource.TryCancel();
             OnReleaseRender?.Invoke();
         }
@@ -72,7 +78,7 @@ namespace Metamatic.Inspector
         }
         
         public abstract void SetValue(T value);
-        public abstract UniTaskVoid OnRender(bool editable, CancellationSignal cancellationSignal);
+        public abstract UniTask OnRender(Action ready, bool editable, CancellationSignal cancellationSignal);
         public abstract DisposableAction OnValueChanged(Action<T> action);
     }
 }

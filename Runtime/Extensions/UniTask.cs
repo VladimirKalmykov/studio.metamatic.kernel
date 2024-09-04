@@ -54,5 +54,21 @@ namespace Metamatic
         {
             return new MultipleAwaitableUniTask(task);
         }
+        
+        public static UniTask Then(this UniTask task, Action action)
+        {
+            return task.ContinueWith(action);
+        }
+        
+        public static async UniTask Catch(this UniTask task, Action<Exception> action)
+        {
+            try
+            {
+                await task;
+            } catch (Exception e)
+            {
+                action?.Invoke(e);
+            }
+        }
     }
 }
