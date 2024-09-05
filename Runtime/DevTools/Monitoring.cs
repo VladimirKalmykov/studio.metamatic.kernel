@@ -164,6 +164,7 @@ namespace Metamatic.DevTools
             {
                 await UniTask.SwitchToMainThread();
                 await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!m_MonitoringData.TryGetValue(group, out var groupData))
                 {
                     groupData = Group.Create(group);

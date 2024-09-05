@@ -1,15 +1,27 @@
 using Cysharp.Threading.Tasks;
+using Unity.Cinemachine;
 
 namespace Metamatic
 {
     using System;
     using System.Threading;
+    using Unity.Cinemachine;
     using UnityEngine;
 
     public class CameraController : AsyncBehaviour
     {
         [SerializeField] float m_Weight = 1.0f;
         public event Action<CameraController, float> onWeightChanged;
+        private CinemachineBrain m_CinemachineBrain;
+
+        public CinemachineBrain cinemachineBrain
+        {
+            get
+            {
+                if (m_CinemachineBrain == null) m_CinemachineBrain = GetComponent<CinemachineBrain>();
+                return m_CinemachineBrain;
+            }
+        }
         public new Camera camera { get; private set; }
 
         public float weight

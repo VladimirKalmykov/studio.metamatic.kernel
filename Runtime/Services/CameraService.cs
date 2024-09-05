@@ -1,5 +1,5 @@
-
 using Sirenix.OdinInspector;
+using Unity.Cinemachine;
 
 namespace Metamatic
 {
@@ -10,10 +10,87 @@ namespace Metamatic
     using UnityEngine;
 
     public class CameraService : Service
-    {   
+    {
+        public class ShakerSource : IDisposable
+        {
+            public static ShakerSource Create(float amplitude = 0f, float frequency = 0f)
+            {
+                var shaker = ParamLessPool<ShakerSource>.GetShared();
+                shaker.Amplitude = amplitude;
+                shaker.Frequency = frequency;
+                shaker.m_IsReleased = false;
+                return shaker;
+            }
+
+            public int version { get; private set; }
+            public float Amplitude;
+            public float Frequency;
+
+            private bool m_IsReleased;
+
+            public event Action OnReleased;
+
+            public void Release()
+            {
+                m_IsReleased = true;
+                OnReleased?.Invoke();
+                OnReleased = null;
+
+                unchecked
+                {
+                    version++;
+                }
+
+                ParamLessPool<ShakerSource>.ReturnShared(this);
+            }
+
+            public void Dispose()
+            {
+                if (!m_IsReleased)
+                {
+                    Console.Verbose("Shaker", "Shaker was not released before disposal.");
+                }
+            }
+        }
+
+        public readonly struct Shaker : IDisposable
+        {
+            private readonly ShakerSource m_Source;
+            private readonly int m_Version;
+
+            public Shaker(ShakerSource source)
+            {
+                this.m_Source = source;
+                this.m_Version = source.version;
+            }
+
+            public void UpdateProperties(float amplitude, float frequency)
+            {
+                if (m_Source.version != m_Version) return;
+                m_Source.Amplitude = amplitude;
+                m_Source.Frequency = frequency;
+            }
+
+            public void Dispose()
+            {
+                if (m_Source.version != m_Version) return;
+                m_Source.Release();
+            }
+        }
+        
+
         private readonly MicroState<CameraController> m_CameraController = new();
         private Dictionary<CameraController, IDisposable> m_CameraWeightSubscriptions = new();
-        
+
+        /// <summary>
+        /// Contains all active shakers that are currently shaking the camera.
+        /// </summary>
+        private HashSet<ShakerSource> m_Shakers = new();
+
+        public Action<CancellationSignal> OnShakersActivated;
+        public float shakeAmplitude { get; private set; }
+        public float shakeFrequency { get; private set; }
+
         [ShowInInspector]
         public new Camera camera
         {
@@ -33,6 +110,8 @@ namespace Metamatic
             await ready();
         }
 
+        #region Public methods
+
         public UniTask<CameraController> WaitForCamera(CancellationSignal signal)
         {
             return m_CameraController.WaitUntilValueIsNotNull(signal);
@@ -41,6 +120,76 @@ namespace Metamatic
         public DisposableAction SubscribeToMainCamera(Action<CameraController> action)
         {
             return m_CameraController.Subscribe(action);
+        }
+
+        public ICinemachineCamera GetVirtualCamera()
+        {
+            if (m_CameraController.value == null) return null;
+            return m_CameraController.value.cinemachineBrain.ActiveVirtualCamera;
+        }
+
+        public Shaker Shake(float amplitude, float frequency)
+        {
+            var shakerSource = ShakerSource.Create(amplitude, frequency);
+            m_Shakers.Add(shakerSource);
+            TryStartShakeComposite().Forget();
+            shakerSource.OnReleased += () => { m_Shakers.Remove(shakerSource); };
+            return new Shaker(shakerSource);
+        }
+
+        public void ShakeFor(float amplitude, float frequency, float duration, float extinctionDuration, CancellationSignal signal)
+        {
+            var shaker = Shake(amplitude, frequency);
+            UniTask.RunOnThreadPool(async () =>
+            {
+                try
+                {
+                    await UniTask.Delay(TimeSpan.FromSeconds(duration), cancellationToken: signal);
+                    if (extinctionDuration > 0f)
+                    {
+                        var startTime = Time.time;
+                        await UniTask.WaitUntil(() =>
+                        {
+                            if (signal.IsCancellationRequested) return true;
+                            var progress = (Time.time - startTime) / extinctionDuration;
+                            shaker.UpdateProperties(amplitude * (1f - progress), frequency);
+                            return Time.time - startTime >= extinctionDuration;
+                        });
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignored
+                }
+                finally
+                {
+                    await UniTask.SwitchToMainThread();
+                    shaker.Dispose();
+                }
+            }, cancellationToken: signal, configureAwait: true).Forget();
+        }
+
+        #endregion
+
+        private async UniTaskVoid TryStartShakeComposite()
+        {
+            if (m_Shakers.Count == 0) return;
+            if (m_Shakers.Count == 1)
+            {
+                var css = CancellationSignalSource.Create();
+                OnShakersActivated?.Invoke(css.Signal);
+                await UniTask.WaitUntil(() =>
+                {
+                    foreach (var shaker in m_Shakers)
+                    {
+                        shakeAmplitude = Mathf.Max(shaker.Amplitude, shakeAmplitude);
+                        shakeFrequency = Mathf.Max(shaker.Frequency, shakeFrequency);
+                    }
+
+                    return m_Shakers.Count == 0;
+                });
+                css.TryCancel();
+            }
         }
 
         private void HandlerCamerasAnnounce(CameraController[] announcedCameras)
@@ -83,5 +232,4 @@ namespace Metamatic
             RecalculateMainCamera();
         }
     }
-
 }

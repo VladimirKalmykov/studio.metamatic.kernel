@@ -6,7 +6,12 @@ namespace Metamatic
     public static class MacroEvent<T>
     {
         private static event System.Action<T, CancellationSignal> Event;
-        public static void Emit(T type, CancellationSignal cancellationSignal = default) => Event?.Invoke(type, cancellationSignal);
+
+        public static void Emit(T type, CancellationSignal cancellationSignal = default)
+        {
+            Console.Info("MacroEvent", typeof(T).Name, $"Emit {type}");
+            Event?.Invoke(type, cancellationSignal);
+        }
         
         public static DisposableAction Subscribe(System.Action<T, CancellationSignal> action)
         {

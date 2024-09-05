@@ -12,7 +12,8 @@
         "Unity.Mathematics",
         "Unity.2D.Animation.Runtime",
         "Animancer",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
