@@ -89,13 +89,13 @@ namespace Metamatic
             }).Forget();
         }
         
-        private static void OnMetamaticLogReceived(string text, string stackTrace, Console.LogLevel logLevel)
+        private static void OnMetamaticLogReceived(string text, string[] tags, string stackTrace, Console.LogLevel logLevel)
         {
             if ((MetamaticConsolePersistentLogLevel & logLevel) != logLevel)
             {
                 return;
             }
-            WriteLog($"[${logLevel.ToString()}] {text}");
+            WriteLog($"[${logLevel.ToString()}]{Console.CompileMessageWithTags(tags, text)}");
         }
         
         private static void OnBuiltInLogReceived(string condition, string stackTrace, LogType type)

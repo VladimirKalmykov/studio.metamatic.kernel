@@ -17,10 +17,39 @@ namespace Metamatic.EditorInspector
         public class LogLine : VisualElement
         {
             private static VisualTreeAsset m_LineTemplate;
+            private static Texture2D m_UnityLogo;
+            private static Texture2D m_MetamaticLogo;
+            private static Texture2D unityLogo
+            {
+                get
+                {
+                    if (m_UnityLogo == null)
+                    {
+                        m_UnityLogo = AssetDatabase.LoadAssetAtPath<Texture2D>(UnityLogoPath);
+                    }
+                    return m_UnityLogo;
+                }
+            }
+            private static Texture2D metamaticLogo
+            {
+                get
+                {
+                    if (m_MetamaticLogo == null)
+                    {
+                        m_MetamaticLogo = AssetDatabase.LoadAssetAtPath<Texture2D>(MetamaticLogoPath);
+                    }
+                    return m_MetamaticLogo;
+                }
+            }
             private VisualElement m_Tags;
             private Label m_Content;
             private LogMetadata m_Metadata;
             private ConsolePanelVisualElement m_ConsolePanel;
+
+            private const string MetamaticLogoPath =
+                "Packages/studio.metamatic.kernel/Editor/Sprites/metamatic-logo-32.png";
+            private const string UnityLogoPath = "Packages/studio.metamatic.kernel/Editor/Sprites/unity-logo-32.png";
+            
             public LogLine(ConsolePanelVisualElement consolePanel, LogMetadata metadata): base()
             {
                 m_ConsolePanel = consolePanel;
@@ -31,6 +60,10 @@ namespace Metamatic.EditorInspector
                 }
                 m_LineTemplate.CloneTree(this);
             
+                /* Icon */
+                var icon = this.Query<VisualElement>("Icon").First();
+                icon.style.backgroundImage = metadata.IsBuiltInLog ? unityLogo : metamaticLogo;
+                
                 /* Content */
                 m_Content = this.Query<Label>("Content").First();
                 m_Content.text = metadata.Text;
@@ -377,35 +410,40 @@ namespace Metamatic.EditorInspector
         {
             /* Find paths and replace them with clickable links */
             var formatted = "";
-            var lines = stackTrace.Split('\n');
-            foreach (var line in lines)
+            var edgeSymbolIndex = 0;
+            formatted = stackTrace;
+            while (true)
             {
-                var match = line.IndexOf("(at ", StringComparison.Ordinal);
+                //d__47:MoveNext () (at D:/Gamedev/Projects/ClickTower/ClickTower6000/Assets/ClickTower2024/Scripts/Controllers/StrongPumpkin/StrongPumpkinMechanicsCharacterController.cs:456)
+                var match = formatted.IndexOf("(at ", edgeSymbolIndex, StringComparison.Ordinal);
                 if (match >= 0)
                 {
+                    edgeSymbolIndex = match + 4;
                     var start = match + 4;
-                    var end = line.IndexOf(")", start + 4, StringComparison.Ordinal);
+                    var end = formatted.IndexOf(")", start + 4, StringComparison.Ordinal);
                     if (end > start)
                     {
-                        var path = line.Substring(start, end - start);
+                        var path = formatted.Substring(start, end - start);
                         var parts = path.Split(':');
-                        if (parts.Length != 2)
+                        if (parts.Length >= 2)
                         {
-                            formatted += line + "\n";
-                            continue;
+                            /* Filename should be formed by joining all parts except last */
+                            var filename = string.Join(":", parts.Take(parts.Length - 1));
+                            var lineNumber = parts[^1];
+                            // <color=#40a0ff><link="href='./Packages/studio.metamatic.kernel/Runtime/Services/InputService.cs' line='104'">./Packages/studio.metamatic.kernel/Runtime/Services/InputService.cs:104</link></color>
+                            var clickablePath = $"<color=#40a0ff><link=\"href='{filename}' line='{lineNumber}'\">{path}</link></color>";
+                            /* Replace with clickable path using start and end indexes */
+                            var nextLine = formatted.Remove(start, end - start);
+                            formatted = nextLine.Insert(start, clickablePath);
+                            edgeSymbolIndex = start + clickablePath.Length;
                         }
-                        var filename = parts[0];
-                        var lineNumber = parts[1];
-                        // <color=#40a0ff><link="href='./Packages/studio.metamatic.kernel/Runtime/Services/InputService.cs' line='104'">./Packages/studio.metamatic.kernel/Runtime/Services/InputService.cs:104</link></color>
-                        var clickablePath = $"<color=#40a0ff><link=\"href='{filename}' line='{lineNumber}'\">{path}</link></color>";
-                        /* Replace with clickable path using start and end indexes */
-                        var nextLine = line.Remove(start, end - start);
-                        nextLine = nextLine.Insert(start, clickablePath);
-                        formatted += nextLine + "\n";
-                        continue;
+                        
                     }
                 }
-                formatted += line + "\n";
+                else
+                {
+                    break;
+                }
             }
 
             return formatted;

@@ -24,10 +24,10 @@ namespace Metamatic.EditorInspector
         
         static StaticLogsCollector()
         {
+            #if DEBUG
             SubscribeToSources();
             BuiltInLogEnabled.value = PlayerPrefs.GetInt("MetamaticConsole_BuiltInLogEnabled", 1) == 1;
-            m_Timer = new  Timer((state) => OnTimerCheck(), null,
-                10000, 10000);
+            #endif
         }
 
         private static void SubscribeToSources()
@@ -42,23 +42,9 @@ namespace Metamatic.EditorInspector
             Console.OnLog -= OnMetamaticLogReceived;
         }
         
-        /// <summary>
-        /// Timer check for subscription existence. If no subscribers then unsubscribe from all log sources.
-        /// </summary>
-        private static void OnTimerCheck()
+        private static void OnMetamaticLogReceived(string text, string[] tags, string stackTrace, Console.LogLevel logLevel)
         {
-            if (OnLogReceived == null)
-            {
-                UnsubscribeFromSources();
-                m_Timer.Dispose();
-                m_LogHistory.Clear();
-            }
-        }
-        
-        private static void OnMetamaticLogReceived(string text, string stackTrace, Console.LogLevel logLevel)
-        {
-            var (extractedTags, textWithoutTags) = ExtractTagsFromText(text, logLevel.ToString());
-            var logMetadata = new LogMetadata(textWithoutTags, extractedTags, false, stackTrace);
+            var logMetadata = new LogMetadata(text, tags, false, stackTrace);
             m_LogHistory.Add(logMetadata);
             OnLogReceived?.Invoke(logMetadata);
         }
@@ -118,11 +104,7 @@ namespace Metamatic.EditorInspector
             {
                 onLogReceived(metadata);
             }
-
-            if (OnLogReceived == null)
-            {
-                SubscribeToSources();
-            }
+            
             OnLogReceived += Handler;
             return new DisposableAction(() => OnLogReceived -= Handler);
         }

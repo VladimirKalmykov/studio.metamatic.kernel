@@ -319,7 +319,7 @@ namespace Metamatic
             #if DEBUG
             if (debugId != null)
             {
-                Debug.Log($"[CancellationSignalSource] Finalize {debugId}");
+                Console.Verbose("CancellationSignalSource", $"Finalize {debugId}");
             }
             #endif
             await UniTask.SwitchToMainThread();
@@ -329,7 +329,7 @@ namespace Metamatic
             }
             else
             {
-                Debug.LogWarning("CancellationSignalSource was not disposed");
+                Console.Warning("CancellationSignalSource", "Was not disposed properly");
                 Dispose();
             }
         }

@@ -2,7 +2,9 @@
     <Style src="project://database/Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/ConsoleDark.uss?fileID=7433441132597879392&amp;guid=c6ec830d7dbe4e72bd0373ab502e9db2&amp;type=3#ConsoleDark" />
     <engine:VisualElement name="Line" class="Line" style="flex-direction: column;">
         <engine:VisualElement name="Message" style="flex-grow: 1; flex-direction: row;">
-            <engine:VisualElement name="Icon" class="LineIcon" />
+            <engine:VisualElement name="Affilation" class="LineIcon" style="justify-content: center;">
+                <engine:VisualElement name="Icon" style="flex-grow: 0; width: 16px; height: 16px; background-image: url(&quot;project://database/Assets/Plugins/Animancer/Internal/Editor/Animancer%20Icon.png?fileID=2800000&amp;guid=d4e06a71fc03595429cac47cd385c4c1&amp;type=3#Animancer Icon&quot;);" />
+            </engine:VisualElement>
             <engine:VisualElement name="Tags" class="Tags">
                 <engine:Label text="Label" class="Tag" />
             </engine:VisualElement>

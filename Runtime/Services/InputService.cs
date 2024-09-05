@@ -101,7 +101,7 @@ namespace Metamatic
 
         private void InternalOnPlayerJoined(PlayerInput playerInput)
         {
-            Debug.Log($"Player joined: {playerInput.playerIndex}");
+            global::Metamatic.Console.Info("Player", $"Joined: {playerInput.playerIndex}");
             
             playerInput.camera = m_CameraService.camera;
             m_PlayerInputs.Add(playerInput);
@@ -110,7 +110,7 @@ namespace Metamatic
 
         private void InternalOnPlayerLeft(PlayerInput playerInput)
         {
-            Debug.Log($"Player left: {playerInput.playerIndex}");
+            Console.Info("Player", $"Left: {playerInput.playerIndex}");
             m_PlayerInputs.Remove(playerInput);
             OnPlayerLeft?.Invoke(playerInput);
         }

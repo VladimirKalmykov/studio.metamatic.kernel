@@ -190,7 +190,7 @@ namespace Metamatic.DevTools
             }
             catch (Exception e)
             {
-                Console.Exception(e);
+                Console.Exception("Monitoring", e);
             }
             finally
             {

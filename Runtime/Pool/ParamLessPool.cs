@@ -163,10 +163,10 @@ namespace Metamatic
             _BackgroundTrackingInquiryCount++;
             if (!_BackgroundTimeIsEnabled)
             {
-                Console.Log($"[AUTO-SHRINK] Enabling background tracking.", Console.LogLevel.Verbose);
+                Console.Log("ParamLessPool", "AutoShrink", $"Enabling background tracking.", Console.LogLevel.Verbose);
                 EnableBackgroundTracking();
             }
-            Console.Log($"[AUTO-SHRINK] Subscribed to auto shrink event. Current subscribers: {_BackgroundTrackingInquiryCount}", Console.LogLevel.Verbose);
+            Console.Log("ParamLessPool", "AutoShrink", $"Subscribed to auto shrink event. Current subscribers: {_BackgroundTrackingInquiryCount}", Console.LogLevel.Verbose);
 
             m_NextShrinkTime = Time.time + DefaultShrinkingPeriod;
 
@@ -196,7 +196,7 @@ namespace Metamatic
         {
             if (_BackgroundTimeIsEnabled)
             {
-                Console.Error("[AUTO-SHRINK] Cannot enable auto shrink for global pool twice");
+                Console.Error("ParamLessPool", "AutoShrink", "Cannot enable auto shrink for global pool twice");
                 return;
             }
 
@@ -207,7 +207,7 @@ namespace Metamatic
 
         private void DisableBackgroundTracking()
         {
-            Console.Verbose($"[AUTO-SHRINK] Disabling background tracking.");
+            Console.Verbose("ParamLessPool", "AutoShrink", $"Disabling background tracking.");
             _BackgroundTimeIsEnabled = false;
             m_BackgroundRecheckTimer?.Dispose();
         }
@@ -285,7 +285,7 @@ namespace Metamatic
         ~ParamLessPool()
         {
             #if DEBUG
-            Console.Error($"[POOL] ParamLessPool<${typeof(T)}> is not disposed properly. Use Dispose method to release resources.");
+            Console.Error("ParamLessPool", $"ParamLessPool<${typeof(T)}> is not disposed properly. Use Dispose method to release resources.");
             #endif
             DisposeFromMainThread().Forget();
         }
@@ -301,21 +301,20 @@ namespace Metamatic
                 case ShrinkTimestampType.Analysis:
                     m_FruitBasket.SetCount(OutOfPoolCount, Time.time);
                     #if DEBUG
-                    Console.Verbose($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
+                    Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
                     #endif
                     break;
                 case ShrinkTimestampType.Shrinking:
                     var maxCount = m_FruitBasket.GetMaxCount();
                     #if DEBUG
-                    Console.Verbose(
-                        $"[AUTOSHRINK] ParamLessPool<${typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount})");
+                    Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount})");
                     #endif
                     var countInPool = m_ObjectsInPool.Count;
                     var countToRemove = (countInPool + OutOfPoolCount) - maxCount;
                     if (countToRemove > 0 && countToRemove >= countInPool)
                     {
                         #if DEBUG
-                        Console.Verbose($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> decided to release {countToRemove} objects from pool");
+                        Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> decided to release {countToRemove} objects from pool");
                         #endif
                         for (var i = 0; i < countToRemove; i++)
                         {
@@ -333,7 +332,7 @@ namespace Metamatic
                     if (maxCount == 0 && m_ObjectsInPool.Count == 0 && OutOfPoolCount == 0)
                     {
                         #if DEBUG
-                        Console.Verbose($"[AUTOSHRINK] ParamLessPool<${typeof(T)}> is useless. Triggering OnPoolIsEmpty event");
+                        Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> is useless. Triggering OnPoolIsEmpty event");
                         #endif
                         OnPoolIsUseless?.Invoke();
                     }
@@ -419,14 +418,14 @@ namespace Metamatic
             /* Check released object is not present in pool */
             if (m_ObjectsInPool.Contains(obj))
             {
-                global::Metamatic.Console.Error("Object is in pool, you can not release. Get it from pool first.");
+                global::Metamatic.Console.Error("ParamLessPool", "Object is in pool, you can not release. Get it from pool first.");
                 return;
             }
 #endif
             /* Check that released object is exists outside the pool */
             if (!m_OutOfPoolHashes.Contains(obj.GetHashCode()))
             {
-                global::Metamatic.Console.Error("Object is not belong to this pool");
+                global::Metamatic.Console.Error("ParamLessPool", "Object is not belong to this pool");
                 return;
             }
 
