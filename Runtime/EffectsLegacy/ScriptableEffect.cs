@@ -10,7 +10,7 @@ namespace Metamatic.Effects
     {
         
     }
-    public abstract class ScriptableEffect: ScriptableObject, IEffect
+    public abstract class ScriptableEffect: ScriptableObject, IEffectLegacy
     {
         public abstract string GetEffectName();
         
@@ -32,7 +32,7 @@ namespace Metamatic.Effects
     }
     
     public abstract class ScriptableEffect<TEffector, TProps, TResult> : ScriptableEffect, IEffect<TEffector, TProps, TResult>
-        where TEffector: Effector
+        where TEffector: EffectorLegacy
         where TProps: struct
     {
         public UniTask InternalRunEffect(IEffect<TEffector, TProps, TResult>.EffectExecutionContext executionContext,
@@ -105,14 +105,14 @@ namespace Metamatic.Effects
     }
     
     public abstract class ScriptableEffect<TEffector, TProps> : ScriptableEffect<TEffector, TProps, object>
-        where TEffector: Effector
+        where TEffector: EffectorLegacy
         where TProps: struct
     {
         
     }
     
     public abstract class ScriptableEffect<TEffector> : ScriptableEffect<TEffector, NoEffectProps, object>
-        where TEffector: Effector
+        where TEffector: EffectorLegacy
     {
         
     }
@@ -135,7 +135,7 @@ namespace Metamatic.Effects
     /// </summary>
     [System.Serializable]
     public class AssetReferenceScriptableEffect<TEffector, TState, TResult> : AssetReferenceT<ScriptableEffect<TEffector, TState, TResult>>
-    where TEffector : Effector
+    where TEffector : EffectorLegacy
     where TState : struct
     {
         /// <summary>
@@ -147,7 +147,7 @@ namespace Metamatic.Effects
     
     [System.Serializable]
     public class AssetReferenceScriptableEffect<TEffector, TProps> : AssetReferenceT<ScriptableEffect<TEffector, TProps>>
-        where TEffector : Effector
+        where TEffector : EffectorLegacy
         where TProps : struct
     {
         /// <summary>

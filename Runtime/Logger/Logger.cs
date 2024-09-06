@@ -1,14 +1,16 @@
-﻿using Metamatic.Exceptions;
+﻿using System;
+using Metamatic.Exceptions;
 using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Use Console.Log instead", true)]
     public class Logger
     {
         private static bool _Initialized;
         /* Run this method in the beginning of the game */
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static async void Initialization()
+        private static void Initialization()
         {
             if (_Initialized)
             {

@@ -2,7 +2,7 @@ using UnityEditor;
 
 namespace Metamatic.Effects
 {
-    [CustomEditor(typeof(Effector), true)]
+    [CustomEditor(typeof(EffectorLegacy), true)]
     [RequireEditorComponent(typeof(EffectorHeaderEditorComponent))]
     [RequireEditorComponent(typeof(EffectorListEffectExecutionsEditorComponent))]
     [RequireEditorComponent(typeof(StandartGUIEditorComponent))]

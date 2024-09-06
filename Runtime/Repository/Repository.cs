@@ -169,7 +169,7 @@ namespace Metamatic
         public readonly VersionControlStorageDriver inMemoryStorage;
         public VersionControlStorageDriver deviceStorage { get; private set; }
         public VersionControlStorageDriver remoteStorage { get; private set; }
-        public CancellationToken disposeToken => m_DisposeCancellationTokenSource.Token;
+        public CancellationSignal disposeToken => m_DisposeCancellationSignalSource.Signal;
         #endregion
         
         #region Private properties
@@ -179,7 +179,7 @@ namespace Metamatic
         private readonly Dictionary<(Type, string), Store> m_Stores = new ();
         private readonly List<VersionControlStorageDriver> m_Drivers = new ();
         public IReadOnlyList<VersionControlStorageDriver> drivers => m_Drivers.AsReadOnly();
-        private CancellationTokenSource m_DisposeCancellationTokenSource = new ();
+        private CancellationSignalSource m_DisposeCancellationSignalSource = CancellationSignalSource.Create();
         public DataSynchronizer synchronizer { get; private set; }
         private event Action<Store> OnAddStore;
         private event Action<Store> OnRemoveStore;
@@ -200,7 +200,7 @@ namespace Metamatic
             Initialization(disposeToken);
         }
         
-        private async void Initialization(CancellationToken token)
+        private async void Initialization(CancellationSignal signal)
         {
             /* Add memory storage to the list of storages */
             m_Drivers.Add(inMemoryStorage);
@@ -213,7 +213,7 @@ namespace Metamatic
             /* Add storages synchronizer */
             synchronizer = new DataSynchronizer(this);
             /* Subscribe to events */
-            using var savepointEvent = m_AutoSync
+            var savepointEvent = m_AutoSync
                 ? Dispatcher.global.Subscribe<SystemEvent>(evt =>
                 {
                     if (evt == SystemEvent.Savepoint)
@@ -222,7 +222,8 @@ namespace Metamatic
                     }
                 })
                 : DisposableAction.Empty;
-            await token;
+            await signal;
+            savepointEvent.Dispose();
         }
 
         /// <summary>
@@ -251,10 +252,10 @@ namespace Metamatic
             return new ProxyStore<T>((Store<T>)m_Stores[key]);
         }
 
-        public async UniTask<IStore<T>> CreateStore<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationToken cancellationToken)
+        public async UniTask<IStore<T>> CreateStore<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationSignal cancellationSignal)
         {
             var store = CreateStore<T>(address, getDefaultValue);
-            await store.WhenSynchronized(cancellationToken);
+            await store.WhenSynchronized(cancellationSignal);
             return store;
         }
         
@@ -262,13 +263,13 @@ namespace Metamatic
         /// Get store asynchronously. It will wait until store will be created and synchronized. To create store use CreateStore method.
         /// </summary>
         /// <param name="address"></param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="cancellationSignal"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public async UniTask<IStore<T>> GetStore<T>(string address, CancellationToken cancellationToken)
+        public async UniTask<IStore<T>> GetStore<T>(string address, CancellationSignal cancellationSignal)
         {
-            var store = await GetStoreInternal<T>(address, cancellationToken);
-            await store.WhenSynchronized(cancellationToken);
+            var store = await GetStoreInternal<T>(address, cancellationSignal);
+            await store.WhenSynchronized(cancellationSignal);
             return store;
         }
         
@@ -276,10 +277,10 @@ namespace Metamatic
         /// TODO: Consider refactoring of subscription mechanism, it may be more efficient if it will use Dictionary (Type, string) key
         /// </summary>
         /// <param name="address"></param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="cancellationSignal"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        private UniTask<IStore<T>> GetStoreInternal<T>(string address, CancellationToken cancellationToken)
+        private UniTask<IStore<T>> GetStoreInternal<T>(string address, CancellationSignal cancellationSignal)
         {
             if (m_Stores.TryGetValue((typeof(T), address), out var store))
             {
@@ -291,7 +292,7 @@ namespace Metamatic
             {
                 if (store is Store<T> typedStore && typedStore.address == address)
                 {
-                    if (cancellationToken.IsCancellationRequested)
+                    if (cancellationSignal.IsCancellationRequested)
                     {
                         return;
                     }
@@ -300,7 +301,7 @@ namespace Metamatic
                 }
             };
             OnAddStore += handler;
-            cancellationToken.Register(() =>
+            cancellationSignal.Register(() =>
             {
                 OnAddStore -= handler;
                 taskCompletionSource.TrySetCanceled();
@@ -321,14 +322,16 @@ namespace Metamatic
         /// <summary>
         /// Sync all stores
         /// </summary>
-        /// <param name="cancellationToken"></param>
-        public void SyncAll(CancellationToken cancellationToken = default)
+        /// <param name="cancellationSignal"></param>
+        public void SyncAll(CancellationSignal cancellationSignal = default)
         {
-            Logger.Log("Sync all stores");
-            var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(disposeToken, cancellationToken);
+            #if METAMATIC_VERBOSE_LOG
+            Console.Verbose("Repository", "Sync all stores");
+            #endif
+            var combinedCancellation = CancellationSignalSource.CreateLinked(disposeToken, cancellationSignal);
             foreach (var store in m_Stores.Values)
             {
-                store.Sync(combinedCancellation.Token).Forget();
+                store.Sync(combinedCancellation.Signal).Forget();
             }
         }
         
@@ -354,7 +357,7 @@ namespace Metamatic
                     }
                     else
                     {
-                        Debug.LogError("Source class not found");
+                        global::Metamatic.Console.Error("Repository", $"Source class {platform.remoteStorage.storage} not found");
                     }
                 }
                 
@@ -388,8 +391,7 @@ namespace Metamatic
         {
             if (m_Disposed) return;
             m_Disposed = true;
-            m_DisposeCancellationTokenSource.Cancel();
-            m_DisposeCancellationTokenSource.Dispose();
+            m_DisposeCancellationSignalSource.TryCancel();
             GC.SuppressFinalize(this);
         }
 

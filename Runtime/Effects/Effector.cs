@@ -1,113 +1,39 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
-using Action = System.Action;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic.Effects
-{   
-    public class Effector : MonoBehaviour
+{
+    public sealed class Effector
     {
-        public event Action OnBeforeDestroy;
-        public readonly List<IEffect.EffectExecutionContext> effectExecutions = new List<IEffect.EffectExecutionContext>();
-        public readonly Dictionary<string, EffectsChannel> channels = new Dictionary<string, EffectsChannel>();
+        private readonly HashSet<IEffect> m_Effects = new HashSet<IEffect>();
+        public event Action<IEffect> OnEffectAdded;
 
-        // public Dispatcher dispatcher
-        // {
-        //     get
-        //     {
-        //         return m_Dispatcher == null ? (m_Dispatcher = GetComponent<Dispatcher>()) : m_Dispatcher;
-        //     }
-        // }
-        private static Effector _globalEffector;
-        /// <summary>
-        /// Reference to the global effector
-        /// </summary>
-        public static Effector global => _globalEffector ??= new GameObject("__EFFECTOR__").AddComponent<Effector>();
-
-
-#if UNITY_EDITOR
-        public event System.Action<EffectsChannel[]> editor_OnChannelsChange;
-        public void editor_SubscribeChannels(System.Action<EffectsChannel[]> handler)
+        public IEffect Apply(IEffect effect)
         {
-            handler(channels.Values.ToArray());
-            editor_OnChannelsChange += handler;
+            InternalApply(effect).Forget();
+            return effect;
         }
         
-        public void editor_UnsubscribeChannels(System.Action<EffectsChannel[]> handler)
+        public DisposableAction Subscribe(Action<IEffect> action)
         {
-            editor_OnChannelsChange -= handler;
-        }
-
-        protected void editor_EmitChannelsChange()
-        {
-            editor_OnChannelsChange?.Invoke(channels.Values.ToArray());
-        }
-        #endif
-        
-        private void OnDestroy()
-        {
-            OnBeforeDestroy?.Invoke();
-        }
-        
-        private EffectsChannel m_CommonChannel;
-
-        public EffectsChannel commonChannel
-        {
-            get
+            OnEffectAdded += action;
+            foreach (var effect in m_Effects)
             {
-                if (m_CommonChannel == null)
-                {
-                    m_CommonChannel = CreateChannel(this, "Default");
-                }
-
-                return m_CommonChannel;
+                action(effect);
             }
-        }
-
-        public Effector target => this;
-
-        private EffectsChannel CreateChannel(Behaviour owner, string debugName)
-        {
-            var channel = new EffectsChannel(this, owner, debugName);
-            channels.Add(debugName, channel);
-#if UNITY_EDITOR
-            editor_EmitChannelsChange();
-#endif
-            return channel;
-        }
-
-        public EffectsChannel TouchChannel(string channelName)
-        {
-            EffectsChannel channel = null;
-            if (!channels.TryGetValue(channelName, out channel))
-            {
-                return CreateChannel(this, channelName);
-            }
-
-            return channel;
+            return new DisposableAction(() => OnEffectAdded -= action);
         }
         
-        /*[Obsolete("Apply effects without props is obsolete", true)]
-        public EffectCancellableOperationAwaiter ApplyEffect(IEffect<TTarget> effect)
+        private async UniTaskVoid InternalApply(IEffect effect)
         {
-            return m_CommonChannel.Add(effect);
-        }*/
-
-        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
-        {
-            return commonChannel.Add(effect, props);
-        }
-        
-        /// <summary>
-        /// Cancel all effects
-        /// </summary>
-        public void CancelAllEffects()
-        {
-            var executions = channels.Values.SelectMany(channel => channel.executions).ToArray();
-            foreach (var execution in executions)
+            m_Effects.Add(effect);
+            OnEffectAdded?.Invoke(effect);
+            if (!effect.instant)
             {
-                execution.Dispose();
+                await effect.cancellationSignal;
             }
+            m_Effects.Remove(effect);
         }
     }
 }

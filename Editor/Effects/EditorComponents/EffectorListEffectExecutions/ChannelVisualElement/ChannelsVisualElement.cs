@@ -5,12 +5,12 @@ namespace Metamatic.Effects
     public class ChannelsVisualElement : VisualElement
     {
         public EffectorEdtitor editor { get; private set; }
-        public Effector effector { get; private set; }
+        public EffectorLegacy effector { get; private set; }
         public ChannelsVisualElement(EffectorEdtitor editor) : base()
         {
             this.viewDataKey = "Channels";
             this.editor = editor;
-            effector = (Effector) this.editor.target;
+            effector = (EffectorLegacy) this.editor.target;
             effector.editor_SubscribeChannels(HandleChannelsChange);
             AddToClassList("ChannelsList");
 

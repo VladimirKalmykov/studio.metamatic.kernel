@@ -205,8 +205,7 @@ namespace Metamatic.StorageDriver
         
         private void DisableStorageForATime(float duration, Exception reasonException)
         {
-            Logger.Log($"Disable storage {storage.GetType().Name} for {duration} seconds because of {reasonException.Message}");
-            Debug.LogError(reasonException);
+            Console.Exception("StorageDriver",  $"Disable storage {storage.GetType().Name} for {duration} seconds because of {reasonException.Message}");
             storage.enabled = false;
             UniTask.RunOnThreadPool(async () =>
             {
@@ -214,7 +213,7 @@ namespace Metamatic.StorageDriver
                 await Task.Delay(TimeSpan.FromSeconds(duration)).ConfigureAwait(true);
                 await UniTask.SwitchToMainThread();
                 storage.enabled = true;
-                Logger.Log($"Enable storage {storage.GetType().Name} after {duration} seconds delay");
+                Console.Exception("StorageDriver",  $"Enable storage {storage.GetType().Name} after {duration} seconds delay");
             }, true, repository.disposeToken).Forget();
         }
     }

@@ -11,7 +11,7 @@ namespace Metamatic.Effects
         /// <summary>
         /// Effects execution context queue
         /// </summary>
-        public readonly List<IEffect.EffectExecutionContext> executions = new List<IEffect.EffectExecutionContext>();
+        public readonly List<IEffectLegacy.EffectExecutionContext> executions = new List<IEffectLegacy.EffectExecutionContext>();
         public readonly Behaviour owner;
         public readonly string debugName;
         
@@ -26,14 +26,14 @@ namespace Metamatic.Effects
         // }
         
         #if UNITY_EDITOR
-        public event Action<IEffect.EffectExecutionContext[]> editor_OnExecutionsChange;
-        public void editor_SubscribeEffectExecutionsChange(Action<IEffect.EffectExecutionContext[]> handler)
+        public event Action<IEffectLegacy.EffectExecutionContext[]> editor_OnExecutionsChange;
+        public void editor_SubscribeEffectExecutionsChange(Action<IEffectLegacy.EffectExecutionContext[]> handler)
         {
             handler(executions.ToArray());
             editor_OnExecutionsChange += handler;
         }
         
-        public void editor_UnsubscribeEffectExecutionsChange(Action<IEffect.EffectExecutionContext[]> handler)
+        public void editor_UnsubscribeEffectExecutionsChange(Action<IEffectLegacy.EffectExecutionContext[]> handler)
         {
             editor_OnExecutionsChange -= handler;  
         }
@@ -50,9 +50,9 @@ namespace Metamatic.Effects
         }
         
         public readonly EffectsGraph graph; 
-        public readonly Effector effector;
+        public readonly EffectorLegacy effector;
 
-        public Effector target
+        public EffectorLegacy target
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
@@ -60,7 +60,7 @@ namespace Metamatic.Effects
                 return effector.target;
             }
         }
-        public EffectsChannel(Effector effector, Behaviour owner, string debugName)
+        public EffectsChannel(EffectorLegacy effector, Behaviour owner, string debugName)
         {
             this.owner = owner;
             this.debugName = debugName;
@@ -98,7 +98,7 @@ namespace Metamatic.Effects
             ).GetAwaiter();
         }*/
 
-        public EffectCancellableOperationAwaiter Add<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
+        public EffectCancellableOperationAwaiter Add<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: EffectorLegacy
         {
             #if UNITY_EDITOR
             if (!Application.isPlaying)

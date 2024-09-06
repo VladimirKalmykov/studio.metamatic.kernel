@@ -23,13 +23,20 @@ namespace Metamatic
             Standard = Info | Warning | Error | Exception,
             Full = Verbose | Debug | Info | Warning | Error | Exception
         }
+
+        static Console()
+        {
+#if !METAMATIC_VERBOSE_LOG
+            UnityEngine.Debug.Log("[Console] Verbose logging is disabled. Set METAMATIC_VERBOSE_LOG to true in the project settings to enable it.");
+#endif
+        }
         
         #region Public Properties and Methods
         
         /// <summary>
         /// Default log level for Unity console
         /// </summary>
-        public static LogLevel LogLevelTranslateToUnityConsole = LogLevel.Error | LogLevel.Exception;
+        public static LogLevel LogLevelTranslateToUnityConsole = LogLevel.Error;
         public static event Action<string, string[], string, LogLevel> OnLog;
         
         [UsedImplicitly]
@@ -76,6 +83,12 @@ namespace Metamatic
             {
                 return;
             }
+            #if !METAMATIC_VERBOSE_LOG
+            if (logLevel == LogLevel.Verbose)
+            {
+                return;
+            }
+            #endif
             var finalStackTrace = stackTrace ?? new StackTrace().ToString();
             LogOnTheMainThread(message, new []{ tag1, tag2 }, logLevel, finalStackTrace).Forget();
         }

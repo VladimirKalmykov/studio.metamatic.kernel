@@ -6,8 +6,8 @@ namespace Metamatic.Effects
 {
     public sealed class ChannelEffectExecutionVisualElement : TextElement
     {
-        public readonly IEffect.EffectExecutionContext execution;
-        public ChannelEffectExecutionVisualElement(IEffect.EffectExecutionContext execution)
+        public readonly IEffectLegacy.EffectExecutionContext execution;
+        public ChannelEffectExecutionVisualElement(IEffectLegacy.EffectExecutionContext execution)
         {
             this.execution = execution;
             AddToClassList("Execution");

@@ -29,9 +29,9 @@ namespace Metamatic
         public long version => store.version;
         public bool isDirty => store.isDirty;
 
-        public UniTask WhenSynchronized(CancellationToken cancellationToken)
+        public UniTask WhenSynchronized(CancellationSignal signal)
         {
-            return store.WhenSynchronized(cancellationToken);
+            return store.WhenSynchronized(signal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -51,9 +51,9 @@ namespace Metamatic
             store.Set(value);
         }
 
-        public UniTask<T> GetPristineValue(CancellationToken cancellationToken)
+        public UniTask<T> GetPristineValue(CancellationSignal signal)
         {
-            return store.GetPristineValue(cancellationToken);
+            return store.GetPristineValue(signal);
         }
 
         public void Modify(IStore<T>.Modifier action)
@@ -103,33 +103,33 @@ namespace Metamatic
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Commit(CancellationToken cancellationToken)
+        public UniTask Commit(CancellationSignal signal)
         {
-            return store.Commit(cancellationToken);
+            return store.Commit(signal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Sync(CancellationToken cancellationToken)
+        public UniTask Sync(CancellationSignal signal)
         {
-            return store.Sync(cancellationToken);
+            return store.Sync(signal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Reset(bool populate, CancellationToken cancellationToken)
+        public UniTask Reset(bool populate, CancellationSignal cancellationSignal)
         {
-            return store.Reset(populate, cancellationToken);
+            return store.Reset(populate, cancellationSignal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Reset(CancellationToken cancellationToken)
+        public UniTask Reset(CancellationSignal cancellationSignal)
         {
-            return store.Reset(cancellationToken);
+            return store.Reset(cancellationSignal);
         }
     
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask<IDisposable> Lock(CancellationToken cancellationToken)
+        public UniTask<IDisposable> Lock(CancellationSignal signal)
         {
-            return store.Lock(cancellationToken);
+            return store.Lock(signal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

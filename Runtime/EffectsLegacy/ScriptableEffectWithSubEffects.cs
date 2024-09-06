@@ -8,7 +8,7 @@ namespace Metamatic {
     using Sirenix.OdinInspector;
 
     public abstract class ScriptableEffectWithSubEffects<TEffector, TProps> : ScriptableEffect<TEffector, TProps>
-        where TEffector: Effector
+        where TEffector: EffectorLegacy
         where TProps : struct
     {
         [BoxGroup("Effect")]

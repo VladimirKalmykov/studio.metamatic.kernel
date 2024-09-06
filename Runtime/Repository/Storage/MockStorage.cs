@@ -22,7 +22,7 @@ namespace Metamatic
         public event Action<Type, Type, string> OnGetRequest;
         public event Action<Type, Type, string> OnSetRequest;
         public event Action<Type, string> OnDeleteRequest;
-        public async override UniTask<(T, Metadata, TMetadata)> Get<T, TMetadata>(string address, CancellationToken token)
+        public override async UniTask<(T, Metadata, TMetadata)> Get<T, TMetadata>(string address, CancellationToken token)
         {
             OnGetRequest?.Invoke(typeof(T), typeof(TMetadata), address);
             if (!enabled)

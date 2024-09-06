@@ -64,7 +64,7 @@ namespace Metamatic
                     
                     await UniTask.SwitchToMainThread();
                 }
-            }, cancellationToken: token);
+            }, cancellationToken: token).Forget();
 
             return taskCompletionSource.Task;
         }
@@ -115,7 +115,7 @@ namespace Metamatic
                     await UniTask.SwitchToMainThread();
                     taskCompletionSource.TrySetException(e);
                 }
-            }, true, token);
+            }, true, token).Forget();
             return taskCompletionSource.Task;
         }
 
@@ -146,7 +146,7 @@ namespace Metamatic
                     await UniTask.SwitchToMainThread();
                     taskCompletionSource.TrySetException(e);
                 }
-            });
+            }).Forget();
             return taskCompletionSource.Task;
         }
         

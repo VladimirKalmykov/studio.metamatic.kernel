@@ -27,11 +27,11 @@ namespace Metamatic
         /// <summary>
         /// Await for the lock to be released and then lock the list again.
         /// </summary>
-        /// <param name="cancellationToken"></param>
+        /// <param name="signal"></param>
         /// <returns></returns>
-        public UniTask<DisposableAction> Lock(CancellationToken cancellationToken)
+        public UniTask<DisposableAction> Lock(CancellationSignal signal)
         {
-            return m_Lock.Lock(cancellationToken);
+            return m_Lock.Lock(signal);
         }
         
         ~LockedList()

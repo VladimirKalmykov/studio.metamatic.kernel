@@ -5,13 +5,13 @@ namespace Metamatic.Effects
 {
     public class EffectorListEffectExecutionsEditorComponent : EditorComponent
     {
-        private Effector m_Effector;
+        private EffectorLegacy m_Effector;
         private ChannelsVisualElement m_ChannelsVisualElement;
         
         public EffectorListEffectExecutionsEditorComponent(ComposableEditor composableEditor) : base(composableEditor)
         {
             var root = this;
-            m_Effector = (Effector) this.target;
+            m_Effector = (EffectorLegacy) this.target;
             root.styleSheets.Add(this.editor.LoadRelativeAsset<StyleSheet>("./styles.uss"));
 
             BuildGUI(root);

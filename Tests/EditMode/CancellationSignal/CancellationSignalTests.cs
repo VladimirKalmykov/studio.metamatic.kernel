@@ -2,7 +2,7 @@ using Metamatic;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace Tests.EditMode.CancellationSignal
+namespace Tests.EditMode
 {
     [TestFixture]
     public class CancellationSignalTests

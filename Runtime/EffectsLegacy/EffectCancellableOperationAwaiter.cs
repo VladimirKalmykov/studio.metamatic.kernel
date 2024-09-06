@@ -6,18 +6,18 @@ namespace Metamatic.Effects
 {
     public struct EffectCancellableOperationAwaiter: ICriticalNotifyCompletion, IDisposable
     {
-        public readonly IEffect.EffectExecutionContext context;
-        public EffectCancellableOperationAwaiter(IEffect.EffectExecutionContext context)
+        public readonly IEffectLegacy.EffectExecutionContext context;
+        public EffectCancellableOperationAwaiter(IEffectLegacy.EffectExecutionContext context)
         {
             this.context = context;
         }
 
-        public IEffect.EffectExecutionContext.Status status
+        public IEffectLegacy.EffectExecutionContext.Status status
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return context == null ? IEffect.EffectExecutionContext.Status.Idle : context.status;
+                return context == null ? IEffectLegacy.EffectExecutionContext.Status.Idle : context.status;
             }
         }
         
@@ -32,7 +32,7 @@ namespace Metamatic.Effects
                 {
                     Debug.Log($"Context is null. Why???");
                 }
-                var result = (context == null || context.status != IEffect.EffectExecutionContext.Status.Pending);
+                var result = (context == null || context.status != IEffectLegacy.EffectExecutionContext.Status.Pending);
 
                 return result;
             }
@@ -49,7 +49,7 @@ namespace Metamatic.Effects
         public void OnCompleted(Action continuation)
         {
             // ReSharper disable once MergeIntoNegatedPattern
-            if (context == null || context.status != IEffect.EffectExecutionContext.Status.Pending)
+            if (context == null || context.status != IEffectLegacy.EffectExecutionContext.Status.Pending)
             {
                 continuation();
                 return;
@@ -61,7 +61,7 @@ namespace Metamatic.Effects
         public void UnsafeOnCompleted(Action continuation)
         {
             // ReSharper disable once MergeIntoNegatedPattern
-            if (context == null || context.status != IEffect.EffectExecutionContext.Status.Pending)
+            if (context == null || context.status != IEffectLegacy.EffectExecutionContext.Status.Pending)
             {
                 continuation();
                 return;

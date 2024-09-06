@@ -15,7 +15,7 @@ namespace Metamatic.Effects.Graph
             Errored
         }
         public EffectsGraph graph;
-        private IEffect currentEffect;
+        private IEffectLegacy currentEffect;
         protected readonly List<Node> children = new List<Node>();
         public Node parent { get; private set; }
         private EffectCancellableOperationAwaiter activeEffectExecution;
@@ -60,7 +60,7 @@ namespace Metamatic.Effects.Graph
             }
         }*/
         
-        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffect<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps>(IEffect<TEffector, TEffectProps> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: EffectorLegacy
         {
             TryCancel();
             currentEffect = effect;
@@ -69,7 +69,7 @@ namespace Metamatic.Effects.Graph
             return activeEffectExecution;
         }
         
-        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: Effector
+        public EffectCancellableOperationAwaiter ApplyEffect<TEffector, TEffectProps, TResult>(IEffect<TEffector, TEffectProps, TResult> effect, TEffectProps props = default) where TEffectProps: struct where TEffector: EffectorLegacy
         {
             TryCancel();
             currentEffect = effect;
@@ -86,7 +86,7 @@ namespace Metamatic.Effects.Graph
             }
         }
 
-        public void RemoveEffect(IEffect<Effector> effect)
+        public void RemoveEffect(IEffect<EffectorLegacy> effect)
         {
             if (currentEffect == effect)
             {
@@ -94,7 +94,7 @@ namespace Metamatic.Effects.Graph
             }
         }
 
-        public async UniTask ReleaseEffect(IEffect<Effector> effect)
+        public async UniTask ReleaseEffect(IEffect<EffectorLegacy> effect)
         {
             RemoveEffect(effect);
             await graph.Execute();
@@ -102,7 +102,7 @@ namespace Metamatic.Effects.Graph
 
         public async UniTask Execute()
         {
-            if (activeEffectExecution.status == IEffect.EffectExecutionContext.Status.Pending)
+            if (activeEffectExecution.status == IEffectLegacy.EffectExecutionContext.Status.Pending)
             {
                 activeEffectExecution.Replay();
             }

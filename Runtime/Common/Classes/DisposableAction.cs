@@ -30,7 +30,7 @@ namespace Metamatic
                 throw new ObjectDisposedException(nameof(DisposableAction));
             }
 
-            if (_disposed != null)
+            if (_action != null && _disposed != null)
             {
                 _disposed.value = true;
             }

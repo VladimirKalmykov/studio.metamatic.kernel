@@ -9,8 +9,8 @@ namespace Metamatic
     public abstract class Store: IStore
     {
         protected const string MASTER_BRANCH_NAME = "master";
-        protected CancellationTokenSource m_DisposeCancellationTokenSource = new ();
-        public CancellationToken disposeCancellationToken => m_DisposeCancellationTokenSource.Token;
+        protected CancellationSignalSource m_DisposeCancellationSignalSource = CancellationSignalSource.Create();
+        public CancellationSignal disposeCancellationSignal => m_DisposeCancellationSignalSource.Signal;
         public bool isDisposed { get; private set; }
         protected event Action OnDispose;
         public UniTask asyncDisposingTask { get; protected set; }
@@ -21,7 +21,7 @@ namespace Metamatic
             this.address = address;
             this.type = type;
         }
-        public abstract UniTask Sync(CancellationToken cancellationToken);
+        public abstract UniTask Sync(CancellationSignal signal);
         public void Dispose()
         {
             if (isDisposed)
@@ -29,7 +29,7 @@ namespace Metamatic
                 return;
             }
             isDisposed = true;
-            m_DisposeCancellationTokenSource.Cancel();
+            m_DisposeCancellationSignalSource.TryCancel();
             OnDispose?.Invoke();
         }
         public DisposableAction SubscribeDispose(Action action)
@@ -47,7 +47,7 @@ namespace Metamatic
         /// When store is async disposing, it will be added to this dictionary until it will be disposed
         /// If next instance of the same type will be created, it will be disposed immediately
         /// </summary>
-        protected static Dictionary<(Type, string), CancellationTokenSource> m_AsyncDisposingCancellationTokens = new();
+        protected static Dictionary<(Type, string), CancellationSignalSource> m_AsyncDisposingCancellationSignalSources = new();
         private class Branch
         {
             private readonly Store<T> m_Store;
@@ -113,7 +113,7 @@ namespace Metamatic
                 });
             }
         }
-        public delegate UniTask<T> GetDefaultValue(string address, CancellationToken cancellationToken);
+        public delegate UniTask<T> GetDefaultValue(string address, CancellationSignal signal);
         public readonly Repository repository;
         private readonly Dictionary<string, Branch> m_Branches = new();
         private readonly MicroState<Branch> m_CurrentBranch = new();
@@ -154,21 +154,23 @@ namespace Metamatic
         /// <summary>
         /// Await until store will be synchronized
         /// </summary>
-        /// <param name="cancellationToken"></param>
-        public async UniTask WhenSynchronized(CancellationToken cancellationToken)
+        /// <param name="signal"></param>
+        public async UniTask WhenSynchronized(CancellationSignal signal)
         {
-            var cancellationTask = UniTask.WaitUntilCanceled(cancellationToken);
+            var doNotWaitSignal = false;
+            var cancellationTask = UniTask.WaitUntil(() => doNotWaitSignal || signal.IsCancellationRequested);
             var completedTask = await UniTask.WhenAny(synchronizationTask, cancellationTask);
+            doNotWaitSignal = true;
             if (completedTask == 1)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                signal.ThrowIfCancellationRequested();
             }
         }
         
         private async UniTask PostInitialization()
         {
             try {
-                await Sync(disposeCancellationToken);
+                await Sync(disposeCancellationSignal);
             }
             catch (OperationCanceledException)
             {
@@ -178,9 +180,9 @@ namespace Metamatic
             {
                 Debug.LogError(e);
             }
-            await disposeCancellationToken;
-            var asyncDisposingCancellationTokenSource = new CancellationTokenSource();
-            m_AsyncDisposingCancellationTokens.Add((GetType(), address), asyncDisposingCancellationTokenSource);
+            await disposeCancellationSignal;
+            var asyncDisposingCancellationSignalSource = CancellationSignalSource.Create();
+            m_AsyncDisposingCancellationSignalSources.Add((GetType(), address), asyncDisposingCancellationSignalSource);
             /* Clear all branches */
             m_Branches.Clear();
             m_CurrentBranch.value = null;
@@ -188,7 +190,7 @@ namespace Metamatic
             try
             {
                 /* Remote data for current address and type in repository's local memory */
-                await repository.inMemoryStorage.Delete<T>(address, asyncDisposingCancellationTokenSource.Token);
+                await repository.inMemoryStorage.Delete<T>(address, asyncDisposingCancellationSignalSource.Signal);
             }
             catch (OperationCanceledException)
             {
@@ -200,7 +202,7 @@ namespace Metamatic
             }
             finally
             {
-                m_AsyncDisposingCancellationTokens.Remove((GetType(), address));
+                m_AsyncDisposingCancellationSignalSources.Remove((GetType(), address));
             }
         }
         
@@ -349,10 +351,10 @@ namespace Metamatic
             m_CurrentBranch.value.value = value;
         }
 
-        public async UniTask<T> GetPristineValue(CancellationToken cancellationToken)
+        public async UniTask<T> GetPristineValue(CancellationSignal signal)
         {
             /* Read value from the in-memory storage */
-            var (data, metadata, version) = await repository.inMemoryStorage.Get<T>(address, cancellationToken);
+            var (data, metadata, version) = await repository.inMemoryStorage.Get<T>(address, signal);
             return data;
         }
 
@@ -428,17 +430,17 @@ namespace Metamatic
         /// Commit branch changes to the in-memory storage
         /// </summary>
         /// <param name="branchName"></param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="signal"></param>
         /// <exception cref="Exception"></exception>
-        public async UniTask Commit(CancellationToken cancellationToken)
+        public async UniTask Commit(CancellationSignal signal)
         {
             var branch = m_Branches["master"];
-            using (await m_SyncLock.Lock(cancellationToken))
+            using (await m_SyncLock.Lock(signal))
             {
-                var (data, metadata, inMemoryVersion) = await this.repository.inMemoryStorage.Get<T>(address, cancellationToken);
+                var (data, metadata, inMemoryVersion) = await this.repository.inMemoryStorage.Get<T>(address, signal);
                 if (inMemoryVersion <= branch.version)
                 {
-                    await this.repository.inMemoryStorage.Set(address, branch.value, version + 1, cancellationToken);
+                    await this.repository.inMemoryStorage.Set(address, branch.value, version + 1, signal);
                 }
                 else
                 {
@@ -450,36 +452,38 @@ namespace Metamatic
         /// <summary>
         /// Sync current branch with remote storages
         /// </summary>
-        /// <param name="cancellationToken"></param>
-        public override async UniTask Sync(CancellationToken cancellationToken)
+        /// <param name="signal"></param>
+        public override async UniTask Sync(CancellationSignal signal)
         {
-            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, disposeCancellationToken).Token;
-            using (await m_SyncLock.Lock(combinedCancellationToken))
+            var combinedSignal = CancellationSignalSource.CreateLinked(signal, disposeCancellationSignal).Signal;
+            var disposeLock = await m_SyncLock.Lock(combinedSignal);
+            try
             {
-                try
+                if (m_SynchronizedTaskCompletionSource.Task.Status != UniTaskStatus.Pending)
                 {
-                    if (m_SynchronizedTaskCompletionSource.Task.Status != UniTaskStatus.Pending)
-                    {
-                        m_SynchronizedTaskCompletionSource = new UniTaskCompletionSource();
-                    }
+                    m_SynchronizedTaskCompletionSource = new UniTaskCompletionSource();
+                }
 
-                    var versionedData = await repository.synchronizer.Sync<T>(address, getDefaultValue, combinedCancellationToken);
-                    m_CurrentBranch.value.value = versionedData.data;
-                    m_CurrentBranch.value.isDirty = false;
-                    m_CurrentBranch.value.version = versionedData.version;
-                    synchronized = true;
-                    m_SynchronizedTaskCompletionSource.TrySetResult();
-                }
-                catch (OperationCanceledException)
-                {
-                    m_SynchronizedTaskCompletionSource.TrySetCanceled();
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    m_SynchronizedTaskCompletionSource.TrySetException(e);
-                    throw;
-                }
+                var versionedData = await repository.synchronizer.Sync<T>(address, getDefaultValue, combinedSignal);
+                m_CurrentBranch.value.value = versionedData.data;
+                m_CurrentBranch.value.isDirty = false;
+                m_CurrentBranch.value.version = versionedData.version;
+                synchronized = true;
+                m_SynchronizedTaskCompletionSource.TrySetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                m_SynchronizedTaskCompletionSource.TrySetCanceled();
+                throw;
+            }
+            catch (Exception e)
+            {
+                m_SynchronizedTaskCompletionSource.TrySetException(e);
+                throw;
+            }
+            finally
+            {
+                disposeLock.Dispose();
             }
         }
         
@@ -489,8 +493,8 @@ namespace Metamatic
         /// Reset current branch to the last saved state (or all branches if populate is true)
         /// </summary>
         /// <param name="populate"></param>
-        /// <param name="cancellationToken"></param>
-        public async UniTask Reset(bool populate, CancellationToken cancellationToken)
+        /// <param name="cancellationSignal"></param>
+        public async UniTask Reset(bool populate, CancellationSignal cancellationSignal)
         {
 #if DEBUG
             if (!synchronized)
@@ -498,7 +502,7 @@ namespace Metamatic
                 throw new System.Exception("Store is not synchronized yet");
             }
 #endif
-            using (await m_SyncLock.Lock(cancellationToken))
+            using (await m_SyncLock.Lock(cancellationSignal))
             {
                 var (data, metadata, version) = await repository.inMemoryStorage.Get<T>(address, CancellationToken.None);
                 if (populate)
@@ -519,15 +523,15 @@ namespace Metamatic
         /// <summary>
         /// Reset current branch to the last saved state
         /// </summary>
-        /// <param name="cancellationToken"></param>
-        public async UniTask Reset(CancellationToken cancellationToken)
+        /// <param name="cancellationSignal"></param>
+        public async UniTask Reset(CancellationSignal cancellationSignal)
         {
-            await Reset(false, cancellationToken);
+            await Reset(false, cancellationSignal);
         }
 
-        public async UniTask<IDisposable> Lock(CancellationToken cancellationToken)
+        public async UniTask<IDisposable> Lock(CancellationSignal signal)
         {
-           var disposeLock = await m_SyncLock.Lock(cancellationToken);
+           var disposeLock = await m_SyncLock.Lock(signal);
 
            return new DisposableAction(() =>
            {

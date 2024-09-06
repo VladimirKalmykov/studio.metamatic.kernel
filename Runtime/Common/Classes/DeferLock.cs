@@ -21,9 +21,9 @@ namespace Metamatic
                 return new DisposableAction(Unlock);
             }
             
-            public async UniTask<DisposableAction> Lock(CancellationToken token = default) {
-                await WhenUnlocked(token);
-                if (token.IsCancellationRequested)
+            public async UniTask<DisposableAction> Lock(CancellationSignal signal) {
+                await WhenUnlocked(signal);
+                if (signal.IsCancellationRequested)
                 {
                     return DisposableAction.Empty;
                 }
@@ -48,7 +48,7 @@ namespace Metamatic
                 return this;
             }
             
-            public UniTask WhenUnlocked(CancellationToken cancellationToken = default)
+            public UniTask WhenUnlocked(CancellationSignal cancellationSignal = default)
             {
                 if (_isDisposed) throw new ObjectDisposedException(nameof(DeferLock));
                 if (_lockCount == 0)
@@ -57,20 +57,20 @@ namespace Metamatic
                 }
 
                 var tcs = AutoResetUniTaskCompletionSource.Create();
-                CancellationTokenRegistration registration = default;
+                DisposableAction registration = default;
 
-                registration = cancellationToken.Register(() =>
+                registration = cancellationSignal.Register(() =>
                 {
                     registration.Dispose();
                     OnUnlock -= Handler;
-                    tcs.TrySetCanceled(cancellationToken);
+                    tcs.TrySetCanceled(cancellationSignal);
                 });
                 void Handler()
                 {
                     registration.Dispose();
-                    if (cancellationToken.IsCancellationRequested)
+                    if (cancellationSignal.IsCancellationRequested)
                     {
-                        tcs.TrySetCanceled(cancellationToken);
+                        tcs.TrySetCanceled(cancellationSignal);
                     }
                     else
                     {

@@ -74,12 +74,12 @@ namespace Metamatic
             return new VersionControlStorageDriver(repository, storage);
         }
         
-        public async UniTask<(T data, Storage.Metadata metadata, long version)> Sync<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationToken token)
+        public async UniTask<(T data, Storage.Metadata metadata, long version)> Sync<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationSignal signal)
         {
             /* Get StorageSynchronizer.UseStrategy attribute */
             var strategy = UseStrategyAttribute.GetStrategy<T>();
             
-            var tasks = repository.drivers.Select(driver => GetData<T>(driver, address, token));
+            var tasks = repository.drivers.Select(driver => GetData<T>(driver, address, signal));
             var results = await UniTask.WhenAll(tasks);
 
             // Фильтрация NotFound и исключение других ошибок
@@ -90,7 +90,7 @@ namespace Metamatic
             // Если нет успешных результатов, выбрасываем исключение
             if (!validResults.Any())
             {
-                Dispatcher.global.Emit(new UnreachableStoragesFatalError("Data synchronization failed because of unreachable storages"));
+                MacroEvent<FatalError>.Emit(new UnreachableStoragesFatalError("Data synchronization failed because of unreachable storages"));
                 throw new Storage.UnreachableException("Every driver returned error");
             }
             
@@ -101,7 +101,7 @@ namespace Metamatic
             if (notFoundDrivers.Count == validResults.Count)
             {
                 /* If there are only NotFound drivers, get default value */
-                var defaultValue = await getDefaultValue(address, token);
+                var defaultValue = await getDefaultValue(address, signal);
                 bestData = (defaultValue, default, 1);
                 isDefault = true;
             }
@@ -167,7 +167,7 @@ namespace Metamatic
                         continue;
                     }
 
-                    updateTasks.Add(UpdateData(driver, address, bestData, token));
+                    updateTasks.Add(UpdateData(driver, address, bestData, signal));
                 }
             
                 await UniTask.WhenAll(updateTasks);
