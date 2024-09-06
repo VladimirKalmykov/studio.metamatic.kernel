@@ -124,7 +124,7 @@ namespace Metamatic
 #if METAMATIC_TERMINAL
                 Terminal.LogError($"AsyncBehaviour {type} failed to run: {e.Message}");
 #endif
-                Debug.LogError($"Async behaviour {type} failed to run: {e}");
+                Console.Error("AsyncBehaviour", e);
             }
         }
 

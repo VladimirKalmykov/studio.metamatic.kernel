@@ -46,6 +46,25 @@ namespace Metamatic.Effects
             {
                 m_CancellationSignalSource = CancellationSignalSource.Create();
             }
+
+            if (producer is IEffectProducer effectProducer)
+            {
+                effectProducer.OnEffectProduced(effect);
+            }
+            if (consumer is GameObject asGameObject)
+            {
+                if (asGameObject.TryGetComponent(out EffectConsumer effectConsumerComponent))
+                {
+                    effectConsumerComponent.OnEffectReceived(effect);
+                }
+            } else if (consumer is IEffectConsumer effectConsumer)
+            {
+                effectConsumer.OnEffectReceived(effect);
+            }
+            Effect<T>.EmitEffectCreated(effect);
+            #if METAMATIC_VERBOSE_LOG
+            Console.Verbose("Effect", $"EffectSource<{typeof(T)}> created: {producer} -> {consumer} ({data})");
+            #endif
         }
         
         public void UpdateData(T data)
@@ -61,6 +80,11 @@ namespace Metamatic.Effects
         /// <returns></returns>
         public DisposableAction Subscribe(Action<T> action)
         {
+            if (Instant)
+            {
+                action(data);
+                return DisposableAction.Empty;
+            }
             OnDataChanged += action;
             action(data);
             return new DisposableAction(() => OnDataChanged -= action);
@@ -124,6 +148,22 @@ namespace Metamatic.Effects
     public readonly struct Effect<T>: IDisposable, IEffect
     where T: struct
     {
+        public static void CreateInstantly(Object producer, Object consumer, T data, bool instant = false)
+        {
+            var source = InternalEffectSource<T>.Create(producer, consumer, data, instant);
+            source.Release();
+        }
+        private static event Action<Effect<T>> OnEffectCreated;
+        public static DisposableAction SubscribeToEffectCreated(Action<Effect<T>> action)
+        {
+            OnEffectCreated += action;
+            return new DisposableAction(() => OnEffectCreated -= action);
+        }
+        internal static void EmitEffectCreated(Effect<T> effect)
+        {
+            OnEffectCreated?.Invoke(effect);
+        }
+        
         private readonly InternalEffectSource<T> m_Source;
         private readonly int m_Version;
         public T data => source?.data ?? default;
@@ -147,9 +187,14 @@ namespace Metamatic.Effects
         public Object producer => source?.Producer;
         public Object consumer => source?.Consumer;
         public float startTime => source?.StartTime ?? 0;
+        public Type type => typeof(T);
         public bool instant => source?.Instant ?? false;
         public CancellationSignal cancellationSignal => source?.cancellationSignal ?? default;
-        
+
+        public DisposableAction Subscribe(Action<T> handler)
+        {
+            return source?.Subscribe(handler) ?? DisposableAction.Empty;
+        }
 
         public DisposableAction SubscribeToRelease(Action action)
         {
@@ -159,6 +204,11 @@ namespace Metamatic.Effects
                 return DisposableAction.Empty;
             }
             return cancellationSignal.Register(action);
+        }
+
+        public override string ToString()
+        {
+            return $"Effect<{type}> {producer} -> {consumer} ({data})";
         }
     }
 }

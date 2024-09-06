@@ -110,6 +110,39 @@ namespace Metamatic
 
             }, timing, cancellationToken);
         }
+        
+        public static UniTask PlayerLoopActionSignal(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, CancellationSignal cancellationSignal = default)
+        {
+            var startTime = Time.time;
+            callback(0f);
+            if (cancellationSignal.IsCancellationRequested)
+            {
+                return UniTask.CompletedTask;
+            }
+            return UniTask.WaitUntil(() =>
+            {
+                if (cancellationSignal.IsCancellationRequested)
+                {
+                    return true;
+                }
+                var ratio = duration > 0f ? Mathf.Clamp01((Time.time - startTime) / duration) : 1f;
+                if (ratio >= 1f)
+                {
+                    callback(1f);
+                    return true;
+                }
+                
+                try {
+                    callback(ratio);
+                } catch (Exception e) {
+                    Debug.LogException(e);
+                    return true;
+                }
+                
+                return false;
+
+            }, timing);
+        }
 
         public static async void AwaitCallback(Task awaitable, Action callback, bool allowCancellation = false)
         {
