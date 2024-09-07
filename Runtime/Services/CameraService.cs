@@ -1,3 +1,4 @@
+using Metamatic.DevTools;
 using Sirenix.OdinInspector;
 using Unity.Cinemachine;
 
@@ -107,6 +108,10 @@ namespace Metamatic
                 Dispatcher.global.SubscribeAnnouncementsLegacy<CameraController>(HandlerCamerasAnnounce);
             using var cameraRetractSubscription =
                 Dispatcher.global.SubscribeRetractionsLegacy<CameraController>(HandlerCamerasRetract);
+#if DEBUG
+            using var monitoringShakeAmplitude = Monitoring.Create("ImpactService.Shake", "amplidute", () => shakeAmplitude);
+            using var monitoringShakeFrequency = Monitoring.Create("ImpactService.Shake", "frequency", () => shakeFrequency);
+#endif
             await ready();
         }
 
@@ -178,12 +183,16 @@ namespace Metamatic
             {
                 var css = CancellationSignalSource.Create();
                 OnShakersActivated?.Invoke(css.Signal);
+                var maxAmplitude = 0f;
+                var maxFrequency = 0f;
                 await UniTask.WaitUntil(() =>
                 {
+                    maxAmplitude = 0f;
+                    maxFrequency = 0f;
                     foreach (var shaker in m_Shakers)
                     {
-                        shakeAmplitude = Mathf.Max(shaker.Amplitude, shakeAmplitude);
-                        shakeFrequency = Mathf.Max(shaker.Frequency, shakeFrequency);
+                        shakeAmplitude = Mathf.Max(shaker.Amplitude, maxAmplitude);
+                        shakeFrequency = Mathf.Max(shaker.Frequency, maxFrequency);
                     }
 
                     return m_Shakers.Count == 0;

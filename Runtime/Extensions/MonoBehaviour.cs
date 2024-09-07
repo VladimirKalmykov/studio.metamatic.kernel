@@ -16,19 +16,6 @@ namespace Metamatic {
 
             return (T)component;
         }
-
-        public static void ReleaseGameObject(this MonoBehaviour gameObject)
-        {
-            var releasable = gameObject.GetComponent<Releasable>();
-            if (releasable != null)
-            {
-                releasable.Release();
-            }
-            else
-            {
-                Object.Destroy(gameObject);
-            }
-        }
         
         public static T TryAddComponent<T>(this GameObject gameObject) where T : Component
         {

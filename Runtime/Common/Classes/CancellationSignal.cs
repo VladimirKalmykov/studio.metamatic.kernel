@@ -14,15 +14,31 @@ namespace Metamatic
     /// </summary>
     public readonly struct CancellationSignal
     {
-        public static readonly CancellationSignal Cancelled = new CancellationSignal(true);
-        public static readonly CancellationSignal None = new CancellationSignal(false);
+        public static readonly CancellationSignal Cancelled = new (true);
+        public static readonly CancellationSignal None = new (false);
         
         private readonly InternalCancellationSignalSource m_Source;
         private readonly CancellationToken m_CancellationToken;
         // ReSharper disable once MemberCanBePrivate.Global
         public readonly int Version;
         // ReSharper disable once InconsistentNaming
-        public bool IsCancellationRequested => GetSource()?.IsCancellationRequested ?? true;
+        public bool IsCancellationRequested
+        {
+            get {
+                /* If version is -1, it is always cancelled */
+                if (Version == -1)
+                {
+                    return true;
+                }
+                if (m_Source == null)
+                {
+                    /* If version is 0, it is never cancelled but only if source equals null */
+                    return false;
+                }
+                /* Otherwise, check the source or return true (version is equal to zero or greater plus source version is not equal to current version — signal is cancelled) */
+                return GetSource()?.IsCancellationRequested ?? true;
+            }
+        }
         // ReSharper disable once InconsistentNaming
         public bool CanBeCanceled => m_Source != null;
         public CancellationSignal(InternalCancellationSignalSource source = null)

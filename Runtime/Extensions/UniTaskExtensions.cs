@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
@@ -68,6 +69,36 @@ namespace Metamatic
             } catch (Exception e)
             {
                 action?.Invoke(e);
+            }
+        }
+        
+        /// <summary>
+        /// Evaluate the task and invoke the action at the end
+        /// </summary>
+        /// <param name="task"></param>
+        /// <param name="action"></param>
+        /// <param name="ignoreCancellation"></param>
+        public static async void Finally(this UniTask task, Action<Exception> action, bool ignoreCancellation = true)
+        {
+            Exception exception = null;
+            try
+            {
+                await task;
+            }
+            catch (OperationCanceledException)
+            {
+                if (!ignoreCancellation)
+                {
+                    exception = new OperationCanceledException();
+                }
+            }
+            catch (Exception e)
+            {
+                exception = e;
+            }
+            finally
+            {
+               action?.Invoke(exception); 
             }
         }
     }
