@@ -20,7 +20,7 @@ namespace Metamatic
         
         public CancellationSignal componentDestroyToken => m_DestroyCancellationSignalSource.Signal;
 
-        public CancellationSignal componentDisableToken
+        public CancellationSignal componentDisableSignal
         {
             get
             {
@@ -44,7 +44,7 @@ namespace Metamatic
         {
             m_IsDisabled = false;
             m_DisableCancellationSignalSource = CancellationSignalSource.Create();
-            RunAsync(componentDisableToken).Forget();
+            RunAsync(componentDisableSignal).Forget();
         }
 
         protected virtual void OnDisable()

@@ -126,8 +126,13 @@ namespace Metamatic
         {
             return m_CameraController.Subscribe(action);
         }
+        
+        public Camera GetCamera()
+        {
+            return camera;
+        }
 
-        public ICinemachineCamera GetVirtualCamera()
+        public ICinemachineCamera GetCurrentVirtualCamera()
         {
             if (m_CameraController.value == null) return null;
             return m_CameraController.value.cinemachineBrain.ActiveVirtualCamera;
