@@ -1,0 +1,25 @@
+using Cysharp.Threading.Tasks;
+
+namespace Metamatic
+{
+    public abstract class EntityComponent: AsyncBehaviour
+    {
+        protected override async UniTask Run(Ready ready, CancellationSignal signal)
+        {
+            var entity = GetComponent<Entity>();
+            if (entity == null)
+            {
+                Console.Exception("EntityComponent", "EntityComponent requires an Entity component to be attached to the same GameObject.");
+                return;
+            }
+
+            using var resetListener = entity.SubscribeToEntityReset(OnEntityReset);
+            OnEntityRun(ready, signal);
+            await signal;
+        }
+
+        protected abstract UniTask OnEntityRun(Ready ready, CancellationSignal signal);
+
+        protected abstract void OnEntityReset();
+    }
+}

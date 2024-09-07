@@ -62,9 +62,7 @@ namespace Metamatic.Effects
                 effectConsumer.OnEffectReceived(effect);
             }
             Effect<T>.EmitEffectCreated(effect);
-            #if METAMATIC_VERBOSE_LOG
-            Console.Verbose("Effect", $"EffectSource<{typeof(T)}> created: {producer} -> {consumer} ({data})");
-            #endif
+            Console.Info("Effect", typeof(T).Name, $"{producer} -> {consumer} ({(instant ? "Instant" : "Durable")} {data})");
         }
         
         public void UpdateData(T data)
@@ -148,7 +146,7 @@ namespace Metamatic.Effects
     public readonly struct Effect<T>: IDisposable, IEffect
     where T: struct
     {
-        public static void CreateInstantly(Object producer, Object consumer, T data, bool instant = false)
+        public static void Instant(Object producer, Object consumer, T data, bool instant = false)
         {
             var source = InternalEffectSource<T>.Create(producer, consumer, data, instant);
             source.Release();

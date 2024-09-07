@@ -47,7 +47,8 @@ namespace Metamatic
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace();
+
+            var finalStackTrace = stackTrace ?? new StackTrace(true);
             LogOnTheMainThread(message, tags, logLevel, finalStackTrace.ToString()).Forget();
         }
         
@@ -59,7 +60,7 @@ namespace Metamatic
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace().ToString();
+            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
             LogOnTheMainThread(message, tags, logLevel, finalStackTrace).Forget();
         }
         
@@ -71,7 +72,7 @@ namespace Metamatic
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace().ToString();
+            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
             LogOnTheMainThread(message, new []{ tag1 }, logLevel, finalStackTrace).Forget();
         }
         
@@ -89,7 +90,7 @@ namespace Metamatic
                 return;
             }
             #endif
-            var finalStackTrace = stackTrace ?? new StackTrace().ToString();
+            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
             LogOnTheMainThread(message, new []{ tag1, tag2 }, logLevel, finalStackTrace).Forget();
         }
         
@@ -101,7 +102,7 @@ namespace Metamatic
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace().ToString();
+            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
             LogOnTheMainThread(message, new []{ tag1, tag2, tag3 }, logLevel, finalStackTrace).Forget();
         }
         
@@ -113,7 +114,7 @@ namespace Metamatic
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace().ToString();
+            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
             LogOnTheMainThread(message, new []{ tag1, tag2, tag3, tag4 }, logLevel, finalStackTrace).Forget();
         }
         
