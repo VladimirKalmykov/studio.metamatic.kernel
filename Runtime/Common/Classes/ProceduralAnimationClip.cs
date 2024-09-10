@@ -10,14 +10,14 @@ namespace Metamatic
         public delegate void SignalHandler(float timestamp);
         private Dictionary<TSignal, (bool was, float timestamp, Queue<SignalHandler> queue)> m_Signals = new ();
         private float m_StartTime;
-        public ProceduralAnimationClip(CancellationToken cancellationToken)
+        public ProceduralAnimationClip(CancellationSignal signal)
         {
-            Run(cancellationToken);
+            Run(signal);
         }
-        protected override async UniTask Main(CancellationToken cancellationToken)
+        protected override async UniTask Main(CancellationSignal signal)
         {
             m_StartTime = Time.time;
-            await cancellationToken;
+            await signal;
         }
         
         public void Signal(TSignal signalName)

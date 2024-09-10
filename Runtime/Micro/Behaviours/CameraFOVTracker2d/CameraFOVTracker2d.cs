@@ -598,7 +598,7 @@ namespace Metamatic.MicroBehaviours
             m_Paused = false;
         }
 
-        protected override async UniTask Main(CancellationToken cancellationToken)
+        protected override async UniTask Main(CancellationSignal signal)
         {
             /* Initialize native arrays */
             mapBoundsTypesToRectIndexesBoundTypes =
@@ -631,7 +631,7 @@ namespace Metamatic.MicroBehaviours
             float prevTime = Time.time;
             while (true)
             {
-                if (cancellationToken.IsCancellationRequested)
+                if (signal.IsCancellationRequested)
                 {
                     break;
                 }
@@ -725,10 +725,10 @@ namespace Metamatic.MicroBehaviours
 
                     /* Wait for jobs to complete */
                     await UniTask.WaitUntil(() => areasJobHandle.IsCompleted && objectsJobHandle.IsCompleted,
-                        PlayerLoopTiming.Update, cancellationToken);
+                        PlayerLoopTiming.Update, signal);
                     areasJobHandle.Complete();
                     objectsJobHandle.Complete();
-                    cancellationToken.ThrowIfCancellationRequested();
+                    signal.ThrowIfCancellationRequested();
 
                     /* Parse objects job result */
                     for (var i = 0; i < iterableTrackedObjects.Count; i++)

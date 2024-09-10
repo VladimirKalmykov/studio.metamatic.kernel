@@ -21,10 +21,10 @@ namespace Metamatic
             Run();
         }
 
-        protected override async UniTask Main(CancellationToken token)
+        protected override async UniTask Main(CancellationSignal signal)
         {
             using var clientProviderListener = m_ClientProvider.OnPairingRequest(OnAnnounceClient);
-            await token;
+            await signal;
         }
         
         private void OnAnnounceClient(TClient client, CancellationToken clientCancellationToken)

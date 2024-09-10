@@ -11,8 +11,8 @@ namespace Metamatic
         public bool isSyncDisposed => m_IsSyncDisposed;
         public bool isAsyncDisposed => !m_IsSyncDisposed;
         private bool m_Disposed;
-        private CancellationTokenSource m_DisposeCancellationTokenSource;
-        public CancellationToken disposeCancellationToken => m_DisposeCancellationTokenSource.Token;
+        private CancellationSignalSource m_DisposeCancellationTokenSource;
+        public CancellationSignal disposeCancellationToken => m_DisposeCancellationTokenSource.Signal;
         private readonly UniTaskCompletionSource m_TaskCompletionSource = new();
         private bool m_IsRunning;
         ~MicroBehaviour()
@@ -46,21 +46,21 @@ namespace Metamatic
             }
             m_IsSyncDisposed = isSync;
             m_Disposed = true;
-            m_DisposeCancellationTokenSource?.CancelAndDispose();
+            m_DisposeCancellationTokenSource.TryCancel();
             GC.SuppressFinalize(this);
         }
         
         protected delegate UniTask AsyncAction(CancellationToken cancellationToken);
 
-        protected async void Run(CancellationToken externalCancellationToken = default)
+        protected async void Run(CancellationSignal externalCancellationToken = default)
         {
             if (m_IsRunning)
             {
                 throw new InvalidOperationException("Task is already running");
             }
             m_IsRunning = true;
-            m_DisposeCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
-            var task = Main(m_DisposeCancellationTokenSource.Token);
+            m_DisposeCancellationTokenSource = CancellationSignalSource.CreateLinked(externalCancellationToken);
+            var task = Main(m_DisposeCancellationTokenSource.Signal);
             try
             {
                 await task;
@@ -79,6 +79,6 @@ namespace Metamatic
             }
         }
 
-        protected abstract UniTask Main(CancellationToken cancellationToken);
+        protected abstract UniTask Main(CancellationSignal signal);
     }
 }
