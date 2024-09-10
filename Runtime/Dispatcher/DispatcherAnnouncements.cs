@@ -77,7 +77,7 @@ namespace Metamatic
         public class ObservableLockedDictionaryContainer: IDisposable
         {
             private static readonly ParamLessPool<ObservableLockedDictionaryContainer> Pool = new ParamLessPool<ObservableLockedDictionaryContainer>();
-            private readonly LockedDictionary<string, Announcement> m_Items = new();
+            private readonly Dictionary<string, Announcement> m_Items = new();
             private readonly DeferLock m_Lock = new();
             public event Action<string, Announcement> OnAdd;
             

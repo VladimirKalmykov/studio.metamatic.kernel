@@ -1,4 +1,5 @@
 using System;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
@@ -12,6 +13,14 @@ namespace Metamatic
         {
             OnEntityResetEvent?.Invoke();
         }
+        
+        protected override async UniTask Run(Ready ready, CancellationSignal signal)
+        {
+            using var announce = Dispatcher.global.Announce(this, false);
+            await OnEntityRun(ready, signal);
+        }
+
+        protected abstract UniTask OnEntityRun(Ready ready, CancellationSignal signal);
         
         public DisposableAction SubscribeToEntityReset(Action handler)
         {

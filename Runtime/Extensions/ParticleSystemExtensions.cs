@@ -8,7 +8,7 @@ namespace Extensions
     {
         public static UniTask WaitUntilStopped(this ParticleSystem particleSystem, CancellationSignal signal = default)
         {
-            return UniTask.WaitWhile(() => particleSystem.IsAlive() || signal.IsCancellationRequested);
+            return UniTask.WaitWhile(() => particleSystem == null || particleSystem.IsAlive() || signal.IsCancellationRequested);
         }
     }
 }

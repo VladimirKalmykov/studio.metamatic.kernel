@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Metamatic.DevTools;
 using Sirenix.OdinInspector;
 using Unity.Cinemachine;
@@ -127,6 +128,7 @@ namespace Metamatic
             return m_CameraController.Subscribe(action);
         }
         
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Camera GetCamera()
         {
             return camera;
