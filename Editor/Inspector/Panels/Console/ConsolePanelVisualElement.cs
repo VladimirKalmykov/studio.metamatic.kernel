@@ -328,6 +328,43 @@ namespace Metamatic.EditorInspector
             /* Subscribe to log events */
             using var logEventListener = StaticLogsCollector.SubscribeToLogHistory(OnLogReceived);
             EditorGUI.hyperLinkClicked += EditorGUI_HyperLinkClicked;
+            
+            /* Command input */
+            var commandsHistory = new List<string>();
+            var commandHistoryCursor = 0;
+            var commandInput = this.Query<UnityEngine.UIElements.TextField>("CommandInput").First();
+            commandInput.RegisterCallback<KeyDownEvent>(evt =>
+            {
+                /* If arrow up or down pressed navigate through commands history */
+                if (evt.keyCode == KeyCode.UpArrow)
+                {
+                    if (commandHistoryCursor > 0)
+                    {
+                        commandHistoryCursor--;
+                        commandInput.value = commandsHistory[commandHistoryCursor];
+                    }
+                }
+                else if (evt.keyCode == KeyCode.DownArrow)
+                {
+                    if (commandHistoryCursor < commandsHistory.Count - 1)
+                    {
+                        commandHistoryCursor++;
+                        commandInput.value = commandsHistory[commandHistoryCursor];
+                    }
+                }
+                
+                
+                if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+                {
+                    var rawCommand = commandInput.value;
+                    commandsHistory.Add(rawCommand);
+                    commandHistoryCursor = commandsHistory.Count;
+                    commandInput.value = "";
+                    var parts = rawCommand.Split(' ', 2);
+                    Console.ExecuteCommand(parts[0], parts.Length > 1 ? parts[1] : "");
+                    evt.StopImmediatePropagation();  // Останавливаем дальнейшее распространение события
+                }
+            });
 
             await ready();
             EditorGUI.hyperLinkClicked -= EditorGUI_HyperLinkClicked;

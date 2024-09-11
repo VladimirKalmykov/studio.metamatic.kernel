@@ -174,13 +174,13 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
             Exception exception = null;
-            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationTokenSource = CancellationSignalSource.Create();
             UniTask.Delay(300).ContinueWith(() =>
             {
-                cancellationTokenSource.Cancel();
+                cancellationTokenSource.TryCancel();
             }).Forget();
             try {
-                await stateMachine.PushLegacy(State.Running, cancellationTokenSource.Token);
+                await stateMachine.PushLegacy(State.Running, cancellationTokenSource.Signal);
             } catch (Exception e)
             {
                 exception = e;
@@ -219,14 +219,14 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
             Exception exception = null;
-            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationTokenSource = CancellationSignalSource.Create();
             UniTask.Delay(300).ContinueWith(() =>
             {
-                cancellationTokenSource.Cancel();
+                cancellationTokenSource.TryCancel();
             }).Forget();
             stateMachine.PushLegacy(State.Running);
             try {
-                await stateMachine.PushLegacy(State.Falling, cancellationTokenSource.Token);
+                await stateMachine.PushLegacy(State.Falling, cancellationTokenSource.Signal);
             } catch (Exception e)
             {
                 exception = e;

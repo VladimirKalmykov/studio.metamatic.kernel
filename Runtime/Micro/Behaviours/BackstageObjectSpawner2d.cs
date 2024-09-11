@@ -72,7 +72,7 @@ namespace Micro.Behaviours
             await signal;
         }
         
-        private async void HandleFOVManager(FOV2DService fovManager, CancellationToken cancellationToken)
+        private async void HandleFOVManager(FOV2DService fovManager, CancellationSignal signal)
         {
             if (fovManager == null)
             {
@@ -82,7 +82,7 @@ namespace Micro.Behaviours
             OnFovManagerReady?.Invoke();
             m_AreasHandler.Handle(m_Areas);
             /* Stack all areas */
-            await cancellationToken;
+            await signal;
             m_AreasHandler.Reset();
             m_FOV2DService = null;
             m_ObjectTracker.ForEach(t => t.Dispose());

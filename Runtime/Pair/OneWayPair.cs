@@ -29,7 +29,7 @@ namespace Metamatic
         
         private void OnAnnounceClient(TClient client, CancellationToken clientCancellationToken)
         {
-            var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(clientCancellationToken, disposeCancellationToken).Token;
+            var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(clientCancellationToken, disposeSignal).Token;
             m_VendorProvider.OnPairingRequest(client, combinedToken);
         }
     }

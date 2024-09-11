@@ -72,6 +72,28 @@ namespace Metamatic
 
             _SharedPool.Return(obj);
         }
+        
+        #if DEBUG
+        public static int DebugGetCountInSharedPool()
+        {
+            if (_SharedPool == null)
+            {
+                return 0;
+            }
+
+            return _SharedPool.Count;
+        }
+        
+        public static int DebugGetCountOutOfSharedPool()
+        {
+            if (_SharedPool == null)
+            {
+                return 0;
+            }
+
+            return _SharedPool.OutOfPoolCount;
+        }
+        #endif
 
         /// <summary>
         /// Create in shared pool specified count of objects and prevent them from auto-shrinking for the next period (see DefaultShrinkingPeriod)
@@ -241,6 +263,21 @@ namespace Metamatic
         /// </summary>
         // ReSharper disable once InconsistentNaming
         public int OutOfPoolCount => m_OutOfPoolHashes.Count;
+        
+        #if DEBUG
+        public int[] DebugGetOutOfPoolHashes()
+        {
+            var hashes = new int[m_OutOfPoolHashes.Count];
+            var i = 0;
+            foreach (var hash in m_OutOfPoolHashes)
+            {
+                hashes[i] = hash;
+                i++;
+            }
+
+            return hashes;
+        }
+        #endif
 
         /// <summary>
         /// The event is called when the pool has no objects in it and there's no objects out of pool

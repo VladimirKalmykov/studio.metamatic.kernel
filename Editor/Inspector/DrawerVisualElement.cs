@@ -4,6 +4,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Metamatic;
 using Metamatic.EditorTools;
+using UnityEngine;
 
 namespace Metamatic.Inspector
 {
@@ -63,10 +64,20 @@ namespace Metamatic.Inspector
                 .Then(() => renderReadyTask.TrySetResult())
                 .Catch(e => renderReadyTask.TrySetException(e))
                 .Forget();
-            await renderReadyTask.Task;
-            await ready();
-            m_RenderCancellationSignalSource.TryCancel();
-            OnReleaseRender?.Invoke();
+            try
+            {
+                await renderReadyTask.Task;
+                await ready();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+            finally
+            {
+                m_RenderCancellationSignalSource.TryCancel();
+                OnReleaseRender?.Invoke();
+            }
         }
         
         public override void SetObjectValue(object value)

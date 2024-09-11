@@ -11,9 +11,9 @@ namespace Metamatic
         public bool isSyncDisposed => m_IsSyncDisposed;
         public bool isAsyncDisposed => !m_IsSyncDisposed;
         private bool m_Disposed;
-        private CancellationSignalSource m_DisposeCancellationTokenSource;
-        public CancellationSignal disposeCancellationToken => m_DisposeCancellationTokenSource.Signal;
-        private readonly UniTaskCompletionSource m_TaskCompletionSource = new();
+        private CancellationSignalSource m_DisposeCancellationSignalSource;
+        public CancellationSignal disposeSignal => m_DisposeCancellationSignalSource.Signal;
+        private readonly SafeTaskCompletionSource m_TaskCompletionSource = SafeTaskCompletionSource.Create();
         private bool m_IsRunning;
         ~MicroBehaviour()
         {
@@ -46,21 +46,21 @@ namespace Metamatic
             }
             m_IsSyncDisposed = isSync;
             m_Disposed = true;
-            m_DisposeCancellationTokenSource.TryCancel();
+            m_DisposeCancellationSignalSource.TryCancel();
             GC.SuppressFinalize(this);
         }
         
-        protected delegate UniTask AsyncAction(CancellationToken cancellationToken);
+        protected delegate UniTask AsyncAction(CancellationSignal signal);
 
-        protected async void Run(CancellationSignal externalCancellationToken = default)
+        protected async void Run(CancellationSignal externalCancellationSignal = default)
         {
             if (m_IsRunning)
             {
                 throw new InvalidOperationException("Task is already running");
             }
             m_IsRunning = true;
-            m_DisposeCancellationTokenSource = CancellationSignalSource.CreateLinked(externalCancellationToken);
-            var task = Main(m_DisposeCancellationTokenSource.Signal);
+            m_DisposeCancellationSignalSource = CancellationSignalSource.CreateLinked(externalCancellationSignal);
+            var task = Main(m_DisposeCancellationSignalSource.Signal);
             try
             {
                 await task;

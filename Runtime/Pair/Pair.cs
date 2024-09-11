@@ -35,9 +35,9 @@ namespace Metamatic
         private async UniTaskVoid OnAnnounceVendor(TVendor vendor, TClient client, CancellationToken vendorCancellationToken, CancellationToken clientCancellationToken)
         {
             var combinedCancellationTokenForVendor = CancellationTokenSource
-                .CreateLinkedTokenSource(clientCancellationToken, disposeCancellationToken).Token;
+                .CreateLinkedTokenSource(clientCancellationToken, disposeSignal).Token;
             var combinedCancellationTokenForClient = CancellationTokenSource
-                .CreateLinkedTokenSource(vendorCancellationToken, disposeCancellationToken).Token;
+                .CreateLinkedTokenSource(vendorCancellationToken, disposeSignal).Token;
             
             /*
              * To client OnPaired methods passes cancellation token that combined from 1. client cancellation token, 2. vendor cancellation token, 3. pair dispose cancellation token.
@@ -67,7 +67,7 @@ namespace Metamatic
         private void OnAnnounceClient(TClient client, CancellationToken clientCancellationToken)
         {
             var combinedToken = CancellationTokenSource
-                .CreateLinkedTokenSource(clientCancellationToken, disposeCancellationToken).Token;
+                .CreateLinkedTokenSource(clientCancellationToken, disposeSignal).Token;
             m_VendorProvider.OnPairingRequest(client, (vendor, vendorCancellationToken) =>
             {
                 OnAnnounceVendor(vendor, client, vendorCancellationToken, combinedToken).Forget();

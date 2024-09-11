@@ -101,5 +101,36 @@ namespace Metamatic
                action?.Invoke(exception); 
             }
         }
+        
+        /// <summary>
+        /// Convert uni task to cancellation signal, that will be cancelled when the task is finished
+        /// </summary>
+        /// <param name="task"></param>
+        /// <returns></returns>
+        public static CancellationSignal ToCancellationSignal(this UniTask task)
+        {
+            var css = CancellationSignalSource.Create();
+            ConvertUniTaskToCancellationSignal(task, css).Forget();
+            return css.Signal;
+        }
+
+        private static async UniTaskVoid ConvertUniTaskToCancellationSignal(UniTask task, CancellationSignalSource signalSource)
+        {
+            try
+            {
+                await task;
+            }
+            catch (Exception)
+            {
+                #if DEBUG
+                Console.Exception("UniTaskExtensions", "Task was failed");                
+                #endif
+                // Skip
+            }
+            finally
+            {
+                signalSource.TryCancel();
+            }
+        }
     }
 }

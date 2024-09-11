@@ -1,4 +1,5 @@
 using System;
+using Metamatic.DevTools;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -7,6 +8,15 @@ namespace Metamatic.Effects
     public sealed class InternalEffectSource<T>: IDisposable
     where T: struct
     {
+        #if DEBUG
+        static InternalEffectSource()
+        {
+            Monitoring.Create("Effects", "Count in pool",
+                ParamLessPool<InternalEffectSource<T>>.DebugGetCountInSharedPool);
+            Monitoring.Create("Effects", "Count out of pool",
+                ParamLessPool<InternalEffectSource<T>>.DebugGetCountOutOfSharedPool);
+        }
+        #endif
         /// <summary>
         /// Create internal effect source (do not use this method directly)
         /// </summary>
@@ -44,6 +54,10 @@ namespace Metamatic.Effects
 
             if (!instant)
             {
+                if (m_CancellationSignalSource.CanBeCancelled)
+                {
+                    Console.Error("CancellationSignal", "You are about to create a new cancellation signal source without disposing the previous one");
+                }
                 m_CancellationSignalSource = CancellationSignalSource.Create();
             }
 

@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Metamatic.DevTools;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Metamatic
 {
@@ -201,19 +204,27 @@ namespace Metamatic
 
     public readonly struct CancellationSignalSource: IDisposable
     {
+        #if DEBUG
+        public static Dictionary<string, InternalCancellationSignalSource> DebugSources = new();
+        #endif
         public static CancellationSignalSource Create(
             #if DEBUG
             string debugId = null
             #endif
             )
-        {
+        {   
+            
             var icss = InternalCancellationSignalSource.Pool.Get();
-            #if DEBUG
-            if (debugId != null)
+#if DEBUG
+            icss.DebugCreateStackTrace = Environment.StackTrace;
+            icss.DebugId = debugId ?? Guid.NewGuid().ToString();
+            DebugSources[icss.DebugId] = icss;
+            Console.Debug("CancellationSignal", "Create",$"{debugId}");
+            icss.DebugOnCancel += () =>
             {
-                icss.debugId = debugId;
-            }
-            #endif
+                DebugSources.Remove(icss.DebugId);
+            };
+#endif
             return new CancellationSignalSource(icss);
         }
 
@@ -227,18 +238,31 @@ namespace Metamatic
                     return new CancellationSignalSource();
                 }
             }
-            var source = InternalCancellationSignalSource.Pool.Get();
-            var memoizedVersion = source.Version;
+            var icss = InternalCancellationSignalSource.Pool.Get();
+            
+            #if DEBUG
+            icss.DebugCreateStackTrace = Environment.StackTrace;
+            icss.DebugId = "Linked_" + Guid.NewGuid().ToString();
+            DebugSources[icss.DebugId] = icss;
+            Console.Debug("CancellationSignal", "Create", "Linked", $"{icss.DebugId}");
+            icss.DebugOnCancel += () =>
+            {
+                DebugSources.Remove(icss.DebugId);
+            };
+            #endif
+            
+            
+            var memoizedVersion = icss.Version;
             void Cancel()
             {
-                if (memoizedVersion != source.Version) return;
-                source.TryCancel();
+                if (memoizedVersion != icss.Version) return;
+                icss.TryCancel();
             }
             foreach (var signal in signals)
             {
                 signal.Register(Cancel);
             }
-            return new CancellationSignalSource(source);
+            return new CancellationSignalSource(icss);
         }
 
         public static CancellationSignalSource CreateLinked(params CancellationToken[] tokens)
@@ -251,29 +275,55 @@ namespace Metamatic
                     return new CancellationSignalSource();
                 }
             }
-            var source = InternalCancellationSignalSource.Pool.Get();
-            var memoizedVersion = source.Version;
+            var icss = InternalCancellationSignalSource.Pool.Get();
+            
+#if DEBUG
+            icss.DebugCreateStackTrace = Environment.StackTrace;
+            icss.DebugId = $"LinkedToTokens_{Guid.NewGuid()}";
+            DebugSources[icss.DebugId] = icss;
+            Console.Debug("CancellationSignal", "Create", "Linked", $"{icss.DebugId}");
+            icss.DebugOnCancel += () =>
+            {
+                DebugSources.Remove(icss.DebugId);
+            };
+#endif
+            
+            var memoizedVersion = icss.Version;
             void Cancel()
             {
-                if (memoizedVersion != source.Version) return;
-                source.TryCancel();
+                if (memoizedVersion != icss.Version) return;
+                icss.TryCancel();
             }
             foreach (var token in tokens)
             {
                 token.Register(Cancel);
             }
-            return new CancellationSignalSource(source);
+            return new CancellationSignalSource(icss);
         }
         
         private readonly InternalCancellationSignalSource m_InternalSource;
         private readonly int m_Version;
-        
+
+        /// <summary>
+        /// TODO: It is incorrect to return new CancellationSignal every time. It should return the same signal
+        /// </summary>
         // ReSharper disable once InconsistentNaming
-        public CancellationSignal Signal => new CancellationSignal(GetSource());
+        public CancellationSignal Signal
+        {
+            get
+            {
+                var source = GetSource();
+                if (source == null)
+                {
+                    return CancellationSignal.Cancelled;
+                }
+                return new CancellationSignal(source);
+            }
+        }
         // ReSharper disable once InconsistentNaming
         public bool IsCancellationRequested => GetSource()?.IsCancellationRequested ?? true;
         // ReSharper disable once InconsistentNaming
-        public bool CanBeCancelled => m_InternalSource != null;
+        public bool CanBeCancelled => GetSource() != null;
         
         internal CancellationSignalSource(InternalCancellationSignalSource source)
         {
@@ -310,10 +360,30 @@ namespace Metamatic
     
     public class InternalCancellationSignalSource: IDisposable
     {
-        internal static readonly ParamLessPool<InternalCancellationSignalSource> Pool = new(autoShrink: true, capacity: 10);
-        
+        internal static readonly ParamLessPool<InternalCancellationSignalSource> Pool = new(autoShrink: true, capacity: 100);
+
         #if DEBUG
-        public string debugId = null;
+        static InternalCancellationSignalSource()
+        {
+            Monitoring.Create("CancellationSignal", "Sources count out of pool", () => Pool.OutOfPoolCount);
+            Monitoring.Create("CancellationSignal", "Sources count in pool", () => Pool.Count);
+            var commander = new Commander();
+            commander.RegisterCommand("List", s =>
+            {
+                Console.Log("CancellationSignal", "Total count", CancellationSignalSource.DebugSources.Count.ToString(), Console.LogLevel.Interactive, Pool.Count.ToString());
+                foreach (var source in CancellationSignalSource.DebugSources)
+                {
+                    var createdAgo = Time.realtimeSinceStartup - source.Value.DebugCreateAt;
+                    Console.Log("CancellationSignal", "Source", $"{source.Key} {createdAgo}s", Console.LogLevel.Interactive, source.Value.DebugCreateStackTrace);
+                }
+            });
+            Console.RegisterCommand("CancellationSignal", commander);
+        }
+
+        public string DebugCreateStackTrace = "";
+        public float DebugCreateAt = Time.realtimeSinceStartup;
+        public string DebugId = null;
+        public event Action DebugOnCancel;
         #endif
         
         // ReSharper disable once InconsistentNaming
@@ -333,9 +403,9 @@ namespace Metamatic
         private async UniTaskVoid FinalizeFromMainThread()
         {
             #if DEBUG
-            if (debugId != null)
+            if (DebugId != null)
             {
-                Console.Verbose("CancellationSignalSource", $"Finalize {debugId}");
+                Console.Verbose("CancellationSignalSource", $"Finalize {DebugId}");
             }
             #endif
             await UniTask.SwitchToMainThread();
@@ -357,9 +427,9 @@ namespace Metamatic
         internal void TryCancel(bool isFinal = false)
         {
 #if DEBUG
-            if (debugId != null)
+            if (DebugId != null)
             {
-                Debug.Log($"[CancellationSignalSource] TryCancel {debugId}");
+                Debug.Log($"[CancellationSignalSource] TryCancel {DebugId}");
             }
 #endif
             if (IsCancellationRequested) return;
@@ -390,7 +460,12 @@ namespace Metamatic
             {
                 Pool.Return(this);
             }
+            #if DEBUG
+            DebugOnCancel?.Invoke();
+            DebugOnCancel = null;
+            #endif
         }
+        
 
         internal CancellationToken GetCancellationToken()
         {
@@ -447,9 +522,9 @@ namespace Metamatic
         public void Dispose()
         {
 #if DEBUG
-            if (debugId != null)
+            if (DebugId != null)
             {
-                Debug.Log($"[CancellationSignalSource] Dispose {debugId}");
+                Debug.Log($"[CancellationSignalSource] Dispose {DebugId}");
             }
 #endif
             TryCancel(true);

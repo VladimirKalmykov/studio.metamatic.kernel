@@ -19,9 +19,10 @@ namespace Metamatic
             Warning = 1 << 4,
             Error = 1 << 5,
             Exception = 1 << 6,
+            Interactive = 1 << 7,
             Minimal = Error | Exception,
-            Standard = Info | Warning | Error | Exception,
-            Full = Verbose | Debug | Info | Warning | Error | Exception
+            Standard = Info | Warning | Error | Exception | Interactive,
+            Full = Verbose | Debug | Info | Warning | Error | Exception | Interactive
         }
 
         static Console()
@@ -30,6 +31,8 @@ namespace Metamatic
             UnityEngine.Debug.Log("[Console] Verbose logging is disabled. Set METAMATIC_VERBOSE_LOG to true in the project settings to enable it.");
 #endif
         }
+        
+        public static readonly Commander Commander = new Commander();
         
         #region Public Properties and Methods
         
@@ -312,5 +315,22 @@ namespace Metamatic
             Log(message, tags, LogLevel.Verbose, stackTrace);
         }
         #endregion
+        
+        #region Interactive mode
+        public static DisposableAction RegisterCommand(string command, Action<string> action)
+        {
+            return Commander.RegisterCommand(command, action);
+        }
+        
+        public static DisposableAction RegisterCommand(string command, Commander commander)
+        {
+            return Commander.RegisterCommand(command, commander);
+        }
+        
+        public static void ExecuteCommand(string command, string args)
+        {
+            Commander.ExecuteCommand(command, args);
+        }
+        #endregion"
     }
 }

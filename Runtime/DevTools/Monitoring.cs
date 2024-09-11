@@ -10,6 +10,11 @@ namespace Metamatic.DevTools
     {
        
         public class MonitoringItem {
+            static MonitoringItem()
+            {
+                Monitoring.Create("Monitoring", "Monitoring item instances", ParamLessPool<MonitoringItem>.DebugGetCountOutOfSharedPool);
+                Monitoring.Create("Monitoring", "Monitoring items in pool", ParamLessPool<MonitoringItem>.DebugGetCountInSharedPool);
+            }
             public static MonitoringItem Create(string group, string key, Func<object> accessor, Type type, PlayerLoopTiming timing)
             {
                 var item = ParamLessPool<MonitoringItem>.GetShared();
@@ -77,7 +82,8 @@ namespace Metamatic.DevTools
             private void Initialize(string name)
             {
                 Name = name;
-                m_CancellationSignalSource = CancellationSignalSource.Create(name);
+                var uid = Guid.NewGuid().ToString();
+                m_CancellationSignalSource = CancellationSignalSource.Create($"MonitoringGroup_{name}_{uid}");
             }
             
             public DisposableAction Add<T>(string key, Func<T> accessor, PlayerLoopTiming timing = PlayerLoopTiming.Update)
