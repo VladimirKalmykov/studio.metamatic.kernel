@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
 using Metamatic.Exceptions;
@@ -58,21 +57,21 @@ namespace Metamatic
             public readonly ulong ID;
 
             public TransitionStatus status => m_StateMachine.m_Status;
-            public CancellationSignal externalCancellationToken => m_StateMachine.m_ExternalCancellationToken;
+            public CancellationSignal externalCancellationSignal => m_StateMachine.m_ExternalCancellationSignal;
             public TState prevState => m_StateMachine.prevState;
             public TState state => m_StateMachine.currentState;
             public TState nextState => m_StateMachine.nextState;
             public bool hasNextState => m_StateMachine.m_HasNextState;
 
-            public bool isExternalCancellationTokenCancelled =>
-                m_StateMachine.m_ExternalCancellationToken.IsCancellationRequested;
+            public bool isExternalCancellationSignalCancelled =>
+                m_StateMachine.m_ExternalCancellationSignal.IsCancellationRequested;
 
             public UniTask completeTransitionFromPrevStateTask => m_StateMachine.completeTransitionFromPrevStateTask;
             public UniTask completeTransitionToNextStateTask => m_StateMachine.completeTransitionToNextStateTask;
             public bool isInitial => m_StateMachine.isInitial;
             public bool isFinalize => m_StateMachine.m_Status == TransitionStatus.Aborted;
-            public CancellationSignal cancellationToken => m_StateMachine.cancellationToken;
-            public CancellationSignal generalCancellationToken => m_StateMachine.internalCancellationToken;
+            public CancellationSignal cancellationToken => m_StateMachine.cancellationSignal;
+            public CancellationSignal generalCancellationSignal => m_StateMachine.internalCancellationSignal;
             public bool isAborted => m_StateMachine.m_Status == TransitionStatus.Aborted;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -97,17 +96,17 @@ namespace Metamatic
         /// <summary>
         /// Internal cancellation token for the whole state machine
         /// </summary>
-        private CancellationSignalSource m_InternalCancellationTokenSource = CancellationSignalSource.Create();
+        private CancellationSignalSource m_InternalCancellationSignalSource = CancellationSignalSource.Create();
 
         /// <summary>
         /// External cancellation token passed within the state
         /// </summary>
-        private CancellationSignal m_ExternalCancellationToken;
+        private CancellationSignal m_ExternalCancellationSignal;
 
         /// <summary>
         /// Cancellation token source will be canceled when the transition gets next state, thus transition handler can know that it should stop
         /// </summary>
-        private CancellationSignalSource m_CancellationTokenSource;
+        private CancellationSignalSource m_CancellationSignalSource;
 
         /// <summary>
         /// Completion source for the transition from previous state to current state (will be completed when handler call WaitNextState() method or right after setting next state)
@@ -123,12 +122,12 @@ namespace Metamatic
         /// <summary>
         /// Indicated that transition from previous state to current state is resolved (to avoid using return value of TrySetResult)
         /// </summary>
-        private bool m_TransitionFromPrevStateResolved = false;
+        private bool m_TransitionFromPrevStateResolved;
 
         /// <summary>
         /// Indicated that transition from current state to next state is resolved (to avoid using return value of TrySetResult)
         /// </summary>
-        private bool m_TransitionToNextStateResolved = false;
+        private bool m_TransitionToNextStateResolved;
 
         private StateValidationHandler m_CommonNextStateValidationHandler;
 
@@ -179,7 +178,7 @@ namespace Metamatic
         /// <summary>
         /// Determines that external cancellation token is canceled (thus SetState should throw OperationCanceledException)
         /// </summary>
-        private bool isExternalCancellationTokenCancelled => m_ExternalCancellationToken.IsCancellationRequested;
+        private bool isExternalCancellationSignalCancelled => m_ExternalCancellationSignal.IsCancellationRequested;
 
         private UniTask completeTransitionFromPrevStateTask => m_TransitionFromPrevStateCompletionSource.Task;
         private UniTask completeTransitionToNextStateTask => m_TransitionToNextStateCompletionSource.Task;
@@ -209,14 +208,14 @@ namespace Metamatic
         }
 
         /// <summary>
-        /// CancellationToken for the transition (will be canceled when the transition gets next state)
+        /// CancellationSignal for the transition (will be canceled when the transition gets next state)
         /// </summary>
-        private CancellationSignal cancellationToken => m_CancellationTokenSource.Signal;
+        private CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
 
         /// <summary>
         /// Internal cancellation token for the whole state machine (will be canceled when state machine is disposed)
         /// </summary>
-        public CancellationSignal internalCancellationToken => m_InternalCancellationTokenSource.Signal;
+        public CancellationSignal internalCancellationSignal => m_InternalCancellationSignalSource.Signal;
 
         private UniTask task =>
             UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource?.Task ?? UniTask.CompletedTask,
@@ -224,11 +223,11 @@ namespace Metamatic
 
         public event Action<TState> OnStateChange;
 
-        private void Reset(TState nextState, TState nextPrevState = default,
-            CancellationSignal externalCancellationToken = default)
+        private void Reset(TState nextStateForReset, TState nextPrevState = default,
+            CancellationSignal externalCancellationSignal = default)
         {
             if (m_SettingDebug)
-                Debug.Log($"[ASYNC-STATE-MACHINE] Reset (new prevState: {nextPrevState}, nextState: {nextState}");
+                Console.Verbose("AsyncStateMachine",$"Reset (new prevState: {nextPrevState}, nextState: {nextStateForReset}");
 #if DEBUG
             try
             {
@@ -240,8 +239,8 @@ namespace Metamatic
             }
             catch (Exception e)
             {
-                Debug.LogError(
-                    $"Error while disposing prev state {prevState} during Reset to next state {nextState}: {e.Message}");
+                Console.Verbose("AsyncStateMachine",
+                    $"Error while disposing prev state {prevState} during Reset to next state {nextStateForReset}: {e.Message}");
             }
 #else
             /* Dispose prev state if it supports IDisposable */
@@ -251,14 +250,14 @@ namespace Metamatic
             }
 #endif
 
-            this.currentState = nextState;
-            OnStateChange?.Invoke(nextState);
-            this.prevState = nextPrevState;
-            m_ExternalCancellationToken = externalCancellationToken;
-            m_CancellationTokenSource.Dispose();
-            m_CancellationTokenSource =
-                CancellationSignalSource.CreateLinked(m_InternalCancellationTokenSource.Signal,
-                    externalCancellationToken);
+            currentState = nextStateForReset;
+            OnStateChange?.Invoke(nextStateForReset);
+            prevState = nextPrevState;
+            m_ExternalCancellationSignal = externalCancellationSignal;
+            m_CancellationSignalSource.Dispose();
+            m_CancellationSignalSource =
+                CancellationSignalSource.CreateLinked(m_InternalCancellationSignalSource.Signal,
+                    externalCancellationSignal);
             
             if (m_TransitionFromPrevStateCompletionSource == null)
             {
@@ -298,14 +297,14 @@ namespace Metamatic
             m_Status = TransitionStatus.Idle;
             m_HasNextState = false;
             m_HasPrevState = true;
-            this.nextState = default;
+            nextState = default;
             OnNextState = null;
             OnAborted = null;
         }
 
-        private void Reset(TState nextState, CancellationSignal externalCancellationToken = default)
+        private void Reset(TState nextStateForReset, CancellationSignal externalCancellationSignal = default)
         {
-            Reset(nextState, default, externalCancellationToken);
+            Reset(nextStateForReset, default, externalCancellationSignal);
             prevState = m_DefaultState;
             m_HasPrevState = false;
         }
@@ -315,19 +314,9 @@ namespace Metamatic
         /// </summary>
         /// <param name="validator"></param>
         /// <returns></returns>
-        public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator
-#if DEBUG
-            ,
-            string debugId = ""
-#endif
-        )
+        public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator)
         {
-#if DEBUG
-            var dispose = m_NextStateValidator.Add(validator);
-            return new DisposableAction(() => { dispose.Dispose(); });
-#else
             return m_NextStateValidator.Add(validator);
-#endif
         }
 
         /// <summary>
@@ -350,7 +339,7 @@ namespace Metamatic
 #endif
         )
         {
-            this.m_Status = status;
+            m_Status = status;
 #if DEBUG
             if (m_SettingDebug)
                 Debug.Log(
@@ -377,7 +366,7 @@ namespace Metamatic
             }
 #if DEBUG
             string statusHistoryText = string.Join(" -> ",
-                System.Linq.Enumerable.Select(m_TransitionStatusQueue.originalQueue, x => $"{x.Item1} ({x.Item2})"));
+                Enumerable.Select(m_TransitionStatusQueue.originalQueue, x => $"{x.Item1} ({x.Item2})"));
             if (m_Status == TransitionStatus.Aborted)
             {
                 var abortedTask = AutoResetUniTaskCompletionSource<TState>.Create();
@@ -392,43 +381,49 @@ namespace Metamatic
 #endif
 
             var tsc = AutoResetUniTaskCompletionSource<TState>.Create();
-            OnNextState += newNextState =>
+            void OnNextStateHandler(TState newNextState)
             {
-                /* If we are here, it means that the transition from previous state is already completed. But we still cancel token, because it should be cancelled before resolving next state waiter task */
-                m_CancellationTokenSource.TryCancel();
+                OnNextState -= OnNextStateHandler;
+                OnAborted -= OnAbortedHandler;
+                m_CancellationSignalSource.TryCancel();
                 tsc.TrySetResult(newNextState);
-            };
-            OnAborted += () =>
+            }
+
+            void OnAbortedHandler()
             {
-                Debug.Log("Abort wait next state");
+                OnNextState -= OnNextStateHandler;
+                OnAborted -= OnAbortedHandler;
                 tsc.TrySetCanceled();
-            };
+            }
+
+            OnNextState += OnNextStateHandler;
+            OnAborted += OnAbortedHandler;
 
             TrySetTransitionFromPrevStateCompleted(0);
 
             return tsc.Task;
         }
 
-        private bool SetNextState(TState nextState, bool skipValidationCheck = false)
+        private bool SetNextState(TState newNextState, bool skipValidationCheck = false)
         {
             #if DEBUG
             if (m_HasNextState) Debug.LogError("Already has next state");
-            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Set next state: {nextState}");
+            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Set next state: {newNextState}");
             #endif
             /* Invalidate state */
-            if (!skipValidationCheck && !m_NextStateValidator.Validate(state, nextState))
+            if (!skipValidationCheck && !m_NextStateValidator.Validate(state, newNextState))
             {
                 /* As the state is invalid, we should dispose it if it supports IDisposable */
                 if (m_StateIsDisposable)
                 {
-                    (nextState as IDisposable)?.Dispose();
+                    (newNextState as IDisposable)?.Dispose();
                 }
 
                 return false;
             }
 
-            this.nextState = nextState;
-            this.m_HasNextState = true;
+            this.nextState = newNextState;
+            m_HasNextState = true;
 
             if (m_Status == TransitionStatus.FromPrevToCurrentCompleted)
             {
@@ -439,15 +434,15 @@ namespace Metamatic
 #endif
             }
 
-            var memoizedCancellationTokenSource = m_CancellationTokenSource;
-            OnNextState?.Invoke(nextState);
+            var memoizedCancellationSignalSource = m_CancellationSignalSource;
+            OnNextState?.Invoke(newNextState);
 #if DEBUG
             if (m_SettingDebug)
             {
-                Debug.Log($"[ASYNC-STATE-MACHINE] CANCEL because next state is defined: {nextState}");
+                Debug.Log($"[ASYNC-STATE-MACHINE] CANCEL because next state is defined: {newNextState}");
             }
 #endif
-            memoizedCancellationTokenSource.TryCancel();
+            memoizedCancellationSignalSource.TryCancel();
             
             return true;
         }
@@ -459,14 +454,13 @@ namespace Metamatic
 #else
             SetStatus(TransitionStatus.Aborted);
 #endif
-
-            m_CancellationTokenSource.Dispose();
+            
             OnAborted?.Invoke();
         }
 
-        public void SetPrevState(TState prevState)
+        public void SetPrevState(TState newPrevState)
         {
-            this.prevState = prevState;
+            this.prevState = newPrevState;
         }
 
         private void TrySetTransitionFromPrevStateCompleted(ulong transitionId)
@@ -548,9 +542,9 @@ namespace Metamatic
         /// <summary>
         /// Determines that state machine is autocompleted with default state (according to m_SettingAutoCompleteWithDefaultState). This property is needed to avoid adding default state to the queue when it is already added that can cause infinite loop
         /// </summary>
-        private ulong m_LatestTransitionId = 0;
+        private ulong m_LatestTransitionId;
 
-        private ulong m_AutocompleteTransitionId = 0;
+        private ulong m_AutocompleteTransitionId;
 
         #region Events
 
@@ -589,17 +583,17 @@ namespace Metamatic
         /// <param name="defaultState">Default state that will be used as previous state on the first set state</param>
         /// <param name="keepOnlyLatestState">Deferred queue can contain only one state (latest state win). Otherwise the queue of the next state has no limits</param>
         /// <param name="autoCompleteWithDefaultState">If current transition is about to end, but there are no next states in queue, automatically add default state as next state</param>
+        /// <param name="debug">Enable debug logging</param>
         public AsyncStateMachine(StateChangeHandler handler, TState defaultState = default,
             bool keepOnlyLatestState = false, bool autoCompleteWithDefaultState = false, bool debug = false)
         {
-            this.m_Handler = handler;
-            this.m_DefaultState = defaultState;
-            this.m_SettingKeepOnlyLatestState = keepOnlyLatestState;
-            this.m_SettingAutoCompleteWithDefaultState = autoCompleteWithDefaultState;
-            this.m_SettingDebug = debug;
-            this.currentState = defaultState;
-            OnStateChange?.Invoke(defaultState);
-            this.m_StateIsDisposable = typeof(IDisposable).IsAssignableFrom(typeof(TState));
+            m_Handler = handler;
+            m_DefaultState = defaultState;
+            m_SettingKeepOnlyLatestState = keepOnlyLatestState;
+            m_SettingAutoCompleteWithDefaultState = autoCompleteWithDefaultState;
+            m_SettingDebug = debug;
+            currentState = defaultState;
+            m_StateIsDisposable = typeof(IDisposable).IsAssignableFrom(typeof(TState));
 
 #if DEBUG
             if (m_SettingDebug)
@@ -613,7 +607,7 @@ namespace Metamatic
 
         ~AsyncStateMachine()
         {
-            throw new InvalidOperationException("AsyncStateMachine should be disposed manually");
+            Console.Exception("AsyncStateMachine", "AsyncStateMachine should be disposed manually");
         }
 
         private ulong GenerateId()
@@ -628,28 +622,28 @@ namespace Metamatic
         /// <summary>
         /// Add new state to the queue
         /// </summary>
-        /// <param name="state"></param>
-        /// <param name="externalCancellationToken"></param>
+        /// <param name="stateToPush"></param>
+        /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns>Uni task for transition between prev task to this task</returns>
-        public UniTask PushLegacy(TState state, CancellationSignal externalCancellationToken = default, ulong id = 0)
+        public UniTask PushLegacy(TState stateToPush, CancellationSignal externalCancellationSignal = default, ulong id = 0)
         {
-            return PushStateAsync(state, externalCancellationToken, id).task;
+            return PushStateAsync(stateToPush, externalCancellationSignal, id).task;
         }
 
         /// <summary>
         /// Add next state to the queue if current state matches the specified state
         /// </summary>
         /// <param name="ifCurrentStateIs"></param>
-        /// <param name="nextState"></param>
-        /// <param name="externalCancellationToken"></param>
+        /// <param name="newNextState"></param>
+        /// <param name="externalCancellationSignal"></param>
         /// <returns></returns>
-        public UniTask TryPushNextState(TState ifCurrentStateIs, TState nextState,
-            CancellationSignal externalCancellationToken = default)
+        public UniTask TryPushNextState(TState ifCurrentStateIs, TState newNextState,
+            CancellationSignal externalCancellationSignal = default)
         {
-            if (this.currentState.Equals(ifCurrentStateIs) && m_StatesQueue.Count == 0)
+            if (currentState.Equals(ifCurrentStateIs) && m_StatesQueue.Count == 0)
             {
-                return PushLegacy(nextState, externalCancellationToken);
+                return PushLegacy(newNextState, externalCancellationSignal);
             }
 
             return UniTask.CompletedTask;
@@ -660,13 +654,14 @@ namespace Metamatic
         /// E.g.
         /// </summary>
         /// <param name="id"></param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="newNextState"></param>
+        /// <param name="signal"></param>
         /// <returns></returns>
-        public ulong TryPushNextState(ulong id, TState nextState, CancellationSignal cancellationToken = default)
+        public ulong TryPushNextState(ulong id, TState newNextState, CancellationSignal signal = default)
         {
             if (IsLatest(id))
             {
-                return PushState(nextState, cancellationToken);
+                return PushState(newNextState, signal);
             }
 
             return 0;
@@ -676,59 +671,54 @@ namespace Metamatic
         /// More convenient method to add state to the queue and get its id
         /// In the future versions this method can stay as the only method to add state, because its interface is more convenient to reduce the number of created UniTaskCompletionSources per flow of the state machine
         /// </summary>
-        /// <param name="state"></param>
-        /// <param name="externalCancellationToken"></param>
+        /// <param name="newState"></param>
+        /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public ulong PushState(TState state, CancellationSignal externalCancellationToken = default, ulong id = 0)
+        public ulong PushState(TState newState, CancellationSignal externalCancellationSignal = default, ulong id = 0)
         {
-            return PushStateAsync(state, externalCancellationToken, id).id;
+            return PushStateAsync(newState, externalCancellationSignal, id).id;
         }
 
         /// <summary>
         /// Add new state to the queue and get its task and id
         /// </summary>
-        /// <param name="state"></param>
-        /// <param name="externalCancellationToken"></param>
+        /// <param name="newState"></param>
+        /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public (UniTask task, ulong id) PushStateAsync(TState state,
-            CancellationSignal externalCancellationToken = default,
+        public (UniTask task, ulong id) PushStateAsync(TState newState,
+            CancellationSignal externalCancellationSignal = default,
             ulong id = 0)
         {
 #if DEBUG
             if (m_SettingDebug)
                 Debug.Log(
-                    $"[ASYNC-STATE-MACHINE] Validate attempt to add state {state} (id #{id}) (Curren status is {m_Status})");
+                    $"[ASYNC-STATE-MACHINE] Validate attempt to add state {newState} (id #{id}) (Curren status is {m_Status})");
 #endif
             /* Invalidate state */
-            if (m_Disposed || !m_NextStateValidator.Validate(currentState, state))
+            if (m_Disposed || !m_NextStateValidator.Validate(currentState, newState))
             {
                 /* As the state is invalid, we should dispose it if it supports IDisposable */
                 if (m_StateIsDisposable)
                 {
-#if DEBUG
                     try
                     {
-                        (state as IDisposable)?.Dispose();
+                        (newState as IDisposable)?.Dispose();
                     }
                     catch (Exception e)
                     {
-                        Debug.LogError(
-                            $"[ASYNC-STATE-MACHINE] Error while disposing invalid state {state}: {e.Message}");
+                        Console.Exception("AsyncStateMachine", e.Message, e.StackTrace);
                     }
-#else
-                    (state as IDisposable)?.Dispose();
-#endif
                 }
                 var resultTask = m_Disposed
                     ? UniTask.FromException(new OperationCanceledException("State machine is disposed"))
                     : UniTask.CompletedTask;
-                return (UniTask.CompletedTask, 0);
+                return (resultTask, 0);
             }
 #if DEBUG
             if (m_SettingDebug)
-                Debug.Log($"[ASYNC-STATE-MACHINE] Add valid state {state} (id #{id}) (Curren status is {m_Status})");
+                Debug.Log($"[ASYNC-STATE-MACHINE] Add valid state {newState} (id #{id}) (Curren status is {m_Status})");
 #endif
 
             /* Generate unique Id the future transition */
@@ -745,14 +735,14 @@ namespace Metamatic
                         var tcs = ReusableUniTaskCompletionSource.Create();
                         #if DEBUG
                         if (m_SettingDebug)
-                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {state}(id #{id}) (Curren status is {m_Status})");
+                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {newState}(id #{id}) (Curren status is {m_Status})");
                         #endif
                         var isFirstInQueue = m_StatesQueue.Count == 0;
-                        EnqueueState(nextId, state, externalCancellationToken, tcs);
+                        EnqueueState(nextId, newState, externalCancellationSignal, tcs);
                         if (isFirstInQueue)
                         {
                             // Do not need to check validation handler, because it was checked before
-                            SetNextState(state, true);
+                            SetNextState(newState, true);
                         }
 
                         return (tcs.Task, nextId);
@@ -765,18 +755,18 @@ namespace Metamatic
                         var tcs = ReusableUniTaskCompletionSource.Create();
 #if DEBUG
                         if (m_SettingDebug)
-                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {state}(id #{id}) (Curren status is {m_Status})");
+                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {newState}(id #{id}) (Curren status is {m_Status})");
 #endif
-                        EnqueueState(nextId, state, externalCancellationToken, tcs);
+                        EnqueueState(nextId, newState, externalCancellationSignal, tcs);
                         return (tcs.Task, nextId);
                     }
                 }
 
-                Reset(state, this.currentState, externalCancellationToken);
+                Reset(newState, currentState, externalCancellationSignal);
             }
             else
             {
-                Reset(state, externalCancellationToken);
+                Reset(newState, externalCancellationSignal);
             }
 
             /* Create new transition and perform */
@@ -784,8 +774,8 @@ namespace Metamatic
             /* Peek next state in queue to prepare next state */
             while (m_StatesQueue.Count > 0)
             {
-                var (_, nextState, _, tcs) = m_StatesQueue.Peek();
-                if (!SetNextState(nextState))
+                var (_, nextStateFromQueue, _, tcs) = m_StatesQueue.Peek();
+                if (!SetNextState(nextStateFromQueue))
                 {
                     tcs.TrySetResult();
                     tcs.TryReturn();
@@ -853,7 +843,7 @@ namespace Metamatic
             return UniTask.CompletedTask;
         }
 
-        private void EnqueueState(ulong id, TState state, CancellationSignal externalCancellationToken,
+        private void EnqueueState(ulong id, TState stateToEnqueue, CancellationSignal externalCancellationSignal,
             ReusableUniTaskCompletionSource tcs)
         {
             if (m_SettingKeepOnlyLatestState && m_StatesQueue.Count > 1)
@@ -871,12 +861,12 @@ namespace Metamatic
 #if DEBUG
                         try
                         {
-                            (state as IDisposable)?.Dispose();
+                            (stateToEnqueue as IDisposable)?.Dispose();
                         }
                         catch (Exception e)
                         {
                             Debug.LogError(
-                                $"[ASYNC-STATE-MACHINE] Error while disposing state {state} during enqueue filter: {e.Message}");
+                                $"[ASYNC-STATE-MACHINE] Error while disposing state {stateToEnqueue} during enqueue filter: {e.Message}");
                         }
 #else
                         (state as IDisposable)?.Dispose();
@@ -885,7 +875,7 @@ namespace Metamatic
                 }
             }
 
-            m_StatesQueue.Enqueue((id, state, externalCancellationToken, tcs));
+            m_StatesQueue.Enqueue((id, stateToEnqueue, externalCancellationSignal, tcs));
         }
 
         private async UniTaskVoid PerformTransition(ulong id)
@@ -907,12 +897,12 @@ namespace Metamatic
             catch (OperationCanceledException)
             {
                 // Skip
-                if (isExternalCancellationTokenCancelled &&
+                if (isExternalCancellationSignalCancelled &&
                     m_Status == TransitionStatus.FromPrevToCurrentProcessing)
                 {
                     /* Transition was cancelled by external token. Throw this token */
                     SetTransitionFromPrevStateError(
-                        new OperationCanceledException(m_ExternalCancellationToken));
+                        new OperationCanceledException(m_ExternalCancellationSignal));
                 }
                 else
                 {
@@ -964,31 +954,31 @@ namespace Metamatic
 #endif
                 );
                 m_LatestTransitionId = id;
-                DeferCallNextStateOnCurrentTransitionReady();
+                DeferCallNextStateOnCurrentTransitionReady().Forget();
             }
         }
 
         /// <summary>
         /// When new transition is performing, we should wait for it's readiness to apply next state (if it is in queue)
         /// </summary>
-        private async void DeferCallNextStateOnCurrentTransitionReady()
+        private async UniTaskVoid DeferCallNextStateOnCurrentTransitionReady()
         {
             try
             {
                 await completeTransitionToNextStateTask;
-                HandleNextState(true);
+                HandleNextState(true).Forget();
             }
             catch (OperationCanceledException)
             {
-                HandleNextState(true);
+                HandleNextState(true).Forget();
             }
             catch (Exception e)
             {
-                HandleNextState(false, e);
+                HandleNextState(false, e).Forget();
             }
         }
 
-        private async void HandleNextState(bool previousIsSuccess, Exception exception = null)
+        private async UniTaskVoid HandleNextState(bool previousIsSuccess, Exception exception = null)
         {
             if (m_StatesQueue.Count == 0)
             {
@@ -1003,7 +993,7 @@ namespace Metamatic
                 return;
             }
 
-            var (id, newNextState, externalCancellationToken, tcs) = m_StatesQueue.Dequeue();
+            var (id, newNextState, externalCancellationSignal, tcs) = m_StatesQueue.Dequeue();
             if (!previousIsSuccess)
             {
                 tcs.TrySetException(exception);
@@ -1022,7 +1012,7 @@ namespace Metamatic
 
             try
             {
-                var taskToWait = PushStateAsync(newNextState, externalCancellationToken, id).task;
+                var taskToWait = PushStateAsync(newNextState, externalCancellationSignal, id).task;
                 await taskToWait;
                 tcs.TrySetResult();
             }
@@ -1062,12 +1052,12 @@ namespace Metamatic
             m_Debug_UILoggerDisposable.Dispose();
 #endif
             m_Disposed = true;
-            m_InternalCancellationTokenSource.TryCancel();
+            m_CancellationSignalSource.Dispose();
+            m_InternalCancellationSignalSource.Dispose();
 
             /* Dispose active states */
             if (m_StateIsDisposable)
             {
-#if DEBUG
                 try
                 {
                     (prevState as IDisposable)?.Dispose();
@@ -1075,31 +1065,17 @@ namespace Metamatic
                     (nextState as IDisposable)?.Dispose();
 
                     /* Dispose states in queue */
-                    foreach (var (_, state, _, tcs) in m_StatesQueue)
+                    foreach (var (_, stateFromQueue, _, tcs) in m_StatesQueue)
                     {
                         tcs.TrySetCanceled(); // TODO: Cancel or Resolve?
                         tcs.TryReturn();
-                        (state as IDisposable)?.Dispose();
+                        (stateFromQueue as IDisposable)?.Dispose();
                     }
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("Error while disposing states during state machine disposing: " + e.Message);
+                    Console.Exception(e.Message, e.StackTrace);
                 }
-
-#else
-                (prevState as IDisposable)?.Dispose();
-                (currentState as IDisposable)?.Dispose();
-                (nextState as IDisposable)?.Dispose();
-                
-                /* Dispose states in queue */
-                foreach (var (_, state, _, tcs) in m_StatesQueue)
-                    {
-                        tcs.TrySetCanceled(); // TODO: Cancel or Resolve?
-                        tcs.TryReturn();
-                        (state as IDisposable)?.Dispose();
-                    }
-#endif
             }
 
             if (!isAsync)
