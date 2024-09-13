@@ -1,23 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using Metamatic.Metamatic;
-using UnityEngine;
-
 namespace Metamatic
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading;
+    using Cysharp.Threading.Tasks;
+    using Metamatic;
+    using UnityEngine;
+
     public partial class Dispatcher
     {
-        /// <summary>
-        /// Reusable announcement object
-        /// </summary>
-        public class Announcement: IDisposable
+        public class Announcement : IDisposable
         {
             private static readonly ParamLessPool<Announcement> Pool = new ParamLessPool<Announcement>();
-            /// <summary>
-            /// CancellationToken should be initialized only if it is required by observer to reduce count of allocated objects
-            /// </summary>
             private CancellationTokenSource m_CancellationTokenSource;
             public object Item;
 
@@ -25,20 +20,15 @@ namespace Metamatic
             {
                 get
                 {
-                    /* Lazy initialization on demand */
                     if (m_CancellationTokenSource == null)
                     {
                         m_CancellationTokenSource = new CancellationTokenSource();
                     }
+
                     return m_CancellationTokenSource.Token;
                 }
             }
-            
-            /// <summary>
-            /// Get announcement object from the pool
-            /// </summary>
-            /// <param name="item"></param>
-            /// <returns></returns>
+
             public static Announcement Create(object item)
             {
                 var announcement = Pool.Get();
@@ -46,10 +36,7 @@ namespace Metamatic
                 announcement.Item = item;
                 return announcement;
             }
-            
-            /// <summary>
-            /// Return announcement object to the pool
-            /// </summary>
+
             public void Return()
             {
                 if (m_CancellationTokenSource != null)
@@ -58,12 +45,10 @@ namespace Metamatic
                     m_CancellationTokenSource.Dispose();
                     m_CancellationTokenSource = null;
                 }
+
                 Pool.Return(this);
             }
-            
-            /// <summary>
-            /// Dispose will be called from the pool when the object is released (totally removed from pool)
-            /// </summary>
+
             public void Dispose()
             {
                 if (m_CancellationTokenSource != null)
@@ -74,260 +59,136 @@ namespace Metamatic
             }
         }
 
-        public class ObservableLockedDictionaryContainer: IDisposable
+        public class ObservableLockedDictionaryContainer : IDisposable
         {
-            private static readonly ParamLessPool<ObservableLockedDictionaryContainer> Pool = new ParamLessPool<ObservableLockedDictionaryContainer>();
-            private readonly Dictionary<string, Announcement> m_Items = new();
+            private static readonly ParamLessPool<ObservableLockedDictionaryContainer> Pool =
+                new ParamLessPool<ObservableLockedDictionaryContainer>();
+
+            private readonly Dictionary<object, Announcement> m_Items = new();
             private readonly DeferLock m_Lock = new();
-            public event Action<string, Announcement> OnAdd;
-            
+            public event Action<object, Announcement> OnAdd;
+
             public static ObservableLockedDictionaryContainer Create()
             {
                 var container = Pool.Get();
                 return container;
             }
-            
+
             public bool isLocked => m_Lock.IsLocked;
+
             public UniTask<DisposableAction> Lock(CancellationSignal cancellationSignal)
             {
                 return m_Lock.Lock(cancellationSignal);
             }
-            
-            ~ObservableLockedDictionaryContainer()
-            {
-                Debug.LogError("You should dispose ObservableLockedDictionaryContainer");
-            }
-            
-            public DisposableAction Subscribe(Action<string, Announcement> action)
+
+            public DisposableAction Subscribe(Action<object, Announcement> action)
             {
                 OnAdd += action;
                 return new DisposableAction(() => OnAdd -= action);
             }
-            
-            public void GetEach(Action<string, Announcement> action)
+
+            public void GetEach(Action<object, Announcement> action)
             {
                 foreach (var item in m_Items)
                 {
                     action(item.Key, item.Value);
                 }
             }
-            
-            public (string id, Announcement announcement) Find(Func<KeyValuePair<string, Announcement>, bool> predicate, Action<string, Announcement> action)
+
+            public bool ContainsKey(object key)
             {
-                foreach (var item in m_Items)
-                {
-                    if (predicate(item))
-                    {
-                        return (item.Key, item.Value);
-                    }
-                }
-                return (null, null);
+                return m_Items.ContainsKey(key);
             }
-            
-            public void Add(string key, Announcement item)
+
+            public Announcement Get(object key)
+            {
+                return m_Items[key];
+            }
+
+            public void Add(object key, Announcement item)
             {
                 m_Items.Add(key, item);
                 OnAdd?.Invoke(key, item);
             }
-            
-            public Announcement Get(string key)
-            {
-                return m_Items[key];
-            }
-            
-            public void Remove(string key)
+
+            public void Remove(object key)
             {
                 var item = m_Items[key];
                 m_Items.Remove(key);
                 item.Dispose();
             }
 
+            public IEnumerable<T> GetItems<T>() where T : notnull
+            {
+                foreach (var announcement in m_Items.Values)
+                {
+                    if (announcement.Item is T tItem)
+                    {
+                        yield return tItem;
+                    }
+                }
+            }
+
             public void Dispose()
             {
                 m_Lock.Reset();
-                /* Dispose all items */
                 foreach (var item in m_Items)
                 {
                     item.Value.Dispose();
                 }
+
                 m_Items.Clear();
                 Pool.Return(this);
                 GC.SuppressFinalize(this);
             }
         }
-        
-        private Dictionary<Type, Dictionary<object, ObservableLockedDictionaryContainer>> m_Announcements = new();
 
-        /// <summary>
-        /// Announce object
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="item"></param>
-        /// <param name="useRuntimeType">Use derived type instead of compile-time type</param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public DisposableAction Announce<T>(object key, T item, bool useRuntimeType = false) where T : notnull
+        private Dictionary<Type, ObservableLockedDictionaryContainer> m_Announcements = new();
+
+        public DisposableAction Announce<T>(T item, bool useRuntimeType = false) where T : notnull
         {
             var type = useRuntimeType ? item.GetType() : typeof(T);
-            if (!m_Announcements.TryGetValue(type, out var announcements))
-            {
-                announcements = new Dictionary<object, ObservableLockedDictionaryContainer>();
-                m_Announcements[type] = announcements;
-            }
-
-            if (!announcements.TryGetValue(key, out var dict))
+            if (!m_Announcements.TryGetValue(type, out var dict))
             {
                 dict = ObservableLockedDictionaryContainer.Create();
-                announcements[key] = dict;
+                m_Announcements[type] = dict;
             }
-            
-            var id = Guid.NewGuid().ToString();
+
+            var key = (object)item;
 
             if (dict.isLocked)
             {
                 var cts = CancellationSignalSource.Create();
-                Internal_AddAnnouncement<T>(dict, id, item, cts.Signal).Forget();
-                
+                Internal_AddAnnouncement<T>(dict, key, item, cts.Signal).Forget();
+
                 return new DisposableAction(() =>
                 {
                     cts.TryCancel();
-                    Internal_Retract(dict, id).Forget();
+                    Internal_Retract(dict, key).Forget();
                 });
             }
             else
             {
-                dict.Add(id, Announcement.Create(item));
+                dict.Add(key, Announcement.Create(item));
             }
 
-            return new DisposableAction(() =>
-            {
-                Internal_Retract(dict, id).Forget();
-            });
+            return new DisposableAction(() => { Internal_Retract(dict, key).Forget(); });
         }
-        
-        /// <summary>
-        /// Shortcut for Announce that automatically relates to the dispatcher as a key
-        /// </summary>
-        /// <param name="item"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public DisposableAction Announce<T>(T item, bool useRuntimeType = false) where T : notnull
-        {
-            return Announce(this, item, useRuntimeType);
-        }
-        
-        /// <summary>
-        /// Subscribe to each announced object of type T with a key. Try to avoid of using this method, if you can use ObserveAnnouncementEach with a condition
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="action"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public DisposableAction ObserveAnnouncementEach<T>(object key, Func<T, CancellationSignal, UniTaskVoid> action) where T : notnull
-        {
-            if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
-            {
-                announcements = new Dictionary<object, ObservableLockedDictionaryContainer>();
-                m_Announcements[typeof(T)] = announcements;
-            }
-            if (!announcements.TryGetValue(key, out var observableDict))
-            {
-                observableDict = ObservableLockedDictionaryContainer.Create();
-                announcements[key] = observableDict;
-            }
 
-            var cancellationTokenSources = ParamLessPool<List<CancellationSignalSource>>.GetShared();
-            var registrations = ParamLessPool<List<DisposableAction>>.GetShared();
-            /* Iterate through all items */
-            observableDict.GetEach((id, announcement) =>
-            {
-                var cts = CancellationSignalSource.CreateLinked(announcement.ReleaseToken);
-                cancellationTokenSources.Add(cts);
-                var token = cts.Signal;
-                DisposableAction registration = default;
-                registration = token.Register(() =>
-                {
-                    registration.Dispose();
-                    registrations.Remove(registration);
-                    cancellationTokenSources.Remove(cts);
-                    cts.Dispose();
-                });
-                registrations.Add(registration);
-                action((T)announcement.Item, token).Forget();
-            });
-            var dispose = observableDict.Subscribe((id, announcement) =>
-            {
-                var cts = CancellationSignalSource.CreateLinked(announcement.ReleaseToken);
-                cancellationTokenSources.Add(cts);
-                var token = cts.Signal;
-                DisposableAction registration = default;
-                registration = token.Register(() =>
-                {
-                    registration.Dispose();
-                    registrations.Remove(registration);
-                    cancellationTokenSources.Remove(cts);
-                    cts.Dispose();
-                });
-                registrations.Add(registration);
-                action((T)announcement.Item, token).Forget();
-            });
-            return new DisposableAction(() =>
-            {
-                foreach (var registration in registrations)
-                {
-                    registration.Dispose();
-                }
-                foreach (var cts in cancellationTokenSources)
-                {
-                    cts.TryCancel();
-                }
-                dispose.Dispose();
-                cancellationTokenSources.Clear();
-                registrations.Clear();
-                ParamLessPool<List<CancellationSignalSource>>.ReturnShared(cancellationTokenSources);
-                ParamLessPool<List<DisposableAction>>.ReturnShared(registrations);
-            });
-        }
-        
-        /// <summary>
-        /// Shortcut for ObserveAnnouncementEach that automatically relates to the dispatcher as a key
-        /// </summary>
-        /// <param name="action"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
         public DisposableAction ObserveAnnouncementEach<T>(Func<T, CancellationSignal, UniTaskVoid> action)
             where T : notnull
         {
-            return ObserveAnnouncementEach(this, action);
-        }
-        
-        /// <summary>
-        /// Observe to each announced object of type T with a key and a condition. The handler accept object itself and cancellation token that will be cancelled when the object is retracted
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="condition"></param>
-        /// <param name="action"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public DisposableAction ObserveAnnouncementConditional<T>(object key, Func<T, bool> condition, Func<T, CancellationSignal, UniTaskVoid> action) where T : notnull
-        {
-            if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
+            if (!m_Announcements.TryGetValue(typeof(T), out var dict))
             {
-                announcements = new Dictionary<object, ObservableLockedDictionaryContainer>();
-                m_Announcements[typeof(T)] = announcements;
-            }
-            if (!announcements.TryGetValue(key, out var observableDict))
-            {
-                observableDict = ObservableLockedDictionaryContainer.Create();
-                announcements[key] = observableDict;
+                dict = ObservableLockedDictionaryContainer.Create();
+                m_Announcements[typeof(T)] = dict;
             }
 
             var cancellationTokenSources = ParamLessPool<List<CancellationSignalSource>>.GetShared();
             var registrations = ParamLessPool<List<DisposableAction>>.GetShared();
-            /* Iterate through all items */
-            observableDict.GetEach((id, announcement) =>
+
+            dict.GetEach((key, announcement) =>
             {
-                if (!condition((T)announcement.Item)) return;
                 var cts = CancellationSignalSource.CreateLinked(announcement.ReleaseToken);
                 cancellationTokenSources.Add(cts);
                 var token = cts.Signal;
@@ -342,9 +203,9 @@ namespace Metamatic
                 registrations.Add(registration);
                 action((T)announcement.Item, token).Forget();
             });
-            var dispose = observableDict.Subscribe((id, announcement) =>
+
+            var dispose = dict.Subscribe((key, announcement) =>
             {
-                if (!condition((T)announcement.Item)) return;
                 var cts = CancellationSignalSource.CreateLinked(announcement.ReleaseToken);
                 cancellationTokenSources.Add(cts);
                 var token = cts.Signal;
@@ -359,16 +220,19 @@ namespace Metamatic
                 registrations.Add(registration);
                 action((T)announcement.Item, token).Forget();
             });
+
             return new DisposableAction(() =>
             {
                 foreach (var registration in registrations)
                 {
                     registration.Dispose();
                 }
+
                 foreach (var cts in cancellationTokenSources)
                 {
                     cts.TryCancel();
                 }
+
                 dispose.Dispose();
                 cancellationTokenSources.Clear();
                 registrations.Clear();
@@ -376,158 +240,188 @@ namespace Metamatic
                 ParamLessPool<List<DisposableAction>>.ReturnShared(registrations);
             });
         }
-        
-        /// <summary>
-        /// Shortcut for ObserveAnnouncementConditional that automatically relates to the dispatcher as a key
-        /// </summary>
-        /// <param name="condition"></param>
-        /// <param name="action"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public DisposableAction ObserveAnnouncementConditional<T>(Func<T, bool> condition, Func<T, CancellationSignal, UniTaskVoid> action)
-            where T : notnull
+
+        public IEnumerable<T> GetAnnouncements<T>() where T : notnull
         {
-            return ObserveAnnouncementConditional(this, condition, action);
+            if (m_Announcements.TryGetValue(typeof(T), out var dict))
+            {
+                return dict.GetItems<T>();
+            }
+            else
+            {
+                return Enumerable.Empty<T>();
+            }
         }
         
-        /// <summary>
-        /// Subscribe to each announced object of type T with a key without observing the object's lifecycle
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="action"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public DisposableAction SubscribeAnnouncement<T>(object key, Action<T> action) where T : notnull
+        public DisposableAction SubscribeAnnouncements<T>(Action<T> action) where T : notnull
         {
-            if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
+            if (!m_Announcements.TryGetValue(typeof(T), out var dict))
             {
-                announcements = new Dictionary<object, ObservableLockedDictionaryContainer>();
-                m_Announcements[typeof(T)] = announcements;
+                dict = ObservableLockedDictionaryContainer.Create();
+                m_Announcements[typeof(T)] = dict;
             }
-            if (!announcements.TryGetValue(key, out var observableDict))
-            {
-                observableDict = ObservableLockedDictionaryContainer.Create();
-                announcements[key] = observableDict;
-            }
-            observableDict.GetEach((id, announcement) =>
+
+            // Обработка существующих анонсов
+            dict.GetEach((key, announcement) =>
             {
                 action((T)announcement.Item);
             });
-            return observableDict.Subscribe((id, announcement) =>
+
+            // Подписка на будущие анонсы
+            var dispose = dict.Subscribe((key, announcement) =>
             {
                 action((T)announcement.Item);
             });
+
+            return dispose;
         }
         
-        /// <summary>
-        /// Shortcut for SubscribeAnnouncement that automatically relates to the dispatcher as a key
-        /// </summary>
-        /// <param name="action"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public DisposableAction SubscribeAnnouncement<T>(Action<T> action)
-            where T : notnull
+        public DisposableAction SubscribeAnnouncements<T>(Action<T> action, Func<T, bool> condition) where T : notnull
         {
-            return SubscribeAnnouncement(this, action);
-        }
-        
-        /// <summary>
-        /// Find an announcement object of type T with a key and a condition
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="selector"></param>
-        /// <param name="result"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public bool FindAnnouncement<T>(object key, Func<T, bool> selector, out T result)
-        {
-            if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
+            if (!m_Announcements.TryGetValue(typeof(T), out var dict))
             {
-                result = default;
-                return false;
+                dict = ObservableLockedDictionaryContainer.Create();
+                m_Announcements[typeof(T)] = dict;
             }
-            if (!announcements.TryGetValue(key, out var observableDict))
+
+            // Обработка существующих анонсов
+            dict.GetEach((key, announcement) =>
             {
-                result = default;
-                return false;
-            }
-            var (id, announcement) = observableDict.Find(pair =>
-            {
-                if (pair.Value.Item is T item)
+                T item = (T)announcement.Item;
+                if (condition(item))
                 {
-                    if (selector(item))
+                    action(item);
+                }
+            });
+
+            // Подписка на будущие анонсы
+            var dispose = dict.Subscribe((key, announcement) =>
+            {
+                T item = (T)announcement.Item;
+                if (condition(item))
+                {
+                    action(item);
+                }
+            });
+
+            return dispose;
+        }
+        
+        public UniTask<T> WaitForAnnouncement<T>(CancellationSignal signal) where T : notnull
+        {
+            var completionSource = AutoResetUniTaskCompletionSource<T>.Create();
+
+            if (!m_Announcements.TryGetValue(typeof(T), out var dict))
+            {
+                dict = ObservableLockedDictionaryContainer.Create();
+                m_Announcements[typeof(T)] = dict;
+            }
+
+            // Проверка существующих анонсов
+            bool found = false;
+            dict.GetEach((key, announcement) =>
+            {
+                if (!found)
+                {
+                    T item = (T)announcement.Item;
+                    found = true;
+                    completionSource.TrySetResult(item);
+                }
+            });
+
+            if (found)
+            {
+                return completionSource.Task;
+            }
+
+            // Подписка на будущие анонсы
+            DisposableAction dispose = default;
+            dispose = dict.Subscribe((key, announcement) =>
+            {
+                T item = (T)announcement.Item;
+                if (completionSource.TrySetResult(item))
+                {
+                    dispose.Dispose();
+                }
+            });
+
+            // Обработка отмены
+            signal.Register(() =>
+            {
+                if (completionSource.TrySetCanceled())
+                {
+                    dispose.Dispose();
+                }
+            });
+
+            return completionSource.Task;
+        }
+
+        public UniTask<T> WaitForAnnouncement<T>(CancellationSignal signal, Func<T, bool> condition) where T : notnull
+        {
+            var completionSource = AutoResetUniTaskCompletionSource<T>.Create();
+
+            if (!m_Announcements.TryGetValue(typeof(T), out var dict))
+            {
+                dict = ObservableLockedDictionaryContainer.Create();
+                m_Announcements[typeof(T)] = dict;
+            }
+
+            // Проверка существующих анонсов
+            bool found = false;
+            dict.GetEach((key, announcement) =>
+            {
+                if (!found)
+                {
+                    T item = (T)announcement.Item;
+                    if (condition(item))
                     {
-                        return true;
+                        found = true;
+                        completionSource.TrySetResult(item);
                     }
                 }
-                return false;
-            }, (id, announcement) => { });
-            if (id == null)
+            });
+
+            if (found)
             {
-                result = default;
-                return false;
+                return completionSource.Task;
             }
-            result = (T)announcement.Item;
-            return true;
-        }
-        
-        /// <summary>
-        /// Shortcut for FindAnnouncement that automatically relates to the dispatcher as a key
-        /// </summary>
-        /// <param name="selector"></param>
-        /// <param name="result"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public bool FindAnnouncement<T>(Func<T, bool> selector, out T result)
-        {
-            return FindAnnouncement(this, selector, out result);
-        }
-        
-        /// <summary>
-        /// Get the first announcement object of type T with a key
-        /// </summary>
-        /// <param name="key"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public T GetFirstOfAnnouncement<T>(object key)
-        {
-            if (!m_Announcements.TryGetValue(typeof(T), out var announcements))
+
+            // Подписка на будущие анонсы
+            DisposableAction dispose = default;
+            dispose = dict.Subscribe((key, announcement) =>
             {
-                return default;
-            }
-            if (!announcements.TryGetValue(key, out var observableDict))
-            {
-                return default;
-            }
-            var (id, announcement) = observableDict.Find(pair =>
-            {
-                if (pair.Value.Item is T item)
+                T item = (T)announcement.Item;
+                if (condition(item))
                 {
-                    return true;
+                    if (completionSource.TrySetResult(item))
+                    {
+                        dispose.Dispose();
+                    }
                 }
-                return false;
-            }, (id, announcement) => { });
-            return id == null ? default : (T)announcement.Item;
+            });
+
+            // Обработка отмены
+            signal.Register(() =>
+            {
+                if (completionSource.TrySetCanceled())
+                {
+                    dispose.Dispose();
+                }
+            });
+
+            return completionSource.Task;
         }
-        
-        /// <summary>
-        /// Shortcut for GetFirstOfAnnouncement that automatically relates to the dispatcher as a key
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public T GetFirstOfAnnouncement<T>()
-        {
-            return GetFirstOfAnnouncement<T>(this);
-        }
-        
-        #region Internal
-        private async UniTaskVoid Internal_AddAnnouncement<T>(ObservableLockedDictionaryContainer dict, string id, T item, CancellationSignal cancellationSignal) where T : notnull
+
+        // Внутренние методы
+        private async UniTaskVoid Internal_AddAnnouncement<T>(ObservableLockedDictionaryContainer dict, object key,
+            T item, CancellationSignal cancellationSignal) where T : notnull
         {
             try
             {
                 using (await dict.Lock(cancellationSignal))
                 {
-                    dict.Add(id, Announcement.Create(item));
+                    dict.Add(key, Announcement.Create(item));
                 }
             }
             catch (OperationCanceledException)
@@ -535,26 +429,30 @@ namespace Metamatic
                 // ignored
             }
         }
-        
-        private async UniTaskVoid Internal_Retract(ObservableLockedDictionaryContainer dict, string id)
+
+        private async UniTaskVoid Internal_Retract(ObservableLockedDictionaryContainer dict, object key)
         {
             try
             {
                 using (await dict.Lock(CancellationSignal.None))
                 {
-                    var item = dict.Get(id);
-                    item.Return();
-                    dict.Remove(id);
+                    if (dict.ContainsKey(key))
+                    {
+                        var item = dict.Get(key);
+                        item.Return();
+                        dict.Remove(key);
+                    }
                 }
             }
             catch (OperationCanceledException)
             {
                 // ignored
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 Debug.LogError(e);
             }
         }
-        #endregion
     }
+
 }

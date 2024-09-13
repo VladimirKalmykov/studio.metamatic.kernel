@@ -556,12 +556,9 @@ namespace Metamatic
         public void Dispose()
         {
             /* Dispose all announcements */
-            foreach (var announcementDictionary in m_Announcements)
+            foreach (var announcement in m_Announcements)
             {
-                foreach (var announcement in announcementDictionary.Value)
-                {
-                    announcement.Value.Dispose();
-                }
+                announcement.Value.Dispose();
             }
             m_Announcements.Clear();
         }
