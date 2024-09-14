@@ -254,6 +254,10 @@ namespace Metamatic
             OnStateChange?.Invoke(nextStateForReset);
             prevState = nextPrevState;
             m_ExternalCancellationSignal = externalCancellationSignal;
+            if (m_SettingDebug)
+            {
+                Console.Verbose("AsyncStateMachine", "Reset", $"Reset state machine to {currentState}");
+            }
             m_CancellationSignalSource.Dispose();
             m_CancellationSignalSource =
                 CancellationSignalSource.CreateLinked(m_InternalCancellationSignalSource.Signal,
@@ -264,7 +268,7 @@ namespace Metamatic
                 m_TransitionFromPrevStateCompletionSource = ReusableUniTaskCompletionSource.Create();
                 #if DEBUG
                 if (m_SettingDebug)
-                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init transition from prev state completion source #{m_TransitionFromPrevStateCompletionSource.debugVersion}");
+                    Console.Verbose("AsyncStateMachine", "Transition", $"Init transition from prev state completion source #{m_TransitionFromPrevStateCompletionSource.debugVersion}");
                 #endif
             }
             else
@@ -272,7 +276,7 @@ namespace Metamatic
                 m_TransitionFromPrevStateCompletionSource.Reset();
 #if DEBUG
                 if (m_SettingDebug)
-                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Reset transition from prev state completion source #{m_TransitionFromPrevStateCompletionSource.debugVersion}");
+                    Console.Verbose("AsyncStateMachine", "Transition", $"Reset transition from prev state completion source #{m_TransitionFromPrevStateCompletionSource.debugVersion}");
 #endif
             }
             
@@ -281,7 +285,7 @@ namespace Metamatic
                 m_TransitionToNextStateCompletionSource = ReusableUniTaskCompletionSource.Create();
 #if DEBUG
                 if (m_SettingDebug)
-                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init transition from current state to next state completion source #{m_TransitionToNextStateCompletionSource.debugVersion}");
+                    Console.Verbose("AsyncStateMachine", "Transition",$"Init transition from current state to next state completion source #{m_TransitionToNextStateCompletionSource.debugVersion}");
 #endif
             }
             else
@@ -289,7 +293,7 @@ namespace Metamatic
                 m_TransitionToNextStateCompletionSource.Reset();
 #if DEBUG
                 if (m_SettingDebug)
-                    Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Reset transition from current state to next state completion source #{m_TransitionToNextStateCompletionSource.debugVersion}");
+                    Console.Verbose("AsyncStateMachine", "Transition", $"Reset transition from current state to next state completion source #{m_TransitionToNextStateCompletionSource.debugVersion}");
 #endif
             }
             m_TransitionFromPrevStateResolved = false;
@@ -342,8 +346,8 @@ namespace Metamatic
             m_Status = status;
 #if DEBUG
             if (m_SettingDebug)
-                Debug.Log(
-                    $"[ASYNC-STATE-MACHINE] Set status {status} (prev: {prevState}, current: {currentState}, next: {nextState}) Source: {source}");
+                Console.Verbose("AsyncStateMachine", 
+                    $"Set status {status} (prev: {prevState}, current: {currentState}, next: {nextState}) Source: {source}");
             Debug_SetTransitionStatus(status, source);
 #endif
         }
@@ -385,6 +389,10 @@ namespace Metamatic
             {
                 OnNextState -= OnNextStateHandler;
                 OnAborted -= OnAbortedHandler;
+                if (m_SettingDebug)
+                {
+                    Console.Verbose("AsyncStateMachine", $"Cancel because next state is defined during awaiting next state: {newNextState}");
+                }
                 m_CancellationSignalSource.TryCancel();
                 tsc.TrySetResult(newNextState);
             }
@@ -408,7 +416,7 @@ namespace Metamatic
         {
             #if DEBUG
             if (m_HasNextState) Debug.LogError("Already has next state");
-            if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Set next state: {newNextState}");
+            if (m_SettingDebug) Console.Verbose("AsyncStateMachine", $"Set next state: {newNextState}");
             #endif
             /* Invalidate state */
             if (!skipValidationCheck && !m_NextStateValidator.Validate(state, newNextState))
@@ -422,7 +430,7 @@ namespace Metamatic
                 return false;
             }
 
-            this.nextState = newNextState;
+            nextState = newNextState;
             m_HasNextState = true;
 
             if (m_Status == TransitionStatus.FromPrevToCurrentCompleted)
@@ -439,7 +447,7 @@ namespace Metamatic
 #if DEBUG
             if (m_SettingDebug)
             {
-                Debug.Log($"[ASYNC-STATE-MACHINE] CANCEL because next state is defined: {newNextState}");
+                Console.Verbose("AsyncStateMachine", $"Cancel because next state is defined: {newNextState}");
             }
 #endif
             memoizedCancellationSignalSource.TryCancel();
@@ -460,7 +468,7 @@ namespace Metamatic
 
         public void SetPrevState(TState newPrevState)
         {
-            this.prevState = newPrevState;
+            prevState = newPrevState;
         }
 
         private void TrySetTransitionFromPrevStateCompleted(ulong transitionId)
@@ -468,7 +476,7 @@ namespace Metamatic
             if (!m_TransitionFromPrevStateResolved)
             {
                 if (m_SettingDebug)
-                    Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from prev to current");
+                    Console.Verbose("AsyncStateMachine",$"Complete transition #{transitionId} from prev to current");
 #if DEBUG
                 SetStatus(TransitionStatus.FromPrevToCurrentCompleted, "SetTransitionFromPrevStateCompleted");
 #else
@@ -484,7 +492,7 @@ namespace Metamatic
             if (!m_TransitionToNextStateResolved)
             {
                 if (m_SettingDebug)
-                    Debug.Log($"[ASYNC-STATE-MACHINE] Complete transition #{transitionId} from current to next");
+                    Console.Verbose("AsyncStateMachine", $"Complete transition #{transitionId} from current to next");
 #if DEBUG
                 SetStatus(TransitionStatus.FromCurrentToNextCompleted, "SetTransitionToNextStateCompleted");
 #else
@@ -693,8 +701,8 @@ namespace Metamatic
         {
 #if DEBUG
             if (m_SettingDebug)
-                Debug.Log(
-                    $"[ASYNC-STATE-MACHINE] Validate attempt to add state {newState} (id #{id}) (Curren status is {m_Status})");
+                Console.Verbose("AsyncStateMachine", "Push",
+                    $"Validate attempt to add state {newState} (id #{id}) (Curren status is {m_Status})");
 #endif
             /* Invalidate state */
             if (m_Disposed || !m_NextStateValidator.Validate(currentState, newState))
@@ -718,7 +726,7 @@ namespace Metamatic
             }
 #if DEBUG
             if (m_SettingDebug)
-                Debug.Log($"[ASYNC-STATE-MACHINE] Add valid state {newState} (id #{id}) (Curren status is {m_Status})");
+                Console.Verbose("AsyncStateMachine", "Push", $"{newState} (id #{id}) (Curren status is {m_Status})");
 #endif
 
             /* Generate unique Id the future transition */
@@ -735,7 +743,7 @@ namespace Metamatic
                         var tcs = ReusableUniTaskCompletionSource.Create();
                         #if DEBUG
                         if (m_SettingDebug)
-                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {newState}(id #{id}) (Curren status is {m_Status})");
+                            Console.Verbose("AsyncStateMachine", "Task", $"Init task completion source #{tcs.debugVersion} for {newState}(id #{id}) (Curren status is {m_Status})");
                         #endif
                         var isFirstInQueue = m_StatesQueue.Count == 0;
                         EnqueueState(nextId, newState, externalCancellationSignal, tcs);
@@ -755,7 +763,7 @@ namespace Metamatic
                         var tcs = ReusableUniTaskCompletionSource.Create();
 #if DEBUG
                         if (m_SettingDebug)
-                            Debug.Log($"[ASYNC-STATE-MACHINE][TASK] Init task completion source #{tcs.debugVersion} for {newState}(id #{id}) (Curren status is {m_Status})");
+                            Console.Verbose("AsyncStateMachine", "Task", $"Init task completion source #{tcs.debugVersion} for {newState}(id #{id}) (Curren status is {m_Status})");
 #endif
                         EnqueueState(nextId, newState, externalCancellationSignal, tcs);
                         return (tcs.Task, nextId);
@@ -884,8 +892,8 @@ namespace Metamatic
             try
             {
                 if (m_SettingDebug)
-                    Debug.Log(
-                        $"[ASYNC-STATE-MACHINE][TRANSITION] Perform transition #{id} {prevState} -> {currentState}");
+                    Console.Verbose("AsyncStateMachine", "Transition", "Start",
+                        $"Perform transition #{id} {prevState} -> {currentState}");
 #if DEBUG
                 SetStatus(TransitionStatus.FromPrevToCurrentProcessing, "PerformTransition");
 #else
@@ -893,6 +901,9 @@ namespace Metamatic
 #endif
                 OnTransitionStep?.Invoke(prevState, currentState);
                 await m_Handler(new Transition(this, id));
+                if (m_SettingDebug)
+                    Console.Verbose("AsyncStateMachine", "Transition", 
+                        $"Transition #{id} {prevState} -> {currentState} completed without errors");
             }
             catch (OperationCanceledException)
             {
@@ -900,6 +911,9 @@ namespace Metamatic
                 if (isExternalCancellationSignalCancelled &&
                     m_Status == TransitionStatus.FromPrevToCurrentProcessing)
                 {
+                    if (m_SettingDebug)
+                        Console.Verbose("AsyncStateMachine", "Transition", 
+                            $"Cancel transition #{id} by external token (prev: {prevState}, current: {currentState})");
                     /* Transition was cancelled by external token. Throw this token */
                     SetTransitionFromPrevStateError(
                         new OperationCanceledException(m_ExternalCancellationSignal));
@@ -910,14 +924,22 @@ namespace Metamatic
                     if (m_Status == TransitionStatus.FromPrevToCurrentProcessing ||
                         m_Status == TransitionStatus.Aborted)
                     {
+                        if (m_SettingDebug)
+                            Console.Verbose("AsyncStateMachine", "Transition", 
+                                $"Transition #{id} was cancelled at status {m_Status}");
                         TrySetTransitionFromPrevStateCompleted(id);
+                    }
+                    else
+                    {
+                        Console.Exception("AsyncStateMachine",
+                            $"Transition #{id} was cancelled, but it is not in the correct state to resolve it. Current status: {m_Status}");
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.Log(
-                    $"<color=red>[ASYNC_STATE_MACHINE] Exception in transition</color> #{id} {prevState} -> {currentState} (e: {e}");
+                global::Metamatic.Console.Exception("AsyncStateMachine",
+                    $"Exception in transition</color> #{id} {prevState} -> {currentState} (e: {e}");
                 if (m_Status == TransitionStatus.FromPrevToCurrentProcessing)
                 {
                     SetTransitionFromPrevStateError(e);
@@ -929,24 +951,18 @@ namespace Metamatic
             }
             finally
             {
+                if (m_SettingDebug)
+                    Console.Verbose("AsyncStateMachine", "Transition", "Finally",
+                        $"Transition #{id} enter finally block  (prev: {prevState}, current: {currentState}, next: {nextState})");
                 if (m_Status == TransitionStatus.Error)
                 {
                     if (m_SettingDebug)
-                        Debug.Log(
-                            $"[WINGS BEHAVIOUR] Transition #{id} <color=red>finalizing after error</color> (prev: {prevState}, current: {currentState}, next: {nextState})");
-                }
-                else
-                {
-                    if (m_SettingDebug)
-                        Debug.Log(
-                            $"[WINGS BEHAVIOUR] Transition #{id} finalizing  (prev: {prevState}, current: {currentState}, next: {nextState})");
+                        Console.Verbose("AsyncStateMachine", "Transition",
+                            $"Transition #{id} <color=red>finalizing after error</color> (prev: {prevState}, current: {currentState}, next: {nextState})");
                 }
 
                 TrySetTransitionFromPrevStateCompleted(id);
                 SetTransitionToNextStateCompleted(id);
-                if (m_SettingDebug)
-                    Debug.Log(
-                        $"[WINGS BEHAVIOUR] Transition #{id} finalized  (prev: {prevState}, current: {currentState}, next: {nextState})");
                 OnTransitionCompleted?.Invoke();
                 SetStatus(TransitionStatus.Idle
 #if DEBUG
@@ -985,7 +1001,7 @@ namespace Metamatic
                 // Fallback to default state
                 if (m_SettingAutoCompleteWithDefaultState && m_AutocompleteTransitionId != m_LatestTransitionId)
                 {
-                    if (m_SettingDebug) Debug.Log($"[ASYNC-STATE-MACHINE] Auto push default state");
+                    if (m_SettingDebug) Console.Verbose("AsyncStateMachine", $"Auto push default state");
                     m_AutocompleteTransitionId = GenerateId();
                     PushStateAsync(m_DefaultState, id: m_AutocompleteTransitionId);
                 }
