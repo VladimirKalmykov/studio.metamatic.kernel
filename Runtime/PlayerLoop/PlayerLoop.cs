@@ -228,7 +228,42 @@ namespace Metamatic
                 }
             });
         }
+
+        public static async UniTask EachFrame(Action<float> action, float duration, PlayerLoopTiming timing = PlayerLoopTiming.Update,
+            CancellationSignal signal = default)
+        {
+            if (duration <= 0f)
+            {
+                return;
+            }
+            var startTime = Time.time;
+            await UniTask.WaitUntil(() =>
+            {
+                var progress = Mathf.Clamp01((Time.time - startTime) / duration);
+                action(progress);
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
+                return progress == 1f || signal.IsCancellationRequested;
+            }, timing);
+            signal.ThrowIfCancellationRequested();
+        }
         
+        public static DisposableAction EachFrame(Action action, PlayerLoopTiming timing = PlayerLoopTiming.Update)
+        {
+            var isActive = true;
+            UniTask.WaitUntil(() =>
+            {
+                action();
+                return !isActive;
+            }, timing);
+            
+            return new DisposableAction(() => isActive = false);
+        }
         
+        public static async UniTask EachFrameUntil(Func<bool> predicate, PlayerLoopTiming timing = PlayerLoopTiming.Update,
+            CancellationSignal signal = default)
+        {
+            await UniTask.WaitUntil(() => signal.IsCancellationRequested || predicate(), timing);
+            signal.ThrowIfCancellationRequested();
+        }
     }
 }
