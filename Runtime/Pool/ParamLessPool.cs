@@ -22,6 +22,7 @@ namespace Metamatic
     }
 
     public class ParamLessPool<T> : ParamLessPool, IDisposable
+    where T: new ()
     {
         #region GlobalPool
 
@@ -185,10 +186,14 @@ namespace Metamatic
             _BackgroundTrackingInquiryCount++;
             if (!_BackgroundTimeIsEnabled)
             {
-                Console.Log("ParamLessPool", "AutoShrink", $"Enabling background tracking.", Console.LogLevel.Verbose);
+                #if METAMATIC_VERBOSE_LOG
+                Console.Verbose("ParamLessPool", "AutoShrink", $"Enabling background tracking.");
+                #endif
                 EnableBackgroundTracking();
             }
-            Console.Log("ParamLessPool", "AutoShrink", $"Subscribed to auto shrink event. Current subscribers: {_BackgroundTrackingInquiryCount}", Console.LogLevel.Verbose);
+#if METAMATIC_VERBOSE_LOG
+            Console.Verbose("ParamLessPool", "AutoShrink", $"Subscribed to auto shrink event. Current subscribers: {_BackgroundTrackingInquiryCount}");
+#endif
 
             m_NextShrinkTime = Time.time + DefaultShrinkingPeriod;
 
@@ -229,7 +234,9 @@ namespace Metamatic
 
         private void DisableBackgroundTracking()
         {
+#if METAMATIC_VERBOSE_LOG
             Console.Verbose("ParamLessPool", "AutoShrink", $"Disabling background tracking.");
+#endif
             _BackgroundTimeIsEnabled = false;
             m_BackgroundRecheckTimer?.Dispose();
         }
@@ -244,7 +251,7 @@ namespace Metamatic
 
 
         private readonly Queue<T> m_ObjectsInPool = new();
-        private HashSet<int> m_OutOfPoolHashes = new();
+        private HashSet<T> m_OutOfPool = new();
 
         private int m_Capacity;
         private int m_Limit = int.MaxValue;
@@ -262,16 +269,16 @@ namespace Metamatic
         /// Count of objects out of pool (not available for get, but still belongs to pool)
         /// </summary>
         // ReSharper disable once InconsistentNaming
-        public int OutOfPoolCount => m_OutOfPoolHashes.Count;
+        public int OutOfPoolCount => m_OutOfPool.Count;
         
         #if DEBUG
         public int[] DebugGetOutOfPoolHashes()
         {
-            var hashes = new int[m_OutOfPoolHashes.Count];
+            var hashes = new int[m_OutOfPool.Count];
             var i = 0;
-            foreach (var hash in m_OutOfPoolHashes)
+            foreach (var ooop in m_OutOfPool)
             {
-                hashes[i] = hash;
+                hashes[i] = ooop.GetHashCode();
                 i++;
             }
 
@@ -308,7 +315,7 @@ namespace Metamatic
             m_AutoShrink = autoShrink;
             for (int i = 0; i < capacity; i++)
             {
-                m_ObjectsInPool.Enqueue(Activator.CreateInstance<T>());
+                m_ObjectsInPool.Enqueue(CreateInstance());
             }
 
             if (autoShrink)
@@ -317,6 +324,11 @@ namespace Metamatic
                 m_FruitBasket = new AverageFruitBasket(DefaultShrinkingPeriod);
                 m_OnDisposeHandler += SubscribeAutoShrinkTime(AutoShrinkTimestamp);
             }
+        }
+        
+        private T CreateInstance()
+        {
+            return new T();
         }
 
         ~ParamLessPool()
@@ -384,8 +396,8 @@ namespace Metamatic
         /// <returns></returns>
         public T Get(bool forceCreate = false)
         {
-            var outOfPool = m_ObjectsInPool.Count == 0 || forceCreate ? Activator.CreateInstance<T>() : m_ObjectsInPool.Dequeue();
-            m_OutOfPoolHashes.Add(outOfPool.GetHashCode());
+            var outOfPool = m_ObjectsInPool.Count == 0 || forceCreate ? CreateInstance() : m_ObjectsInPool.Dequeue();
+            m_OutOfPool.Add(outOfPool);
             return outOfPool;
         }
 
@@ -402,12 +414,12 @@ namespace Metamatic
             }
 #if DEBUG
             /* Check that returned object is contained in out of pool list */
-            if (!m_OutOfPoolHashes.Contains(obj.GetHashCode()))
+            if (!m_OutOfPool.Contains(obj))
             {
                 throw new Exception("Object is not belong to this pool");
             }
 #endif
-            m_OutOfPoolHashes.Remove(obj.GetHashCode());
+            m_OutOfPool.Remove(obj);
             if (m_ObjectsInPool.Count < m_Limit)
             {
                 m_ObjectsInPool.Enqueue(obj);
@@ -431,7 +443,7 @@ namespace Metamatic
         /// <returns></returns>
         public bool IsBelongsToPool(T obj)
         {
-            return m_OutOfPoolHashes.Contains(obj.GetHashCode()) || m_ObjectsInPool.Contains(obj);
+            return m_OutOfPool.Contains(obj) || m_ObjectsInPool.Contains(obj);
         }
         
         /// <summary>
@@ -460,16 +472,15 @@ namespace Metamatic
             }
 #endif
             /* Check that released object is exists outside the pool */
-            if (!m_OutOfPoolHashes.Contains(obj.GetHashCode()))
+            if (!m_OutOfPool.Contains(obj))
             {
                 global::Metamatic.Console.Error("ParamLessPool", "Object is not belong to this pool");
                 return;
             }
 
-            var hashCode = obj.GetHashCode();
-            if (m_OutOfPoolHashes.Contains(hashCode))
+            if (m_OutOfPool.Contains(obj))
             {
-                m_OutOfPoolHashes.Remove(hashCode);
+                m_OutOfPool.Remove(obj);
             }
         }
 
@@ -479,10 +490,9 @@ namespace Metamatic
         /// <param name="obj"></param>
         public void HardDetach(T obj)
         {
-            var hashCode = obj.GetHashCode();
-            if (m_OutOfPoolHashes.Contains(hashCode))
+            if (m_OutOfPool.Contains(obj))
             {
-                m_OutOfPoolHashes.Remove(hashCode);
+                m_OutOfPool.Remove(obj);
             }
             else if (m_ObjectsInPool.Contains(obj))
             {
@@ -515,10 +525,17 @@ namespace Metamatic
                     disposable.Dispose();
                 }
             }
-            m_OnDisposeHandler?.Invoke();
-            /* Clear pool */
             m_ObjectsInPool.Clear();
-            m_OutOfPoolHashes.Clear();
+            /* Dispose all objects out of pool */
+            foreach (var obj in m_OutOfPool)
+            {
+                if (obj is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+            m_OutOfPool.Clear();
+            m_OnDisposeHandler?.Invoke();
             GC.SuppressFinalize(this);
         }
     }
