@@ -8,6 +8,7 @@ namespace Metamatic
 {
     /// <summary>
     /// Abstract and global class Pool is a base class for all pools. It has several static methods to get a pool of different types.
+    /// TODO: Provide recommendation for the capacity of the pool according to factually measured pool size. E.g. if during the game pool produces 1000 objects, then the capacity should be 1000.
     /// </summary>
     public abstract class Pool: IPool
     {

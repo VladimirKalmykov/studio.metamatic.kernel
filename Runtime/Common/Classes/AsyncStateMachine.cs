@@ -70,7 +70,7 @@ namespace Metamatic
             public UniTask completeTransitionToNextStateTask => m_StateMachine.completeTransitionToNextStateTask;
             public bool isInitial => m_StateMachine.isInitial;
             public bool isFinalize => m_StateMachine.m_Status == TransitionStatus.Aborted;
-            public CancellationSignal cancellationToken => m_StateMachine.cancellationSignal;
+            public CancellationSignal cancellationSignal => m_StateMachine.cancellationSignal;
             public CancellationSignal generalCancellationSignal => m_StateMachine.internalCancellationSignal;
             public bool isAborted => m_StateMachine.m_Status == TransitionStatus.Aborted;
 

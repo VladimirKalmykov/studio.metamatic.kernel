@@ -159,10 +159,10 @@ namespace Metamatic.Tests
                 try
                 {
                     /* Wait a bit */
-                    await UniTask.Delay(1000, cancellationToken: transition.cancellationToken);
+                    await UniTask.Delay(1000, cancellationToken: transition.cancellationSignal);
                     statesHistory.Add(transition.state);
                     var nextState = await transition.WaitNextState();
-                    await UniTask.Delay(10, cancellationToken: transition.cancellationToken);
+                    await UniTask.Delay(10, cancellationToken: transition.cancellationSignal);
                 }
                 finally
                 {
@@ -204,10 +204,10 @@ namespace Metamatic.Tests
                 try
                 {
                     /* Wait a bit */
-                    await UniTask.Delay(1000, cancellationToken: transition.cancellationToken);
+                    await UniTask.Delay(1000, cancellationToken: transition.cancellationSignal);
                     statesHistory.Add(transition.state);
                     var nextState = await transition.WaitNextState();
-                    await UniTask.Delay(10, cancellationToken: transition.cancellationToken);
+                    await UniTask.Delay(10, cancellationToken: transition.cancellationSignal);
                 }
                 finally
                 {
@@ -253,7 +253,7 @@ namespace Metamatic.Tests
                     try
                     {
                         /* Wait a bit */
-                        await UniTask.Delay(10, cancellationToken: transition.cancellationToken);
+                        await UniTask.Delay(10, cancellationToken: transition.cancellationSignal);
                         throw new Exception("Manual Error");
                     }
                     finally
