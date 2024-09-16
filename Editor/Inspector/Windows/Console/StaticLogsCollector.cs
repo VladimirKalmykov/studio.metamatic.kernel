@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 
 namespace Metamatic.EditorInspector
 {
+    [InitializeOnLoad]
     public static class StaticLogsCollector
     {
         private static readonly List<LogMetadata> m_LogHistory = new ();
@@ -15,6 +17,7 @@ namespace Metamatic.EditorInspector
         public static MicroStateReadOnly<bool> builtInLogEnabled => BuiltInLogEnabled;
         public static bool isBuiltInLogEnabled => BuiltInLogEnabled.value;
         public static IReadOnlyList<LogMetadata> logHistory => m_LogHistory;
+        private static bool m_Initialized = false;
         
         public static void ChangeBuiltInLogEnable(bool enable)
         {
@@ -22,12 +25,23 @@ namespace Metamatic.EditorInspector
             PlayerPrefs.SetInt("MetamaticConsole_BuiltInLogEnabled", enable ? 1 : 0);
         }
         
+        
         static StaticLogsCollector()
         {
-            #if DEBUG
+            Init();
+        }
+
+        private static void Init()
+        {
+#if DEBUG
+            if (m_Initialized)
+            {
+                m_Initialized = true;
+                return;
+            }
             SubscribeToSources();
             BuiltInLogEnabled.value = PlayerPrefs.GetInt("MetamaticConsole_BuiltInLogEnabled", 1) == 1;
-            #endif
+#endif
         }
 
         private static void SubscribeToSources()

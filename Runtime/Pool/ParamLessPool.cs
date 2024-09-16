@@ -410,13 +410,15 @@ namespace Metamatic
         {
             if (m_ObjectsInPool.Contains(obj))
             {
-                throw new Exception("Object is already in pool");
+                global::Metamatic.Console.Error("ParamLessPool", "Object is already in pool");
+                return;
             }
 #if DEBUG
             /* Check that returned object is contained in out of pool list */
             if (!m_OutOfPool.Contains(obj))
             {
-                throw new Exception("Object is not belong to this pool");
+                Console.Error("ParamLessPool", "Object is not belong to this pool");
+                return;
             }
 #endif
             m_OutOfPool.Remove(obj);

@@ -5,6 +5,7 @@
             <engine:VisualElement name="Affilation" class="LineIcon" style="justify-content: center;">
                 <engine:VisualElement name="Icon" style="flex-grow: 0; width: 16px; height: 16px; background-image: url(&quot;project://database/Assets/Plugins/Animancer/Internal/Editor/Animancer%20Icon.png?fileID=2800000&amp;guid=d4e06a71fc03595429cac47cd385c4c1&amp;type=3#Animancer Icon&quot;);" />
             </engine:VisualElement>
+            <engine:Label text="Label" name="TimeStamp" class="TimeStamp" />
             <engine:VisualElement name="Tags" class="Tags">
                 <engine:Label text="Label" class="Tag" />
             </engine:VisualElement>

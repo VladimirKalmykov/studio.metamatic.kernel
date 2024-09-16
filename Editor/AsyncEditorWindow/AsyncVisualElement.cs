@@ -83,6 +83,7 @@ namespace Metamatic.EditorTools
             }
             catch (Exception e)
             {
+                Debug.LogError(e);
                 asyncStatus = AsyncStatus.Failed;
             }
         }

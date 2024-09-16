@@ -72,6 +72,10 @@ namespace Metamatic.EditorInspector
                 m_Tags = this.Query<VisualElement>("Tags");
                 m_Tags.Clear();
                 
+                /* Timestamp */
+                var timestamp = this.Query<Label>("TimeStamp").First();
+                timestamp.text = metadata.TimeStamp.ToString("HH:mm:ss:fff");
+                
                 foreach (var tag in metadata.Tags)
                 {
                     AddTag(tag);
@@ -280,13 +284,7 @@ namespace Metamatic.EditorInspector
             var clearBottom = this.Query<Button>("ClearButton").First();
             clearBottom.clicked += ClearHistory;
             
-            /* Search input */
-            var searchInput = this.Query<UnityEngine.UIElements.TextField>("SearchInput").First();
-            searchInput.RegisterValueChangedCallback(evt =>
-            {
-                m_SearchState = evt.newValue;
-                ApplyLogsListFilter();
-            });
+           
             
             /* Content */
             m_Content = this.Query<ScrollView>("Content");
@@ -303,12 +301,7 @@ namespace Metamatic.EditorInspector
             using var detailsVisibleListener = DetailsVisible.Subscribe(OnDetailsVisibleChanged);
             /* Listen for selected log changes */
             using var selectedLogListener = m_SelectedLogId.Subscribe(ApplySelectedLog);
-            /* Subscribe built-in log flag */
-            using var builtInSubscription = StaticLogsCollector.builtInLogEnabled.Subscribe(value =>
-            {
-                builtInLogCheckbox.value = value;
-                ApplyLogsListFilter();
-            });
+            
            
             
             /* Listen tags filter changes */
@@ -328,6 +321,21 @@ namespace Metamatic.EditorInspector
             /* Subscribe to log events */
             using var logEventListener = StaticLogsCollector.SubscribeToLogHistory(OnLogReceived);
             EditorGUI.hyperLinkClicked += EditorGUI_HyperLinkClicked;
+            
+            /* Search input */
+            var searchInput = this.Query<UnityEngine.UIElements.TextField>("SearchInput").First();
+            searchInput.RegisterValueChangedCallback(evt =>
+            {
+                m_SearchState = evt.newValue;
+                ApplyLogsListFilter();
+            });
+            
+            /* Subscribe built-in log flag */
+            using var builtInSubscription = StaticLogsCollector.builtInLogEnabled.Subscribe(value =>
+            {
+                builtInLogCheckbox.value = value;
+                ApplyLogsListFilter();
+            });
             
             /* Command input */
             var commandsHistory = new List<string>();

@@ -10,7 +10,7 @@
 .Line {
     flex-grow: 0;
     padding: 6px 2px;
-    background-color: #323636;
+    background-color: rgb(50, 54, 54);
     white-space: nowrap;
     flex-shrink: 1;
     flex-direction: row;
@@ -105,4 +105,17 @@
     padding-right: 4px;
     flex-direction: row;
     flex-wrap: wrap;
+}
+
+.TimeStamp {
+    margin-left: 0;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    padding-left: 3px;
+    padding-right: 3px;
+    padding-top: 0;
+    padding-bottom: 0;
+    background-color: rgba(0, 0, 0, 0);
+    color: rgb(65, 82, 82);
 }

@@ -115,7 +115,7 @@ namespace Metamatic
         /// <summary>
         /// Contains id for current inquire. Id is incremented after release.
         /// </summary>
-        private int inquireId { get; set; } = 1;
+        public int inquireId { get; private set; } = 1;
 
         private bool isInquired { get; set; }
 
@@ -212,8 +212,11 @@ namespace Metamatic
                 isDisposedAsync = true;
                 OnDisposedAsync?.Invoke(null);
             }
-            
-            inquireId++;
+
+            unchecked
+            {
+                inquireId++;
+            }
             
             OnDisposedAsync = null;
             m_AsyncDisposeCancellationTokenSource?.Dispose();

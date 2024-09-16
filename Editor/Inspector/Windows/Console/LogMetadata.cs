@@ -12,9 +12,12 @@ namespace Metamatic.EditorInspector
         public readonly string StackTrace;
         public readonly bool IsBuiltInLog;
         public readonly string Id;
+        /* Timestamp */
+        public readonly DateTime TimeStamp;
             
         public LogMetadata(string text, string[] tags, bool isBuiltInLog, string stackTrace)
         {
+            TimeStamp = DateTime.Now;
             Text = text;
             Tags = tags;
             IsBuiltInLog = isBuiltInLog;
