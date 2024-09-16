@@ -31,10 +31,10 @@ namespace Metamatic
         /// <summary>
         /// Get object from global pool. The pool will be created if it doesn't exist.
         /// </summary>
-        public static T GetShared(T prefab)
+        public static T GetShared(T prefab, bool forceCreate = false)
         {
             var pool = GetSharedPool(prefab);
-            return pool.Get();
+            return pool.Get(forceCreate);
         }
 
         private static PrefabPool<T> GetSharedPool(T prefab)
@@ -384,7 +384,6 @@ namespace Metamatic
                 obj = m_ObjectsInPool.Dequeue();
             }
             m_OutOfPool.Add(obj);
-            SetActive(obj, true);
             return obj;
         }
 
@@ -407,7 +406,6 @@ namespace Metamatic
             m_OutOfPool.Remove(obj);
             if (m_ObjectsInPool.Count < m_Limit)
             {
-                SetActive(obj, false);
                 m_ObjectsInPool.Enqueue(obj);
             }
             else
@@ -485,8 +483,18 @@ namespace Metamatic
             }
             _InstanceToPool.Remove(obj);
         }
+        
+        private static void DefaultOnReturnHandler(T obj)
+        {
+            SetActive(obj, false);
+        }
+        
+        private static void DefaultOnGetHandler(T obj)
+        {
+            SetActive(obj, true);
+        }
 
-        private void SetActive(T obj, bool active)
+        private static void SetActive(T obj, bool active)
         {
             if (obj is GameObject go)
             {

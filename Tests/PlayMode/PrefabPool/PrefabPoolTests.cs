@@ -216,7 +216,7 @@ public class PrefabPoolTests
     }
 }
 
-public class TestComponent : MonoBehaviour
+public class TestComponent : UnityEngine.Component
 {
     // A simple component for testing purposes
 }
