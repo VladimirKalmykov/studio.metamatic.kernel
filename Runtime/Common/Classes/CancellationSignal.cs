@@ -28,18 +28,14 @@ namespace Metamatic
         public bool IsCancellationRequested
         {
             get {
+                if (Version == -2) return m_CancellationToken.IsCancellationRequested;
                 if (m_Source == null)
                 {
                     /* If version is 0, it is never cancelled but only if source equals null */
-                    return false;
+                    return Version == -1;
                 }
                 /* If version is -1, it is always cancelled */
-                if (Version == -1 || m_Source.Version != Version)
-                {
-                    return true;
-                }
-                /* Otherwise, check the source or return true (version is equal to zero or greater plus source version is not equal to current version — signal is cancelled) */
-                return m_Source.IsCancellationRequested;
+                return m_Source.Version != Version || m_Source.IsCancellationRequested;
             }
         }
         // ReSharper disable once InconsistentNaming

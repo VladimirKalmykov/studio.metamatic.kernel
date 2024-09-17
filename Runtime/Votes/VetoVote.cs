@@ -26,8 +26,14 @@ namespace Metamatic
                 m_Cons++;
             }
             SummingUp();
+            bool disposed = false;
             return new DisposableAction(() =>
             {
+                if (disposed)
+                {
+                    return;
+                }
+                disposed = true;
                 if (!value.Equals(m_Default))
                 {
                     m_Cons--;
