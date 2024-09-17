@@ -16,6 +16,7 @@ namespace Metamatic
         {
             IsReady = true;
             OnReady?.Invoke();
+            OnBehaviourReady();
             return componentDisableCancellationToken.ToUniTask();
         }
 
@@ -178,6 +179,11 @@ namespace Metamatic
             AwakeIsReady = true;
             OnAwakeReady?.Invoke();
             return UniTask.CompletedTask;
+        }
+        
+        protected virtual void OnBehaviourReady()
+        {
+            /* Override this method to implement custom logic */
         }
     }
 }

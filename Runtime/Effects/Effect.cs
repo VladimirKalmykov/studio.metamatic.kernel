@@ -90,7 +90,7 @@ namespace Metamatic.Effects
         /// </summary>
         /// <param name="action"></param>
         /// <returns></returns>
-        public DisposableAction Subscribe(Action<T> action)
+        public DisposableAction SubscribeData(Action<T> action)
         {
             if (Instant)
             {
@@ -166,7 +166,7 @@ namespace Metamatic.Effects
             source.Release();
         }
         private static event Action<Effect<T>> OnEffectCreated;
-        public static DisposableAction SubscribeToEffectCreated(Action<Effect<T>> action)
+        public static DisposableAction SubscribeAll(Action<Effect<T>> action)
         {
             OnEffectCreated += action;
             return new DisposableAction(() => OnEffectCreated -= action);
@@ -203,9 +203,9 @@ namespace Metamatic.Effects
         public bool instant => source?.Instant ?? false;
         public CancellationSignal cancellationSignal => source?.cancellationSignal ?? default;
 
-        public DisposableAction Subscribe(Action<T> handler)
+        public DisposableAction SubscribeData(Action<T> handler)
         {
-            return source?.Subscribe(handler) ?? DisposableAction.Empty;
+            return source?.SubscribeData(handler) ?? DisposableAction.Empty;
         }
 
         public DisposableAction SubscribeToRelease(Action action)

@@ -2,6 +2,9 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// Entity component is a base class for all other components that are attached to an Entity. E.g. Health, Inventory, etc.
+    /// </summary>
     public abstract class EntityComponent: AsyncBehaviour
     {
         protected override async UniTask Run(Ready ready, CancellationSignal signal)
