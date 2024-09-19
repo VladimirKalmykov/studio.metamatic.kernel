@@ -7,38 +7,44 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
-namespace Metamatic.Magic
+namespace Metamatic.Framework
 {
     /// <summary>
     /// Allows to add magic woods to the scene.
     /// </summary>
     public static class MagicMag
     {
-        private static readonly ManagedList<MagicWood> Woods2D = new ManagedList<MagicWood>();
-        private static readonly HashSet<string> Wood2DNames = new HashSet<string>();
-        private static readonly MicroState<MagicWood> ActiveWood = new MicroState<MagicWood>(null);
+        private static readonly ManagedList<CursorTool> CursorTools = new ManagedList<CursorTool>();
+        private static readonly HashSet<string> CursorToolNames = new HashSet<string>();
+        /// <summary>
+        /// Observable active cursor tool.
+        /// </summary>
+        private static readonly MicroState<CursorTool> ActiveCursorTool = new MicroState<CursorTool>(null);
+        /// <summary>
+        /// Contains observable cursor label. It can be used to display some information that appears when the cursor is over some object.
+        /// </summary>
         private static readonly MicroState<string> CursorLabel = new MicroState<string>(string.Empty);
         private static CancellationSignalSource _ActivationCancellationSignalSource;
         private static Vector2 m_PreviousPointerPosition;
-        public static DisposableAction RegisterMagicWood(MagicWood wood2D)
+        public static DisposableAction RegisterMagicWood(CursorTool wood2D)
         {
-            if (Wood2DNames.Contains(wood2D.Name))
+            if (CursorToolNames.Contains(wood2D.Name))
             {
                 Debug.LogWarning($"Wood with name {wood2D.Name} already exists.");
                 return DisposableAction.Empty;
             }
-            Wood2DNames.Add(wood2D.Name);
-            Woods2D.Add(wood2D);
+            CursorToolNames.Add(wood2D.Name);
+            CursorTools.Add(wood2D);
             return new DisposableAction(() =>
             {
-                Wood2DNames.Remove(wood2D.Name);
-                Woods2D.Remove(wood2D);
+                CursorToolNames.Remove(wood2D.Name);
+                CursorTools.Remove(wood2D);
             });
         }
 
-        public static DisposableAction ObserveWoods(Func<MagicWood, CancellationSignal, UniTaskVoid> handler)
+        public static DisposableAction ObserveWoods(Func<CursorTool, CancellationSignal, UniTaskVoid> handler)
         {
-            return Woods2D.Observe(handler);
+            return CursorTools.Observe(handler);
         }
         
         public static DisposableAction SubscribeToCursorLabel(Action<string> handler)
@@ -56,21 +62,21 @@ namespace Metamatic.Magic
         /// </summary>
         /// <param name="wood"></param>
         /// <param name="signal"></param>
-        public static void ActivateWood(MagicWood wood, CancellationSignal signal)
+        public static void ActivateWood(CursorTool wood, CancellationSignal signal)
         {
-            ActiveWood.Value = wood;
+            ActiveCursorTool.Value = wood;
             _ActivationCancellationSignalSource.TryCancel();
             _ActivationCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
             InternalActiveWoodProcess(wood, _ActivationCancellationSignalSource.Signal).Forget();
             wood.OnActivate(_ActivationCancellationSignalSource.Signal).Forget();
         }
         
-        public static DisposableAction SubscribeToActiveWood(Action<MagicWood> handler)
+        public static DisposableAction SubscribeToActiveWood(Action<CursorTool> handler)
         {
-            return ActiveWood.Subscribe(handler);
+            return ActiveCursorTool.Subscribe(handler);
         }
         
-        public static async UniTaskVoid InternalActiveWoodProcess(MagicWood wood, CancellationSignal cancellationSignal)
+        public static async UniTaskVoid InternalActiveWoodProcess(CursorTool wood, CancellationSignal cancellationSignal)
         {
             EnhancedTouchSupport.Enable(); // TODO: Maybe we should use some singleton service for doing this, because it's not a good idea to enable/disable EnhancedTouchSupport in different places.
             using (PlayerLoop.EachFrame(TrackPointer))
@@ -82,7 +88,7 @@ namespace Metamatic.Magic
 
         private static void TrackPointer()
         {
-            var wood = ActiveWood.Value;
+            var wood = ActiveCursorTool.Value;
             Vector2 screenPosition = Vector2.zero;
 
             // Проверяем, есть ли тачскрин и активные тачи

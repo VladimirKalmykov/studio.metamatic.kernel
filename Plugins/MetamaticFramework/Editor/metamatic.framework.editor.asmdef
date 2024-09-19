@@ -1,0 +1,16 @@
+{
+    "name": "metamatic.framework.editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:96036fd6d0c01af49a1bca46852e7791"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

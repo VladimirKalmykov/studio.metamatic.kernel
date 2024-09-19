@@ -2,15 +2,15 @@ using System;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Metamatic.Magic
+namespace Metamatic.Framework
 {
-    public abstract class MagicWood: IDisposable, IExposedDisposed
+    public abstract class CursorTool: IDisposable, IExposedDisposed
     {
         public readonly string Name;
         public readonly string DisplayName;
         public LayerMask LayerMask;
         
-        public MagicWood(string name, string displayName, LayerMask layerMask = default)
+        public CursorTool(string name, string displayName, LayerMask layerMask = default)
         {
             Name = name;
             DisplayName = displayName;
@@ -41,12 +41,12 @@ namespace Metamatic.Magic
         public event Action OnDisposed;
     }
     
-    public abstract class AsyncMagicWood: MagicWood
+    public abstract class AsyncCursorTool: CursorTool
     {
         private CancellationSignalSource m_DisposeSignalSource = CancellationSignalSource.Create();
         private bool m_IsReady;
         private event Action m_ReadyEvent;
-        protected AsyncMagicWood(string name, string displayName, LayerMask layerMask = default) : base(name, displayName, layerMask)
+        protected AsyncCursorTool(string name, string displayName, LayerMask layerMask = default) : base(name, displayName, layerMask)
         {
             OnDisposed += () =>
             {
