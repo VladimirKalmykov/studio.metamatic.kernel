@@ -156,7 +156,7 @@ namespace Metamatic
         {
             return MicroOperation.Run(async (operation) =>
             {
-                var cameraService = await Resolve<CameraService>(operation.cancellationToken.ToCancellationSignal());
+                var cameraService = await Resolve<CameraService>(operation.cancellationSignal);
                 using var listener = SubscribeToActionTriggered(ctx =>
                 {
                     if (ctx.action.name != actionName || ctx.action.phase != phase)
@@ -170,7 +170,7 @@ namespace Metamatic
                         callback(target);
                     }
                 });
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             }).ToIDisposable();
         }
 

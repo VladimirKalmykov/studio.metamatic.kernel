@@ -26,7 +26,7 @@ namespace Metamatic
             Monitoring.Create("MicroOperation", "Instances count", () => _InstanceCount);
         }
 #endif
-        public delegate UniTask AsyncAction(CancellationToken cancellationToken);
+        public delegate UniTask AsyncAction(CancellationSignal signal);
 
         public delegate UniTask AsyncOperationAction(InternalMicroOperation operation);
 
@@ -73,20 +73,20 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public object[] dependencies { get; private set; }
 
-        private CancellationTokenSource m_PerformCancellationTokenSource;
+        private CancellationSignalSource m_PerformCancellationTokenSource;
 
         /// <summary>
         /// This token is used to cancel async dispose. It is created when DisposeAsync is called.
         /// </summary>
-        private CancellationTokenSource m_AsyncDisposeCancellationTokenSource;
+        private CancellationSignalSource m_AsyncDisposeCancellationTokenSource;
 
-        public CancellationToken cancellationToken => m_PerformCancellationTokenSource.Token;
+        public CancellationSignal cancellationSignal => m_PerformCancellationTokenSource.Signal;
 
         /// <summary>
         /// CancellationToken for async dispose. It will cancel async dispose.
         /// </summary>
-        public CancellationToken asyncDisposeCancellationToken =>
-            m_AsyncDisposeCancellationTokenSource?.Token ?? CancellationToken.None;
+        public CancellationSignal asyncDisposeCancellationToken =>
+            m_AsyncDisposeCancellationTokenSource.Signal;
 
         /// <summary>
         /// Contains task that is returned by action. This task is used only for async dispose.
@@ -137,21 +137,11 @@ namespace Metamatic
             m_IsAborted = true;
             OnAborted?.Invoke();
 
-            if (m_AsyncDisposeCancellationTokenSource == null)
-            {
-                m_AsyncDisposeCancellationTokenSource = new CancellationTokenSource();
-            }
-
             /* If async dispose is called, we should cancel async dispose token and dispose it */
-            m_AsyncDisposeCancellationTokenSource.Cancel();
-            m_AsyncDisposeCancellationTokenSource.Dispose();
-            m_AsyncDisposeCancellationTokenSource = null;
+            m_AsyncDisposeCancellationTokenSource.TryCancel();
 
             /* Cancel perform token too */
-            if (m_PerformCancellationTokenSource is { IsCancellationRequested: false })
-            {
-                m_PerformCancellationTokenSource.Cancel();
-            }
+            m_PerformCancellationTokenSource.TryCancel();
         }
 
         internal int Inquire()
@@ -175,19 +165,8 @@ namespace Metamatic
 
             isDisposed = true;
             OnDisposed?.Invoke();
-            
-            if (!isAborted && m_AsyncDisposeCancellationTokenSource == null)
-            {
-                m_AsyncDisposeCancellationTokenSource = new CancellationTokenSource();
-            }
 
-            if (m_PerformCancellationTokenSource is { IsCancellationRequested: false })
-            {
-                m_PerformCancellationTokenSource.Cancel();
-            }
-
-            m_PerformCancellationTokenSource.Dispose();
-            m_PerformCancellationTokenSource = null;
+            m_PerformCancellationTokenSource.TryCancel();
 
             if (m_ExecuteTask.HasValue)
             {
@@ -219,8 +198,6 @@ namespace Metamatic
             }
             
             OnDisposedAsync = null;
-            m_AsyncDisposeCancellationTokenSource?.Dispose();
-            m_AsyncDisposeCancellationTokenSource = null;
             m_ExecuteTask = null;
             dependencies = null;
             isInquired = false;
@@ -253,8 +230,9 @@ namespace Metamatic
                     }, true);
             }
 
-            m_PerformCancellationTokenSource = new CancellationTokenSource();
-            m_ExecuteTask = action(m_PerformCancellationTokenSource.Token);
+            m_PerformCancellationTokenSource = CancellationSignalSource.Create();
+            m_AsyncDisposeCancellationTokenSource = CancellationSignalSource.Create();
+            m_ExecuteTask = action(m_PerformCancellationTokenSource.Signal);
         }
 
         private void InternalRun(AsyncOperationAction action)
@@ -274,7 +252,8 @@ namespace Metamatic
                     }, true);
             }
 
-            m_PerformCancellationTokenSource = new CancellationTokenSource();
+            m_PerformCancellationTokenSource = CancellationSignalSource.Create();
+            m_AsyncDisposeCancellationTokenSource = CancellationSignalSource.Create();
                 m_ExecuteTask = action(this);
          }
 

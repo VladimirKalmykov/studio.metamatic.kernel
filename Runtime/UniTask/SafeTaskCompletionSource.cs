@@ -7,7 +7,7 @@ using Debug = UnityEngine.Debug;
 namespace Metamatic
 {
     /// <summary>
-    /// This struct is more safe than AutoResetUniTaskCompletionSource, because it can't be used after it's returned to the pool.
+    /// This struct is more safe than AutoResetUniTaskCompletionSource, because it can be used after it's returned to the pool. Access UniTask created by AutoResetUniTaskCompletionSource after it's returned to the pool will cause an unexpected behaviour.
     ///
     /// TODO: Replace all usages of AutoResetUniTaskCompletionSource with this struct.
     /// </summary>

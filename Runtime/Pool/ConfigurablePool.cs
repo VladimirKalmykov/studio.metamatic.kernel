@@ -21,6 +21,12 @@ namespace Metamatic
 #endif
     }
 
+    /// <summary>
+    /// The pool of any objects. The pool can be configured with the rules of object creation, destruction, and recycling.
+    /// To create a pool, you need to implement the IPoolConfig interface and pass it to the pool constructor.
+    /// Use existing configuration (like ComponentPrefabPoolConfig or GameObjectConfigurablePoolConfig) for the pool or create a new one.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class ConfigurablePool<T> : ConfigurablePool, IDisposable
     {
         #region GlobalPool

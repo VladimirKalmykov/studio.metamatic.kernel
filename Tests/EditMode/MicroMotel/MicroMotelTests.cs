@@ -41,7 +41,7 @@ namespace Tests.EditMode.MictoMotel
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 checkedIn = true;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
                 checkedOut = true;
             });
             await UniTask.Delay(100);
@@ -64,14 +64,14 @@ namespace Tests.EditMode.MictoMotel
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1CheckedIn = true;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
                 guest1CheckedOut = true;
             });
             var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest2Cell = cell;
                 guest2CheckedIn = true;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
                 guest2CheckedOut = true;
             });
             await UniTask.Delay(100);
@@ -96,7 +96,7 @@ namespace Tests.EditMode.MictoMotel
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1CheckedIn = true;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
                 guest1CheckedOut = true;
             });
             var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
@@ -107,7 +107,7 @@ namespace Tests.EditMode.MictoMotel
                 }
                 guest2Cell = cell;
                 guest2CheckedIn = true;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
                 guest2CheckedOut = true;
             }, strict: true);
             await UniTask.Delay(100);
@@ -133,7 +133,7 @@ namespace Tests.EditMode.MictoMotel
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 checkedIn = true;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
                 checkedOut = true;
             }, dependencies: new object[] { disposable });
             await UniTask.Delay(100);
@@ -152,14 +152,14 @@ namespace Tests.EditMode.MictoMotel
             var a = motel.isDisposed;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 try
                 {
                     reserveStage = ReserveStage.CheckedIn;
-                    await operation.cancellationToken;
+                    await operation.cancellationSignal;
                 }
                 catch (OperationCanceledException e)
                 {
@@ -196,7 +196,7 @@ namespace Tests.EditMode.MictoMotel
                 try
                 {
                     reserveStage1 = ReserveStage.CheckedIn;
-                    await operation.cancellationToken;
+                    await operation.cancellationSignal;
                 }
                 catch (OperationCanceledException e)
                 {
@@ -221,7 +221,7 @@ namespace Tests.EditMode.MictoMotel
                 try
                 {
                     reserveStage2 = ReserveStage.CheckedIn;
-                    await operation.cancellationToken;
+                    await operation.cancellationSignal;
                 }
                 catch (OperationCanceledException e)
                 {
@@ -260,22 +260,22 @@ namespace Tests.EditMode.MictoMotel
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             var reservation2 = motel.Reserve(new int[] { 1, 5 }, async (cell, operation) =>
             {
                 guest2Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             var reservation3 = motel.Reserve(new int[] { 5, 3 }, async (cell, operation) =>
             {
                 guest3Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             var reservation4 = motel.Reserve(new int[] { 3, 7 }, async (cell, operation) =>
             {
                 guest4Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             Assert.AreEqual(1, guest1Cell);
             Assert.AreEqual(5, guest2Cell);
@@ -295,22 +295,22 @@ namespace Tests.EditMode.MictoMotel
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest2Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             var reservation3 = motel.Reserve(new int[] { 2 }, async (cell, operation) =>
             {
                 guest3Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             var reservation4 = motel.Reserve(new int[] { 2 }, async (cell, operation) =>
             {
                 guest4Cell = cell;
-                await operation.cancellationToken;
+                await operation.cancellationSignal;
             });
             Assert.AreEqual(1, guest1Cell);
             Assert.AreEqual(1, guest2Cell);

@@ -104,7 +104,7 @@ namespace Metamatic
             registration = combinedToken.Register(() =>
             {
                 registration.Dispose();
-                Hide();
+                Hide().Forget();
             });
             state = State.Shown;
             BeforeShow();

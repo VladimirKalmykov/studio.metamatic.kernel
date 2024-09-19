@@ -18,7 +18,7 @@ namespace Metamatic
         
         protected bool isAboutToDestroy { get; private set; }
         
-        public CancellationSignal componentDestroyToken => m_DestroyCancellationSignalSource.Signal;
+        public CancellationSignal componentDestroySignal => m_DestroyCancellationSignalSource.Signal;
 
         public CancellationSignal componentDisableSignal
         {

@@ -29,6 +29,13 @@ namespace Metamatic
             set => SetValue(value);
         }
 
+        // ReSharper disable once InconsistentNaming
+        public TValue Value
+        {
+            get => GetValue();
+            set => SetValue(value);
+        }
+
         public TValue uniqValue
         {
             set {

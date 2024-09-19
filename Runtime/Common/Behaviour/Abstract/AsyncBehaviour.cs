@@ -24,7 +24,7 @@ namespace Metamatic
         {
             AwakeIsReady = true;
             OnAwakeReady?.Invoke();
-            return componentDestroyToken.ToUniTask();
+            return componentDestroySignal.ToUniTask();
         }
 
         /// <summary>

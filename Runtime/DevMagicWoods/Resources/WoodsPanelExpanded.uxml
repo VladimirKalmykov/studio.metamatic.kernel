@@ -1,0 +1,10 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <engine:VisualElement name="WoodsPanelExpanded" style="flex-grow: 1; position: absolute; background-color: rgb(32, 27, 27); width: 225px; height: 328px; top: 65px; left: 135px; border-top-left-radius: 6px; border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-bottom-left-radius: 6px;">
+        <engine:VisualElement name="Header" style="flex-grow: 0; height: 31px; justify-content: flex-start; padding-left: 12px; padding-right: 12px; border-bottom-width: 1px; border-bottom-color: rgb(18, 18, 18); flex-direction: row; -unity-font-style: bold; font-size: 12px;">
+            <engine:Label text="Magic woods&#10;&#10;" style="align-self: center; font-size: 14px; margin-top: 0; padding-top: 0; padding-bottom: 0; color: rgb(210, 210, 210); margin-left: 0; margin-right: 0; margin-bottom: 0; padding-right: 0; padding-left: 0;" />
+            <engine:VisualElement name="Space" style="flex-grow: 1;" />
+            <engine:VisualElement name="RightButton" style="flex-grow: 0; width: 24px; align-self: center; height: 24px;" />
+        </engine:VisualElement>
+        <engine:ScrollView name="Content" style="flex-grow: 1; flex-direction: column-reverse; flex-wrap: wrap; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; border-top-width: 1px; border-top-color: rgb(42, 40, 39); align-items: stretch; justify-content: flex-start; align-content: flex-start;" />
+    </engine:VisualElement>
+</engine:UXML>
