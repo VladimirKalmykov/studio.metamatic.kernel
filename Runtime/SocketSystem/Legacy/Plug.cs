@@ -56,8 +56,8 @@ namespace Metamatic
         /// <summary>
         /// Plug was auto locked by auto connect strategy. It can not change the socket by hierarchy or global changes.
         /// </summary>
-        protected MicroState<bool> m_AutoLocked = new(false);
-        public MicroStateReadOnly<bool> autoLocked => m_AutoLocked;
+        protected Observable<bool> m_AutoLocked = new(false);
+        public ObservableReadOnly<bool> autoLocked => m_AutoLocked;
         public Type[] inputTypes => GetInputTypes();
         public Type[] outputTypes => GetOutputTypes();
         public Type[] inputPinTypes => GetInputPinTypes();

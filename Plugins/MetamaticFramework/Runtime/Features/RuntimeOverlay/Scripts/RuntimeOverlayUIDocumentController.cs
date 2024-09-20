@@ -11,7 +11,7 @@ namespace Metamatic.Framework
             private ScrollView m_WoodsPanelContent;
             private VisualTreeAsset m_SpellCardTemplate;
             private Texture2D m_CursorTexture;
-            private MicroState<CursorTool> m_SelectedWood = new MicroState<CursorTool>(null);
+            private Observable<CursorTool> m_SelectedWood = new Observable<CursorTool>(null);
 
             protected override async UniTask Run(Ready ready, CancellationSignal signal)
             {
@@ -23,7 +23,7 @@ namespace Metamatic.Framework
                     SequentialHandler<CursorTool>.Subscribe(m_SelectedWood.Subscribe, OnObserveSelectedWood);
 
                 /* Subscribe to Woods data */
-                using var observeWoods = MagicMag.ObserveWoods(OnObserveWood);
+                using var observeWoods = RuntimeCore.ObserveCursors(OnObserveWood);
 
                 await ready();
             }
@@ -38,7 +38,7 @@ namespace Metamatic.Framework
                 //Cursor.visible = false;
                 Cursor.SetCursor(m_CursorTexture, Vector2.zero, CursorMode.Auto);
 
-                MagicMag.ActivateWood(wood, signal);
+                RuntimeCore.Activate(wood, signal);
 
                 await signal;
                 //Cursor.visible = true;

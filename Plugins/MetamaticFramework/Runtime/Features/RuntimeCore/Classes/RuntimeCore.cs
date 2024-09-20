@@ -12,21 +12,33 @@ namespace Metamatic.Framework
     /// <summary>
     /// Allows to add magic woods to the scene.
     /// </summary>
-    public static class MagicMag
+    public static class RuntimeCore
     {
-        private static readonly ManagedList<CursorTool> CursorTools = new ManagedList<CursorTool>();
-        private static readonly HashSet<string> CursorToolNames = new HashSet<string>();
+        private static readonly ManagedList<CursorTool> CursorTools = new();
+        private static readonly HashSet<string> CursorToolNames = new();
+        
+        #region Private observables
         /// <summary>
         /// Observable active cursor tool.
         /// </summary>
-        private static readonly MicroState<CursorTool> ActiveCursorTool = new MicroState<CursorTool>(null);
+        private static readonly Observable<CursorTool> ActiveCursorTool = new();
         /// <summary>
         /// Contains observable cursor label. It can be used to display some information that appears when the cursor is over some object.
         /// </summary>
-        private static readonly MicroState<string> CursorLabel = new MicroState<string>(string.Empty);
-        private static CancellationSignalSource _ActivationCancellationSignalSource;
-        private static Vector2 m_PreviousPointerPosition;
-        public static DisposableAction RegisterMagicWood(CursorTool wood2D)
+        private static readonly Observable<string> CursorLabel = new(string.Empty);
+        #endregion
+        
+        /// <summary>
+        /// Signal source for active cursor tool. It will be canceled when the active cursor tool is changed.
+        /// </summary>
+        private static CancellationSignalSource _CursorToolActivationCancellationSignalSource;
+        /// <summary>
+        /// Helper variable to store the previous pointer position.
+        /// </summary>
+        private static Vector2 _PreviousPointerPosition;
+        
+        #region Public methods
+        public static DisposableAction RegisterCursorTool(CursorTool wood2D)
         {
             if (CursorToolNames.Contains(wood2D.Name))
             {
@@ -42,7 +54,7 @@ namespace Metamatic.Framework
             });
         }
 
-        public static DisposableAction ObserveWoods(Func<CursorTool, CancellationSignal, UniTaskVoid> handler)
+        public static DisposableAction ObserveCursors(Func<CursorTool, CancellationSignal, UniTaskVoid> handler)
         {
             return CursorTools.Observe(handler);
         }
@@ -60,23 +72,25 @@ namespace Metamatic.Framework
         /// <summary>
         /// Active wood. Activated wood will receive mouse events.
         /// </summary>
-        /// <param name="wood"></param>
+        /// <param name="cursorTool"></param>
         /// <param name="signal"></param>
-        public static void ActivateWood(CursorTool wood, CancellationSignal signal)
+        public static void Activate(CursorTool cursorTool, CancellationSignal signal)
         {
-            ActiveCursorTool.Value = wood;
-            _ActivationCancellationSignalSource.TryCancel();
-            _ActivationCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
-            InternalActiveWoodProcess(wood, _ActivationCancellationSignalSource.Signal).Forget();
-            wood.OnActivate(_ActivationCancellationSignalSource.Signal).Forget();
+            ActiveCursorTool.Value = cursorTool;
+            _CursorToolActivationCancellationSignalSource.TryCancel();
+            _CursorToolActivationCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
+            InternalActivateCursorTool(cursorTool, _CursorToolActivationCancellationSignalSource.Signal).Forget();
+            cursorTool.OnActivate(_CursorToolActivationCancellationSignalSource.Signal).Forget();
         }
         
-        public static DisposableAction SubscribeToActiveWood(Action<CursorTool> handler)
+        public static DisposableAction SubscribeToActiveCursorTool(Action<CursorTool> handler)
         {
             return ActiveCursorTool.Subscribe(handler);
         }
+        #endregion
         
-        public static async UniTaskVoid InternalActiveWoodProcess(CursorTool wood, CancellationSignal cancellationSignal)
+        #region Private methods
+        private static async UniTaskVoid InternalActivateCursorTool(CursorTool wood, CancellationSignal cancellationSignal)
         {
             EnhancedTouchSupport.Enable(); // TODO: Maybe we should use some singleton service for doing this, because it's not a good idea to enable/disable EnhancedTouchSupport in different places.
             using (PlayerLoop.EachFrame(TrackPointer))
@@ -85,10 +99,13 @@ namespace Metamatic.Framework
             }
             EnhancedTouchSupport.Disable(); // TODO: Maybe we should use some singleton service for doing this, because it's not a good idea to enable/disable EnhancedTouchSupport in different places.
         }
-
+        
+        /// <summary>
+        /// Track pointer position and send events to the active cursor tool.
+        /// </summary>
         private static void TrackPointer()
         {
-            var wood = ActiveCursorTool.Value;
+            var cursor = ActiveCursorTool.Value;
             Vector2 screenPosition = Vector2.zero;
 
             // Проверяем, есть ли тачскрин и активные тачи
@@ -100,18 +117,18 @@ namespace Metamatic.Framework
 
                 if (touch.phase == TouchPhase.Began)
                 {
-                    wood.OnPress(screenPosition);
+                    cursor.OnPress(screenPosition);
                 }
                 else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
                 {
-                    wood.OnRelease(screenPosition);
+                    cursor.OnRelease(screenPosition);
                 }
                 else if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
                 {
-                    if (screenPosition != m_PreviousPointerPosition)
+                    if (screenPosition != _PreviousPointerPosition)
                     {
-                        wood.OnMove(screenPosition);
-                        m_PreviousPointerPosition = screenPosition;
+                        cursor.OnMove(screenPosition);
+                        _PreviousPointerPosition = screenPosition;
                     }
                 }
             }
@@ -122,18 +139,19 @@ namespace Metamatic.Framework
 
                 if (Mouse.current.leftButton.wasPressedThisFrame)
                 {
-                    wood.OnPress(screenPosition);
+                    cursor.OnPress(screenPosition);
                 }
                 if (Mouse.current.leftButton.wasReleasedThisFrame)
                 {
-                    wood.OnRelease(screenPosition);
+                    cursor.OnRelease(screenPosition);
                 }
-                if (screenPosition != m_PreviousPointerPosition)
+                if (screenPosition != _PreviousPointerPosition)
                 {
-                    wood.OnMove(screenPosition);
-                    m_PreviousPointerPosition = screenPosition;
+                    cursor.OnMove(screenPosition);
+                    _PreviousPointerPosition = screenPosition;
                 }
             }
         }
+        #endregion
     }
 }

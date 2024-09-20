@@ -6,8 +6,8 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public TApi Api { get; }
         
-        internal void InternalSetApi(MicroStateReadOnly<TApi> apiState);
-        internal void InternalWithdrawApi(MicroStateReadOnly<TApi> apiState);
+        internal void InternalSetApi(ObservableReadOnly<TApi> apiState);
+        internal void InternalWithdrawApi(ObservableReadOnly<TApi> apiState);
     }
     
     public interface IApiModernWireImplement<in TApi>: IInputModernWire

@@ -116,7 +116,7 @@ namespace Metamatic
         public delegate UniTask<T> GetDefaultValue(string address, CancellationSignal signal);
         public readonly Repository repository;
         private readonly Dictionary<string, Branch> m_Branches = new();
-        private readonly MicroState<Branch> m_CurrentBranch = new();
+        private readonly Observable<Branch> m_CurrentBranch = new();
         private readonly DeferLock m_SyncLock = new ();
         private readonly DeferLock m_CheckoutBranchLock = new ();
         private UniTaskCompletionSource m_SynchronizedTaskCompletionSource = new ();

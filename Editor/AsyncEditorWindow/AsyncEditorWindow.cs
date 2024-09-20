@@ -10,8 +10,8 @@ namespace Metamatic.EditorTools
     {
         private CancellationSignalSource m_LifetimeCancellationTokenSource;
         private CancellationSignalSource m_EnableCancellationTokenSource;
-        private MicroState<bool> m_IsInitialized = new MicroState<bool>(false);
-        private MicroState<bool> m_IsRendered = new MicroState<bool>(false);
+        private Observable<bool> m_IsInitialized = new Observable<bool>(false);
+        private Observable<bool> m_IsRendered = new Observable<bool>(false);
         
         public CancellationSignalSource lifetimeCancellationTokenSource
         {

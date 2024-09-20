@@ -231,14 +231,14 @@ namespace Metamatic.EditorInspector
         private VisualElement m_Details;
         private bool m_AutoScroll = true;
         private bool m_LockScroll = false;
-        public MicroState<bool> DetailsVisible = new();
+        public Observable<bool> DetailsVisible = new();
         private Dictionary<string, VisualElement> m_LogRepresentation = new Dictionary<string, VisualElement>();
         private string m_PrevSelectedLogId = "";
         private string m_SearchState = "";
         /// <summary>
         /// Contains log id of currently selected log
         /// </summary>
-        private MicroState<string> m_SelectedLogId = new("");
+        private Observable<string> m_SelectedLogId = new("");
         /// <summary>
         /// Currently selected log id
         /// </summary>

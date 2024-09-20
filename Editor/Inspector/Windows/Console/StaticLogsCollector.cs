@@ -13,8 +13,8 @@ namespace Metamatic.EditorInspector
         private static readonly List<LogMetadata> m_LogHistory = new ();
         public static event Action<LogMetadata> OnLogReceived;
         private static Timer m_Timer;
-        private static MicroState<bool> BuiltInLogEnabled = new();
-        public static MicroStateReadOnly<bool> builtInLogEnabled => BuiltInLogEnabled;
+        private static Observable<bool> BuiltInLogEnabled = new();
+        public static ObservableReadOnly<bool> builtInLogEnabled => BuiltInLogEnabled;
         public static bool isBuiltInLogEnabled => BuiltInLogEnabled.value;
         public static IReadOnlyList<LogMetadata> logHistory => m_LogHistory;
         private static bool m_Initialized = false;

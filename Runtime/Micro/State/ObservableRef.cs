@@ -4,7 +4,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public abstract class MicroStateRefReadOnly<T>
+    public abstract class ObservableRefReadOnly<T>
     {
         public delegate void ValueHandler(ref T value);
         public event ValueHandler OnChange;
@@ -15,7 +15,7 @@ namespace Metamatic
             OnChange?.Invoke(ref value);
         }
     }
-    public class MicroStateRef<T>: MicroStateRefReadOnly<T>, IDisposable
+    public class ObservableRef<T>: ObservableRefReadOnly<T>, IDisposable
     where T: struct
     {
         public T value;
@@ -24,18 +24,18 @@ namespace Metamatic
         private bool m_IsDisposed;
         private PlayerLoopTiming m_Timing;
         private CancellationTokenSource m_DisposeCancellationTokenSource;
-        public MicroStateRef(T initialValue = default)
+        public ObservableRef(T initialValue = default)
         {
             value = initialValue;
         }
-        public MicroStateRef(PlayerLoopTiming timing, T initialValue = default)
+        public ObservableRef(PlayerLoopTiming timing, T initialValue = default)
         {
             value = initialValue;
             m_ApplyInLoop = true;
 
         }
 
-        ~MicroStateRef()
+        ~ObservableRef()
         {
             Dispose();
         }
@@ -93,41 +93,41 @@ namespace Metamatic
         }
     }
 
-    public class MicroStateRefProxy<T> : MicroStateRefReadOnly<T>, IDisposable
+    public class ObservableRefProxy<T> : ObservableRefReadOnly<T>, IDisposable
         where T : struct
     {
-        private MicroState<MicroStateRefReadOnly<T>> m_ProxyMicroState;
-        public MicroStateRefProxy(MicroStateRefReadOnly<T> microStateRef)
+        private Observable<ObservableRefReadOnly<T>> m_ProxyObservable;
+        public ObservableRefProxy(ObservableRefReadOnly<T> observableRef)
         {
-            m_ProxyMicroState = new MicroState<MicroStateRefReadOnly<T>>(microStateRef);
+            m_ProxyObservable = new Observable<ObservableRefReadOnly<T>>(observableRef);
         }
 
-        public MicroStateRefProxy()
+        public ObservableRefProxy()
         {
-            m_ProxyMicroState = new MicroState<MicroStateRefReadOnly<T>>();
+            m_ProxyObservable = new Observable<ObservableRefReadOnly<T>>();
         }
 
-        ~MicroStateRefProxy()
+        ~ObservableRefProxy()
         {
             Dispose();
         }
-        public void SetProxy(MicroStateRefReadOnly<T> microStateRef)
+        public void SetProxy(ObservableRefReadOnly<T> observableRef)
         {
-            m_ProxyMicroState.value = microStateRef;
+            m_ProxyObservable.value = observableRef;
         }
         public override ref T GetValue()
         {
-            if (m_ProxyMicroState.value == null)
+            if (m_ProxyObservable.value == null)
             {
                 throw new NullReferenceException("Proxy value is null");
             }
-            return ref m_ProxyMicroState.value.GetValue();
+            return ref m_ProxyObservable.value.GetValue();
         }
 
         public override DisposableAction Subscribe(ValueHandler handler)
         {
             Action releaseValueListener = default;
-            var releaseProxyListener = m_ProxyMicroState.Subscribe((MicroStateRefReadOnly<T> value) =>
+            var releaseProxyListener = m_ProxyObservable.Subscribe((ObservableRefReadOnly<T> value) =>
             {
                 releaseValueListener?.Invoke();
                 if (value != null)
@@ -144,7 +144,7 @@ namespace Metamatic
 
         public void Dispose()
         {
-            m_ProxyMicroState.Dispose();
+            m_ProxyObservable.Dispose();
             GC.SuppressFinalize(this);
         }
     }

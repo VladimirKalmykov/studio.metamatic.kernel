@@ -81,7 +81,7 @@ namespace Metamatic
         }
         
 
-        private readonly MicroState<CameraController> m_CameraController = new();
+        private readonly Observable<CameraController> m_CameraController = new();
         private Dictionary<CameraController, IDisposable> m_CameraWeightSubscriptions = new();
 
         /// <summary>

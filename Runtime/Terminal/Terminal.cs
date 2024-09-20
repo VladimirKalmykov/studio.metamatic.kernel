@@ -10,12 +10,12 @@ namespace Metamatic
     {
         public class UpdatableLog: IDisposable
         {
-            private MicroState<UITerminal.TextRow> m_TextRow = new ();
+            private Observable<UITerminal.TextRow> m_TextRow = new ();
             private bool m_PersistOnDispose;
             private readonly string m_Pattern;
             private object[] m_Args;
             private CancellationSignalSource m_LifecycleTokenSource = CancellationSignalSource.Create();
-            private MicroState<bool> m_UpdateInProgress = new ();
+            private Observable<bool> m_UpdateInProgress = new ();
             private bool m_IsDisposed;
             private bool m_Peristed;
             
@@ -201,7 +201,7 @@ namespace Metamatic
             public readonly string[] args;
         }
 
-        private static MicroState<UITerminal> m_CachedUITerminal = new ();
+        private static Observable<UITerminal> m_CachedUITerminal = new ();
         public static UniTask<UITerminal> WaitForUITerminal(CancellationSignal signal)
         {
             return m_CachedUITerminal.WaitUntilValueIsNotNull(signal);

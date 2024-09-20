@@ -6,7 +6,7 @@ namespace Metamatic
     public readonly struct AsyncDisposableFunc : IUniTaskAsyncDisposable
     {
 #if DEBUG
-        private readonly MicroState<bool> _disposed;
+        private readonly Observable<bool> _disposed;
 #endif
         public static AsyncDisposableFunc Create(Func<UniTask> action)
         {
@@ -19,7 +19,7 @@ namespace Metamatic
         {
             _action = action;
 #if DEBUG
-            _disposed = new MicroState<bool>(false);
+            _disposed = new Observable<bool>(false);
 #endif
         }
 

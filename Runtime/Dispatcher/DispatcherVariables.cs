@@ -10,22 +10,22 @@ namespace Metamatic
             public delegate void ActionOnRelease(object key, Type type, string name);
             private readonly object m_Key;
             private readonly string m_Name;
-            private readonly MicroState<T> m_MicroState;
+            private readonly Observable<T> m_Observable;
             private readonly Action m_OnDispose1;
             private readonly ActionOnRelease m_OnDispose2;
 
-            public VariableSetter(object key, string name, MicroState<T> mictoState, Inquirable inquirable, ActionOnRelease actionOnRelease)
+            public VariableSetter(object key, string name, Observable<T> mictoState, Inquirable inquirable, ActionOnRelease actionOnRelease)
             {
                 m_Key = key;
                 m_Name = name;
-                m_MicroState = mictoState;
+                m_Observable = mictoState;
                 m_OnDispose1 = inquirable.Inquire();
                 m_OnDispose2 = actionOnRelease;
             }
 
             public void Set(T value)
             {
-                m_MicroState.value = value;
+                m_Observable.value = value;
             }
 
             public void Dispose()
@@ -49,13 +49,13 @@ namespace Metamatic
             if (!m_Variables.TryGetValue(dictionaryKey, out var inquirable))
             {
                 isNew = true;
-                var microStateBase = new MicroState<T>();
-                inquirable = new Inquirable<MicroState<T>>(microStateBase);
+                var microStateBase = new Observable<T>();
+                inquirable = new Inquirable<Observable<T>>(microStateBase);
                 m_Variables.Add(dictionaryKey, inquirable);
             }
             
-            var inquirableTyped = (Inquirable<MicroState<T>>)inquirable;
-            var microState = (MicroStateReadOnly<T>)inquirableTyped.value;
+            var inquirableTyped = (Inquirable<Observable<T>>)inquirable;
+            var microState = (ObservableReadOnly<T>)inquirableTyped.value;
             action(isNew ? fallbackValue : microState.value);
             var subscription = microState.Subscribe(action);
             var disposable = inquirableTyped.Inquire();
@@ -90,12 +90,12 @@ namespace Metamatic
             var dictionaryKey = (key, type, name);
             if (!m_Variables.TryGetValue(dictionaryKey, out var inquirable))
             {
-                var microStateBase = new MicroState<T>();
-                inquirable = (Inquirable)new Inquirable<MicroState<T>>(microStateBase);
+                var microStateBase = new Observable<T>();
+                inquirable = (Inquirable)new Inquirable<Observable<T>>(microStateBase);
                 m_Variables.Add(dictionaryKey, inquirable);
             }
             
-            var inquirableTyped = (Inquirable<MicroState<T>>)inquirable;
+            var inquirableTyped = (Inquirable<Observable<T>>)inquirable;
             var microState = inquirableTyped.value;
 
             return new VariableSetter<T>(key, name, microState, inquirable, CheckForVariableReadyToRelease);
@@ -123,7 +123,7 @@ namespace Metamatic
                 throw new KeyNotFoundException($"Variable {name} not found for key {key}");
             }
             
-            var inquirableTyped = (Inquirable<MicroState<T>>)inquirable;
+            var inquirableTyped = (Inquirable<Observable<T>>)inquirable;
             var microState = inquirableTyped.value;
             return microState.value;
         }

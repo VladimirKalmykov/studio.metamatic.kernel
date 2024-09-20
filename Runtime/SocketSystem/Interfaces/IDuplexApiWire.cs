@@ -10,7 +10,7 @@ namespace Metamatic
         public TClient[] clients { get; }
         public int clientsCount { get; }
         public DisposableAction Subscribe(ClientSupply supply);
-        internal void InternalSetClient(IDuplexApiWireClient<TClient, TVendor> wire, MicroStateReadOnly<TClient> clientState);
+        internal void InternalSetClient(IDuplexApiWireClient<TClient, TVendor> wire, ObservableReadOnly<TClient> clientState);
         internal void InternalRemoveClient(IDuplexApiWireClient<TClient, TVendor> wire);
         public void Set(TVendor vendor);
         /// <summary>
@@ -29,7 +29,7 @@ namespace Metamatic
         public TVendor[] vendors { get; }
         public int vendorsCount { get; }
         public DisposableAction Subscribe(VendorSupply supply);
-        internal void InternalSetVendor(IDuplexApiWireVendor<TVendor, TClient> wire, MicroStateReadOnly<TVendor> vendorState);
+        internal void InternalSetVendor(IDuplexApiWireVendor<TVendor, TClient> wire, ObservableReadOnly<TVendor> vendorState);
         internal void InternalRemoveVendor(IDuplexApiWireVendor<TVendor, TClient> wire);
         public void Set(TClient client);
         /// <summary>

@@ -5,7 +5,7 @@ namespace Metamatic
     public readonly struct DisposableAction : IDisposable
     {
         #if DEBUG
-        private readonly MicroState<bool> _disposed;
+        private readonly Observable<bool> _disposed;
         #endif
         public static DisposableAction Create(Action action)
         {
@@ -18,7 +18,7 @@ namespace Metamatic
         {
             _action = action;
             #if DEBUG
-            _disposed = new MicroState<bool>(false);
+            _disposed = new Observable<bool>(false);
             #endif
         }
 

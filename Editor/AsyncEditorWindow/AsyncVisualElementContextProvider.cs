@@ -7,14 +7,14 @@ namespace Metamatic.EditorTools
 {
     public abstract class AsyncVisualElementContextProvider<T>: AsyncVisualElement
     {
-        private readonly MicroState<T> m_Context;
-        public MicroStateReadOnly<T> context => m_Context;
-        public AsyncVisualElementContextProvider(MicroState<T> context, CancellationSignal signal): base(signal)
+        private readonly Observable<T> m_Context;
+        public ObservableReadOnly<T> context => m_Context;
+        public AsyncVisualElementContextProvider(Observable<T> context, CancellationSignal signal): base(signal)
         {
             m_Context = context;
         }
         
-        public MicroStateReadOnly<T> GetContext()
+        public ObservableReadOnly<T> GetContext()
         {
             if (context == null)
             {
@@ -36,7 +36,7 @@ namespace Metamatic.EditorTools
 
     public static class VisualElementExtensions
     {
-        public static MicroStateReadOnly<TContext> GetContext<TContext>(this VisualElement visualElement)
+        public static ObservableReadOnly<TContext> GetContext<TContext>(this VisualElement visualElement)
         {
             var currentElement = visualElement;
             while (currentElement != null)

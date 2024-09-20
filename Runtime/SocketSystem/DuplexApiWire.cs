@@ -9,15 +9,15 @@ namespace Metamatic
     public class DuplexApiWireProxySource<T>: IDisposable
     where T: class
     {
-        public readonly MicroStateProxy<T> Proxy = new();
+        public readonly ObservableProxy<T> Proxy = new();
         public event Action OnDisposed;
 
-        public DuplexApiWireProxySource(MicroStateReadOnly<T> state)
+        public DuplexApiWireProxySource(ObservableReadOnly<T> state)
         {
             SetProxy(state);
         }
 
-        public void SetProxy(MicroStateReadOnly<T> state)
+        public void SetProxy(ObservableReadOnly<T> state)
         {
             Proxy.SetProxy(state);
         }
@@ -60,7 +60,7 @@ namespace Metamatic
         public DuplexApiWireVendor() : base()
         {
         }
-        private MicroState<TVendor> m_VendorState = new();
+        private Observable<TVendor> m_VendorState = new();
         private Dictionary<IModernWire, DuplexApiWireProxySource<TClient>> m_ClientStateProxies = new();
         private event Action<DuplexApiWireProxySource<TClient>> OnClientProxyInitialized;
         
@@ -112,7 +112,7 @@ namespace Metamatic
             });
         }
 
-        void IDuplexApiWireVendor<TVendor, TClient>.InternalSetClient(IDuplexApiWireClient<TClient, TVendor> wire, MicroStateReadOnly<TClient> clientState)
+        void IDuplexApiWireVendor<TVendor, TClient>.InternalSetClient(IDuplexApiWireClient<TClient, TVendor> wire, ObservableReadOnly<TClient> clientState)
         {
             if (m_ClientStateProxies.TryGetValue(wire, out var proxySource))
             {
@@ -170,7 +170,7 @@ namespace Metamatic
         public DuplexApiWireClient() : base()
         {
         }
-        private MicroState<TClient> m_ClientState = new();
+        private Observable<TClient> m_ClientState = new();
         private Dictionary<IModernWire, DuplexApiWireProxySource<TVendor>> m_VendorStateProxies = new();
         private event Action<DuplexApiWireProxySource<TVendor>> OnVendorProxyInitialized;
         protected override void OnOutputWireConnected(DuplexApiWireVendor<TVendor, TClient> outputWire)
@@ -226,7 +226,7 @@ namespace Metamatic
             });
         }
 
-        void IDuplexApiWireClient<TClient, TVendor>.InternalSetVendor(IDuplexApiWireVendor<TVendor, TClient> wire, MicroStateReadOnly<TVendor> vendorState)
+        void IDuplexApiWireClient<TClient, TVendor>.InternalSetVendor(IDuplexApiWireVendor<TVendor, TClient> wire, ObservableReadOnly<TVendor> vendorState)
         {
             if (m_VendorStateProxies.TryGetValue(wire, out var proxySource))
             {
