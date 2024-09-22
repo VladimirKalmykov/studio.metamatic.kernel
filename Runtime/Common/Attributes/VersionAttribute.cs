@@ -65,7 +65,7 @@ namespace Metamatic
             var versionAttributes = type.GetCustomAttributes<VersionAttribute>();
             var relatedVersion = versionAttributes.FirstOrDefault(x => x.value == version);
             
-            return relatedVersion != null ? relatedVersion.relatedType : null;
+            return relatedVersion?.relatedType;
         }
     }
 }

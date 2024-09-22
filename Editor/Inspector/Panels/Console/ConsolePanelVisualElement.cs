@@ -12,7 +12,7 @@ using Random = UnityEngine.Random;
 
 namespace Metamatic.EditorInspector
 {
-    public class ConsolePanelVisualElement: AsyncVisualElement
+    public class ConsolePanelVisualElement: AsyncVisualElementLegacy
     {
         public class LogLine : VisualElement
         {
@@ -420,7 +420,7 @@ namespace Metamatic.EditorInspector
                 DetailsVisible.value = true;
                 var log = StaticLogsCollector.logHistory.FirstOrDefault(l => l.Id == id);
                 m_Details.Clear();
-                var richText = FormatStackTraces(log.StackTrace);
+                var richText = $"{log.Text}\n{FormatStackTraces(log.StackTrace)}";
 
                 Vector2 scrollPos = Vector2.zero;
                 var imguiContainer = new IMGUIContainer(() =>

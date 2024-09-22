@@ -8,6 +8,7 @@ namespace Metamatic.Framework
     {
         public readonly string Name;
         public readonly string DisplayName;
+        public Vector2 ScreenPosition;
         public LayerMask LayerMask;
         
         public CursorTool(string name, string displayName, LayerMask layerMask = default)
@@ -17,7 +18,7 @@ namespace Metamatic.Framework
             LayerMask = layerMask;
         }
 
-        public abstract UniTaskVoid OnActivate(CancellationSignal signal);
+        public abstract UniTaskVoid OnActivate(RuntimeCore core, CancellationSignal signal);
 
         public abstract void OnPress(Vector2 screenPosition);
 

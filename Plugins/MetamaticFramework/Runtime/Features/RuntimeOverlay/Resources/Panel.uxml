@@ -1,11 +1,4 @@
 <engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project://database/Packages/studio.metamatic.kernel/Runtime/DevMagicWoods/Uss/Desktop.uss?fileID=7433441132597879392&amp;guid=cba207de8508ee746acd20a804b0dccc&amp;type=3#Desktop" />
-    <engine:VisualElement name="Panel" class="Panel" style="top: 65px; left: 135px;">
-        <engine:VisualElement name="Header" class="PanelHeader">
-            <engine:Label text="Tools" name="Title" class="PanelTitle" />
-            <engine:VisualElement name="Space" class="PanelHeaderSpace" />
-            <engine:VisualElement name="RightButton" style="flex-grow: 0; width: 24px; align-self: center; height: 24px;" />
-        </engine:VisualElement>
-        <engine:ScrollView name="Content" class="PanelContent" />
-    </engine:VisualElement>
+    <Style src="project://database/Packages/studio.metamatic.kernel/Plugins/MetamaticFramework/Runtime/Features/RuntimeOverlay/Uss/Desktop.uss?fileID=7433441132597879392&amp;guid=cba207de8508ee746acd20a804b0dccc&amp;type=3#Desktop" />
+    <Metamatic.Framework.Panel style="top: 54px; left: 406px;" />
 </engine:UXML>

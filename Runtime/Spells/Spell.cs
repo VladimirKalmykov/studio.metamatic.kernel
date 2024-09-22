@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -40,10 +41,8 @@ namespace Metamatic
         /// <returns></returns>
         public static SpellCast<TSpell> Cast<TSpell>(TSpell spell, Object spellCaster, Object target, CancellationSignal signal) where TSpell: IAsyncSpell
         {
-            Console.Info("Spell", "Async", $"Cast {spell.GetType().Name} to {target.name}");
-            var spellSource = ParamLessPool<AsyncSpell<TSpell>>.GetShared();
-            spellSource.Cast(spell, spellCaster, target);
-            return new SpellCast<TSpell>(spellSource);
+            var spellSource = ParamLessPool<SpellSourceReusable<TSpell>>.GetShared();
+            return spellSource.Cast(spell, spellCaster, target);
         }
         
         public static T ResolveComponent<T>(Object obj) where T: Component
@@ -65,30 +64,106 @@ namespace Metamatic
         }
     }
     
-    public class AsyncSpell<TSpell>
+    internal class SpellSourceReusable<TSpell>: ISpellSource<TSpell>
     where TSpell: IAsyncSpell
     {
-        public delegate void SpellModifier(ref TSpell spell);
         private TSpell m_Spell;
-        public int version { get; private set; }
         private CancellationSignalSource m_CancellationSignalSource;
-        public void Cast(TSpell spell, Object spellCaster, Object target)
+        public int version { get; private set; }
+        public Object spellCaster { get; private set; }
+        public ref TSpell GetSpellReference()
         {
+            return ref m_Spell;
+        }
+
+        public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
+
+        public void Modify(ISpellSource<TSpell>.SpellModifier modifier)
+        {
+            modifier(ref m_Spell);
+        }
+
+        public void Init()
+        {
+            m_CancellationSignalSource = CancellationSignalSource.Create();
+        }
+
+        public SpellCast<TSpell> Cast(TSpell spell, Object spellCaster, Object target)
+        {
+            Console.Info("Spell", "Async", $"Cast {spell.GetType().Name} to {target.name}");
+            this.spellCaster = spellCaster;
             m_Spell = spell;
-            m_Spell.OnCast(spellCaster, target, m_CancellationSignalSource.Signal);
+            
+            return new SpellCast<TSpell>(this, target);
         }
         
         public void Release()
         {
-            m_CancellationSignalSource.TryCancel();
-            version++;
+            unchecked
+            {
+                version++;
+            }
+            spellCaster = default;
             m_Spell = default;
-            ParamLessPool<AsyncSpell<TSpell>>.ReturnShared(this);
+            m_CancellationSignalSource.TryCancel();
+            ParamLessPool<SpellSourceReusable<TSpell>>.ReturnShared(this);
+        }
+    }
+
+    public class SpellSource<TSpell>: ISpellSource<TSpell>, IDisposable, IExposedDisposed
+        where TSpell : IAsyncSpell
+    {
+        private TSpell m_Spell;
+        private CancellationSignalSource m_CancellationSignalSource = CancellationSignalSource.Create();
+
+        public SpellSource(TSpell spell, Object spellCaster)
+        {
+            m_Spell = spell;
+            this.spellCaster = spellCaster;
         }
         
-        public void Modify(SpellModifier modifier)
+        public SpellCast<TSpell> Cast(Object target)
+        {
+            Console.Info("Spell", "Async", $"Cast {m_Spell.GetType().Name} to {target.name}");
+            
+            return new SpellCast<TSpell>(this, target);
+        }
+
+        public int version { get; private set; } = 0;
+        public Object spellCaster { get; }
+
+        public ref TSpell GetSpellReference()
+        {
+            return ref m_Spell;
+        }
+
+        public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
+
+        public void Modify(ISpellSource<TSpell>.SpellModifier modifier)
         {
             modifier(ref m_Spell);
         }
+
+        public void Release()
+        {
+            /* Do nothing, because we are not pooling */
+        }
+
+        public void Dispose()
+        {
+            if (isDisposed)
+            {
+                return;
+                isDisposed = true;
+            }
+            unchecked
+            {
+                version++;
+            }
+            m_CancellationSignalSource.TryCancel();
+        }
+
+        public bool isDisposed { get; private set;  }
+        public event Action OnDisposed;
     }
 }

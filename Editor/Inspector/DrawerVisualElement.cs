@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Metamatic.Inspector
 {
-    public abstract class DrawerVisualElement : AsyncVisualElement
+    public abstract class DrawerVisualElement : AsyncVisualElementLegacy
     {
         public static DrawerVisualElement Create(Type type, bool editable, CancellationSignal signal = default)
         {

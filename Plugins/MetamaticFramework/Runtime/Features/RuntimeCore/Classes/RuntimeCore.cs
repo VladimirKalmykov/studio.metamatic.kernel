@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 using Metamatic;
 using UnityEngine;
@@ -12,61 +13,92 @@ namespace Metamatic.Framework
     /// <summary>
     /// Allows to add magic woods to the scene.
     /// </summary>
-    public static class RuntimeCore
+    public class RuntimeCore
     {
-        private static readonly ManagedList<CursorTool> CursorTools = new();
-        private static readonly HashSet<string> CursorToolNames = new();
+        private static RuntimeCore _Instance;
+        // ReSharper disable once InconsistentNaming
+        public static RuntimeCore Instance => _Instance ??= new RuntimeCore();
+        
+        private readonly ManagedList<CursorTool> m_CursorTools = new();
+        private readonly HashSet<string> m_CursorToolNames = new();
         
         #region Private observables
         /// <summary>
         /// Observable active cursor tool.
         /// </summary>
-        private static readonly Observable<CursorTool> ActiveCursorTool = new();
+        private readonly Observable<CursorTool> m_ActiveCursorTool = new();
         /// <summary>
         /// Contains observable cursor label. It can be used to display some information that appears when the cursor is over some object.
         /// </summary>
-        private static readonly Observable<string> CursorLabel = new(string.Empty);
+        private readonly Observable<string> m_CursorLabel = new(string.Empty);
         #endregion
         
+        #region Various fields
         /// <summary>
         /// Signal source for active cursor tool. It will be canceled when the active cursor tool is changed.
         /// </summary>
-        private static CancellationSignalSource _CursorToolActivationCancellationSignalSource;
+        private CancellationSignalSource m_CursorToolActivationCancellationSignalSource;
         /// <summary>
         /// Helper variable to store the previous pointer position.
         /// </summary>
-        private static Vector2 _PreviousPointerPosition;
+        private Vector2 m_PreviousPointerPosition;
+        private readonly HashSet<GameObject> m_SelectedObjects = new(); 
+        #endregion
+        
+        #region Cached properties
+        public Type[] SpellTypes { get; private set; }
+        #endregion
+        
+        #region Initialization
+
+        private RuntimeCore()
+        {
+            /* Find all structures that implement the ISpell interface */
+            var spellTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(s => s.GetTypes())
+                .Where(p => typeof(ISpell).IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract);
+            var enumerable = spellTypes as Type[] ?? spellTypes.ToArray();
+            Console.Info("Metamatic Framework", $"Found {enumerable.Count()} spells");
+            SpellTypes = enumerable.ToArray();
+        }
+        
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Initialize()
+        {
+            _Instance = new RuntimeCore();
+        }
+        #endregion
         
         #region Public methods
-        public static DisposableAction RegisterCursorTool(CursorTool wood2D)
+        public DisposableAction RegisterCursorTool(CursorTool cursorTool)
         {
-            if (CursorToolNames.Contains(wood2D.Name))
+            if (m_CursorToolNames.Contains(cursorTool.Name))
             {
-                Debug.LogWarning($"Wood with name {wood2D.Name} already exists.");
+                Debug.LogWarning($"Wood with name {cursorTool.Name} already exists.");
                 return DisposableAction.Empty;
             }
-            CursorToolNames.Add(wood2D.Name);
-            CursorTools.Add(wood2D);
+            m_CursorToolNames.Add(cursorTool.Name);
+            m_CursorTools.Add(cursorTool);
             return new DisposableAction(() =>
             {
-                CursorToolNames.Remove(wood2D.Name);
-                CursorTools.Remove(wood2D);
+                m_CursorToolNames.Remove(cursorTool.Name);
+                m_CursorTools.Remove(cursorTool);
             });
         }
 
-        public static DisposableAction ObserveCursors(Func<CursorTool, CancellationSignal, UniTaskVoid> handler)
+        public DisposableAction ObserveCursorTools(Func<CursorTool, CancellationSignal, UniTaskVoid> handler)
         {
-            return CursorTools.Observe(handler);
+            return m_CursorTools.Observe(handler);
         }
         
-        public static DisposableAction SubscribeToCursorLabel(Action<string> handler)
+        public DisposableAction SubscribeToCursorLabel(Action<string> handler)
         {
-            return CursorLabel.Subscribe(handler);
+            return m_CursorLabel.Subscribe(handler);
         }
         
-        public static void SetCursorLabel(string label)
+        public void SetCursorLabel(string label)
         {
-            CursorLabel.Value = label;
+            m_CursorLabel.Value = label;
         }
         
         /// <summary>
@@ -74,23 +106,40 @@ namespace Metamatic.Framework
         /// </summary>
         /// <param name="cursorTool"></param>
         /// <param name="signal"></param>
-        public static void Activate(CursorTool cursorTool, CancellationSignal signal)
+        public void Activate(CursorTool cursorTool, CancellationSignal signal)
         {
-            ActiveCursorTool.Value = cursorTool;
-            _CursorToolActivationCancellationSignalSource.TryCancel();
-            _CursorToolActivationCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
-            InternalActivateCursorTool(cursorTool, _CursorToolActivationCancellationSignalSource.Signal).Forget();
-            cursorTool.OnActivate(_CursorToolActivationCancellationSignalSource.Signal).Forget();
+            m_ActiveCursorTool.Value = cursorTool;
+            m_CursorToolActivationCancellationSignalSource.TryCancel();
+            m_CursorToolActivationCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
+            InternalActivateCursorTool(cursorTool, m_CursorToolActivationCancellationSignalSource.Signal).Forget();
+            cursorTool.OnActivate(this, m_CursorToolActivationCancellationSignalSource.Signal).Forget();
         }
         
-        public static DisposableAction SubscribeToActiveCursorTool(Action<CursorTool> handler)
+        public DisposableAction SubscribeToActiveCursorTool(Action<CursorTool> handler)
         {
-            return ActiveCursorTool.Subscribe(handler);
+            return m_ActiveCursorTool.Subscribe(handler);
+        }
+        
+        public void SelectObject(GameObject gameObject)
+        {
+            m_SelectedObjects.Add(gameObject);
+        }
+        
+        public void ToggleObjectSelection(GameObject gameObject)
+        {
+            if (m_SelectedObjects.Contains(gameObject))
+            {
+                m_SelectedObjects.Remove(gameObject);
+            }
+            else
+            {
+                m_SelectedObjects.Add(gameObject);
+            }
         }
         #endregion
         
         #region Private methods
-        private static async UniTaskVoid InternalActivateCursorTool(CursorTool wood, CancellationSignal cancellationSignal)
+        private async UniTaskVoid InternalActivateCursorTool(CursorTool wood, CancellationSignal cancellationSignal)
         {
             EnhancedTouchSupport.Enable(); // TODO: Maybe we should use some singleton service for doing this, because it's not a good idea to enable/disable EnhancedTouchSupport in different places.
             using (PlayerLoop.EachFrame(TrackPointer))
@@ -103,9 +152,9 @@ namespace Metamatic.Framework
         /// <summary>
         /// Track pointer position and send events to the active cursor tool.
         /// </summary>
-        private static void TrackPointer()
+        private void TrackPointer()
         {
-            var cursor = ActiveCursorTool.Value;
+            var cursor = m_ActiveCursorTool.Value;
             Vector2 screenPosition = Vector2.zero;
 
             // Проверяем, есть ли тачскрин и активные тачи
@@ -125,10 +174,11 @@ namespace Metamatic.Framework
                 }
                 else if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
                 {
-                    if (screenPosition != _PreviousPointerPosition)
+                    if (screenPosition != m_PreviousPointerPosition)
                     {
+                        cursor.ScreenPosition = screenPosition;
                         cursor.OnMove(screenPosition);
-                        _PreviousPointerPosition = screenPosition;
+                        m_PreviousPointerPosition = screenPosition;
                     }
                 }
             }
@@ -145,10 +195,11 @@ namespace Metamatic.Framework
                 {
                     cursor.OnRelease(screenPosition);
                 }
-                if (screenPosition != _PreviousPointerPosition)
+                if (screenPosition != m_PreviousPointerPosition)
                 {
+                    cursor.ScreenPosition = screenPosition;
                     cursor.OnMove(screenPosition);
-                    _PreviousPointerPosition = screenPosition;
+                    m_PreviousPointerPosition = screenPosition;
                 }
             }
         }
