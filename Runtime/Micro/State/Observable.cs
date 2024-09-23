@@ -21,7 +21,7 @@ namespace Metamatic
     public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>
     {
         private event Action<TValue> OnChange;
-        private CancellationTokenSource m_DisposeCancellationTokenSource;
+        private CancellationTokenSource m_DisposeCancellationTokenSource; // TODO: Remove this cancellation token source, this class can be used without it and it is not necessary. Moreover, it is may a cause of performance issues
 
         public TValue value
         {

@@ -1,6 +1,7 @@
 using System;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Metamatic.Framework
 {
@@ -8,19 +9,21 @@ namespace Metamatic.Framework
     {
         public readonly string Name;
         public readonly string DisplayName;
+        public readonly string IconPath;
         public Vector2 ScreenPosition;
         public LayerMask LayerMask;
         
-        public CursorTool(string name, string displayName, LayerMask layerMask = default)
+        public CursorTool(string name, string displayName, string icon, LayerMask layerMask = default)
         {
             Name = name;
             DisplayName = displayName;
             LayerMask = layerMask;
+            IconPath = icon;
         }
 
-        public abstract UniTaskVoid OnActivate(RuntimeCore core, CancellationSignal signal);
+        public abstract UniTaskVoid OnActivate(MetamaticFrameworkOverlay overlay, CancellationSignal signal);
 
-        public abstract void OnPress(Vector2 screenPosition);
+        public abstract void OnPress(Vector2 screenPosition, InputModifiers modifiers);
 
         public abstract void OnRelease(Vector2 screenPosition);
 
@@ -47,7 +50,7 @@ namespace Metamatic.Framework
         private CancellationSignalSource m_DisposeSignalSource = CancellationSignalSource.Create();
         private bool m_IsReady;
         private event Action m_ReadyEvent;
-        protected AsyncCursorTool(string name, string displayName, LayerMask layerMask = default) : base(name, displayName, layerMask)
+        protected AsyncCursorTool(string name, string displayName, string icon, LayerMask layerMask = default) : base(name, displayName, icon, layerMask)
         {
             OnDisposed += () =>
             {

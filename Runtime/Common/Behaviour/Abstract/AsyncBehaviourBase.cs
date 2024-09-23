@@ -89,7 +89,7 @@ namespace Metamatic
             return new DisposableAction(() => OnValidateEvent -= action);
         }
         
-        protected DisposableAction SubscribeDrawGizmos(Action action)
+        public DisposableAction SubscribeDrawGizmos(Action action)
         {
             OnDrawGizmosEvent += action;
             return new DisposableAction(() => OnDrawGizmosEvent -= action);

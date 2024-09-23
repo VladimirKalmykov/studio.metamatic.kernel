@@ -25,12 +25,16 @@ namespace Metamatic.Framework
             public UserPreferences DefaultPreferences;
             public Vector2 MinSize;
             public Vector2 MaxSize;
+            public bool AutoHeight;
+            public bool AutoWidth;
             
-            public Constraints(UserPreferences defaultPreferences, Vector2 minSize, Vector2 maxSize)
+            public Constraints(UserPreferences defaultPreferences, Vector2 minSize, Vector2 maxSize, bool autoWidth = false, bool autoHeight = true)
             {
                 DefaultPreferences = defaultPreferences;
                 MinSize = minSize;
                 MaxSize = maxSize;
+                AutoWidth = autoWidth;
+                AutoHeight = autoHeight;
             }
         }
         public readonly string PanelName;
@@ -96,10 +100,28 @@ namespace Metamatic.Framework
             m_Preferences = m_OverlayContext.Value.GetPanelPreferences(PanelName, m_Constraints.DefaultPreferences);
             m_OverlayContext.Value.uiDocument.rootVisualElement.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
             
+            /* Detect mouse enter and leave */
+           
+            RegisterCallback<MouseEnterEvent>(EnterHandler);
+            
+            
+            RegisterCallback<MouseLeaveEvent>(LeaveHandler);
+            
             ApplyPreferences(m_Preferences);
             
             InitDraggable();
         }
+        
+        void EnterHandler(MouseEnterEvent evt)
+        {
+            m_OverlayContext.Value.AddHoveredPanel(this);
+        }
+        
+        void LeaveHandler(MouseLeaveEvent evt)
+        {
+            m_OverlayContext.Value.RemoveHoveredPanel(this);
+        }
+        
         
         private void OnRootGeometryChanged(GeometryChangedEvent evt)
         {
@@ -110,24 +132,26 @@ namespace Metamatic.Framework
         {
             m_OverlayContext.Value.uiDocument.rootVisualElement.UnregisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
             OnDetachFromPanelEvent?.Invoke();
+            UnregisterCallback<MouseEnterEvent>(EnterHandler);
+            UnregisterCallback<MouseLeaveEvent>(LeaveHandler);
         }
         
         private void ApplyPreferences(UserPreferences preferences)
         {
             var finalPosition = preferences.Position;
-            var finalSize = preferences.Size;
+            var constrainedSize = preferences.Size;
             /* Apply constraints */
             if (m_Constraints.MinSize != Vector2.zero)
             {
-                finalSize = Vector2.Max(finalSize, m_Constraints.MinSize);
+                constrainedSize = Vector2.Max(constrainedSize, m_Constraints.MinSize);
             }
             if (m_Constraints.MaxSize.x != 0)
             {
-                finalSize.x = Mathf.Min(finalSize.x, m_Constraints.MaxSize.x);
+                constrainedSize.x = Mathf.Min(constrainedSize.x, m_Constraints.MaxSize.x);
             }
             if (m_Constraints.MaxSize.y != 0)
             {
-                finalSize.y = Mathf.Min(finalSize.y, m_Constraints.MaxSize.y);
+                constrainedSize.y = Mathf.Min(constrainedSize.y, m_Constraints.MaxSize.y);
             }
             /* Apply constraints relative screen size. Panel should not be outside of the screen () */
             var overlay = m_OverlayContext.Value;
@@ -137,16 +161,20 @@ namespace Metamatic.Framework
             if (!float.IsNaN(uiDocumentWidth) && !float.IsNaN(uiDocumentHeight))
             {
                 finalPosition = new Vector2(
-                    Mathf.Min(finalPosition.x, uiDocumentWidth - finalSize.x),
-                    Mathf.Min(finalPosition.y, uiDocumentHeight - finalSize.y)
+                    Mathf.Min(finalPosition.x, uiDocumentWidth - constrainedSize.x),
+                    Mathf.Min(finalPosition.y, uiDocumentHeight - constrainedSize.y)
                 );
             }
             
             /* Apply preferences */
             style.left = finalPosition.x;
             style.top = finalPosition.y;
-            style.width = finalSize.x;
-            style.height = finalSize.y;
+            style.width = m_Constraints.AutoWidth ? new StyleLength(StyleKeyword.Auto) : preferences.Size.x;
+            style.height = m_Constraints.AutoHeight ? new StyleLength(StyleKeyword.Auto) : preferences.Size.y;
+            style.maxWidth = m_Constraints.MaxSize.x == 0 ? StyleKeyword.None : m_Constraints.MaxSize.x;
+            style.maxHeight = m_Constraints.MaxSize.y == 0 ? StyleKeyword.None : m_Constraints.MaxSize.y;
+            style.minHeight = m_Constraints.MinSize.y == 0 ? StyleKeyword.None : m_Constraints.MinSize.y;
+            style.minWidth = m_Constraints.MinSize.x == 0 ? StyleKeyword.None : m_Constraints.MinSize.x;
         }
         
         private void WritePreferences()
