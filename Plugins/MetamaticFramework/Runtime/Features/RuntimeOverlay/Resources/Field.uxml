@@ -1,0 +1,7 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/studio.metamatic.kernel/Plugins/MetamaticFramework/Runtime/Features/RuntimeOverlay/Resources/Uss/MetamaticOverlay.uss?fileID=7433441132597879392&amp;guid=cba207de8508ee746acd20a804b0dccc&amp;type=3#MetamaticOverlay" />
+    <engine:VisualElement name="Field" class="Field">
+        <engine:Label text="Label" class="FieldLabel" style="width: 120px; max-width: 120px;" />
+        <engine:VisualElement name="Content" class="FieldContent" />
+    </engine:VisualElement>
+</engine:UXML>

@@ -35,7 +35,7 @@ namespace Metamatic.Framework
             overlay.root.Add(panel);
             
             /* Subscribe to selected objects */
-            using var selectedObjectSubscription = overlay.core.ObserveSelectedObjects(OnObserveSelectedObject);
+            using var selectedObjectSubscription = overlay.core.SwitchOnEverySelectedObject(OnObserveSelectedObject);
 
             await signal;
             overlay.root.Remove(panel);

@@ -95,6 +95,8 @@ namespace Metamatic.Framework
         private void OnAttachedToPanel(AttachToPanelEvent evt)
         {
             m_OverlayContext = this.GetContext<MetamaticFrameworkOverlay>();
+
+            if (m_OverlayContext == null) return;
             
             /* Load preferences */
             m_Preferences = m_OverlayContext.Value.GetPanelPreferences(PanelName, m_Constraints.DefaultPreferences);

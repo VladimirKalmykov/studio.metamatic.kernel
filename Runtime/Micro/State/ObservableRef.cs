@@ -127,7 +127,7 @@ namespace Metamatic
         public override DisposableAction Subscribe(ValueHandler handler)
         {
             Action releaseValueListener = default;
-            var releaseProxyListener = m_ProxyObservable.Subscribe((ObservableRefReadOnly<T> value) =>
+            var releaseProxyListener = m_ProxyObservable.Watch((ObservableRefReadOnly<T> value) =>
             {
                 releaseValueListener?.Invoke();
                 if (value != null)

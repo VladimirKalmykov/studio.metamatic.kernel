@@ -25,7 +25,7 @@ namespace Metamatic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public DisposableAction Subscribe(Action<T> action)
         {
-            return Proxy.Subscribe(action);
+            return Proxy.Watch(action);
         }
         
         public DisposableAction SubscribeDisposed(Action action)

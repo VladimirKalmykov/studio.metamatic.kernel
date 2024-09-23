@@ -70,7 +70,17 @@ namespace Metamatic
                 subscriptionDisposable.Dispose();
             });
         }
-        public static DisposableAction Subscribe(Func<Action<T>, DisposableAction> subscribe, AsyncHandler asyncHandler)
+        public static DisposableAction Subscribe(Func<Action<T>, DisposableAction> subscribe, Func<T, CancellationSignal, UniTaskVoid> asyncHandler)
+        {
+            var handlerDisposable = new SequentialHandler<T>(asyncHandler);
+            var subscriptionDisposable = subscribe(handlerDisposable.Handle);
+            return new DisposableAction(() =>
+            {
+                handlerDisposable.Dispose();
+                subscriptionDisposable.Dispose();
+            });
+        }
+        public static DisposableAction WatchAsync(Func<Action<T>, DisposableAction> subscribe, Func<T, CancellationSignal, UniTaskVoid> asyncHandler)
         {
             var handlerDisposable = new SequentialHandler<T>(asyncHandler);
             var subscriptionDisposable = subscribe(handlerDisposable.Handle);
@@ -81,10 +91,9 @@ namespace Metamatic
             });
         }
         public delegate void Handler(T value, CancellationSignal token);
-        public delegate UniTaskVoid AsyncHandler(T value, CancellationSignal token);
 
         private Handler m_Handler;
-        private AsyncHandler m_AsyncHandler;
+        private Func<T, CancellationSignal, UniTaskVoid> m_AsyncHandler;
         // ReSharper disable once InconsistentNaming
         public Action<T> Handle { get; private set; }
     
@@ -94,7 +103,7 @@ namespace Metamatic
             externCancellationToken = externalCancellationToken;
             Handle = SyncHandle;
         }
-        public SequentialHandler(AsyncHandler handler, CancellationSignal externalCancellationToken = default)
+        public SequentialHandler(Func<T, CancellationSignal, UniTaskVoid> handler, CancellationSignal externalCancellationToken = default)
         {
             m_AsyncHandler = handler;
             externCancellationToken = externalCancellationToken;

@@ -9,15 +9,16 @@ namespace Metamatic
     using System.Collections.Generic;
     using System.Threading;
 
-    public class ManagedList<T> : IList<T>, IDisposable
+    public class ObservableList<T> : IList<T>, IDisposable
     {
         private readonly List<T> m_List = new List<T>();
         private Func<T, CancellationSignal, UniTask> m_Handler;
         private readonly Dictionary<T, CancellationSignalSource> m_CancellationTokens = new Dictionary<T, CancellationSignalSource>();
         private bool m_Disposed = false;
         public event Action<T, CancellationSignal> OnItemAdded;
+        public IReadOnlyCollection<T> items => m_List;
 
-        public ManagedList(Func<T, CancellationSignal, UniTask> handler = null)
+        public ObservableList(Func<T, CancellationSignal, UniTask> handler = null)
         {
             m_Handler = handler ?? DefaultHandler;
         }
@@ -25,7 +26,7 @@ namespace Metamatic
         public void SetHandler(Func<T, CancellationSignal, UniTask> handler)
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
 
             m_Handler = handler ?? DefaultHandler;
         }
@@ -101,7 +102,7 @@ namespace Metamatic
         public async UniTask AddAsync(T item)
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
             if (m_Handler == null)
                 m_Handler = DefaultHandler;
 
@@ -127,7 +128,7 @@ namespace Metamatic
         public void Add(T item)
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
@@ -157,7 +158,7 @@ namespace Metamatic
         public void TryAdd(T item)
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
             if (m_List.Contains(item))
                 return;
 
@@ -173,7 +174,7 @@ namespace Metamatic
         public bool Remove(T item)
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
@@ -216,7 +217,7 @@ namespace Metamatic
             set
             {
                 if (m_Disposed)
-                    throw new ObjectDisposedException(nameof(ManagedList<T>));
+                    throw new ObjectDisposedException(nameof(ObservableList<T>));
 
                 if (m_CancellationTokens.TryGetValue(m_List[index], out var cts))
                 {
@@ -240,7 +241,7 @@ namespace Metamatic
         public void Insert(int index, T item)
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
@@ -267,7 +268,7 @@ namespace Metamatic
         public void RemoveAt(int index)
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
 
             var item = m_List[index];
             m_List.RemoveAt(index);
@@ -282,7 +283,7 @@ namespace Metamatic
         public void Clear()
         {
             if (m_Disposed)
-                throw new ObjectDisposedException(nameof(ManagedList<T>));
+                throw new ObjectDisposedException(nameof(ObservableList<T>));
 
             foreach (var cts in m_CancellationTokens.Values)
             {

@@ -397,7 +397,7 @@ namespace Metamatic
         public DisposableAction Subscribe(Action<T> action)
         {
             IDisposable valueSubscription = default; 
-            var branchSubscription = m_CurrentBranch.Subscribe(branch =>
+            var branchSubscription = m_CurrentBranch.Watch(branch =>
             {
                 valueSubscription?.Dispose();
                 valueSubscription = branch.Subscribe(action);

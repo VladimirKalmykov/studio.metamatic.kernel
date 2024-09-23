@@ -9,7 +9,7 @@ namespace Metamatic
     public class InputService : Service
     {
         [SerializeField] private PlayerInput m_PlayerInputPrefab;
-        private ManagedList<PlayerInput> m_PlayerInputs;
+        private ObservableList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
         private event Action<int, InputAction.CallbackContext> m_OnPlayerActionTriggered;
         
@@ -21,7 +21,7 @@ namespace Metamatic
         protected override async UniTask RunService(Ready ready, CancellationSignal signal)
         {
             /* Prepare handler for player inputs */
-            using var playerInputs = m_PlayerInputs = new ManagedList<PlayerInput>(HandlePlayerInput);
+            using var playerInputs = m_PlayerInputs = new ObservableList<PlayerInput>(HandlePlayerInput);
             var cameraService = m_CameraService = await Resolve<CameraService>(signal);
             /* Subscribe to main camera */
             using var mainCameraSubscription = cameraService.SubscribeToMainCamera(HandleMainCamera);

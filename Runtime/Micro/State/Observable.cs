@@ -16,7 +16,7 @@ namespace Metamatic
     interface IObservableValue<TValue>
     {
         public TValue value { get; }
-        public DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false);
+        public DisposableAction Watch(Action<TValue> handler, bool skipInitial = false);
     }
     public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>
     {
@@ -57,9 +57,9 @@ namespace Metamatic
             Dispose();
         }
 
-        public abstract DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false);
+        public abstract DisposableAction Watch(Action<TValue> handler, bool skipInitial = false);
         
-        public abstract DisposableAction Subscribe(Action<TValue> handler);
+        public abstract DisposableAction Watch(Action<TValue> handler);
         
         public Action SubscribeOnce(Action<TValue> handler)
         {
@@ -264,12 +264,12 @@ namespace Metamatic
             return true;
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler)
+        public override DisposableAction Watch(Action<TValue> handler)
         {
-            return Subscribe(handler, false);
+            return Watch(handler, false);
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial)
+        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial)
         {
             AddListener(handler);
             if (!skipInitial)
@@ -329,12 +329,12 @@ namespace Metamatic
             return m_Getter != null;
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false)
+        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial = false)
         {
             throw new NotImplementedException();
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler)
+        public override DisposableAction Watch(Action<TValue> handler)
         {
             throw new NotImplementedException();
         }
@@ -379,15 +379,15 @@ namespace Metamatic
             Dispose();
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler, bool skipInitial = false)
+        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial = false)
         {
             Action releaseValueListener = default;
-            var releaseProxyListener = m_Proxy.Subscribe((ObservableReadOnly<TValue> value) =>
+            var releaseProxyListener = m_Proxy.Watch((ObservableReadOnly<TValue> value) =>
             {
                 releaseValueListener?.Invoke();
                 if (value != null)
                 {
-                    releaseValueListener = value.Subscribe(handler);
+                    releaseValueListener = value.Watch(handler);
                 }
                 else
                 {
@@ -406,9 +406,9 @@ namespace Metamatic
             return commonDisposable;
         }
 
-        public override DisposableAction Subscribe(Action<TValue> handler)
+        public override DisposableAction Watch(Action<TValue> handler)
         {
-            return Subscribe(handler, false);
+            return Watch(handler, false);
         }
 
         public override bool HasValue()

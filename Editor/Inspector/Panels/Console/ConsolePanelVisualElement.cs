@@ -298,9 +298,9 @@ namespace Metamatic.EditorInspector
             /* Get player loop update */
             using var playerLoopUpdate = AsyncUtils.PlayerLoopAction(FrameUpdate, cancellationToken: signal);
             /* Details visible state */
-            using var detailsVisibleListener = DetailsVisible.Subscribe(OnDetailsVisibleChanged);
+            using var detailsVisibleListener = DetailsVisible.Watch(OnDetailsVisibleChanged);
             /* Listen for selected log changes */
-            using var selectedLogListener = m_SelectedLogId.Subscribe(ApplySelectedLog);
+            using var selectedLogListener = m_SelectedLogId.Watch(ApplySelectedLog);
             
            
             
@@ -331,7 +331,7 @@ namespace Metamatic.EditorInspector
             });
             
             /* Subscribe built-in log flag */
-            using var builtInSubscription = StaticLogsCollector.builtInLogEnabled.Subscribe(value =>
+            using var builtInSubscription = StaticLogsCollector.builtInLogEnabled.Watch(value =>
             {
                 builtInLogCheckbox.value = value;
                 ApplyLogsListFilter();

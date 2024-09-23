@@ -28,7 +28,7 @@ namespace Metamatic.Framework
                 new SerializableDictionary<string, Panel.UserPreferences>();
         }
 
-        private readonly ManagedList<CursorTool> m_CursorTools = new();
+        private readonly ObservableList<CursorTool> m_CursorTools = new();
         private readonly HashSet<string> m_CursorToolNames = new();
 
         public UIDocument uiDocument { get; private set; }
@@ -78,12 +78,13 @@ namespace Metamatic.Framework
 
             /* Add system tools */
             RegisterCursorTool(new SelectorCursorTool());
-            SequentialHandler<string>.Subscribe(m_ActiveCursorTool.Subscribe, InternalActivateCursorTool);
+            SequentialHandler<string>.Subscribe(m_ActiveCursorTool.Watch, InternalActivateCursorTool);
 
             /* Create cursor tools panel */
             using var toolsWidget = new CursorToolsWidget(this);
             using var selectedObjectWidget = new SelectedObjectWidget(this);
             using var spellsWidget = new SpellsWidget(this);
+            using var spellWidget = new SpellWidget(this);
 
             await ready();
         }
@@ -212,7 +213,7 @@ namespace Metamatic.Framework
 
         public DisposableAction SubscribeToActiveCursorTool(Action<string> handler)
         {
-            return m_ActiveCursorTool.Subscribe(handler);
+            return m_ActiveCursorTool.Watch(handler);
         }
 
         private async UniTaskVoid InternalActivateCursorTool(string name, CancellationSignal cancellationSignal)

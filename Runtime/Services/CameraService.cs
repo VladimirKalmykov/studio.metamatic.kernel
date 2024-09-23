@@ -125,7 +125,7 @@ namespace Metamatic
 
         public DisposableAction SubscribeToMainCamera(Action<CameraController> action)
         {
-            return m_CameraController.Subscribe(action);
+            return m_CameraController.Watch(action);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

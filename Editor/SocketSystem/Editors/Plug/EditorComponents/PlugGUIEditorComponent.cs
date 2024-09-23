@@ -36,7 +36,7 @@ namespace Metamatic
             m_SocketScheme = plug.socketScheme;
             m_SocketScheme.OnReconnectIn += HandleReconnectIn;
             m_SocketScheme.OnErrorChanged += HandleErrorChanged;
-            m_UnsubscribeAutoLocked = plug.autoLocked.Subscribe(HandleAutoLockedChanged);
+            m_UnsubscribeAutoLocked = plug.autoLocked.Watch(HandleAutoLockedChanged);
             HandleReconnectIn(true);
             HandleErrorChanged();
         }

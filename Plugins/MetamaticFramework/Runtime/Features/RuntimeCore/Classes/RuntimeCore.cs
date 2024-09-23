@@ -21,13 +21,9 @@ namespace Metamatic.Framework
         public static RuntimeCore Instance => _Instance ??= new RuntimeCore();
         
         #region Private observables
-        #endregion
-        
-        #region Various fields
-        
-        
-        private readonly ManagedList<GameObject> m_SelectedObjects = new();
-
+        private readonly ObservableList<GameObject> m_SelectedObjects = new();
+        private readonly Observable<Type> m_ActiveSpellType = new();
+        public IReadOnlyCollection<GameObject> selectedObjects => m_SelectedObjects.items;
         #endregion
         
         #region Public properties
@@ -36,6 +32,10 @@ namespace Metamatic.Framework
         /// </summary>
         public SpellMetadata[] spellMetadata { get; private set; }
 
+        #endregion
+        
+        #region Events
+        public event Action OnSelectedObjectsChanged;
         #endregion
         
         #region Initialization
@@ -70,11 +70,13 @@ namespace Metamatic.Framework
                 m_SelectedObjects.Clear();
             }
             m_SelectedObjects.Add(gameObject);
+            OnSelectedObjectsChanged?.Invoke();
         }
         
         public void DeselectObject(GameObject gameObject)
         {
             m_SelectedObjects.Remove(gameObject);
+            OnSelectedObjectsChanged?.Invoke();
         }
         
         public void ToggleObjectSelection(GameObject gameObject, bool add = false)
@@ -82,6 +84,7 @@ namespace Metamatic.Framework
             if (m_SelectedObjects.Contains(gameObject))
             {
                 m_SelectedObjects.Remove(gameObject);
+                OnSelectedObjectsChanged?.Invoke();
             }
             else
             {
@@ -90,12 +93,40 @@ namespace Metamatic.Framework
                     m_SelectedObjects.Clear();
                 }
                 m_SelectedObjects.Add(gameObject);
+                OnSelectedObjectsChanged?.Invoke();
             }
         }
         
-        public DisposableAction ObserveSelectedObjects(Func<GameObject, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction SwitchOnEverySelectedObject(Func<GameObject, CancellationSignal, UniTaskVoid> action)
         {
             return m_SelectedObjects.Observe(action);
+        }
+        
+        /// <summary>
+        /// Subscribes to the event that is triggered when the selected objects change.
+        /// </summary>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public DisposableAction WatchSelectObjectsChanged(Action action)
+        {
+            OnSelectedObjectsChanged += action;
+            action();
+            return new DisposableAction(() => OnSelectedObjectsChanged -= action);
+        }
+        
+        public void SetActiveSpellType(Type spellType)
+        {
+            m_ActiveSpellType.value = spellType;
+        }
+        
+        public DisposableAction WatchActiveSpellType(Action<Type> action)
+        {
+            return m_ActiveSpellType.Watch(action);
+        }
+        
+        public DisposableAction OnSwitchActiveSpellType(Func<Type, CancellationSignal, UniTaskVoid> action)
+        {
+            return SequentialHandler<Type>.WatchAsync(m_ActiveSpellType.Watch, action);
         }
         #endregion
     }

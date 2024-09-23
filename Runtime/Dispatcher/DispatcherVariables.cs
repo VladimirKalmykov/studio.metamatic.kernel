@@ -57,7 +57,7 @@ namespace Metamatic
             var inquirableTyped = (Inquirable<Observable<T>>)inquirable;
             var microState = (ObservableReadOnly<T>)inquirableTyped.value;
             action(isNew ? fallbackValue : microState.value);
-            var subscription = microState.Subscribe(action);
+            var subscription = microState.Watch(action);
             var disposable = inquirableTyped.Inquire();
             return new DisposableAction(() =>
             {

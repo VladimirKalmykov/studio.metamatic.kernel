@@ -1,7 +1,7 @@
 .SelectableItem {
     flex-grow: 1;
     width: auto;
-    height: 45px;
+    height: 64px;
     margin-top: 6px;
     margin-right: 6px;
     margin-bottom: 3px;
@@ -29,7 +29,7 @@
     flex-direction: row;
     align-self: auto;
     align-content: flex-start;
-    max-height: 45px;
+    max-height: 64px;
     padding-bottom: 3px;
 }
 
@@ -95,7 +95,7 @@
     padding-right: 0;
     padding-bottom: 0;
     padding-left: 0;
-    font-size: 10px;
+    font-size: 16px;
     color: rgb(186, 186, 186);
     flex-grow: 1;
     flex-wrap: wrap;
@@ -130,8 +130,7 @@
     background-color: rgb(32, 27, 27);
     width: 225px;
     height: 328px;
-    top: 65px;
-    left: 135px;
+    color: rgb(186, 186, 186);
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     border-bottom-right-radius: 6px;
@@ -140,7 +139,7 @@
 
 .PanelHeader {
     flex-grow: 0;
-    height: 24px;
+    height: 32px;
     justify-content: flex-start;
     padding-left: 12px;
     padding-right: 6px;
@@ -168,7 +167,7 @@
 
 .PanelTitle {
     align-self: center;
-    font-size: 12px;
+    font-size: 18px;
     margin-top: 0;
     padding-top: 0;
     padding-bottom: 0;
@@ -205,8 +204,8 @@
 .ToolItem {
     flex-grow: 1;
     flex-direction: row;
-    height: 42px;
-    max-height: 42px;
+    height: 64px;
+    max-height: 64px;
     border-bottom-width: 0;
     border-bottom-color: rgb(64, 64, 64);
     background-color: rgba(56, 56, 56, 0);
@@ -214,10 +213,10 @@
 
 .ToolItemIcon {
     flex-grow: 1;
-    width: 42px;
-    height: 42px;
-    max-width: 42px;
-    max-height: 42px;
+    width: 64px;
+    height: 64px;
+    max-width: 64px;
+    max-height: 64px;
     margin-right: 0;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
@@ -232,10 +231,10 @@
 }
 
 .ToolItemIcon .IconImage {
-    width: 16px;
-    height: 16px;
-    max-width: 16px;
-    max-height: 16px;
+    width: 24px;
+    height: 24px;
+    max-width: 24px;
+    max-height: 24px;
 }
 
 .ToolItemContent {
@@ -246,6 +245,7 @@
 .ToolItemContentLabel {
     color: rgb(191, 191, 191);
     margin-top: 2px;
+    font-size: 16px;
 }
 
 .VerticalItemsContainer {
@@ -256,7 +256,7 @@
 .CursorText {
     background-color: rgb(51, 51, 51);
     color: rgb(255, 255, 255);
-    font-size: 12px;
+    font-size: 18px;
     padding-left: 4px;
     padding-top: 4px;
     padding-right: 4px;
@@ -303,4 +303,101 @@
     position: absolute;
     top: 0;
     left: 0;
+}
+
+.Form {
+    color: rgb(197, 197, 197);
+}
+
+.FormContent {
+    padding: 12px;
+    flex-direction: column;
+}
+
+.FormFooter {
+    border-top-width: 1px;
+    border-top-color: rgb(44, 44, 44);
+    padding: 12px;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.Form .unity-base-field {
+    margin: 0;
+    height: 32px;
+}
+
+.Form .unity-base-field__input {
+    background-color: rgb(44, 44, 44);
+    color: rgb(197, 197, 197);
+    border-color: rgb(60, 60, 60);
+    border-radius: 4px;
+    padding: 0 8px;
+    height: 26px;
+}
+
+.Field {
+    flex-grow: 1;
+    flex-direction: row;
+}
+
+.FieldLabel {
+    color: rgb(186, 186, 186);
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    margin-top: 0;
+    margin-right: 6px;
+    margin-bottom: 0;
+    margin-left: 0;
+    width: 80px;
+    max-width: 120px;
+    min-width: 120px;
+    flex-wrap: wrap;
+    white-space: normal;
+}
+
+.FieldContent {
+    flex-grow: 1;
+}
+
+Button {
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding-top: 6px;
+    padding-right: 12px;
+    padding-bottom: 6px;
+    padding-left: 12px;
+    background-color: rgb(0, 91, 93);
+    color: rgb(255, 255, 255);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    cursor: link;
+}
+
+Button:disabled {
+    background-color: rgb(44, 44, 44);
+    color: rgb(186, 186, 186);
+    cursor: arrow;
+}
+
+.FormMessage {
+    color: rgb(255, 255, 255);
+    font-size: 12px;
+    padding: 6px;
+    margin: 0 6px 0 0;
+    flex-wrap: wrap;
+    white-space: normal;
+    background-color: rgb(44, 44, 44);
+    border-radius: 6px;
+    flex-grow: 1;
 }

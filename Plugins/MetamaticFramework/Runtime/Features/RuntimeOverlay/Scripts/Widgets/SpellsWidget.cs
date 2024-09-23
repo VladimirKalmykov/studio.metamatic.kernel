@@ -9,9 +9,9 @@ namespace Metamatic.Framework
     public class SpellsWidget: Widget
     {
         private VisualTreeAsset m_ItemTemplate;
-        private readonly Observable<Type> m_ActiveSpellType = new ();
         private readonly Dictionary<Type, VisualElement> m_MapSpellTypeToElement = new ();
-        private Panel m_SpellPanel;
+       
+        
         public SpellsWidget(MetamaticFrameworkOverlay overlay) : base(overlay)
         {
         }
@@ -19,20 +19,7 @@ namespace Metamatic.Framework
         public override async UniTaskVoid OnInitializeWidget(CancellationSignal signal)
         {
             m_ItemTemplate = Resources.Load<VisualTreeAsset>("SelectableItem");
-            /* Create spell panel */
-            m_SpellPanel = overlay.CreatePanel("panels/spells_widget/spell", "Spell", new Panel.Constraints()
-            {
-                DefaultPreferences = new Panel.UserPreferences()
-                {
-                    Position = new Vector2(200, 200),
-                    Size = new Vector2(300, 0)  
-                },
-                MaxSize = new Vector2(500, 600),
-                MinSize = new Vector2(300, 120),
-                AutoHeight = true,
-                AutoWidth = false
-            });
-            overlay.root.Add(m_SpellPanel);
+            
             
             
             /* Create spells panel */
@@ -66,20 +53,19 @@ namespace Metamatic.Framework
                 title.text = spell.Name;
                 var indicator = item.Query<VisualElement>("Indicator").First();
                 
-                /* Capture click at indicator */
+                /* Capture click */
                 void ClickHandler(MouseUpEvent evt)
                 {
-                    m_ActiveSpellType.value = spell.SpellType;
+                    overlay.core.SetActiveSpellType(spell.SpellType);
                 }
                 item.RegisterCallback<MouseUpEvent>(ClickHandler);
             }
             
             /* Subscribe to active spell type */
-            using var activeSpellTypeSubscription = m_ActiveSpellType.Subscribe(OnActiveSpellTypeChanged);
+            using var activeSpellTypeSubscription = overlay.core.WatchActiveSpellType(OnActiveSpellTypeChanged);
             
             await signal;
             overlay.root.Remove(panel);
-            overlay.root.Remove(m_SpellPanel);
         }
         
         private void OnActiveSpellTypeChanged(Type spellType)
@@ -88,16 +74,15 @@ namespace Metamatic.Framework
             {
                 element.RemoveFromClassList("Selected");
             }
-            
+
+            if (spellType == null) return;
             if (m_MapSpellTypeToElement.TryGetValue(spellType, out var selectedElement))
             {
                 selectedElement.AddToClassList("Selected");
-                m_SpellPanel.title = spellType.Name;
-            }
-            else
-            {
-                m_SpellPanel.title = "Spell";
+                
             }
         }
+
+        
     }
 }
