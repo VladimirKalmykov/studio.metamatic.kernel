@@ -15,7 +15,7 @@ namespace Metamatic.Framework.Workshop
     {
         public abstract UniTask<T> GetPrefab(CancellationSignal cancellationSignal = default);
 
-        public abstract UniTask<T> ProduceObject(Vector3 position = default, Quaternion rotation = default,
+        public abstract UniTask<T> Spawn(Vector3 position = default, Quaternion rotation = default,
             CancellationSignal cancellationSignal = default);
 
         public abstract void ReturnObject(T gameObject);

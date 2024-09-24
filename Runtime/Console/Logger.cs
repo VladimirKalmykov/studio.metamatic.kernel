@@ -56,7 +56,7 @@ namespace Metamatic
             Application.logMessageReceived += OnBuiltInLogReceived;
             Console.OnLog += OnMetamaticLogReceived;
 #else
-            Console.Info("[LOGGER] Persistent logging is disabled. To enable ir, define PERSISTENT_LOGGING in the project settings.");            
+            Console.Info("Logger","Persistent logging is disabled. To enable ir, define PERSISTENT_LOGGING in the project settings.");            
 #endif
         }
         

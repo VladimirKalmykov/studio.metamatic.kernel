@@ -24,7 +24,7 @@ namespace Metamatic.Framework.Workshop
             return UniTask.FromResult(m_Prefab);
         }
 
-        public override UniTask<Transform> ProduceObject(Vector3 position = default, Quaternion rotation = default,
+        public override UniTask<Transform> Spawn(Vector3 position = default, Quaternion rotation = default,
             CancellationSignal cancellationSignal = default)
         {
             var instance = Instantiate(m_Prefab, position, rotation);

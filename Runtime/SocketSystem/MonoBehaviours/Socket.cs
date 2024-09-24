@@ -70,7 +70,7 @@ namespace Metamatic.SocketSystem
             if (connectedPlug.Plug != null)
             {
                 /* Compare weights */
-                allowToConnect = connectedPlug.Weight > weight;
+                allowToConnect = weight > connectedPlug.Weight;
             }
             var removeSignalSource = CancellationSignalSource.Create();
             var plugRequest = new PlugRequest(plug, weight, removeSignalSource.Signal);

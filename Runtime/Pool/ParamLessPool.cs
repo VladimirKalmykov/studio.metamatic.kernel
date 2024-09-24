@@ -322,7 +322,9 @@ namespace Metamatic
             {
                 /* Start auto shrink timer */
                 m_FruitBasket = new AverageFruitBasket(DefaultShrinkingPeriod);
+                #if !DISABLE_POOL_AUTOSHRINK
                 m_OnDisposeHandler += SubscribeAutoShrinkTime(AutoShrinkTimestamp);
+                #endif
             }
         }
         
