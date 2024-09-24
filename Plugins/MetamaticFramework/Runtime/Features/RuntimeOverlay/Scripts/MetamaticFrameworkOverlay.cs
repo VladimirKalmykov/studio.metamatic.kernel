@@ -186,7 +186,7 @@ namespace Metamatic.Framework
 
         public DisposableAction ObserveCursorTools(Func<CursorTool, CancellationSignal, UniTaskVoid> handler)
         {
-            return m_CursorTools.Observe(handler);
+            return m_CursorTools.WatchEachLifecycle(handler);
         }
 
         /// <summary>

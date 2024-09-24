@@ -656,6 +656,20 @@ namespace Metamatic
 
             return UniTask.CompletedTask;
         }
+        
+        
+        /// <summary>
+        /// Push next state only if the current state is not the same as the specified state
+        /// </summary>
+        /// <param name="newNextState"></param>
+        /// <param name="externalCancellationSignal"></param>
+        public void TryPushState(TState newNextState, CancellationSignal externalCancellationSignal = default)
+        {
+            if (!currentState.Equals(newNextState))
+            {
+                PushState(newNextState, externalCancellationSignal);
+            }
+        }
 
         /// <summary>
         /// This method allows you to push next state right after transition with specified ID

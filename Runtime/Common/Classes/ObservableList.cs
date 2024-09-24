@@ -31,7 +31,7 @@ namespace Metamatic
             m_Handler = handler ?? DefaultHandler;
         }
         
-        public DisposableAction Observe(Func<T, CancellationSignal, UniTaskVoid> handler)
+        public DisposableAction WatchEachLifecycle(Func<T, CancellationSignal, UniTaskVoid> handler)
         {
             var cssList = new List<CancellationSignalSource>();
             void ForgetAsyncHandler(T item, CancellationSignal signal)

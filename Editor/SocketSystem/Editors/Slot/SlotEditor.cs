@@ -49,7 +49,7 @@ namespace Metamatic
                 var index = i;
                 field.RegisterCallback<ChangeEvent<UnityEngine.Object>>(evt =>
                 {
-                    slot.sockets[index] = evt.newValue as Socket;
+                    slot.sockets[index] = evt.newValue as SocketLegacy;
                     EditorUtility.SetDirty(slot);
                 });
                 fields[i] = field;

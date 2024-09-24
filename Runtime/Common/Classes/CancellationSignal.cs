@@ -15,6 +15,9 @@ namespace Metamatic
     /// CancellationSignal can be easily converted to CancellationToken or UniTask. It can be awaited by GetAwaiter() or ToUniTask() multiple times. It uses UniTask pool, thus it is very lightweight.
     /// Try to avoid converting CancellationSignal to CancellationToken, because CancellationSignal is more optimized for Unity.
     /// </summary>
+    /// <remarks>
+    /// // TODO: Consider to rename to Signal and SignalSource instead of CancellationSignal and CancellationSignalSource
+    /// </remarks>
     public readonly struct CancellationSignal
     {
         public static readonly CancellationSignal Cancelled = new (true);

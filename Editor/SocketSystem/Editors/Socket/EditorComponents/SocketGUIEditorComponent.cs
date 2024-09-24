@@ -26,7 +26,7 @@ namespace Metamatic
         {
             m_Plugs.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
             m_LoopbackToggle.SetEnabled(!Application.isPlaying);
-            var socket = (Socket) target;
+            var socket = (SocketLegacy) target;
             socket.debug_OnValidate += HandleRevalidate;
             m_SocketScheme = socket.socketScheme;
             m_SocketScheme.OnReconnectOut += HandleReconnectOut;
@@ -38,7 +38,7 @@ namespace Metamatic
         
         public override void OnDisable()
         {
-            var socket = (Socket) target;
+            var socket = (SocketLegacy) target;
             socket.debug_OnValidate -= HandleRevalidate;
             m_Plugs.style.display = DisplayStyle.None;
             m_SocketScheme.OnReconnectOut -= HandleReconnectOut;
@@ -154,10 +154,10 @@ namespace Metamatic
             
             /* Create loopback toggle */
             m_LoopbackToggle = new Toggle("Loopback");
-            m_LoopbackToggle.value = ((Socket) target).loopback;
+            m_LoopbackToggle.value = ((SocketLegacy) target).loopback;
             m_LoopbackToggle.RegisterValueChangedCallback(evt =>
             {
-                ((Socket) target).loopback = evt.newValue;
+                ((SocketLegacy) target).loopback = evt.newValue;
                 EditorUtility.SetDirty(target);
             });
             root.Add(m_LoopbackToggle);
@@ -258,7 +258,7 @@ namespace Metamatic
 
         private VisualElement CreateOutputPins()
         {
-            var socket = (Socket) target;
+            var socket = (SocketLegacy) target;
             return CreatePins(socket.outputPinTypes, socket.outputPins, "Output Pins", (nextValue, index) =>
             {
                 var nextPins = socket.outputPins.ToArray();
@@ -277,7 +277,7 @@ namespace Metamatic
         
         private VisualElement CreateInputPins()
         {
-            var socket = (Socket) target;
+            var socket = (SocketLegacy) target;
             return CreatePins(socket.inputPinTypes, socket.inputPins, "Input Pins", (nextValue, index) =>
             {
                 var nextPins = socket.inputPins.ToArray();

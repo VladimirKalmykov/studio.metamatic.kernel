@@ -99,7 +99,7 @@ namespace Metamatic.Framework
         
         public DisposableAction SwitchOnEverySelectedObject(Func<GameObject, CancellationSignal, UniTaskVoid> action)
         {
-            return m_SelectedObjects.Observe(action);
+            return m_SelectedObjects.WatchEachLifecycle(action);
         }
         
         /// <summary>
