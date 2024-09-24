@@ -12,7 +12,7 @@ namespace Metamatic.Framework
         private readonly Dictionary<Type, VisualElement> m_MapSpellTypeToElement = new ();
        
         
-        public SpellsWidget(MetamaticFrameworkOverlay overlay) : base(overlay)
+        public SpellsWidget(Overlay overlay) : base(overlay)
         {
         }
 

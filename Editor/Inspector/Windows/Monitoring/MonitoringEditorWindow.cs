@@ -52,6 +52,7 @@ namespace Metamatic.Inspector
 
         private async UniTaskVoid OnGroupAdded(Monitoring.Group group, CancellationSignal signal)
         {
+            Console.Debug("MonitoringEditorWindow", $"Group added: {group.Name}");
             /* Add panel */
             m_PanelTemplate.CloneTree(m_RowElement);
             var panel = m_RowElement.Query<VisualElement>("Panel").Last();
@@ -64,6 +65,7 @@ namespace Metamatic.Inspector
         
         private async UniTaskVoid OnItemAdded(VisualElement panel, Monitoring.MonitoringItem item, CancellationSignal signal)
         {
+            Console.Debug("MonitoringEditorWindow", $"Item added: {item.Key}");
             /* Add key value */
             var panelContent = panel.Q<VisualElement>("Content");
             m_KeyValueTemplate.CloneTree(panelContent);

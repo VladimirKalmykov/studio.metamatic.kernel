@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
 {
-    public readonly struct VirtualVirtualCollision: IVirtualCollision
+    public readonly struct CollisionEvent: IVirtualCollision
     {
         private readonly Collision2D m_Collision;
         
-        public VirtualVirtualCollision(Collision2D collision)
+        public CollisionEvent(Collision2D collision)
         {
             m_Collision = collision;
         }

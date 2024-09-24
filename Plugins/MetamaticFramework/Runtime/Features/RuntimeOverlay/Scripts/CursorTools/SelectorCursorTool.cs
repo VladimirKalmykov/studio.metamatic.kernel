@@ -11,7 +11,7 @@ namespace Metamatic.Framework.CursorTools
         private Camera m_Camera;
         protected bool IsPressed;
         private Collider2D m_ColliderUnderCursor;
-        protected MetamaticFrameworkOverlay Overlay;
+        protected Overlay Overlay;
         private Label m_CursorTextElement;
 
         public SelectorCursorTool() : base("System/Select", "Select", "Sprites/Tools/Icons/Selector")
@@ -34,7 +34,7 @@ namespace Metamatic.Framework.CursorTools
             
         }
 
-        public override async UniTaskVoid OnActivate(MetamaticFrameworkOverlay overlay, CancellationSignal signal)
+        public override async UniTaskVoid OnActivate(Overlay overlay, CancellationSignal signal)
         {
             Overlay = overlay;
             /* Create cursor hint and it to the overlay root */

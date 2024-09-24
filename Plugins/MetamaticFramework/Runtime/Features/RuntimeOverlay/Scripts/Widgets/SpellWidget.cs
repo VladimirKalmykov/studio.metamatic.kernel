@@ -14,7 +14,7 @@ namespace Metamatic.Framework
         private List<string> m_Messages = new List<string>();
         private EditorFormElement m_CurrentEditor;
         
-        public SpellWidget(MetamaticFrameworkOverlay overlay) : base(overlay)
+        public SpellWidget(Overlay overlay) : base(overlay)
         {
         }
 

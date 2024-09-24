@@ -663,12 +663,15 @@ namespace Metamatic
         /// </summary>
         /// <param name="newNextState"></param>
         /// <param name="externalCancellationSignal"></param>
-        public void TryPushState(TState newNextState, CancellationSignal externalCancellationSignal = default)
+        public bool TryPushState(TState newNextState, CancellationSignal externalCancellationSignal = default)
         {
             if (!currentState.Equals(newNextState))
             {
                 PushState(newNextState, externalCancellationSignal);
+                return true;
             }
+
+            return false;
         }
 
         /// <summary>

@@ -5,7 +5,7 @@ namespace Metamatic.Framework
 {
     public class SpawnWidget: Widget
     {
-        public SpawnWidget(MetamaticFrameworkOverlay overlay) : base(overlay)
+        public SpawnWidget(Overlay overlay) : base(overlay)
         {
         }
 

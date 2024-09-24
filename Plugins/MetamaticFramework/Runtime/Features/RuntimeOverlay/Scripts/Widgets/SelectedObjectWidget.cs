@@ -8,7 +8,7 @@ namespace Metamatic.Framework
     {
         private VisualTreeAsset m_SelectedObjectTemplate;
         private VisualElement m_Container;
-        public SelectedObjectWidget(MetamaticFrameworkOverlay overlay) : base(overlay)
+        public SelectedObjectWidget(Overlay overlay) : base(overlay)
         {
         }
 

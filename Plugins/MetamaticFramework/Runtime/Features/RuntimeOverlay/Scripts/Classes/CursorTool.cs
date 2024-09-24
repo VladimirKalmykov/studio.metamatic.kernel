@@ -21,7 +21,7 @@ namespace Metamatic.Framework
             IconPath = icon;
         }
 
-        public abstract UniTaskVoid OnActivate(MetamaticFrameworkOverlay overlay, CancellationSignal signal);
+        public abstract UniTaskVoid OnActivate(Overlay overlay, CancellationSignal signal);
 
         public abstract void OnPress(Vector2 screenPosition, InputModifiers modifiers);
 

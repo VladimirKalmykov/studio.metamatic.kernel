@@ -14,8 +14,10 @@ namespace Metamatic.Framework
     using UnityEngine.UIElements;
     using Cursor = UnityEngine.Cursor;
 
-    public class MetamaticFrameworkOverlay : AsyncBehaviour
+    public class Overlay : AsyncBehaviour
     {
+        private static Observable<Overlay> m_Instance = new();
+        public UniTask<Overlay> GetInstance(CancellationSignal signal) => m_Instance.WaitUntilValueIsNotNull(signal);
         public static int Version = 1;
 
         [Serializable]
@@ -34,7 +36,7 @@ namespace Metamatic.Framework
         public UIDocument uiDocument { get; private set; }
 
         private ScrollView m_WoodsPanelContent;
-        private readonly Observable<MetamaticFrameworkOverlay> m_Context = new Observable<MetamaticFrameworkOverlay>();
+        private readonly Observable<Overlay> m_Context = new Observable<Overlay>();
         private readonly Observable<PersistentState> m_PersistentState = new();
         private readonly Observable<string> m_CursorText = new();
         public VisualElement root { get; private set; }
@@ -61,6 +63,7 @@ namespace Metamatic.Framework
 
         protected override async UniTask Run(Ready ready, CancellationSignal signal)
         {
+            m_Instance.Value = this;
             m_Context.Value = this;
             /* Load persistent state */
             await LoadPersistentState();

@@ -15,7 +15,7 @@ namespace Metamatic.Framework
         private Panel m_CursorToolsPanel;
         private VisualElement m_Element;
         private Dictionary<string, VisualElement> m_CursorToolItems = new ();
-        public CursorToolsWidget(MetamaticFrameworkOverlay overlay) : base(overlay)
+        public CursorToolsWidget(Overlay overlay) : base(overlay)
         {
             
         }

@@ -119,13 +119,13 @@ namespace Metamatic.DevTools
                 {
                     foreach (var item in keyData)
                     {
-                        onItemAdded(item, item.CancellationSignal);
+                        onItemAdded(item, item.CancellationSignal).Forget();
                     }
                 }
 
                 void Handler(MonitoringItem item)
                 {
-                    onItemAdded(item, item.CancellationSignal);
+                    onItemAdded(item, item.CancellationSignal).Forget();
                 }
                 OnItemAdded += Handler;
                 return DisposableAction.Create(() =>
@@ -214,10 +214,12 @@ namespace Metamatic.DevTools
         /// <returns></returns>
         public static DisposableAction ObserveGroups(Func<Group, CancellationSignal, UniTaskVoid> onGroupAdded)
         {
+            var startRealTime = Time.realtimeSinceStartup;
             foreach (var group in m_MonitoringData.Values)
             {
                 onGroupAdded(group, group.CancellationSignal);
             }
+            Console.Debug("Monitoring", "ObserveGroups", $"{Time.realtimeSinceStartup - startRealTime}s");
 
             void Handler(Group group)
             {

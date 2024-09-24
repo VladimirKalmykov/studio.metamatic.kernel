@@ -43,7 +43,7 @@ namespace Metamatic.Framework
         private Button m_RightButton;
         private ScrollView m_Content;
         private event Action OnDetachFromPanelEvent;
-        private ObservableReadOnly<MetamaticFrameworkOverlay> m_OverlayContext;
+        private ObservableReadOnly<Overlay> m_OverlayContext;
         private UserPreferences m_Preferences;
         private Constraints m_Constraints;
         
@@ -94,7 +94,7 @@ namespace Metamatic.Framework
         
         private void OnAttachedToPanel(AttachToPanelEvent evt)
         {
-            m_OverlayContext = this.GetContext<MetamaticFrameworkOverlay>();
+            m_OverlayContext = this.GetContext<Overlay>();
 
             if (m_OverlayContext == null) return;
             
