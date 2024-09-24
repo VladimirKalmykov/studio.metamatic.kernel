@@ -52,10 +52,14 @@ namespace Metamatic
             {
                 pool = new ConfigurablePool<T>(config, autoShrink: true, capacity: 0);
                 _SharedPools[key] = pool;
+                #if DEBUG
                 ConfigurablePool.SharedPoolsCount++;
+                #endif
                 pool.OnPoolIsUseless += () =>
                 {
+                    #if DEBUG
                     ConfigurablePool.SharedPoolsCount--;
+                    #endif
                     /* Remove useless pool */
                     Debug.Log($"[POOL] Global pool of rules {config} is useless. Removing from global pool");
                     pool.Dispose();
@@ -286,13 +290,12 @@ namespace Metamatic
         public ConfigurablePool(IPoolConfig<T> config, int capacity = 0, int limit = Int32.MaxValue, bool autoShrink = false)
         {
             m_Config = config;
+#if DEBUG
             ConfigurablePool.PoolsCount++;
             m_OnDisposeHandler += () =>
             {
                 ConfigurablePool.PoolsCount--;
             };
-
-#if DEBUG
             if (config == null)
             {
                 throw new ArgumentNullException(nameof(config), "Rules cannot be null.");

@@ -45,10 +45,14 @@ namespace Metamatic
             if (_SharedPool == null)
             {
                 var pool = _SharedPool = new ParamLessPool<T>(autoShrink: true, capacity: 0);
+                #if DEBUG
                 ParamLessPool.SharedPoolsCount++;
+                #endif
                 pool.OnPoolIsUseless += () =>
                 {
+                    #if DEBUG
                     ParamLessPool.SharedPoolsCount--;
+                    #endif
                     /* Remove useless pool */
                     Debug.Log($"[POOL] Global pool of type {typeof(T)} is useless. Removing from global pool");
                     _SharedPool.Dispose();
@@ -294,11 +298,13 @@ namespace Metamatic
 
         public ParamLessPool()
         {
+#if DEBUG
             ParamLessPool.PoolsCount++;
             m_OnDisposeHandler += () =>
             {
                 ParamLessPool.PoolsCount--;
             };
+#endif
         }
 
         public ParamLessPool(int capacity = 0, int limit = Int32.MaxValue, bool autoShrink = false) : this()

@@ -204,14 +204,15 @@ namespace Metamatic
 
     public readonly struct CancellationSignalSource: IDisposable
     {
-        #if DEBUG
+#if DEBUG
         public static Dictionary<string, InternalCancellationSignalSource> DebugSources = new();
+#endif
         public static InternalCancellationSignalSource GetFromPool()
         {
             var icss = InternalCancellationSignalSource.Pool.Get();
             return icss;
         }
-        #endif
+        
         public static CancellationSignalSource Create(
             #if DEBUG
             string debugId = null
@@ -235,12 +236,22 @@ namespace Metamatic
         public static CancellationSignalSource CreateLinked(params CancellationSignal[] signals)
         {
             /* First, check if all signals are not cancelled */
+            var someCanBeCancelled = false;
             foreach (var signal in signals)
             {
                 if (signal.IsCancellationRequested)
                 {
                     return new CancellationSignalSource();
+                } else if (signal.CanBeCanceled)
+                {
+                    someCanBeCancelled = true;
                 }
+            }
+
+            if (!someCanBeCancelled)
+            {
+                /* If all signals are not cancellable, just return new signal source without linking */
+                return Create();
             }
             var icss = GetFromPool();
             
@@ -259,17 +270,22 @@ namespace Metamatic
             
             
             var memoizedVersion = icss.Version;
+            Action actionOnCancel = null;
             void Cancel()
             {
                 icss.TryCancel(memoizedVersion);
             }
             var css = new CancellationSignalSource(icss);
             
-            
             foreach (var signal in signals)
             {
-                signal.Register(Cancel);
+                actionOnCancel += signal.Register(Cancel).Dispose;
             }
+            
+            actionOnCancel += icss.Register((version) =>
+            {
+                actionOnCancel?.Invoke();
+            });
 
             return css;
         }
@@ -277,12 +293,21 @@ namespace Metamatic
         public static CancellationSignalSource CreateLinked(params CancellationToken[] tokens)
         {
             /* First, check if all tokens are not cancelled */
+            var someCanBeCancelled = false;
             foreach (var token in tokens)
             {
                 if (token.IsCancellationRequested)
                 {
                     return new CancellationSignalSource();
+                } else if (token.CanBeCanceled)
+                {
+                    someCanBeCancelled = true;
                 }
+            }
+            if (!someCanBeCancelled)
+            {
+                /* If all signals are not cancellable, just return new signal source without linking */
+                return Create();
             }
             var icss = GetFromPool();
             
@@ -300,6 +325,7 @@ namespace Metamatic
             };
 #endif
             
+            Action actionOnCancel = null;
             var memoizedVersion = icss.Version;
             void Cancel()
             {
@@ -310,8 +336,13 @@ namespace Metamatic
             
             foreach (var token in tokens)
             {
-                token.Register(Cancel);
+                actionOnCancel += token.Register(Cancel).Dispose;
             }
+            
+            actionOnCancel += icss.Register((version) =>
+            {
+                actionOnCancel?.Invoke();
+            });
 
             return css;
         }
@@ -342,7 +373,6 @@ namespace Metamatic
         
         internal CancellationSignalSource(InternalCancellationSignalSource source)
         {
-            Console.Verbose("CancellationSignal", "Create", $"Id: {source.DebugId} Version: {source.Version}");
             m_InternalSource = source;
             m_Version = source.Version;
         }
