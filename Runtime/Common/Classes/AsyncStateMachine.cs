@@ -54,6 +54,7 @@ namespace Metamatic
         public readonly struct Transition
         {
             private readonly AsyncStateMachine<TState> m_StateMachine;
+            public readonly CancellationSignal cancellationSignal; // TODO: rename to CapitalCase
             public readonly ulong ID;
 
             public TransitionStatus status => m_StateMachine.m_Status;
@@ -70,7 +71,6 @@ namespace Metamatic
             public UniTask completeTransitionToNextStateTask => m_StateMachine.completeTransitionToNextStateTask;
             public bool isInitial => m_StateMachine.isInitial;
             public bool isFinalize => m_StateMachine.m_Status == TransitionStatus.Aborted;
-            public CancellationSignal cancellationSignal => m_StateMachine.cancellationSignal;
             public CancellationSignal generalCancellationSignal => m_StateMachine.internalCancellationSignal;
             public bool isAborted => m_StateMachine.m_Status == TransitionStatus.Aborted;
 
@@ -85,6 +85,7 @@ namespace Metamatic
             internal Transition(AsyncStateMachine<TState> stateMachine, ulong id)
             {
                 m_StateMachine = stateMachine;
+                cancellationSignal = stateMachine.cancellationSignal;
                 ID = id;
             }
         }

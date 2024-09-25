@@ -2,12 +2,15 @@ using System;
 using System.Linq;
 using UnityEngine;
 
-namespace Metamatic {
-    public class Trigf {
+namespace Metamatic
+{
+    public class Trigf
+    {
         public const float RAD45 = 0.785398f;
         public const float PI = 3.141592f;
         public const float PI2 = 3.141592f * 2f;
         public const float HALFPI = 3.141592f / 2f;
+
         /// <summary>
         /// Find edge "c" by edge "a" and edge "c" and the angle between "a" and "b" (С in radians)
         /// </summary>
@@ -15,12 +18,13 @@ namespace Metamatic {
         /// <param name="b"></param>
         /// <param name="C">Angle between a and b in radians</param>
         /// <returns></returns>
-        public static double SolveTriangleEdgeByCosineTheorem(double a, double b, double C) {
+        public static double SolveTriangleEdgeByCosineTheorem(double a, double b, double C)
+        {
             return Math.Sqrt(
                 Math.Pow(a, 2) + Math.Pow(b, 2) - (2 * a * b * Math.Cos(C))
             );
         }
-        
+
         /// <summary>
         /// Find edge "c" by edge "a" and edge "c" and the angle between "a" and "b" (С in radians)
         /// </summary>
@@ -28,7 +32,8 @@ namespace Metamatic {
         /// <param name="b"></param>
         /// <param name="C"></param>
         /// <returns></returns>
-        public static float SolveTriangleEdgeByCosineTheorem(float a, float b, float C) {
+        public static float SolveTriangleEdgeByCosineTheorem(float a, float b, float C)
+        {
             return Mathf.Sqrt(
                 Mathf.Pow(a, 2) + Mathf.Pow(b, 2) - (2 * a * b * Mathf.Cos(C))
             );
@@ -41,14 +46,15 @@ namespace Metamatic {
         /// <param name="b"></param>
         /// <param name="C">Angle between</param>
         /// <returns></returns>
-        public static Triplet<double> SolveTriangleAnglesByCosineTheorem(double a, double b, double C) {
+        public static Triplet<double> SolveTriangleAnglesByCosineTheorem(double a, double b, double C)
+        {
             var c = SolveTriangleEdgeByCosineTheorem(a, b, C);
-            var A = Math.Acos((b*b + c*c - a*a)/(2*b*c));
+            var A = Math.Acos((b * b + c * c - a * a) / (2 * b * c));
             var B = (180 * Mathf.Deg2Rad) - A - C;
 
             return new Triplet<double>(A, B, C);
         }
-        
+
         /// <summary>
         /// Return angle A by edges a, b, c
         /// </summary>
@@ -56,8 +62,9 @@ namespace Metamatic {
         /// <param name="b"></param>
         /// <param name="c"></param>
         /// <returns></returns>
-        public static double SolveTriangleAngleByEdges(double a, double b, double c) {
-            return Math.Acos((b*b + c*c - a*a)/(2*b*c));
+        public static double SolveTriangleAngleByEdges(double a, double b, double c)
+        {
+            return Math.Acos((b * b + c * c - a * a) / (2 * b * c));
         }
 
         /// <summary>
@@ -67,17 +74,20 @@ namespace Metamatic {
         /// <param name="A">Edge A opposite angle</param>
         /// <param name="X">Searched edge opposite angle</param>
         /// <returns></returns>
-        public static double SolveTriangleEdgeBySinusTheorem(double a, double A, double X) {
+        public static double SolveTriangleEdgeBySinusTheorem(double a, double A, double X)
+        {
             return a * (Math.Sin(X) / Math.Sin(A));
         }
+
         /// <summary>
         /// Returns reciprocal ratios of values
         /// </summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public static float[] Ratio(float[] values) {
+        public static float[] Ratio(float[] values)
+        {
             var sum = 0f;
-            foreach(var value in values)
+            foreach (var value in values)
             {
                 sum += value;
             }
@@ -90,13 +100,14 @@ namespace Metamatic {
 
             return result;
         }
-        
+
         /// <summary>
         /// Returns reciprocal ratios of values
         /// </summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public static float[] Ratio(int[] values) {
+        public static float[] Ratio(int[] values)
+        {
             var sum = values.Aggregate(0f, (current, value) => current + value);
 
             var result = new float[values.Length];
@@ -113,9 +124,10 @@ namespace Metamatic {
         /// </summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public static double[] Ratio(double[] values) {
+        public static double[] Ratio(double[] values)
+        {
             double sum = 0f;
-            foreach(var value in values)
+            foreach (var value in values)
             {
                 sum += value;
             }
@@ -128,41 +140,57 @@ namespace Metamatic {
 
             return result;
         }
+
         /** Get signed angle (degree -180...180) between two points */
-        public static float GetAngle(Vector2 point1, Vector2 point2) {
+        public static float GetAngle(Vector2 point1, Vector2 point2)
+        {
             return (float)((Math.Atan2(point2.y - point1.y, point2.x - point1.x) * 180) / Math.PI);
         }
+
         /** Get signed angle (degree -180...180) between two points in an inverted axis */
-        public static float GetAngleInverted(Vector2 point1, Vector2 point2) {
+        public static float GetAngleInverted(Vector2 point1, Vector2 point2)
+        {
             return (float)((Math.Atan2(point2.x - point1.x, point2.y - point1.y) * 180) / Math.PI);
         }
+
         /** Get unsigned angle (degree 0...180) between two points */
-        public static float GetAbsAngle(Vector2 point1, Vector2 point2) {
+        public static float GetAbsAngle(Vector2 point1, Vector2 point2)
+        {
             return (float)Math.Abs((Math.Atan2(point2.y - point1.y, point2.x - point1.x) * 180) / Math.PI);
         }
+
         /** Get unsigned angle (degree 0...180) between two points */
-        public static float GetAbsAngleInverted(Vector2 point1, Vector2 point2) {
+        public static float GetAbsAngleInverted(Vector2 point1, Vector2 point2)
+        {
             return (float)Math.Abs((Math.Atan2(point2.x - point1.x, point2.y - point1.y) * 180) / Math.PI);
         }
+
         /** Get unsigned angle (360 degrees) between two points */
-        public static float GetAngle360(Vector2 point1, Vector2 point2) {
+        public static float GetAngle360(Vector2 point1, Vector2 point2)
+        {
             var degrees = (float)((Math.Atan2(point2.y - point1.y, point2.x - point1.x) * 180) / Math.PI);
             return degrees = (degrees + 360) % 360;
         }
+
         /** Get unsigned angle (360 degrees) between two points */
-        public static float GetAngle360Inverted(Vector2 point1, Vector2 point2) {
+        public static float GetAngle360Inverted(Vector2 point1, Vector2 point2)
+        {
             var degrees = (float)((Math.Atan2(point2.x - point1.x, point2.y - point1.y) * 180) / Math.PI);
             return degrees = (degrees + 360) % 360;
         }
+
         /** Get the coordinates betwen two points with t factor */
-        public static Vector3 InterpolatePoints(Vector3 point1, Vector3 point2, float t) {
+        public static Vector3 InterpolatePoints(Vector3 point1, Vector3 point2, float t)
+        {
             var nx = point1.x + (point2.x - point1.x) * t;
             var ny = point1.y + (point2.y - point1.y) * t;
             var nz = point1.z + (point2.z - point1.z) * t;
             return new Vector3(nx, ny, nz);
         }
+
         /** Get angle between two lines */
-        public static float GetAngleBetweenLines(Vector2 point1, Vector2 point2, Vector2 point3, Vector2 point4) {
+        public static float GetAngleBetweenLines(Vector2 point1, Vector2 point2, Vector2 point3, Vector2 point4)
+        {
             var dAx = point2.x - point1.x;
             var dAy = point2.y - point1.y;
             var dBx = point4.x - point3.x;
@@ -171,6 +199,7 @@ namespace Metamatic {
             // if(angle < 0) {angle = angle * -1;}
             return (float)(angle * (180 / Math.PI));
         }
+
         /// <summary>
         /// Point of intersection of two rays
         /// </summary>
@@ -183,15 +212,15 @@ namespace Metamatic {
         public static Vector2? GetRaysIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2)
         {
             var tmp = (B2.x - B1.x) * (A2.y - A1.y) - (B2.y - B1.y) * (A2.x - A1.x);
-        
+
             if (tmp == 0)
             {
                 // No solution!
                 return null;
             }
-        
+
             var mu = ((A1.x - B1.x) * (A2.y - A1.y) - (A1.y - B1.y) * (A2.x - A1.x)) / tmp;
-        
+
             return new Vector2(
                 B1.x + (B2.x - B1.x) * mu,
                 B1.y + (B2.y - B1.y) * mu
@@ -206,7 +235,8 @@ namespace Metamatic {
         /// <param name="point">Target point</param>
         /// <param name="thickness">Thickness of line (when zero intersection point will be difficult to determine, better value is 0.1f)</param>
         /// <returns></returns>
-        public static bool IsPointOnTheLine(Vector2 A1, Vector2 A2, Vector2 point, float thickness = 0.1f) {
+        public static bool IsPointOnTheLine(Vector2 A1, Vector2 A2, Vector2 point, float thickness = 0.1f)
+        {
             var sum = Vector2.Distance(A1, point) + Vector2.Distance(A2, point) - thickness;
             return sum <= Vector2.Distance(A1, A2);
         }
@@ -221,18 +251,24 @@ namespace Metamatic {
         /// <param name="found">Will true if intersect</param>
         /// <param name="thickness">Thickness of line (when zero intersection point will be difficult to determine)</param>
         /// <returns></returns>
-        public static Vector2? GetLinesIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2, float thickness = 0.1f) {
+        public static Vector2? GetLinesIntersectionPoint(Vector2 A1, Vector2 A2, Vector2 B1, Vector2 B2,
+            float thickness = 0.1f)
+        {
             var point = GetRaysIntersectionPoint(A1, A2, B1, B2);
-            
-            if (point.HasValue) {
-                if (IsPointOnTheLine(A1, A2, point.Value, thickness) && IsPointOnTheLine(B1, B2, point.Value, thickness)) {
+
+            if (point.HasValue)
+            {
+                if (IsPointOnTheLine(A1, A2, point.Value, thickness) &&
+                    IsPointOnTheLine(B1, B2, point.Value, thickness))
+                {
                     return point.Value;
                 }
             }
-            
+
 
             return null;
         }
+
         /// <summary>
         /// Find the line intersection with rectangle edges in a case when the line starts inedge the rectangle but ends outedge the rectangle.
         /// </summary>
@@ -243,9 +279,11 @@ namespace Metamatic {
         /// <param name="innerPoint">Inner point</param>
         /// <param name="outerPoint">Outer point</param>
         /// <returns></returns>
-        public static Vector2? GetInnerRectRayIntersect(Vector2 topLeft, Vector2 topRight, Vector2 bottomRight, Vector2 bottomLeft, Vector2 innerPoint, Vector2 outerPoint) {
+        public static Vector2? GetInnerRectRayIntersect(Vector2 topLeft, Vector2 topRight, Vector2 bottomRight,
+            Vector2 bottomLeft, Vector2 innerPoint, Vector2 outerPoint)
+        {
             /* Get four angles between point and corners */
-            
+
             var angleTopRight = Trigf.GetAngleInverted(
                 innerPoint,
                 topRight
@@ -267,37 +305,50 @@ namespace Metamatic {
             Vector2? intersection;
             // Check with topLeft angle and topRight angle
             if (pointAngle > Trigf.GetAngleInverted(
-                innerPoint,
-                topLeft
-            ) && pointAngle <= angleTopRight) {
+                    innerPoint,
+                    topLeft
+                ) && pointAngle <= angleTopRight)
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
-            } else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight) {
+            }
+            else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight)
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
-            /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
-            } else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle < Trigf.GetAngleInverted(
-                innerPoint,
-                bottomLeft
-            ))) {
+                /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
+            }
+            else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle <
+                         Trigf.GetAngleInverted(
+                             innerPoint,
+                             bottomLeft
+                         )))
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
-            } else {
+            }
+            else
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
             }
 
             return intersection;
         }
-        
+
         /// <summary>
         /// Normalize angle with transform can be inverted horizontally by scale
         /// </summary>
         /// <param name="angle"></param>
         /// <param name="horizontalScaleSign"></param>
         /// <returns></returns>
-        public static float NormalizeAngleRelativeScaleInvertion(float angle, int horizontalScaleSign) {
-            if (horizontalScaleSign > 0) {
+        public static float NormalizeAngleRelativeScaleInvertion(float angle, int horizontalScaleSign)
+        {
+            if (horizontalScaleSign > 0)
+            {
                 return angle;
-            } else if (horizontalScaleSign < 0) {
+            }
+            else if (horizontalScaleSign < 0)
+            {
                 return 180 - angle;
             }
+
             return 180 - angle;
         }
 
@@ -308,7 +359,8 @@ namespace Metamatic {
         /// <param name="innerPoint">Point inside</param>
         /// <param name="outerPoint">Point outside</param>
         /// <returns></returns>
-        public static Vector2? GetInnerRectRayIntersect(Rect rect, Vector2 innerPoint, Vector2 outerPoint) {
+        public static Vector2? GetInnerRectRayIntersect(Rect rect, Vector2 innerPoint, Vector2 outerPoint)
+        {
             /* Get four angles between point and corners */
             var topLeft = new Vector2(0f, rect.height);
             var bottomRight = new Vector2(rect.width, 0f);
@@ -335,19 +387,27 @@ namespace Metamatic {
             Vector2? intersection;
             // Check with topLeft angle and topRight angle
             if (pointAngle > Trigf.GetAngleInverted(
-                innerPoint,
-                topLeft
-            ) && pointAngle <= angleTopRight) {
+                    innerPoint,
+                    topLeft
+                ) && pointAngle <= angleTopRight)
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topLeft, topRight);
-            } else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight) {
+            }
+            else if (pointAngle > angleTopRight && pointAngle <= angleBottomRight)
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, topRight, bottomRight);
-            /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
-            } else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle < Trigf.GetAngleInverted(
-                innerPoint,
-                bottomLeft
-            ))) {
+                /* Check with double condition, because GetAngle return value from -180 to 180, so we must check both negative and positive values */
+            }
+            else if ((pointAngle > 0 && pointAngle > angleBottomRight) || (pointAngle < 0 && pointAngle <
+                         Trigf.GetAngleInverted(
+                             innerPoint,
+                             bottomLeft
+                         )))
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomRight, bottomLeft);
-            } else {
+            }
+            else
+            {
                 intersection = Trigf.GetLinesIntersectionPoint(innerPoint, outerPoint, bottomLeft, topLeft);
             }
 
@@ -360,14 +420,15 @@ namespace Metamatic {
         /// <param name="angle"></param>
         /// <param name="distance"></param>
         /// <returns></returns>
-        public static Vector2 GetPointAtAngle2D(float angle, float distance = 1) {
+        public static Vector2 GetPointAtAngle2D(float angle, float distance = 1)
+        {
             var angle2 = 180 - 90 - angle;
             var x =
-            (distance * (float)Math.Sin((double)(angle * Math.PI) / 180)) /
-            (float)Math.Sin((double)(90 * Math.PI) / 180);
+                (distance * (float)Math.Sin((double)(angle * Math.PI) / 180)) /
+                (float)Math.Sin((double)(90 * Math.PI) / 180);
             var y =
-            (distance * (float)Math.Sin((double)(angle2 * Math.PI) / 180)) /
-            (float)Math.Sin((double)(90 * Math.PI) / 180);
+                (distance * (float)Math.Sin((double)(angle2 * Math.PI) / 180)) /
+                (float)Math.Sin((double)(90 * Math.PI) / 180);
 
             return new Vector2(y, x);
         }
@@ -379,13 +440,14 @@ namespace Metamatic {
         /// <param name="pivot"></param>
         /// <param name="angles"></param>
         /// <returns></returns>
-        public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 angles) {
+        public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 angles)
+        {
             var dir = point - pivot;
             dir = Quaternion.Euler(angles) * dir;
             point = dir + pivot;
             return point;
         }
-        
+
         /// <summary>
         /// Rotate `point` around `pivot`
         /// </summary>
@@ -393,7 +455,8 @@ namespace Metamatic {
         /// <param name="pivot"></param>
         /// <param name="angles"></param>
         /// <returns></returns>
-        public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Quaternion angles) {
+        public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Quaternion angles)
+        {
             var dir = point - pivot;
             dir = angles * dir;
             return dir + pivot;
@@ -407,7 +470,8 @@ namespace Metamatic {
         /// <param name="axis"></param>
         /// <param name="angle"></param>
         /// <returns></returns>
-        public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 axis, float angle) {
+        public static Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 axis, float angle)
+        {
             var dir = point - pivot;
             dir = Quaternion.AngleAxis(angle, axis) * dir;
             point = dir + pivot;
@@ -421,7 +485,8 @@ namespace Metamatic {
         /// <param name="pivot"></param>
         /// <param name="angles"></param>
         /// <returns></returns>
-        public static Vector3 RotatePointAroundPivot(Vector2 point, Vector2 pivot, float angle) {
+        public static Vector3 RotatePointAroundPivot(Vector2 point, Vector2 pivot, float angle)
+        {
             var dir = point - pivot;
             dir = Quaternion.Euler(new Vector3(0f, 0f, angle)) * dir;
             point = dir + pivot;
@@ -436,15 +501,18 @@ namespace Metamatic {
         /// <param name="direction"></param>
         /// <param name="distance"></param>
         /// <returns></returns>
-        public static Vector3 MovePointInDirection(Vector3 start, Vector3 direction, float distance) {
+        public static Vector3 MovePointInDirection(Vector3 start, Vector3 direction, float distance)
+        {
             return start + (direction.normalized * distance);
         }
+
         /// <summary>
         /// Get Random point on the perimeter of a circle with given radius
         /// </summary>
         /// <param name="radius"></param>
         /// <returns>Vector2 point</returns>
-        public static UnityEngine.Vector2 GetRandomPointOnRadius2D(float radius) {
+        public static UnityEngine.Vector2 GetRandomPointOnRadius2D(float radius)
+        {
             var angle = UnityEngine.Random.Range(0f, 1f) * Math.PI * 2;
 
             var x = (float)Math.Cos(angle) * radius;
@@ -457,7 +525,8 @@ namespace Metamatic {
         /// Get exponent that required to multiply base number with exponential factor to get specific result. For example, 10 * Math.pow(0.5, ?) = 1.25, where 10 - base, 1.25 - result, factor - 0.5, ? - exponent
         /// </summary>
         /// <returns></returns>
-        public static double getExponentByFactor(float result, float baseValue, float factor) {
+        public static double getExponentByFactor(float result, float baseValue, float factor)
+        {
             return Math.Log(result / baseValue) / Math.Log(factor);
         }
 
@@ -472,7 +541,7 @@ namespace Metamatic {
         public static float AngleAroundAxis(Vector3 v, Vector3 forward, Vector3 axis, bool clockwise = false)
         {
             Vector3 right;
-            if(clockwise)
+            if (clockwise)
             {
                 right = Vector3.Cross(forward, axis);
                 forward = Vector3.Cross(axis, right);
@@ -482,9 +551,10 @@ namespace Metamatic {
                 right = Vector3.Cross(axis, forward);
                 forward = Vector3.Cross(right, axis);
             }
+
             return Mathf.Atan2(Vector3.Dot(v, right), Vector3.Dot(v, forward)) * Mathf.Rad2Deg;
         }
-        
+
         /// <summary>
         /// Get a twirl angle around the axis formed by the direction to the target (for example it can be facing a rocket that strives to target and uses feint) */
         /// </summary>
@@ -493,7 +563,8 @@ namespace Metamatic {
         /// <param name="angle"></param>
         /// <param name="progress"></param>
         /// <returns></returns>
-        public static Quaternion TwirlRotationAroundDirection(Vector3 pivot, Vector3 target, float angle, float progress)
+        public static Quaternion TwirlRotationAroundDirection(Vector3 pivot, Vector3 target, float angle,
+            float progress)
         {
             /* Get direction to target relative pivot */
             var relativePos = target - pivot;
@@ -509,7 +580,7 @@ namespace Metamatic {
             return Quaternion.LookRotation(relativePos,
                 Vector3.up) * Quaternion.Euler(feint);
         }
-        
+
         /// <summary>
         /// Get sign of float ot zero if float equals zero
         /// </summary>
@@ -519,7 +590,7 @@ namespace Metamatic {
         {
             return value == 0f ? 0 : (int)Mathf.Sign(value);
         }
-        
+
         /// <summary>
         /// Get sign of float ot zero if float equals zero
         /// </summary>
@@ -529,7 +600,7 @@ namespace Metamatic {
         {
             return Mathf.Abs(value) < gap ? 0 : (int)Mathf.Sign(value);
         }
-        
+
         /// <summary>
         /// Get reflected point of the target projection through the pivot at given distantion
         /// </summary>
@@ -549,11 +620,12 @@ namespace Metamatic {
         /// <param name="pivot"></param>
         /// <param name="distance"></param>
         /// <returns></returns>
-        private static Vector3 GetReflectedProjection(Vector3 target, float distanceToTarget, float distanceToProjection)
+        private static Vector3 GetReflectedProjection(Vector3 target, float distanceToTarget,
+            float distanceToProjection)
         {
             return target * -1 * (distanceToProjection / distanceToTarget);
         }
-        
+
         /// <summary>
         /// Flip rotation euler z angle horizontal
         /// </summary>
@@ -565,7 +637,7 @@ namespace Metamatic {
             euler.z = euler.z >= 0 ? 180 - euler.z : -180 - euler.z;
             return Quaternion.Euler(euler);
         }
-        
+
         /// <summary>
         /// Flip rotation euler z angle vertical
         /// </summary>
@@ -577,7 +649,7 @@ namespace Metamatic {
             euler.z *= -1;
             return Quaternion.Euler(euler);
         }
-        
+
         /// <summary>
         /// Cast angle with range 0 360
         /// </summary>
@@ -588,7 +660,7 @@ namespace Metamatic {
             var normalizeAngle = a % 360;
             return normalizeAngle < 0f ? 360f + normalizeAngle : normalizeAngle;
         }
-        
+
         /// <summary>
         /// Clamp angle 
         /// </summary>
@@ -601,13 +673,13 @@ namespace Metamatic {
             var dtAngle = Mathf.Abs(((min - max) + 180) % 360 - 180);
             var hdtAngle = dtAngle * 0.5f;
             var midAngle = min + hdtAngle;
- 
+
             var offset = Mathf.Abs(Mathf.DeltaAngle(current, midAngle)) - hdtAngle;
             if (offset > 0)
                 current = Mathf.MoveTowardsAngle(current, midAngle, offset);
             return current;
         }
-        
+
         /// <summary>
         /// Get angle progress between min and max
         /// </summary>
@@ -628,9 +700,9 @@ namespace Metamatic {
         {
             Vector3 slotEuler = a.eulerAngles;
             Vector3 moduleEuler = b.eulerAngles;
-            
+
             Vector3 combinedEuler = slotEuler + moduleEuler;
-            
+
             combinedEuler = new Vector3(
                 (combinedEuler.x + 360) % 360,
                 (combinedEuler.y + 360) % 360,
@@ -638,14 +710,14 @@ namespace Metamatic {
             );
             return Quaternion.Euler(combinedEuler);
         }
-        
+
         /// <summary>
         /// Find effector position by joints and its angles with forward kinematics
         /// </summary>
         /// <param name="joints"></param>
         /// <param name="angles"></param>
         /// <returns></returns>
-        public static Vector3 GetForwardKinematics2dEffector (Transform[] joints, float[] angles)
+        public static Vector3 GetForwardKinematics2dEffector(Transform[] joints, float[] angles)
         {
             var prevPoint = joints[0].position;
             var rotation = Quaternion.identity;
@@ -654,19 +726,20 @@ namespace Metamatic {
                 // Выполняет поворот вокруг новой оси
                 rotation *= Quaternion.AngleAxis(angles[i - 1], Vector3.forward);
                 var nextPoint = prevPoint + rotation * joints[i].localPosition;
-    
+
                 prevPoint = nextPoint;
             }
+
             return prevPoint;
         }
-        
+
         /// <summary>
         /// Find effector position by joints and its angles with forward kinematics
         /// </summary>
         /// <param name="joints"></param>
         /// <param name="angles"></param>
         /// <returns></returns>
-        public static Vector2 GetForwardKinematics2dEffector (Vector3[] joints, float[] angles)
+        public static Vector2 GetForwardKinematics2dEffector(Vector3[] joints, float[] angles)
         {
             var prevPoint = joints[0];
             var rotation = Quaternion.identity;
@@ -675,12 +748,13 @@ namespace Metamatic {
                 // Выполняет поворот вокруг новой оси
                 rotation *= Quaternion.AngleAxis(angles[i - 1], Vector3.forward);
                 var nextPoint = prevPoint + rotation * joints[i];
-    
+
                 prevPoint = nextPoint;
             }
+
             return prevPoint;
         }
-        
+
         /// <summary>
         /// Get medium point between multiple points relative their weight
         /// </summary>
@@ -694,6 +768,7 @@ namespace Metamatic {
             {
                 throw new Exception("Mismatch points and weights count");
             }
+
             var sum = weights.Sum();
             var result = Vector3.zero;
 
@@ -701,9 +776,10 @@ namespace Metamatic {
             {
                 result += points[i] * (weights[i] / sum);
             }
+
             return result;
         }
-        
+
         /// <summary>
         /// Get the value of b or c, which is farthest from a
         /// </summary>
@@ -715,7 +791,7 @@ namespace Metamatic {
         {
             return Mathf.Abs(a - b) > Mathf.Abs(a - c) ? b : c;
         }
-        
+
         /// <summary>
         /// Devide vector
         /// </summary>
@@ -726,7 +802,7 @@ namespace Metamatic {
         {
             return new Vector3(x.x / divider.x, x.y / divider.y, x.z / divider.z);
         }
-        
+
         /// <summary>
         /// (Experimanetal) Get magnitude of the vector in the specified direction
         /// </summary>
@@ -738,7 +814,7 @@ namespace Metamatic {
             var magnitude = vector.magnitude;
             return Vector3.Dot(vector.normalized, direction.normalized) * vector.magnitude;
         }
-        
+
         // /// <summary>
         // /// Find 
         // /// </summary>
@@ -789,7 +865,7 @@ namespace Metamatic {
         //    Array.Resize(ref indexes, hullLength);
         //    return indexes;
         // }
-        
+
         /// <summary>
         /// 
         /// </summary>
@@ -799,7 +875,8 @@ namespace Metamatic {
         /// <param name="maxAngle">Max angle when find next hull vertex relative previous edge</param>
         /// <param name="minReflexiveAngle">Min reflexive angle (when we go inside hull and the returns back)</param>
         /// <returns></returns>
-        public static int[] FindJarvisGreedyHull(Vector2[] points, int steps = 1, float minAngle = -123f, float maxAngle = 88f, float minReflexiveAngle = 57f)
+        public static int[] FindJarvisGreedyHull(Vector2[] points, int steps = 1, float minAngle = -123f,
+            float maxAngle = 88f, float minReflexiveAngle = 57f)
         {
             /* Form indexes */
             var indexes = points.Select((p, index) => index).ToArray();
@@ -811,26 +888,26 @@ namespace Metamatic {
             for (var i = 1; i < indexes.Length; i++)
             {
                 var cachedIndex = indexes[i];
-                
+
                 /* Most right point */
                 var currentPoint = points[cachedIndex];
                 if (maxX < currentPoint.x)
                 {
                     maxX = currentPoint.x;
                 }
-                
+
                 /* Most right point */
                 if (minY > currentPoint.y)
                 {
                     minY = currentPoint.y;
                 }
-                
+
                 /* Most right point */
                 if (maxY < currentPoint.y)
                 {
                     maxY = currentPoint.y;
                 }
-                
+
                 /* Most left point */
                 if (minX > currentPoint.x)
                 {
@@ -841,7 +918,7 @@ namespace Metamatic {
             }
 
             var diagonal = Vector2.Distance(new Vector2(minX, minY), new Vector2(maxX, maxY));
-           
+
             /* Find nearest up point */
             // var upIndex = FindJarvisHullAnglePointIndex(true, Vector3.up, 0, 1, points, indexes, float.MaxValue, -180f, 180f, true);
             // var upPointIndex = indexes[upIndex];
@@ -851,7 +928,8 @@ namespace Metamatic {
             var index = 0;
             do
             {
-                var minAngleIndex = FindJarvisHullAnglePointIndex(false, vector, index, index + 1, points, indexes, float.MaxValue, minAngle, maxAngle, true);
+                var minAngleIndex = FindJarvisHullAnglePointIndex(false, vector, index, index + 1, points, indexes,
+                    float.MaxValue, minAngle, maxAngle, true);
                 if (minAngleIndex <= 0) break;
 
                 var pointIndex = indexes[minAngleIndex];
@@ -859,15 +937,14 @@ namespace Metamatic {
                 var tempIndex = indexes[index + 1];
                 indexes[index + 1] = pointIndex;
                 indexes[minAngleIndex] = tempIndex;
-               
+
                 index++;
-               
+
                 // if (pointIndex == upPointIndex)
                 // {
                 //     break;
                 // }
                 vector = points[indexes[index]] - points[indexes[index - 1]];
-               
             } while (index < indexes.Length - 1);
 
             hullLength = index + 1;
@@ -892,19 +969,20 @@ namespace Metamatic {
                     pointB = points[indexes[currentEdgeEndIndex]];
                     distance = Vector2.Distance(pointA, pointB);
                     vector = points[indexes[currentEdgeEndIndex]] - points[indexes[currentEdgeStartIndex]];
-                    
+
                     // var prevVector = points[indexes[previousEdgeEndIndex]] - points[indexes[previousEdgeStartIndex]];
-                    
+
                     /* Find new vertex between current edge for forth direction */
-                    var minAngleIndex = FindJarvisHullAnglePointIndex(false, vector, currentEdgeStartIndex, hullLength, points, indexes, distance, minAngle, maxAngle);
-                    
+                    var minAngleIndex = FindJarvisHullAnglePointIndex(false, vector, currentEdgeStartIndex, hullLength,
+                        points, indexes, distance, minAngle, maxAngle);
+
                     /* Find new vertex between current edge for back direction */
                     // 
                     var firstFoundedVertexWasInserted = false;
                     if (minAngleIndex >= 0)
                     {
                         var bestIndex = indexes[minAngleIndex];
-                        
+
                         /* Compare new vector between new point and next point to current vector */
                         var newInVector = points[indexes[currentEdgeStartIndex]] - points[bestIndex];
                         var newOutVector = points[indexes[currentEdgeEndIndex]] - points[bestIndex];
@@ -916,15 +994,15 @@ namespace Metamatic {
                             index++;
                             continue;
                         }
-                        
+
                         if (minAngleIndex > index + 1)
                         {
-                            
                             /* Shift array */
                             for (var s = minAngleIndex; s > index + 1; s--)
                             {
                                 indexes[s] = indexes[s - 1];
                             }
+
                             indexes[index + 1] = bestIndex;
                             index++;
                             firstFoundedVertexWasInserted = true;
@@ -937,6 +1015,7 @@ namespace Metamatic {
                     {
                         break;
                     }
+
                     /* Find vertex from right to left */
                     var secondStepIndex = firstFoundedVertexWasInserted ? index - 1 : index;
                     currentEdgeStartIndex = secondStepIndex;
@@ -945,46 +1024,48 @@ namespace Metamatic {
                     pointB = points[indexes[currentEdgeEndIndex]];
                     distance = Vector2.Distance(pointA, pointB);
                     reverseVector = points[indexes[currentEdgeStartIndex]] - points[indexes[currentEdgeEndIndex]];
-                    var minBackAndleIndex = FindJarvisHullAnglePointIndex(true, reverseVector, currentEdgeEndIndex, hullLength, points, indexes, distance, minAngle, maxAngle, false);
-                    
+                    var minBackAndleIndex = FindJarvisHullAnglePointIndex(true, reverseVector, currentEdgeEndIndex,
+                        hullLength, points, indexes, distance, minAngle, maxAngle, false);
+
                     if (minBackAndleIndex >= 0)
                     {
                         var bestIndex = indexes[minBackAndleIndex];
-                        
+
                         /* Compare new vector between new point and next point to current vector */
                         var newInVector = points[indexes[currentEdgeEndIndex]] - points[bestIndex];
                         var newOutVector = points[indexes[currentEdgeStartIndex]] - points[bestIndex];
-                    
+
                         var reflexiveAngle = Vector2.SignedAngle(newInVector, newOutVector);
                         if (Mathf.Abs(reflexiveAngle) < minReflexiveAngle)
                         {
                             index++;
                             continue;
                         }
-                        
+
                         if (minBackAndleIndex > index)
                         {
-                            
                             /* Shift array */
                             for (var s = minBackAndleIndex; s > currentEdgeStartIndex; s--)
                             {
                                 indexes[s] = indexes[s - 1];
                             }
+
                             indexes[currentEdgeStartIndex + 1] = bestIndex;
                             index++;
                         }
+
                         hullLength++;
                     }
-                    
-                
+
+
                     index++;
                 } while (index < hullLength);
             }
-                
+
             Array.Resize(ref indexes, hullLength);
             return indexes;
         }
-        
+
         /// <summary>
         /// 
         /// </summary>
@@ -995,17 +1076,20 @@ namespace Metamatic {
         /// <param name="indexes">Array of points indexes sorted as consistent vertexes</param>
         /// <param name="maxMagnitude">Max magnitude of test vector</param>
         /// <returns></returns>
-        private static int FindJarvisHullAnglePointIndex(bool findMaxAngle, Vector2 vector, int edgeStartIndex, int startIndex, Vector2[] points, int[] indexes, float maxMagnitude = float.MaxValue, float minAngle = -180f, float maxAngle = 180f, bool closing = false, bool debug = false)
+        private static int FindJarvisHullAnglePointIndex(bool findMaxAngle, Vector2 vector, int edgeStartIndex,
+            int startIndex, Vector2[] points, int[] indexes, float maxMagnitude = float.MaxValue,
+            float minAngle = -180f, float maxAngle = 180f, bool closing = false, bool debug = false)
         {
             var bestAngle = findMaxAngle ? -360f : 360f;
             var bestIndex = -1;
-            
+
             /* Compare with zero point first, then others aster startIndex */
             var y = !closing || edgeStartIndex == 0 ? startIndex : 0;
             if (y >= indexes.Length)
             {
                 return -1;
             }
+
             do
             {
                 var testVector = points[indexes[y]] - points[indexes[edgeStartIndex]];
@@ -1021,6 +1105,7 @@ namespace Metamatic {
                     bestAngle = angle;
                     bestIndex = y;
                 }
+
                 Next:
                 y = (y == 0) ? startIndex : y + 1;
             } while (y < indexes.Length);
@@ -1035,7 +1120,7 @@ namespace Metamatic {
 
         public static float PingPong(float t, float x = 0.5f)
         {
-            #if DEBUG
+#if DEBUG
             if (t < 0f || t > 1f)
             {
                 throw new System.ArgumentOutOfRangeException("t", "Value must be between 0 and 1.");
@@ -1045,7 +1130,7 @@ namespace Metamatic {
             {
                 throw new System.ArgumentOutOfRangeException("x", "Value must be between 0 and 1, exclusive.");
             }
-            #endif
+#endif
 
             // Приведение t к диапазону от 0 до 1 (не обязательно, если t всегда в диапазоне [0, 1])
             t = Mathf.Clamp01(t);
@@ -1060,6 +1145,84 @@ namespace Metamatic {
                 // Линейная интерполяция от 1 до 0
                 return (1f - (t - x) / (1f - x));
             }
+        }
+
+        public static bool CalculateArcJumpForce2D(
+            float gravity,
+            float mass,
+            float linearDrag,
+            Vector2 currentVelocity,
+            Vector2 point1,
+            Vector2 point2,
+            float additionalHeight,
+            out Vector2 force)
+        {
+            force = Vector2.zero;
+
+            // Разница позиций
+            float deltaX = point2.x - point1.x;
+            float deltaY = point2.y - point1.y;
+
+            // Проверка на возможность прыжка
+            if (deltaX == 0 && deltaY == 0)
+            {
+                return false; // Нет необходимости прыгать
+            }
+
+            // Желаемая максимальная высота
+            float H_max = point2.y + additionalHeight;
+
+            // Ускорение свободного падения должно быть положительным
+            gravity = Mathf.Abs(gravity);
+
+            // Вычисляем начальную вертикальную скорость без учёта сопротивления
+            float v0y;
+            try
+            {
+                v0y = Mathf.Sqrt(2 * gravity * Mathf.Max(0, (H_max - point1.y)));
+            }
+            catch
+            {
+                return false; // Невозможно достичь желаемой высоты
+            }
+
+            // Время подъёма до максимальной высоты
+            float tUp = v0y / gravity;
+
+            // Время спуска от максимальной высоты до цели
+            float tDown;
+            try
+            {
+                tDown = Mathf.Sqrt(2 * Mathf.Max(0, (H_max - point2.y)) / gravity);
+            }
+            catch
+            {
+                return false; // Невозможно вычислить время спуска
+            }
+
+            // Общее время полёта
+            float tTotal = tUp + tDown;
+
+            // Учитываем линейное сопротивление по оси X
+            float k = linearDrag / mass;
+            if (k == 0) k = 0.0001f; // Предотвращение деления на ноль
+
+            float denom = 1 - Mathf.Exp(-k * tTotal);
+
+            if (Mathf.Approximately(denom, 0))
+            {
+                return false; // Невозможно вычислить начальную горизонтальную скорость
+            }
+
+            float v0x = (deltaX * k) / denom;
+
+            // Вычисляем требуемые силы с учётом текущей скорости
+            float Fx = mass * (v0x - currentVelocity.x);
+            float Fy = mass * (v0y - currentVelocity.y);
+
+            force = new Vector2(Fx, Fy);
+
+            return true;
         }
     }
 }

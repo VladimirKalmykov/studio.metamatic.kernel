@@ -88,6 +88,7 @@ namespace Metamatic.Framework
             using var selectedObjectWidget = new SelectedObjectWidget(this);
             using var spellsWidget = new SpellsWidget(this);
             using var spellWidget = new SpellWidget(this);
+            using var functionsWidget = new FunctionsWidget(this);
 
             await ready();
         }

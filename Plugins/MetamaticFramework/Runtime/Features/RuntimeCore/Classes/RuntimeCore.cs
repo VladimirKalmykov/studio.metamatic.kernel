@@ -16,6 +16,27 @@ namespace Metamatic.Framework
     /// </summary>
     public class RuntimeCore
     {
+        #region Classes and structs
+
+        public class CustomFunction
+        {
+            public string Name;
+            public Action Action;
+            
+            public CustomFunction(string name, Action action)
+            {
+                this.Name = name;
+                this.Action = action;
+            }
+            
+            public void Invoke()
+            {
+                Action.Invoke();
+            }
+        }
+        #endregion
+        
+        
         private static RuntimeCore _Instance;
         // ReSharper disable once InconsistentNaming
         public static RuntimeCore Instance => _Instance ??= new RuntimeCore();
@@ -24,6 +45,10 @@ namespace Metamatic.Framework
         private readonly ObservableList<GameObject> m_SelectedObjects = new();
         private readonly Observable<Type> m_ActiveSpellType = new();
         public IReadOnlyCollection<GameObject> selectedObjects => m_SelectedObjects.items;
+        #endregion
+        
+        #region Private properties
+        private readonly ObservableList<CustomFunction> m_CustomFunctions = new();
         #endregion
         
         #region Public properties
@@ -127,6 +152,18 @@ namespace Metamatic.Framework
         public DisposableAction OnSwitchActiveSpellType(Func<Type, CancellationSignal, UniTaskVoid> action)
         {
             return SequentialHandler<Type>.WatchAsync(m_ActiveSpellType.Watch, action);
+        }
+
+        public DisposableAction AddCustomFunction(string name, Action action)
+        {
+            var customFunction = new CustomFunction(name, action);
+            m_CustomFunctions.Add(customFunction);
+            return new DisposableAction(() => m_CustomFunctions.Remove(customFunction));
+        }
+        
+        public DisposableAction WatchEachCustomFunctionLifecycle(Func<CustomFunction, CancellationSignal, UniTaskVoid> action)
+        {
+            return m_CustomFunctions.WatchEachLifecycle(action);
         }
         #endregion
     }
