@@ -1,0 +1,31 @@
+.Root {
+    flex-direction: column;
+}
+
+.Panel {
+    padding: 6px 6px 0 6px;
+    background-color: #252727;
+    border-radius: 3px;
+    margin-top: 12px;
+}
+
+.Row {
+    margin-bottom: 6px;
+}
+
+.HorizontalGroup {
+    flex-direction: row;
+    margin-right: -6px;
+}
+
+.HorizontalGroup > VisualElement {
+    margin-right: 6px;
+}
+
+.ToggleButton {
+    height: 32px;
+}
+
+.ToggleButton.Active {
+    background-color: #0BAA0B;
+}
