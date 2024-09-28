@@ -1146,7 +1146,19 @@ namespace Metamatic
                 return (1f - (t - x) / (1f - x));
             }
         }
-
+        
+        /// <summary>
+        /// Calculate force needed to perform a jump in 2D space to reach a specific point.
+        /// </summary>
+        /// <param name="gravity"></param>
+        /// <param name="mass"></param>
+        /// <param name="linearDrag"></param>
+        /// <param name="currentVelocity"></param>
+        /// <param name="point1"></param>
+        /// <param name="point2"></param>
+        /// <param name="additionalHeight">Add additional height to get higher then target actually is</param>
+        /// <param name="force">Current force</param>
+        /// <returns></returns>
         public static bool CalculateArcJumpForce2D(
             float gravity,
             float mass,
@@ -1223,6 +1235,53 @@ namespace Metamatic
             force = new Vector2(Fx, Fy);
 
             return true;
+        }
+        
+        public enum AngleReference
+        {
+            Right,   // Справа (по умолчанию 0 градусов)
+            Top,     // Сверху (по умолчанию 90 градусов)
+            Left,    // Слева (по умолчанию 180 градусов)
+            Bottom   // Снизу (по умолчанию 270 градусов)
+        }
+        
+        /// <summary>
+        /// Get ellipse radius at specified angle
+        /// </summary>
+        /// <param name="ellipse"></param>
+        /// <param name="angleDegrees"></param>
+        /// <param name="referencePoint"></param>
+        /// <returns></returns>
+        public static float GetEllipseRadius(Vector2 ellipse, float angleDegrees, AngleReference referencePoint = AngleReference.Right)
+        {
+            // Преобразуем угол в радианы
+            float angleRadians = Mathf.Deg2Rad * angleDegrees;
+
+            // Сместим угол в зависимости от точки отсчета
+            switch (referencePoint)
+            {
+                case AngleReference.Top:
+                    angleRadians -= Mathf.PI / 2; // Сдвиг на 90 градусов (сверху)
+                    break;
+                case AngleReference.Left:
+                    angleRadians -= Mathf.PI; // Сдвиг на 180 градусов (слева)
+                    break;
+                case AngleReference.Bottom:
+                    angleRadians -= 3 * Mathf.PI / 2; // Сдвиг на 270 градусов (снизу)
+                    break;
+            }
+
+            // Радиусы эллипса
+            float a = ellipse.x / 2f; // Радиус по ширине
+            float b = ellipse.y / 2f; // Радиус по высоте
+
+            // Вычисляем радиус эллипса под углом angleRadians
+            float cosTheta = Mathf.Cos(angleRadians);
+            float sinTheta = Mathf.Sin(angleRadians);
+
+            float radius = (a * b) / Mathf.Sqrt((b * cosTheta) * (b * cosTheta) + (a * sinTheta) * (a * sinTheta));
+
+            return radius;
         }
     }
 }
