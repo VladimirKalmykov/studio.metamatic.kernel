@@ -6,6 +6,9 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// TODO: Remove this class. It is out of concept.
+    /// </summary>
     public static class Terminal
     {
         public class UpdatableLog: IDisposable

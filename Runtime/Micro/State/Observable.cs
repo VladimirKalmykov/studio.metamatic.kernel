@@ -21,7 +21,7 @@ namespace Metamatic
     public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>
     {
         private event Action<TValue> OnChange;
-        private CancellationTokenSource m_DisposeCancellationTokenSource; // TODO: Remove this cancellation token source, this class can be used without it and it is not necessary. Moreover, it is may a cause of performance issues
+        private CancellationSignalSource m_DisposeCancellationTokenSource;
 
         public TValue value
         {
@@ -49,7 +49,6 @@ namespace Metamatic
 
         public ObservableReadOnly()
         {
-            m_DisposeCancellationTokenSource = new CancellationTokenSource();
         }
 
         ~ObservableReadOnly()
@@ -75,150 +74,62 @@ namespace Metamatic
                 OnChange -= onceHandler;
             };
         }
-        
-        /// <summary>
-        /// Wait until value changed once
-        /// </summary>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public UniTask<TValue> WaitUntilChangeOnce(CancellationToken cancellationToken = default)
+
+        public UniTask<TValue> WaitUntilValueIs(Func<TValue, bool> validator,
+            CancellationSignal cancellationSignal)
         {
-            var taskCompletionSource = new UniTaskCompletionSource<TValue>();
-            var release = SubscribeOnce(v =>
+            if (cancellationSignal.IsCancellationRequested) return UniTask.FromCanceled<TValue>();
+            if (validator(GetValue())) return UniTask.FromResult(GetValue());
+            
+            Action FinalizeHandler = null;
+            var tcs = SafeUniTaskCompletionSource<TValue>.Create();
+            
+            if (!m_DisposeCancellationTokenSource.CanBeCancelled)
             {
-                taskCompletionSource.TrySetResult(v);
-            });
-            cancellationToken.Register(() =>
-            {
-                taskCompletionSource.TrySetCanceled(cancellationToken);
-                release();
-            });
-            return taskCompletionSource.Task;
-        }
-        
-        public UniTask<TValue> WaitUntilValueIs(TValue value, CancellationToken cancellationToken = default)
-        {
-            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
-            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
-                { m_DisposeCancellationTokenSource.Token, cancellationToken });
-            var combinedCancellationToken = combinedCancellationTokenSource.Token;
-            if (GetValue().Equals(value)) return UniTask.FromResult(value);
-            var tcs = new UniTaskCompletionSource<TValue>();
-            Action<TValue> handler = null;
-            handler = v =>
-            {
-                if (v.Equals(value))
+                m_DisposeCancellationTokenSource = CancellationSignalSource.Create();
+                var disposeSignal = m_DisposeCancellationTokenSource.Signal;
+                FinalizeHandler += disposeSignal.Register(() =>
                 {
-                    combinedCancellationTokenSource.Dispose();
-                    tcs.TrySetResult(v);
-                    OnChange -= handler;
+                    FinalizeHandler?.Invoke();
+                    tcs.TrySetCanceled();
+                });
+            }
+
+            if (cancellationSignal.CanBeCanceled)
+            {
+                FinalizeHandler += cancellationSignal.Register(() =>
+                {
+                    FinalizeHandler?.Invoke();
+                    tcs.TrySetCanceled();
+                });
+            }
+            
+            void Handler(TValue value)
+            {
+                if (validator(value))
+                {
+                    FinalizeHandler?.Invoke();
+                    tcs.TrySetResult(value);
                 }
-            };
-            OnChange += handler;
-            var unregister= combinedCancellationToken.Register(() =>
-            {
-                tcs.TrySetCanceled(combinedCancellationToken);
-                OnChange -= handler;
-            });
-            tcs.Task.GetAwaiter().OnCompleted(() =>
-            {
-                unregister.Dispose();
-            });
+            }
+            
+            OnChange += Handler;
+            
             return tcs.Task;
         }
 
-        public UniTask<TValue> WaitUntilValueIs(Func<TValue, bool> callback,
-            CancellationToken cancellationToken = default)
+        public UniTask<TValue> WaitUntilValueIs(TValue value, CancellationSignal cancellationSignal = default)
         {
-            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
-            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
-                { m_DisposeCancellationTokenSource.Token, cancellationToken });
-            var combinedCancellationToken = combinedCancellationTokenSource.Token;
-            if (callback(GetValue())) return UniTask.FromResult(GetValue());
-            var tcs = new UniTaskCompletionSource<TValue>();
-            Action<TValue> handler = null;
-            handler = v =>
+            bool Validator(TValue nextValue)
             {
-                if (callback(v))
-                {
-                    combinedCancellationTokenSource.Dispose();
-                    tcs.TrySetResult(v);
-                    OnChange -= handler;
-                }
-            };
-            OnChange += handler;
-            var unregister= combinedCancellationToken.Register(() =>
-            {
-                tcs.TrySetCanceled(combinedCancellationToken);
-                OnChange -= handler;
-            });
-            tcs.Task.GetAwaiter().OnCompleted(() =>
-            {
-                unregister.Dispose();
-            });
-            return tcs.Task;
-        }
-        
-        public UniTask<TValue> WaitUntilValueIsNot(TValue value, CancellationToken cancellationToken = default)
-        {
-            if (cancellationToken.IsCancellationRequested) return UniTask.FromCanceled<TValue>(cancellationToken);
-            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(new[]
-                { m_DisposeCancellationTokenSource.Token, cancellationToken });
-            var combinedCancellationToken = combinedCancellationTokenSource.Token;
-            if (!GetValue().Equals(value)) return UniTask.FromResult(value);
-            var tcs = new UniTaskCompletionSource<TValue>();
-            Action<TValue> handler = null;
-            handler = v =>
-            {
-                if (!v.Equals(value))
-                {
-                    combinedCancellationTokenSource.Dispose();
-                    tcs.TrySetResult(v);
-                    OnChange -= handler;
-                }
-            };
-            OnChange += handler;
-            var unregister= combinedCancellationToken.Register(() =>
-            {
-                tcs.TrySetCanceled(combinedCancellationToken);
-                OnChange -= handler;
-            });
-            tcs.Task.GetAwaiter().OnCompleted(() =>
-            {
-                unregister.Dispose();
-            });
-            return tcs.Task;
+                return nextValue.Equals(value);
+            }
+            return WaitUntilValueIs(Validator, cancellationSignal);
         }
         
         public UniTask<TValue> WaitUntilValueIsNotNull(CancellationSignal signal = default)
         {
-            if (signal.IsCancellationRequested) return UniTask.FromCanceled<TValue>(signal);
-            if (GetValue() != null) return UniTask.FromResult(value);
-            var combinedCancellationTokenSource = CancellationSignalSource.CreateLinked(m_DisposeCancellationTokenSource.Token, signal);
-            var combinedCancellationToken = combinedCancellationTokenSource.Signal;
-            var tcs = new UniTaskCompletionSource<TValue>();
-            Action<TValue> handler = null;
-            handler = v =>
-            {
-                if (combinedCancellationToken.IsCancellationRequested) return;
-                if (v != null)
-                {
-                    combinedCancellationTokenSource.Dispose();
-                    tcs.TrySetResult(v);
-                    OnChange -= handler;
-                }
-            };
-            OnChange += handler;
-            var unregister= combinedCancellationToken.Register(() =>
-            {
-                OnChange -= handler;
-                tcs.TrySetCanceled(signal);
-            });
-            tcs.Task.GetAwaiter().OnCompleted(() =>
-            {
-                unregister.Dispose();
-            });
-            return tcs.Task;
+            return WaitUntilValueIs(v => v != null, signal);
         }
 
         protected void EmitValue(TValue v)
@@ -242,8 +153,7 @@ namespace Metamatic
         
         public override void Dispose()
         {
-            m_DisposeCancellationTokenSource?.Cancel();
-            m_DisposeCancellationTokenSource?.Dispose();
+            m_DisposeCancellationTokenSource.TryCancel();
             OnChange = null;
             GC.SuppressFinalize(this);
         }
@@ -306,8 +216,9 @@ namespace Metamatic
         
         public void SetUniqValue(TValue value)
         {
-            if (m_Value.Equals(value)) return;
-            m_Value = value;
+            if ((m_Value != null && value != null) && m_Value.Equals(value)) return;
+            if (m_Value == null && value == null) return;
+            SetValue(value);
         }
         
         public void Mutate(MutateHandler mutationHandler)

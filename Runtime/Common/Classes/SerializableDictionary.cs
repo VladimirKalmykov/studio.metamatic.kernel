@@ -59,6 +59,11 @@ namespace Metamatic
             get => dictionary[key];
             set => dictionary[key] = value;
         }
+        
+        public void Clear()
+        {
+            dictionary.Clear();
+        }
     }
 
 }
