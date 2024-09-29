@@ -20,7 +20,7 @@ namespace Metamatic
         
         private void OnAttachedToPanel(AttachToPanelEvent evt)
         {
-            m_DetachSignalSource = new CancellationSignalSource();
+            m_DetachSignalSource = CancellationSignalSource.Create();
             OnAttachedAsync(InternalReady, m_DetachSignalSource.Signal).Forget();
         }
 
