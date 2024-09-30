@@ -192,7 +192,16 @@ namespace Metamatic
             });
         }
         
-        // TODO: Do I need [MethodImpl(MethodImplOptions.AggressiveInlining)] here?
+        /// <summary>
+        /// Watch lifecycle of the value. Every time value changed, cancellation signal will be called
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public DisposableAction WatchLifecycle(Func<TValue, CancellationSignal, UniTaskVoid> handler)
+        {
+            return SequentialHandler<TValue>.Subscribe(Watch, handler);
+        }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override TValue GetValue()
         {
