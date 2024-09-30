@@ -1248,11 +1248,11 @@ namespace Metamatic
         /// <summary>
         /// Get ellipse radius at specified angle
         /// </summary>
-        /// <param name="ellipse"></param>
+        /// <param name="ellipseDiameter">Diameter of ellipse (be attention to specify double values if you hove radius)</param>
         /// <param name="angleDegrees"></param>
         /// <param name="referencePoint"></param>
         /// <returns></returns>
-        public static float GetEllipseRadius(Vector2 ellipse, float angleDegrees, AngleReference referencePoint = AngleReference.Right)
+        public static float GetEllipseRadius(Vector2 ellipseDiameter, float angleDegrees, AngleReference referencePoint = AngleReference.Right)
         {
             // Преобразуем угол в радианы
             float angleRadians = Mathf.Deg2Rad * angleDegrees;
@@ -1272,8 +1272,8 @@ namespace Metamatic
             }
 
             // Радиусы эллипса
-            float a = ellipse.x / 2f; // Радиус по ширине
-            float b = ellipse.y / 2f; // Радиус по высоте
+            float a = ellipseDiameter.x / 2f; // Радиус по ширине
+            float b = ellipseDiameter.y / 2f; // Радиус по высоте
 
             // Вычисляем радиус эллипса под углом angleRadians
             float cosTheta = Mathf.Cos(angleRadians);
