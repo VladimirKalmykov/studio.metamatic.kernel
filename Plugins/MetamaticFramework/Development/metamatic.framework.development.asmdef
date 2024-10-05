@@ -1,0 +1,21 @@
+{
+    "name": "metamatic.framework.development",
+    "rootNamespace": "",
+    "references": [
+        "GUID:d01de68c50643b942a4ca541c1a31fb3",
+        "GUID:ecd0a539af1bf934a9fe15b4a747eead",
+        "GUID:5ce45f4ed38321444a8b352f1d931b2f",
+        "GUID:75469ad4d38634e559750d17036d5f7c"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "DEVELOPMENT_MODE"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

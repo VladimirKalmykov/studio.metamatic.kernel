@@ -59,7 +59,7 @@ namespace Metamatic.Inspector
         protected override async UniTask InitializeAsync(Func<UniTask> ready, CancellationSignal signal)
         {
             m_RenderCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
-            var renderReadyTask = SafeTaskCompletionSource.Create();
+            var renderReadyTask = SafeUniTaskCompletionSource.Create();
             OnRender(() => renderReadyTask.TrySetResult(), m_Editable, m_RenderCancellationSignalSource.Signal)
                 .Then(() => renderReadyTask.TrySetResult())
                 .Catch(e => renderReadyTask.TrySetException(e))

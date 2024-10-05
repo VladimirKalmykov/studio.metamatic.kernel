@@ -10,8 +10,6 @@ namespace Metamatic
     public abstract class AsyncVisualElement: VisualElement
     {
         private CancellationSignalSource m_DetachSignalSource;
-        private bool m_IsAttachedAsync;
-        private event Action OnAttachedAsyncEvent;
         public AsyncVisualElement()
         {
             RegisterCallback<AttachToPanelEvent>(OnAttachedToPanel);
@@ -21,23 +19,26 @@ namespace Metamatic
         private void OnAttachedToPanel(AttachToPanelEvent evt)
         {
             m_DetachSignalSource = CancellationSignalSource.Create();
-            OnAttachedAsync(InternalReady, m_DetachSignalSource.Signal).Forget();
+            RunOnAttachToPanelAsync().Forget();
+        }
+        
+        private async UniTaskVoid RunOnAttachToPanelAsync()
+        {
+            try
+            {
+                await OnAttachedAsync(m_DetachSignalSource.Signal);
+            }
+            catch (Exception e)
+            {
+                Console.Error("AsyncVisualElement", e);
+            }
         }
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
-            m_IsAttachedAsync = false;
-            OnAttachedAsyncEvent = null;
             m_DetachSignalSource.TryCancel();
         }
 
-        private UniTask InternalReady()
-        {
-            m_IsAttachedAsync = true;
-            OnAttachedAsyncEvent?.Invoke();
-            return m_DetachSignalSource.Signal.ToUniTask();
-        }
-
-        public abstract UniTaskVoid OnAttachedAsync(Func<UniTask> ready, CancellationSignal detachSignal);
+        public abstract UniTask OnAttachedAsync(CancellationSignal detachSignal);
     }
 }

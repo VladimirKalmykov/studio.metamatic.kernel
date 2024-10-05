@@ -5,7 +5,7 @@ namespace Metamatic
     public readonly struct DisposableAction : IDisposable
     {
         #if DEBUG
-        private readonly Observable<bool> _disposed;
+        public readonly Observable<bool> Disposed;
         #endif
         public static DisposableAction Create(Action action)
         {
@@ -18,21 +18,21 @@ namespace Metamatic
         {
             _action = action;
             #if DEBUG
-            _disposed = new Observable<bool>(false);
+            Disposed = new Observable<bool>(false);
             #endif
         }
 
         public void Dispose()
         {
             #if DEBUG
-            if (_disposed?.value ?? false)
+            if (Disposed?.value ?? false)
             {
                 throw new ObjectDisposedException(nameof(DisposableAction));
             }
 
-            if (_action != null && _disposed != null)
+            if (_action != null && Disposed != null)
             {
-                _disposed.value = true;
+                Disposed.value = true;
             }
             #endif
             _action?.Invoke();

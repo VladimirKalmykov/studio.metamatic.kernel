@@ -1,0 +1,21 @@
+.MetamaticUIKit_KeyValueList {
+    flex-direction: column;
+    padding: 6px 0 0 0;
+}
+
+.MetamaticUIKit_KeyValueList .MetamaticUIKit_KeyValue {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.MetamaticUIKit_KeyValueList .MetamaticUIKit_KeyValue .MetamaticUIKit_Key {
+    margin-right: 6px;
+    flex-grow: 0;
+    flex-shrink: 1;
+}
+
+.MetamaticUIKit_KeyValueList .MetamaticUIKit_KeyValue .MetamaticUIKit_KeyValueValue {
+    flex-grow: 1;
+    flex-shrink: 1;
+}

@@ -11,13 +11,13 @@ namespace Metamatic
     ///
     /// TODO: Replace all usages of AutoResetUniTaskCompletionSource with this struct.
     /// </summary>
-    public readonly struct SafeTaskCompletionSource: IUniTaskSource
+    public readonly struct SafeUniTaskCompletionSource: IUniTaskSource
     {
-        public static SafeTaskCompletionSource Create()
+        public static SafeUniTaskCompletionSource Create()
         {
-            return new SafeTaskCompletionSource(AutoResetUniTaskCompletionSource.Create());
+            return new SafeUniTaskCompletionSource(AutoResetUniTaskCompletionSource.Create());
         }
-        public static SafeTaskCompletionSource CreateFromCanceled(CancellationToken cancellationToken, out short token)
+        public static SafeUniTaskCompletionSource CreateFromCanceled(CancellationToken cancellationToken, out short token)
         {
             var source = Create();
             source.TrySetCanceled(cancellationToken);
@@ -25,7 +25,7 @@ namespace Metamatic
             return source;
         }
         
-        public static SafeTaskCompletionSource CreateFromException(Exception exception, out short token)
+        public static SafeUniTaskCompletionSource CreateFromException(Exception exception, out short token)
         {
             var source = Create();
             source.TrySetException(exception);
@@ -33,7 +33,7 @@ namespace Metamatic
             return source;
         }
         
-        public static SafeTaskCompletionSource CreateCompleted()
+        public static SafeUniTaskCompletionSource CreateCompleted()
         {
             var source = Create();
             source.TrySetResult();
@@ -73,7 +73,7 @@ namespace Metamatic
             return ResolveSource()?.UnsafeGetStatus() ?? UniTaskStatus.Canceled;
         }
         
-        public SafeTaskCompletionSource(AutoResetUniTaskCompletionSource completionSource)
+        public SafeUniTaskCompletionSource(AutoResetUniTaskCompletionSource completionSource)
         {
             m_OriginalCompletionSource = completionSource;
             m_Version = completionSource.version;

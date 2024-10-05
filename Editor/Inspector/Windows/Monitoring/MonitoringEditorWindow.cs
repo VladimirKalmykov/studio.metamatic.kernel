@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
 using Metamatic.EditorTools;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Inspector
@@ -20,14 +21,10 @@ namespace Metamatic.Inspector
 
         private VisualElement m_RowElement;
         private event Action OnUpdate;
-        
-        protected override async UniTaskVoid InitializeAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal)
-        {
-            await ready();
-        }
 
-        protected override async UniTaskVoid CreateGUIAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal)
+        protected override void OnCreateGUI()
         {
+            Console.Debug("MonitoringEditorWindow", "CreateGUI");
             var asset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Monitoring.uxml");
             m_RowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Row.uxml");
             m_PanelTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Panel.uxml");
@@ -38,11 +35,17 @@ namespace Metamatic.Inspector
             /* Add row */
             var content = rootVisualElement.Q<ScrollView>("Content");
             m_RowElement = content.Query<VisualElement>("Row").Last();
-            
+
+        }
+
+        protected override async UniTaskVoid EnableAsync(Func<UniTask> ready, CancellationSignal signal)
+        {
+            Console.Debug("MonitoringEditorWindow", "EnableAsync");
             /* Listen for monitoring data */
             using var observeGroups = Monitoring.ObserveGroups(OnGroupAdded);
             
             await ready();
+            Console.Debug("MonitoringEditorWindow", "DisableAsync");
         }
         
         private void Update()

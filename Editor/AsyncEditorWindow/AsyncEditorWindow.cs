@@ -9,68 +9,62 @@ namespace Metamatic.EditorTools
     public abstract class AsyncEditorWindow: EditorWindow
     {
         private CancellationSignalSource m_LifetimeCancellationTokenSource;
-        private CancellationSignalSource m_EnableCancellationTokenSource;
-        private Observable<bool> m_IsInitialized = new Observable<bool>(false);
-        private Observable<bool> m_IsRendered = new Observable<bool>(false);
+        private CancellationSignalSource m_EnableCancellationSignalSource;
+        private Observable<bool> m_IsReady = new();
+        private bool m_GUIReady;
+        private bool m_Enabled;
+        private event Action OnGUIReady;
         
-        public CancellationSignalSource lifetimeCancellationTokenSource
-        {
-            get
-            {
-                if (!m_LifetimeCancellationTokenSource.CanBeCancelled)
-                {
-                    m_LifetimeCancellationTokenSource = CancellationSignalSource.Create();
-                }
-
-                return m_LifetimeCancellationTokenSource;
-            }
-        }
-        public CancellationSignalSource enableCancellationTokenSource
-        {
-            get
-            {
-                if (!m_EnableCancellationTokenSource.CanBeCancelled)
-                {
-                    m_EnableCancellationTokenSource = CancellationSignalSource.Create();
-                }
-
-                return m_EnableCancellationTokenSource;
-            }
-        }
+        public CancellationSignal lifetimeCancellationSignal => m_LifetimeCancellationTokenSource.Signal;
+        public CancellationSignal enableCancellationSignal => m_EnableCancellationSignalSource.Signal;
         
         private void Awake()
         {
-            InitializeAsync(InitializationReady, lifetimeCancellationTokenSource.Signal).Forget();
+            m_LifetimeCancellationTokenSource = CancellationSignalSource.Create();
+            AwakeAsync(lifetimeCancellationSignal).Forget();
+        }
+
+        private void OnEnable()
+        {
+            m_EnableCancellationSignalSource = CancellationSignalSource.Create();
+            m_Enabled = true;
+            if (m_GUIReady)
+            {
+                EnableAsync(SetEditorReady, enableCancellationSignal).Forget();
+            }
         }
 
         public void CreateGUI()
         {
-            CreateGUIAsync(CreateGuiReady, enableCancellationTokenSource.Signal).Forget();
+            OnCreateGUI();
+            if (m_Enabled)
+            {
+                EnableAsync(SetEditorReady, enableCancellationSignal).Forget();
+            }
         }
 
         private void OnDisable()
         {
-            m_LifetimeCancellationTokenSource.TryCancel();
+            m_Enabled = false;
+            m_EnableCancellationSignalSource.TryCancel();
         }
 
         private void OnDestroy()
         {
             m_LifetimeCancellationTokenSource.TryCancel();
         }
+        
+        private UniTask SetEditorReady()
+        {
+            m_IsReady.value = true;
+            return enableCancellationSignal.ToUniTask();
+        }
 
-        private CancellationTokenAwaitable InitializationReady()
+        protected virtual UniTaskVoid AwakeAsync(CancellationSignal signal)
         {
-            m_IsInitialized.value = true;
-            return new CancellationTokenAwaitable(lifetimeCancellationTokenSource.Signal);
+            return new UniTaskVoid();
         }
-        
-        private CancellationTokenAwaitable CreateGuiReady()
-        {
-            m_IsRendered.value = true;
-            return new CancellationTokenAwaitable(enableCancellationTokenSource.Signal);
-        }
-        
-        protected abstract UniTaskVoid InitializeAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal);
-        protected abstract UniTaskVoid CreateGUIAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal);
+        protected abstract UniTaskVoid EnableAsync(Func<UniTask> ready, CancellationSignal signal);
+        protected abstract void OnCreateGUI();
     }
 }

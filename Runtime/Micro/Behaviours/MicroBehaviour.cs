@@ -13,7 +13,7 @@ namespace Metamatic
         private bool m_Disposed;
         private CancellationSignalSource m_DisposeCancellationSignalSource;
         public CancellationSignal disposeSignal => m_DisposeCancellationSignalSource.Signal;
-        private readonly SafeTaskCompletionSource m_TaskCompletionSource = SafeTaskCompletionSource.Create();
+        private readonly SafeUniTaskCompletionSource m_UniTaskCompletionSource = SafeUniTaskCompletionSource.Create();
         private bool m_IsRunning;
         ~MicroBehaviour()
         {
@@ -26,7 +26,7 @@ namespace Metamatic
                 return;
             }
             Dispose(false);
-            await m_TaskCompletionSource.Task;
+            await m_UniTaskCompletionSource.Task;
         }
 
         public void Dispose()
@@ -71,11 +71,11 @@ namespace Metamatic
             catch (Exception e)
             {
                 Debug.LogError(e);
-                m_TaskCompletionSource.TrySetException(e);
+                m_UniTaskCompletionSource.TrySetException(e);
             }
             finally
             {
-                m_TaskCompletionSource.TrySetResult();
+                m_UniTaskCompletionSource.TrySetResult();
             }
         }
 

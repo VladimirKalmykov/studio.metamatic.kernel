@@ -2,12 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
-using Metamatic;
-using Metamatic.Framework.CursorTools;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.EnhancedTouch;
-using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 namespace Metamatic.Framework
 {

@@ -1,7 +1,7 @@
 using System;
 using Cysharp.Threading.Tasks;
 
-namespace Metamatic
+namespace Metamatic.Framework.Workshop
 {
     /// <summary>
     /// Base class for all game entities

@@ -1,6 +1,6 @@
 using Cysharp.Threading.Tasks;
 
-namespace Metamatic
+namespace Metamatic.Framework.Workshop
 {
     /// <summary>
     /// Entity component is a base class for all other components that are attached to an Entity. E.g. Health, Inventory, etc.

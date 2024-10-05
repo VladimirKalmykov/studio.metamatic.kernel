@@ -32,7 +32,7 @@ namespace Metamatic.EditorTools
                 }
                 else
                 {
-                    var tcs = SafeTaskCompletionSource.Create();
+                    var tcs = SafeUniTaskCompletionSource.Create();
                     OnInitialized += () =>
                     {
                         if (asyncStatus == AsyncStatus.Cancelled)

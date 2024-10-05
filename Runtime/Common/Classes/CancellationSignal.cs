@@ -539,7 +539,7 @@ namespace Metamatic
             {
                 return cancelOnCancellationRequest ? UniTask.FromCanceled() : UniTask.CompletedTask;
             }
-            var tcs = SafeTaskCompletionSource.Create();
+            var tcs = SafeUniTaskCompletionSource.Create();
             var memoizedVersion = Version;
             m_OnCancelled += (version) =>
             {

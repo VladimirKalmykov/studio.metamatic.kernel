@@ -1146,89 +1146,73 @@ namespace Metamatic
                 return (1f - (t - x) / (1f - x));
             }
         }
-        
+
         /// <summary>
-        /// Calculate force needed to perform a jump in 2D space to reach a specific point.
+        /// Calculate the force required to jump from point1 to point2 with a given arc height
+        /// Use result force with Rigidbody2D.AddForce(force, ForceMode2d.Impulse) to apply force to the object
         /// </summary>
         /// <param name="gravity"></param>
         /// <param name="mass"></param>
-        /// <param name="linearDrag"></param>
+        /// <param name="linearDamping"></param>
         /// <param name="currentVelocity"></param>
         /// <param name="point1"></param>
         /// <param name="point2"></param>
-        /// <param name="additionalHeight">Add additional height to get higher then target actually is</param>
-        /// <param name="force">Current force</param>
+        /// <param name="arcHeight"></param>
+        /// <param name="force"></param>
         /// <returns></returns>
         public static bool CalculateArcJumpForce2D(
             float gravity,
             float mass,
-            float linearDrag,
+            float linearDamping,
             Vector2 currentVelocity,
             Vector2 point1,
             Vector2 point2,
-            float additionalHeight,
+            float arcHeight,
             out Vector2 force)
         {
             force = Vector2.zero;
 
-            // Разница позиций
+            // Difference in positions
             float deltaX = point2.x - point1.x;
             float deltaY = point2.y - point1.y;
 
-            // Проверка на возможность прыжка
+            // Check if a jump is necessary
             if (deltaX == 0 && deltaY == 0)
             {
-                return false; // Нет необходимости прыгать
+                return false; // No need to jump
             }
 
-            // Желаемая максимальная высота
-            float H_max = point2.y + additionalHeight;
+            // Desired maximum height
+            float H_max = Mathf.Max(point1.y + arcHeight, point2.y + arcHeight);
 
-            // Ускорение свободного падения должно быть положительным
+            // Gravity should be positive
             gravity = Mathf.Abs(gravity);
 
-            // Вычисляем начальную вертикальную скорость без учёта сопротивления
-            float v0y;
-            try
-            {
-                v0y = Mathf.Sqrt(2 * gravity * Mathf.Max(0, (H_max - point1.y)));
-            }
-            catch
-            {
-                return false; // Невозможно достичь желаемой высоты
-            }
+            // Calculate initial vertical velocity
+            float v0y = Mathf.Sqrt(2 * gravity * Mathf.Max(0, (H_max - point1.y)));
 
-            // Время подъёма до максимальной высоты
+            // Time to reach maximum height
             float tUp = v0y / gravity;
 
-            // Время спуска от максимальной высоты до цели
-            float tDown;
-            try
-            {
-                tDown = Mathf.Sqrt(2 * Mathf.Max(0, (H_max - point2.y)) / gravity);
-            }
-            catch
-            {
-                return false; // Невозможно вычислить время спуска
-            }
+            // Time to descend from maximum height to target
+            float tDown = Mathf.Sqrt(2 * Mathf.Max(0, (H_max - point2.y)) / gravity);
 
-            // Общее время полёта
+            // Total flight time
             float tTotal = tUp + tDown;
 
-            // Учитываем линейное сопротивление по оси X
-            float k = linearDrag / mass;
-            if (k == 0) k = 0.0001f; // Предотвращение деления на ноль
+            // Damping coefficient (no division by mass)
+            float k = Mathf.Max(linearDamping, 0.0001f);
 
             float denom = 1 - Mathf.Exp(-k * tTotal);
 
             if (Mathf.Approximately(denom, 0))
             {
-                return false; // Невозможно вычислить начальную горизонтальную скорость
+                return false; // Cannot compute initial horizontal velocity
             }
 
             float v0x = (deltaX * k) / denom;
 
-            // Вычисляем требуемые силы с учётом текущей скорости
+            // Compute the required forces considering current velocity
             float Fx = mass * (v0x - currentVelocity.x);
             float Fy = mass * (v0y - currentVelocity.y);
 
@@ -1236,15 +1220,16 @@ namespace Metamatic
 
             return true;
         }
-        
+
+
         public enum AngleReference
         {
-            Right,   // Справа (по умолчанию 0 градусов)
-            Top,     // Сверху (по умолчанию 90 градусов)
-            Left,    // Слева (по умолчанию 180 градусов)
-            Bottom   // Снизу (по умолчанию 270 градусов)
+            Right, // Справа (по умолчанию 0 градусов)
+            Top, // Сверху (по умолчанию 90 градусов)
+            Left, // Слева (по умолчанию 180 градусов)
+            Bottom // Снизу (по умолчанию 270 градусов)
         }
-        
+
         /// <summary>
         /// Get ellipse radius at specified angle
         /// </summary>
@@ -1252,7 +1237,8 @@ namespace Metamatic
         /// <param name="angleDegrees"></param>
         /// <param name="referencePoint"></param>
         /// <returns></returns>
-        public static float GetEllipseRadius(Vector2 ellipseDiameter, float angleDegrees, AngleReference referencePoint = AngleReference.Right)
+        public static float GetEllipseRadius(Vector2 ellipseDiameter, float angleDegrees,
+            AngleReference referencePoint = AngleReference.Right)
         {
             // Преобразуем угол в радианы
             float angleRadians = Mathf.Deg2Rad * angleDegrees;

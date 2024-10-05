@@ -202,6 +202,36 @@ namespace Metamatic
             return SequentialHandler<TValue>.Subscribe(Watch, handler);
         }
         
+        /// <summary>
+        /// Reduce value and watch unique lifecycle of the new value relative to the old value
+        /// </summary>
+        /// <param name="reducer"></param>
+        /// <param name="handler"></param>
+        /// <param name="defaultValue"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public DisposableAction ReduceLifecycle<T>(Func<TValue, T> reducer, Func<T, CancellationSignal, UniTaskVoid> handler, T defaultValue = default) {
+            var sequentialHandler = new SequentialHandler<T>(handler);
+            var memoizedValue = defaultValue;
+            void Handler(TValue value)
+            {
+                var nextValue = reducer(value);
+                var bothNull = nextValue == null && memoizedValue == null;
+                if (!bothNull && (nextValue == null || memoizedValue == null || !nextValue.Equals(memoizedValue)))
+                {
+                    memoizedValue = nextValue;
+                    sequentialHandler.Handle(nextValue);
+                }
+            }
+            
+            AddListener(Handler);
+
+            return DisposableAction.Create(() =>
+            {
+                RemoveListener(Handler);
+            });
+        }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override TValue GetValue()
         {

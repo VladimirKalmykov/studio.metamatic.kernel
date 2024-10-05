@@ -42,5 +42,19 @@ namespace Metamatic
             }
             return null;
         }
+        
+        public static T FindParent<T>(this VisualElement visualElement) where T: VisualElement
+        {
+            var currentElement = visualElement;
+            while (currentElement != null)
+            {
+                if (currentElement is T t)
+                {
+                    return t;
+                }
+                currentElement = currentElement.parent;
+            }
+            return null;
+        }
     }
 }

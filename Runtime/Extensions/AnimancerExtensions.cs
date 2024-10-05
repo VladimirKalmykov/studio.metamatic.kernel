@@ -8,14 +8,8 @@ namespace Metamatic
 {
     public static class AnimancerExtensions
     {
-        /// <summary>
-        /// TODO: Remove DebugID after testing
-        /// </summary>
-        /// <param name="state"></param>
-        /// <param name="cancellationToken"></param>
-        /// <param name="debugID"></param>
-        /// <returns></returns>
-        public static UniTask WhenEnds(this AnimancerState state, CancellationToken cancellationToken = default, string debugID = "")
+        [Obsolete("Use WhenEnds with cancellation signal instead")]
+        public static UniTask WhenEnds(this AnimancerState state, CancellationToken cancellationToken = default)
         {
             var isReversed = state.Speed < 0;
             var isLooping = state.Clip.isLooping;
@@ -51,6 +45,34 @@ namespace Metamatic
                 state.Events.EndEvent = default;
             });*/
             return tcs.Task;
+        }
+        
+        public static async UniTask WhenEnds(this AnimancerState state, CancellationSignal cancellationSignal = default)
+        {
+            cancellationSignal.ThrowIfCancellationRequested();
+            var isReversed = state.Speed < 0;
+            var isLooping = state.Clip.isLooping;
+
+            if (isLooping)
+            {
+                await UniTask.WaitWhile(() => state.IsPlaying && !cancellationSignal.IsCancellationRequested);
+                cancellationSignal.ThrowIfCancellationRequested();
+            }
+
+            if (isReversed && state.NormalizedTime <= 0f)
+            {
+                return;
+            }
+            else if (!isReversed && state.NormalizedTime >= 1f)
+            {
+                return;
+            }
+
+            var checkFn = isReversed
+                ? new Func<bool>(() => state.NormalizedTime > 0f && !cancellationSignal.IsCancellationRequested)
+                : new Func<bool>(() => state.NormalizedTime < 1f && !cancellationSignal.IsCancellationRequested);
+            await UniTask.WaitWhile(checkFn);
+            cancellationSignal.ThrowIfCancellationRequested();
         }
     }
 }

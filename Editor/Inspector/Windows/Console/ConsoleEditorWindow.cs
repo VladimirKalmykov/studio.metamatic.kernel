@@ -16,17 +16,18 @@ namespace Metamatic.EditorInspector
         
         private ConsolePanelVisualElement m_ConsolePanelVisualElement;
 
-        protected override async UniTaskVoid InitializeAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal)
-        {
-            await ready();
-        }
 
-        protected override async UniTaskVoid CreateGUIAsync(Func<CancellationTokenAwaitable> ready, CancellationSignal signal)
+        protected override async UniTaskVoid EnableAsync(Func<UniTask> ready, CancellationSignal signal)
         {
             m_ConsolePanelVisualElement = new ConsolePanelVisualElement(signal);
             rootVisualElement.Add(m_ConsolePanelVisualElement);
 
             await ready();
+        }
+
+        protected override void OnCreateGUI()
+        {
+            // Ignore because we are create GUI in EnableAsync
         }
     }
 }
