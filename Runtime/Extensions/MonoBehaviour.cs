@@ -26,5 +26,23 @@ namespace Metamatic {
             }
             return component;
         }
+        
+        public static T GetOrAddComponent<T>(this GameObject gameObject) where T : Component
+        {
+            if (!gameObject.TryGetComponent<T>(out var component))
+            {
+                component = gameObject.AddComponent<T>();
+            }
+            return component;
+        }
+        
+        public static T GetOrAddComponent<T>(this MonoBehaviour behaviour) where T : Component
+        {
+            if (!behaviour.gameObject.TryGetComponent<T>(out var component))
+            {
+                component = behaviour.gameObject.AddComponent<T>();
+            }
+            return component;
+        }
     }
 }

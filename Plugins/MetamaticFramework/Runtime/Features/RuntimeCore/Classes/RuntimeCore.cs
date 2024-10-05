@@ -95,6 +95,7 @@ namespace Metamatic.Framework
         
         public void DeselectObject(GameObject gameObject)
         {
+            if (!m_SelectedObjects.Contains(gameObject)) return;
             m_SelectedObjects.Remove(gameObject);
             OnSelectedObjectsChanged?.Invoke();
         }

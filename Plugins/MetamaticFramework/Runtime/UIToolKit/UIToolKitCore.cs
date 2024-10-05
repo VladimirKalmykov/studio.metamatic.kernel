@@ -54,6 +54,14 @@ namespace Metamatic.UIToolKit
         #endregion
         #endregion 
         
+        #region ClassNames
+        public const string PaddedContentClassName = "MetamaticUIKit_PaddedContent";
+        /// <summary>
+        /// Creates vertical layout with 6px visual gap between and around children
+        /// </summary>
+        public const string VerticalLayoutClassName = "MetamaticUIKit_VerticalLayout";
+        #endregion
+        
         private static Texture2D GetTextureFromResources(string path)
         {
             if (!IconsCache.TryGetValue(path, out var texture))

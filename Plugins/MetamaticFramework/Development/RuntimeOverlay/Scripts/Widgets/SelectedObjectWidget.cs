@@ -2,49 +2,40 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Metamatic.Framework
+namespace Metamatic.Framework.Widgets
 {
-    public class SelectedObjectWidget: WidgetLegacy
+    [MetamaticWidget("Metamatic/Selected Object", null, WidgetApplicability.Viewport)]
+    public class SelectedObjectWidget: Widget
     {
         private VisualTreeAsset m_SelectedObjectTemplate;
         private VisualElement m_Container;
-        public SelectedObjectWidget(Overlay overlay) : base(overlay)
+        private Overlay m_Overlay;
+        public SelectedObjectWidget()
         {
-        }
-
-        public override async UniTaskVoid OnInitializeWidget(CancellationSignal signal)
-        {
-            m_SelectedObjectTemplate = Resources.Load<VisualTreeAsset>("SelectableItem");
-            var panel = overlay.CreatePanel("panels/selected_object", "Selected Object", new PanelElement.Constraints()
-            {
-                DefaultPreferences = new PanelElement.UserPreferences()
-                {
-                    Position = new Vector2(0, 0),
-                    Size = new Vector2(200, 0)  
-                },
-                MaxSize = new Vector2(500, 600),
-                MinSize = new Vector2(200, 40),
-                AutoHeight = true,
-                AutoWidth = false
-            });
-            
             m_Container = new VisualElement();
             m_Container.AddToClassList("VerticalItemsContainer");
-            panel.AddContent(m_Container);
+            Add(m_Container);
+        }
+        public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
+        {
+            m_Overlay = this.GetContext<Overlay>().Value;
+            m_SelectedObjectTemplate = Resources.Load<VisualTreeAsset>("SelectableItem");
             
-            overlay.root.Add(panel);
             
             /* Subscribe to selected objects */
-            using var selectedObjectSubscription = overlay.core.SwitchOnEverySelectedObject(OnObserveSelectedObject);
+            using var selectedObjectSubscription = m_Overlay.core.SwitchOnEverySelectedObject(OnObserveSelectedObject);
 
-            await signal;
-            overlay.root.Remove(panel);
+            await cancellationSignal;
+        }
+
+        public override Preferences GetDefaultPreferences()
+        {
+            return new Preferences(new UnityEngine.Vector2(0, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(0, 0));
         }
         
         private async UniTaskVoid OnObserveSelectedObject(GameObject selectedObject, CancellationSignal signal)
         {
             if (selectedObject == null) return;
-            
             m_SelectedObjectTemplate.CloneTree(m_Container);
             var item = m_Container.Query<VisualElement>("Item").Last();
             item.AddToClassList("Selected");
@@ -57,7 +48,7 @@ namespace Metamatic.Framework
             /* Capture click at indicator */
             void ClickHandler(MouseUpEvent evt)
             {
-                overlay.core.DeselectObject(selectedObject);
+                m_Overlay.core.DeselectObject(selectedObject);
             }
             indicator.RegisterCallback<MouseUpEvent>(ClickHandler);
             
@@ -69,12 +60,12 @@ namespace Metamatic.Framework
                 /* Create bounds rect */
                 boundsRect = new VisualElement();
                 boundsRect.AddToClassList("Bounds");
-                overlay.root.Add(boundsRect);
+                m_Overlay.root.Add(boundsRect);
                 boundsRect.style.position = Position.Absolute;
                 /* Create update loop to update bounds rect for selected object */
                 trackBounds = PlayerLoop.EachFrame(() =>
                 {
-                    if (selectedObject == null || overlay.CameraService == null || overlay.CameraService.camera == null)
+                    if (selectedObject == null || m_Overlay.CameraService == null || m_Overlay.CameraService.camera == null)
                     {
                         boundsRect.style.display = DisplayStyle.None;
                         return;
@@ -82,12 +73,12 @@ namespace Metamatic.Framework
                     var bounds = renderer.bounds;
                     
                     /* Convert world bounds to screen space */
-                    var camera = overlay.CameraService.camera;
+                    var camera = m_Overlay.CameraService.camera;
                     var screenMin = camera.WorldToScreenPoint(bounds.min);
                     var screenMax = camera.WorldToScreenPoint(bounds.max);
                     
-                    var panelBoundsMin = RuntimePanelUtils.ScreenToPanel(overlay.root.panel, new Vector2(screenMin.x, Screen.height - screenMin.y));
-                    var panelBoundsMax = RuntimePanelUtils.ScreenToPanel(overlay.root.panel, new Vector2(screenMax.x, Screen.height - screenMax.y));
+                    var panelBoundsMin = RuntimePanelUtils.ScreenToPanel(m_Overlay.root.panel, new Vector2(screenMin.x, Screen.height - screenMin.y));
+                    var panelBoundsMax = RuntimePanelUtils.ScreenToPanel(m_Overlay.root.panel, new Vector2(screenMax.x, Screen.height - screenMax.y));
                     var height = panelBoundsMin.y - panelBoundsMax.y;
                     boundsRect.style.left = panelBoundsMin.x;
                     boundsRect.style.top = panelBoundsMin.y - height;
@@ -104,7 +95,7 @@ namespace Metamatic.Framework
             m_Container.Remove(item);
             if (boundsRect != null)
             {
-                overlay.root.Remove(boundsRect);
+                m_Overlay.root.Remove(boundsRect);
             }
         }
     }

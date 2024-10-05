@@ -1,6 +1,31 @@
+:root {
+    --MetamaticUIKit_TextColor: #f0f0f0;
+    --MetamaticUIKit_BackgroundColor: #1a1a1a;
+    --MetamaticUIKit_BorderColor: #282828;
+    --MetamaticUIKit_PanelBackgroundColor: #2a2a2a;
+    --MetamaticUIKit_IndicatorUnactiveColor: #4d4d4d;
+    --MetamaticUIKit_IndicatorActiveColor: #1bffdd;
+}
+
+/* Common styles */
+
+.MetamaticUIKit_PaddedContent {
+    padding: 6px;
+}
+
+.MetamaticUIKit_VerticalLayout {
+    flex-direction: column;
+    padding-bottom: -6px !important;
+}
+
+.MetamaticUIKit_VerticalLayout > * {
+    margin: 0 0 6px 0;
+}
+
+/* KeyValueList */
 .MetamaticUIKit_KeyValueList {
     flex-direction: column;
-    padding: 6px 0 0 0;
+    padding: 0 0 0 0;
 }
 
 .MetamaticUIKit_KeyValueList .MetamaticUIKit_KeyValue {
@@ -18,4 +43,67 @@
 .MetamaticUIKit_KeyValueList .MetamaticUIKit_KeyValue .MetamaticUIKit_KeyValueValue {
     flex-grow: 1;
     flex-shrink: 1;
+}
+
+/* Items list */
+.MetamaticUIKit_ItemsList {
+    flex-direction: column;
+    padding: 0;
+}
+
+.MetamaticUIKit_ItemsList .MetamaticUIKit_Item {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+    border-radius: 3px;
+    color: var(--MetamaticUIKit_TextColor);
+}
+
+.MetamaticUIKit_ItemsList .MetamaticUIKit_Item .MetamaticUIKit_ItemIndicator {
+    width: 4px;
+    height: 4px;
+    flex-basis: 4px;
+    max-width: 4px;
+    max-height: 4px;
+    background-color: var(--MetamaticUIKit_IndicatorUnactiveColor);
+    margin: 0 16px;
+}
+
+.MetamaticUIKit_ItemsList .MetamaticUIKit_Item.MetamaticUIKit_Selected .MetamaticUIKit_ItemIndicator {
+    background-color: var(--MetamaticUIKit_IndicatorActiveColor) !important;
+}
+
+.MetamaticUIKit_ItemsList .MetamaticUIKit_Item .MetamaticUIKit_ItemContent {
+    flex-grow: 1;
+}
+
+/* Box group */
+.MetamaticUIKit_BoxGroup {
+    flex-direction: column;
+    padding: 0;
+}
+
+.MetamaticUIKit_BoxGroup .MetamaticUIKit_BoxGroupHeader {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    color: var(--MetamaticUIKit_TextColor);
+}
+
+.MetamaticUIKit_BoxGroup .MetamaticUIKit_BoxGroupHeader Label {
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 6px 6px;
+    margin: 0;
+}
+
+.MetamaticUIKit_BoxGroup .MetamaticUIKit_BoxGroupContent {
+    flex-direction: column;
+    padding: 0;
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+    border-top-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
 }

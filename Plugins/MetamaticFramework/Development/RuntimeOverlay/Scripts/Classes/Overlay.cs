@@ -71,7 +71,8 @@ namespace Metamatic.Framework
         public UIDocument uiDocument { get; private set; }
 
         private ScrollView m_WoodsPanelContent;
-        private readonly Observable<Overlay> m_Context = new Observable<Overlay>();
+        private readonly Observable<Overlay> m_OverlayContext = new Observable<Overlay>();
+        private readonly Observable<RuntimeCore> m_CoreContext = new();
         private readonly Observable<PersistentState> m_PersistentState = new();
         private readonly Observable<string> m_CursorText = new();
         public VisualElement root { get; private set; }
@@ -101,7 +102,8 @@ namespace Metamatic.Framework
         protected override async UniTask Run(Ready ready, CancellationSignal signal)
         {
             m_Instance.Value = this;
-            m_Context.Value = this;
+            m_OverlayContext.Value = this;
+            m_CoreContext.Value = core;
             /* Load persistent state */
             await LoadPersistentState();
             
@@ -112,19 +114,14 @@ namespace Metamatic.Framework
 
             /* Create context provider */
             var contextProvider = new VisualElementContextProvider();
-            contextProvider.AddContext(m_Context);
+            contextProvider.AddContext(m_OverlayContext);
+            contextProvider.AddContext(m_CoreContext);
             uiDocument.rootVisualElement.Add(contextProvider);
             root = contextProvider;
 
             /* Add system tools */
             RegisterCursorTool(new SelectorCursorTool());
             SequentialHandler<string>.Subscribe(m_ActiveCursorTool.Watch, InternalActivateCursorTool);
-
-            /* Create cursor tools panel */
-            using var selectedObjectWidget = new SelectedObjectWidget(this);
-            using var spellsWidget = new SpellsWidget(this);
-            using var spellWidget = new SpellWidget(this);
-            using var functionsWidget = new FunctionsWidget(this);
             
             /* Build menu tree */
             var menuItemMethods = MetamaticMenuItemAttribute.GetMenuItemMethods();
