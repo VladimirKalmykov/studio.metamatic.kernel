@@ -10,6 +10,7 @@ namespace Metamatic
     public abstract class AsyncVisualElement: VisualElement
     {
         private CancellationSignalSource m_DetachSignalSource;
+        public CancellationSignal detachSignal => m_DetachSignalSource.Signal;
         public AsyncVisualElement()
         {
             RegisterCallback<AttachToPanelEvent>(OnAttachedToPanel);

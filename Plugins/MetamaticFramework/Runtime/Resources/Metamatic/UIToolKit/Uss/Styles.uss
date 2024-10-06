@@ -107,3 +107,33 @@
     border-bottom-left-radius: 3px;
     border-bottom-right-radius: 3px;
 }
+
+/* Table view */
+.MetamaticUIKit_TableView {
+    flex-direction: column;
+    padding: 0;
+}
+
+.MetamaticUIKit_TableView_Header {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+}
+
+.MetamaticUIKit_TableView_HeaderCol {
+    
+}
+
+.MetamaticUIKit_TableView_Row {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+}
+
+.MetamaticUIKit_TableView_Row .MetamaticUIKit_TableView_Cell {
+    flex-grow: 0;
+    flex-shrink: 0;
+    padding: 6px 0;
+    color: var(--MetamaticUIKit_TextColor);
+    overflow: hidden;
+}

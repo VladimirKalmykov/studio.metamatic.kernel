@@ -1269,5 +1269,57 @@ namespace Metamatic
 
             return radius;
         }
+        
+        /// <summary>
+        /// Almost the same as GetEllipseRadius, but with stretch factor. Bottom part of ellipse can be stretched.
+        /// </summary>
+        /// <param name="ellipseDiameter"></param>
+        /// <param name="angleDegrees"></param>
+        /// <param name="stretchFactor"></param>
+        /// <param name="referencePoint"></param>
+        /// <returns></returns>
+        public static float GetGravityEllipseRadius(Vector2 ellipseDiameter, float angleDegrees, 
+            float stretchFactor = 1.0f, 
+            AngleReference referencePoint = AngleReference.Right)
+        {
+            // Преобразуем угол в радианы
+            float angleRadians = Mathf.Deg2Rad * angleDegrees;
+
+            // Сместим угол в зависимости от точки отсчета
+            switch (referencePoint)
+            {
+                case AngleReference.Top:
+                    angleRadians -= Mathf.PI / 2; // Сдвиг на 90 градусов (сверху)
+                    break;
+                case AngleReference.Left:
+                    angleRadians -= Mathf.PI; // Сдвиг на 180 градусов (слева)
+                    break;
+                case AngleReference.Bottom:
+                    angleRadians -= 3 * Mathf.PI / 2; // Сдвиг на 270 градусов (снизу)
+                    break;
+            }
+
+            // Радиусы эллипса
+            float a = ellipseDiameter.x / 2f; // Радиус по ширине
+            float b = ellipseDiameter.y / 2f; // Радиус по высоте
+
+            // Вычисляем радиус эллипса под углом angleRadians
+            float cosTheta = Mathf.Cos(angleRadians);
+            float sinTheta = Mathf.Sin(angleRadians);
+
+            // Для углов между 180° и 360°, растягиваем нижнюю часть эллипса
+            if (angleDegrees is > 180f and < 360f)
+            {
+                // Чем ближе угол к 270°, тем сильнее растягиваем
+                float downFactor = Mathf.Lerp(1f, stretchFactor, Mathf.Abs(Mathf.Sin(Mathf.Deg2Rad * (angleDegrees - 180f))));
+                b *= downFactor; // Увеличиваем радиус по высоте
+            }
+
+            // Стандартный расчет радиуса эллипса
+            float radius = (a * b) / Mathf.Sqrt((b * cosTheta) * (b * cosTheta) + (a * sinTheta) * (a * sinTheta));
+
+            return radius;
+        }
+
     }
 }
