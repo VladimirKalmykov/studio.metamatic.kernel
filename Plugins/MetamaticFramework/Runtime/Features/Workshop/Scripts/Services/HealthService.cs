@@ -23,7 +23,7 @@ namespace Metamatic.Framework.Workshop
         public static void DieRequest(Object killer, Health health)
         {
             /* Create die effect */
-            Effect<DieEffect>.Instant(killer, health, default, true);
+            Effect<DieEffect>.Spawn(killer, health, default, true);
             /* Confirm die */
             health.Kill(killer);
         }

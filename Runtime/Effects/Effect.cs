@@ -160,7 +160,7 @@ namespace Metamatic.Effects
     public readonly struct Effect<T>: IDisposable, IEffect
     where T: struct
     {
-        public static void Instant(Object producer, Object consumer, T data, bool instant = false)
+        public static void Spawn(Object producer, Object consumer, T data, bool instant = false)
         {
             var source = InternalEffectSource<T>.Create(producer, consumer, data, instant);
             source.Release();

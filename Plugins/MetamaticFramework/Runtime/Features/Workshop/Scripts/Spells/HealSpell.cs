@@ -18,7 +18,7 @@ namespace Metamatic.Framework.Workshop
             if (Hp > 0)
             {
                 health.TakeHeal(Hp, OverHeal);
-                Effect<HealEffect>.Instant(spellCaster, health.gameObject, new HealEffect(Hp));
+                Effect<HealEffect>.Spawn(spellCaster, health.gameObject, new HealEffect(Hp));
             }
         }
 

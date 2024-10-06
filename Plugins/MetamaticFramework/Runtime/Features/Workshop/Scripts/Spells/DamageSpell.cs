@@ -23,7 +23,7 @@ namespace Metamatic.Framework.Workshop
                 return;
             }
             health.TakeDamage(spellCaster, ImpactType, Damage);
-            Effect<DamageEffect>.Instant(spellCaster, health.gameObject, new DamageEffect(ImpactType, Damage));
+            Effect<DamageEffect>.Spawn(spellCaster, health.gameObject, new DamageEffect(ImpactType, Damage));
         }
 
         public Exception CanCast(Object spellCaster, Object target)
