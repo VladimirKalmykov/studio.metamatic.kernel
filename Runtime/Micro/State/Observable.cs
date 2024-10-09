@@ -60,6 +60,16 @@ namespace Metamatic
         
         public abstract DisposableAction Watch(Action<TValue> handler);
         
+        /// <summary>
+        /// Watch lifecycle of the value. Every time value changed, cancellation signal will be called
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public DisposableAction WatchLifecycle(Func<TValue, CancellationSignal, UniTaskVoid> handler)
+        {
+            return SequentialHandler<TValue>.Subscribe(Watch, handler);
+        }
+        
         public Action SubscribeOnce(Action<TValue> handler)
         {
             Action<TValue> onceHandler = null;
@@ -173,7 +183,7 @@ namespace Metamatic
         {
             return true;
         }
-
+        
         public override DisposableAction Watch(Action<TValue> handler)
         {
             return Watch(handler, false);
@@ -190,16 +200,6 @@ namespace Metamatic
             {
                 RemoveListener(handler);
             });
-        }
-        
-        /// <summary>
-        /// Watch lifecycle of the value. Every time value changed, cancellation signal will be called
-        /// </summary>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public DisposableAction WatchLifecycle(Func<TValue, CancellationSignal, UniTaskVoid> handler)
-        {
-            return SequentialHandler<TValue>.Subscribe(Watch, handler);
         }
         
         /// <summary>

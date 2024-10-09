@@ -138,18 +138,6 @@ namespace Metamatic.Framework.Workshop
             return new DisposableAction(() => OnDamage -= handler);
         }
 
-        #region MyRegion
-
-        private void Update()
-        {
-            if (m_AutoHeal > 0)
-            {
-                currentHealth = Mathf.Min(maxHealth, currentHealth + m_AutoHeal * Time.deltaTime);
-            }
-        }
-
-        #endregion
-
         protected override UniTask OnEntityRun(Ready ready, CancellationSignal signal)
         {
             return ready();
@@ -159,6 +147,14 @@ namespace Metamatic.Framework.Workshop
         {
             currentHealth = maxHealth;
             m_IsKilled = false;
+        }
+
+        protected override void OnEntityUpdate(float deltaTime)
+        {
+            if (m_AutoHeal > 0)
+            {
+                currentHealth = Mathf.Min(maxHealth, currentHealth + m_AutoHeal * deltaTime);
+            }
         }
     }
 }

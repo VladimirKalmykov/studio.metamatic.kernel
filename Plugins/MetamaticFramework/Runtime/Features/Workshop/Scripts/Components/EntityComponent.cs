@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -7,6 +8,14 @@ namespace Metamatic.Framework.Workshop
     /// </summary>
     public abstract class EntityComponent: AsyncBehaviour
     {
+        private float m_LastTimeUpdate;
+        #region Mono
+
+        private void Start()
+        {
+            m_LastTimeUpdate = Time.time;
+        }
+        #endregion
         protected override async UniTask Run(Ready ready, CancellationSignal signal)
         {
             var entity = GetComponent<Entity>();
@@ -17,12 +26,21 @@ namespace Metamatic.Framework.Workshop
             }
 
             using var resetListener = entity.SubscribeToEntityReset(OnEntityReset);
+            using var updateListener = entity.SubscribeToEntityUpdate(InternalOnEntityUpdate);
             OnEntityRun(ready, signal);
             await signal;
+        }
+
+        private void InternalOnEntityUpdate()
+        {
+            var deltaTime = Time.time - m_LastTimeUpdate;
+            m_LastTimeUpdate = Time.time;
+            OnEntityUpdate(deltaTime);
         }
 
         protected abstract UniTask OnEntityRun(Ready ready, CancellationSignal signal);
 
         protected abstract void OnEntityReset();
+        protected abstract void OnEntityUpdate(float deltaTime);
     }
 }

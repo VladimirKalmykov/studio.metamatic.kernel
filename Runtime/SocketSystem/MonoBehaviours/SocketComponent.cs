@@ -6,19 +6,19 @@ using UnityEngine;
 
 namespace Metamatic.SocketSystem
 {
-    public abstract class Socket: MonoBehaviour
+    public abstract class SocketComponent: MonoBehaviour
     {
         
     }
     
-    public abstract class Socket<TOutput>: MonoBehaviour
+    public abstract class SocketComponent<T>: SocketComponent
     {
-        private static readonly ObservableList<Socket<TOutput>> m_Sockets = new ();
-        public static DisposableAction WatchEachLifecycle(Func<Socket<TOutput>, CancellationSignal, UniTaskVoid> handler)
+        private static readonly ObservableList<SocketComponent<T>> m_Sockets = new ();
+        public static DisposableAction WatchEachLifecycle(Func<SocketComponent<T>, CancellationSignal, UniTaskVoid> handler)
         {
             return m_Sockets.WatchEachLifecycle(handler);
         }
-        public delegate UniTask Plug(TOutput property, CancellationSignal cancellationSignal);
+        public delegate UniTask Plug(T property, CancellationSignal cancellationSignal);
         public readonly struct PlugRequest
         {
             public readonly Plug Plug;
@@ -136,6 +136,6 @@ namespace Metamatic.SocketSystem
             }
         }
 
-        public abstract UniTask<TOutput> GetSocketValue(CancellationSignal cancellationSignal);
+        public abstract UniTask<T> GetSocketValue(CancellationSignal cancellationSignal);
     }
 }

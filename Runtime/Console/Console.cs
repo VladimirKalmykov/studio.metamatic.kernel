@@ -170,6 +170,13 @@ namespace Metamatic
         
         [DebuggerHidden]
         [UsedImplicitly]
+        public static void Exception(string tag1, string tag2, Exception exception)
+        {
+            Log(tag1, tag2, exception.ToString(), LogLevel.Exception, exception.StackTrace);
+        }
+        
+        [DebuggerHidden]
+        [UsedImplicitly]
         public static void Exception(string tag1, string message)
         {
             Log(tag1, message, LogLevel.Exception);
