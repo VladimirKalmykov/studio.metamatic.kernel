@@ -432,6 +432,11 @@ namespace Metamatic
             m_OutOfPool.Remove(obj);
             if (m_ObjectsInPool.Count < m_Limit)
             {
+                // Auto reset object if it is resettable
+                if (obj is IResettable resettable)
+                {
+                    resettable.Reset();
+                }
                 m_ObjectsInPool.Enqueue(obj);
             }
             else

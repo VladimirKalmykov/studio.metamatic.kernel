@@ -18,6 +18,109 @@ namespace Metamatic
     public class Loop: IDisposable
     {
         #region Static
+
+        public readonly struct YieldAwaitable {
+            private readonly CancellationSignal m_Signal;
+            private readonly ContinuationQueue m_Queue;
+            public YieldAwaitable(ContinuationQueue queue)
+            {
+                m_Queue = queue;
+                m_Signal = default;
+            }
+            
+            public YieldAwaitable(ContinuationQueue queue, CancellationSignal signal)
+            {
+                m_Queue = queue;
+                m_Signal = signal;
+            }
+
+            public Awaiter GetAwaiter()
+            {
+                return new Awaiter(m_Queue, m_Signal);
+            }
+            
+            public UniTask ToUniTask()
+            {
+                var queue = m_Queue;
+                if (queue.IsDisposed)
+                {
+                    return UniTask.FromCanceled();
+                }
+                var tsc = SafeUniTaskCompletionSource.Create();
+                void HandleComplete()
+                {
+                    if (queue.IsDisposed)
+                    {
+                        tsc.TrySetCanceled();
+                        return;
+                    }
+                    tsc.TrySetResult();
+                }
+                m_Queue.Enqueue(HandleComplete);
+                return tsc.Task;
+            }
+            
+            public UniTask ToUniTask(CancellationSignal signal)
+            {
+                var queue = m_Queue;
+                if (m_Queue.IsDisposed)
+                {
+                    return UniTask.FromCanceled();
+                }
+                var tsc = SafeUniTaskCompletionSource.Create();
+                DisposableAction signalListener = signal.Register(() =>
+                {
+                    tsc.TrySetCanceled();
+                });
+                void HandleComplete()
+                {
+                    if (queue.IsDisposed)
+                    {
+                        signalListener.Dispose();
+                        tsc.TrySetCanceled();
+                        return;
+                    }
+                    signalListener.Dispose();
+                    tsc.TrySetResult();
+                }
+                m_Queue.Enqueue(HandleComplete);
+                return tsc.Task;
+            }
+            
+            public readonly struct Awaiter : ICriticalNotifyCompletion
+            {
+                private readonly ContinuationQueue m_Queue;
+                private readonly CancellationSignal m_Signal;
+                // ReSharper disable once InconsistentNaming
+                public bool IsCompleted => false;
+
+                public Awaiter(ContinuationQueue queue, CancellationSignal signal = default)
+                {
+                    m_Queue = queue;
+                    m_Signal = signal;
+                }
+
+                public void GetResult()
+                {
+                    if (m_Queue.IsDisposed || m_Signal is { CanBeCanceled: true, IsCancellationRequested: true })
+                    {
+                        throw new OperationCanceledException("Yield was cancelled");
+                    }
+                }
+
+                public void OnCompleted(Action continuation)
+                {
+                    m_Queue.Enqueue(continuation);
+                }
+
+                public void UnsafeOnCompleted(Action continuation)
+                {
+                    m_Queue.Enqueue(continuation);
+                }
+            }
+        }
+        
+
         // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
         public class TimeSource
         {
@@ -55,6 +158,7 @@ namespace Metamatic
         private readonly TimeSource m_TimeSource;
         private bool m_IsProcessing = false;
         private event Action OnDisposed;
+        private ContinuationQueue m_ContinuationQueue = new ContinuationQueue();
         public Loop(TimeSource timeSource = null)
         {
             m_TimeSource = timeSource ?? DefaultTimeSource;
@@ -62,6 +166,7 @@ namespace Metamatic
         }
         public void Update()
         {
+            m_ContinuationQueue.Run();
             m_IsProcessing = true;
             if (m_PendingAdditions.Count > 0)
             {
@@ -215,8 +320,9 @@ namespace Metamatic
             var active = true;
             bool Action(float delta)
             {
+                if (!active) return true;
                 action(delta);
-                return !active;
+                return false;
             }
 
             lock (m_LockArray)
@@ -233,6 +339,9 @@ namespace Metamatic
                 active = false;
             });
         }
+        
+        public YieldAwaitable Yield() => new (m_ContinuationQueue);
+        public YieldAwaitable Yield(CancellationSignal signal) => new (m_ContinuationQueue, signal);
         
         private void CleanUpArray(int firstRemovedIndex)
         {
@@ -254,9 +363,21 @@ namespace Metamatic
                 m_Tail = newTail;
             }
         }
+        
+        public void ResetTime() => m_LastUpdateTime = m_TimeSource.time;
+        
+        public void Reset()
+        {
+            m_Tail = 0;
+            m_LastUpdateTime = m_TimeSource.time;
+            m_DeltaTime = 0;
+            m_FirstRemovedIndex = -1;
+            m_ContinuationQueue.Clear();
+        }
 
         public void Dispose()
         {
+            m_ContinuationQueue.Clear();
             OnDisposed?.Invoke();
             OnDisposed = null;
         }

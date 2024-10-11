@@ -18,7 +18,7 @@ namespace Metamatic
         public TValue value { get; }
         public DisposableAction Watch(Action<TValue> handler, bool skipInitial = false);
     }
-    public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>
+    public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>, IResettable
     {
         private event Action<TValue> OnChange;
         private CancellationSignalSource m_DisposeCancellationTokenSource;
@@ -160,6 +160,13 @@ namespace Metamatic
         public abstract ref TValue GetRef();
 
         public abstract void SetValue(TValue value);
+
+        public void Reset()
+        {
+            SetValue(default);
+            // Reset all listeners
+            OnChange = null;
+        }
         
         public override void Dispose()
         {
@@ -174,7 +181,11 @@ namespace Metamatic
         private TValue m_Value;
         public delegate void MutateHandler(ref TValue value);
         
-        public Observable(TValue initialValue = default): base()
+        public Observable()
+        {
+            
+        }
+        public Observable(TValue initialValue)
         {
             m_Value = initialValue;
         }
