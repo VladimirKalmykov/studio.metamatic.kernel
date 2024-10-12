@@ -194,16 +194,26 @@ namespace Metamatic
             m_FirstRemovedIndex = -1;
             lock (m_LockArray)
             {
+                bool nextResult = false;
                 for (int i = 0; i < m_Tail; i++)
                 {
                     var action = m_Actions[i];
                     if (action != null)
                     {
-                        if (action(m_DeltaTime))
+                        try
+                        {
+                            nextResult = action(m_DeltaTime);
+                        } catch (Exception e)
+                        {
+                            Console.Exception("Loop", "Update", e);
+                            nextResult = false;
+                        }
+                        if (nextResult)
                         {
                             // Remove action
                             m_Actions[i] = null;
-                            if (m_FirstRemovedIndex == -1) {
+                            if (m_FirstRemovedIndex == -1)
+                            {
                                 m_FirstRemovedIndex = i;
                             }
                         }
