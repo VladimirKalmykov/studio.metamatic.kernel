@@ -14,183 +14,139 @@ namespace Metamatic.Tests
     public class LoopTests
     {
         private Loop m_Loop;
-        private float m_Time;
 
         [SetUp]
         public void Setup()
         {
-            var customTimeSource = new Loop.TimeSource(() => m_Time);
-            m_Loop = new Loop(customTimeSource);
+            m_Loop = new Loop();
         }
 
         [Test]
         public void AddAction_ShouldExecuteAction()
         {
-            m_Time = 0;
             m_Loop.Reset();
+            var callCount = 0;
             List<float> deltaTimeList = new List<float>();
-            var disposer = m_Loop.AddAction((deltaTime) =>
+            var disposer = m_Loop.AddAction(() =>
             {
-                deltaTimeList.Add(deltaTime);
+                callCount++;
             });
-            m_Time = 0;
-            m_Loop.Update();
-            m_Time = 1;
-            m_Loop.Update();
-            m_Time = 1.5f;
-            m_Loop.Update();
+            m_Loop.Run();
+            m_Loop.Run();
+            m_Loop.Run();
             disposer.Dispose();
-            m_Time = 2;
-            m_Loop.Update();
+            m_Loop.Run();
             
-            Assert.AreEqual(3, deltaTimeList.Count);
-            Assert.AreEqual(0, deltaTimeList[0]);
-            Assert.AreEqual(1, deltaTimeList[1]);
-            Assert.AreEqual(0.5f, deltaTimeList[2]);
+            Assert.AreEqual(3, callCount);
         }
         
         [Test]
         public void AddMultipleActions_ShouldExecuteActions()
         {
-            m_Time = 0;
             m_Loop.Reset();
-            List<float> deltaTimeList = new List<float>();
-            var disposer1 = m_Loop.AddAction((deltaTime) =>
+            var callCountA = 0;
+            var callCountB = 0;
+            var disposer1 = m_Loop.AddAction(() =>
             {
-                deltaTimeList.Add(deltaTime);
+                callCountA++;
             });
-            var disposer2 = m_Loop.AddAction((deltaTime) =>
+            var disposer2 = m_Loop.AddAction(() =>
             {
-                deltaTimeList.Add(deltaTime);
+                callCountB++;
             });
-            m_Time = 0;
-            m_Loop.Update();
-            m_Time = 1;
-            m_Loop.Update();
-            m_Time = 1.5f;
-            m_Loop.Update();
+            m_Loop.Run();
+            m_Loop.Run();
+            m_Loop.Run();
             disposer1.Dispose();
             disposer2.Dispose();
-            m_Time = 2;
-            m_Loop.Update();
+            m_Loop.Run();
             
-            Assert.AreEqual(6, deltaTimeList.Count);
-            Assert.AreEqual(0, deltaTimeList[0]);
-            Assert.AreEqual(0, deltaTimeList[1]);
-            Assert.AreEqual(1, deltaTimeList[2]);
-            Assert.AreEqual(1, deltaTimeList[3]);
-            Assert.AreEqual(0.5f, deltaTimeList[4]);
-            Assert.AreEqual(0.5f, deltaTimeList[5]);
+            Assert.AreEqual(3, callCountA);
+            Assert.AreEqual(3, callCountB);
         }
         
         [Test]
         public void AddNewActionsDuringLoop_ShouldLockItWell()
         {
-            m_Time = 0;
             m_Loop.Reset();
-            List<float> deltaTimeList = new List<float>();
+            var callCountA = 0;
+            var callCountB = 0;
             DisposableAction disposer1 = default;
             DisposableAction disposer2 = default;
-            disposer1 = m_Loop.AddAction((deltaTime) =>
+            disposer1 = m_Loop.AddAction(() =>
             {
-                deltaTimeList.Add(deltaTime);
-                if (deltaTime == 1f)
+                callCountA++;
+                if (callCountA == 1)
                 {
                     // Second action will not be executed
                     disposer2.Dispose();
                 }
             });
-            disposer2 = m_Loop.AddAction((deltaTime) =>
+            disposer2 = m_Loop.AddAction(() =>
             {
-                deltaTimeList.Add(deltaTime);
+                callCountB++;
             });
-            m_Time = 0;
-            m_Loop.Update();
-            m_Time = 1;
-            m_Loop.Update();
-            m_Time = 1.5f;
-            m_Loop.Update();
+            m_Loop.Run();
+            m_Loop.Run();
+            m_Loop.Run();
             disposer1.Dispose();
             
-            Assert.AreEqual(4, deltaTimeList.Count);
-            Assert.AreEqual(0, deltaTimeList[0]);
-            Assert.AreEqual(0, deltaTimeList[1]);
-            Assert.AreEqual(1, deltaTimeList[2]);
-            Assert.AreEqual(0.5f, deltaTimeList[3]);
+            Assert.AreEqual(3, callCountA);
+            Assert.AreEqual(0, callCountB);
         }
         
         [Test]
         public void WaitUntil_ShouldAutoRemoveAction()
         {
-            m_Time = 0;
             m_Loop.Reset();
-            List<float> deltaTimeList = new List<float>();
-            m_Loop.WaitUntil((deltaTime) =>
+            var callCount = 0;
+            m_Loop.WaitUntil(() =>
             {
-                deltaTimeList.Add(deltaTime);
-                return deltaTime > 0.3f;
+                callCount++;
+                return callCount == 3;
             }).Forget();
-            m_Time = 0;
-            m_Loop.Update();
-            m_Time = 0.1f;
-            m_Loop.Update();
-            m_Time = 0.5f;
-            m_Loop.Update();
-            m_Time = 1f;
-            m_Loop.Update();
+            m_Loop.Run();
+            m_Loop.Run();
+            m_Loop.Run();
+            m_Loop.Run();
             
-            Assert.AreEqual(3, deltaTimeList.Count);
-            Assert.AreEqual(0f, deltaTimeList[0]);
-            Assert.AreEqual(0.1f, deltaTimeList[1]);
-            Assert.AreEqual(0.4f, deltaTimeList[2]);
+            Assert.AreEqual(3, callCount);
         }
         
         [Test]
         public void WaitWhile_ShouldAutoRemoveAction()
         {
-            m_Time = 0;
             m_Loop.Reset();
-            List<float> deltaTimeList = new List<float>();
-            m_Loop.WaitWhile((deltaTime) =>
+            var callCount = 0;
+            m_Loop.WaitWhile(() =>
             {
-                deltaTimeList.Add(deltaTime);
-                return deltaTime < 0.3f;
+                callCount++;
+                return callCount < 3;
             }).Forget();
-            m_Time = 0;
-            m_Loop.Update();
-            m_Time = 0.1f;
-            m_Loop.Update();
-            m_Time = 0.5f;
-            m_Loop.Update();
-            m_Time = 1f;
-            m_Loop.Update();
+            m_Loop.Run();
+            m_Loop.Run();
+            m_Loop.Run();
+            m_Loop.Run();
             
-            Assert.AreEqual(3, deltaTimeList.Count);
-            Assert.AreEqual(0f, deltaTimeList[0]);
-            Assert.AreEqual(0.1f, deltaTimeList[1]);
-            Assert.AreEqual(0.4f, deltaTimeList[2]);
+            Assert.AreEqual(3, callCount);
         }
 
         [Test]
         public void WaitWhileTask_ShouldBeCompleted()
         {
-            m_Time = 0;
-            m_Loop.Reset();
-           var whileTask = m_Loop.WaitWhile((deltaTime) => deltaTime < 0.3f);
-           m_Time = 1f;
-           m_Loop.Update();
+           m_Loop.Reset();
+           var whileTask = m_Loop.WaitWhile(() => false);
+           m_Loop.Run();
            Assert.IsTrue(whileTask.Status == UniTaskStatus.Succeeded, "Task should be completed");
         }
 
         [UnityTest]
         public IEnumerator Yield_ShouldBeCompleted() => UniTask.ToCoroutine(async () =>
         {
-            m_Time = 0;
             m_Loop.Reset();
             UniTask.Delay(1000).ContinueWith(() =>
             {
-                m_Time = 1f;
-                m_Loop.Update();
+                m_Loop.Run();
             }).Forget();
             await m_Loop.Yield();
             Assert.Pass();
@@ -199,12 +155,10 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator YieldToUniTask_ShouldBeCompleted() => UniTask.ToCoroutine(async () =>
         {
-            m_Time = 0;
             m_Loop.Reset();
             UniTask.Delay(1000).ContinueWith(() =>
             {
-                m_Time = 1f;
-                m_Loop.Update();
+                m_Loop.Run();
             }).Forget();
             await m_Loop.Yield().ToUniTask();
             Assert.Pass();
@@ -213,7 +167,6 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator YieldToUniTaskWithCancellationToken_ShouldBeCancelled() => UniTask.ToCoroutine(async () =>
         {
-            m_Time = 0;
             m_Loop.Reset();
             var cancellationSignalSource = CancellationSignalSource.Create();
             UniTask.Delay(500).ContinueWith(() =>
@@ -222,8 +175,7 @@ namespace Metamatic.Tests
             }).Forget();
             UniTask.Delay(1000).ContinueWith(() =>
             {
-                m_Time = 1f;
-                m_Loop.Update();
+                m_Loop.Run();
             }).Forget();
             try
             {

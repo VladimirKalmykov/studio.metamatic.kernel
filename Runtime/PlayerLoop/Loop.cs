@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
+using JetBrains.Annotations;
 
 namespace Metamatic
 {
@@ -18,25 +19,74 @@ namespace Metamatic
     public class Loop: IDisposable
     {
         #region Static
-
         public readonly struct YieldAwaitable {
-            private readonly CancellationSignal m_Signal;
+            private readonly CancellationSignal m_Signal; // TODO: Do we need this signal?
             private readonly ContinuationQueue m_Queue;
+            /// <summary>
+            /// Directly convert from Custom awaiter
+            /// </summary>
+            [CanBeNull] private readonly ICriticalNotifyCompletion m_CustomAwaiter;
             public YieldAwaitable(ContinuationQueue queue)
             {
                 m_Queue = queue;
                 m_Signal = default;
+                m_CustomAwaiter = null;
             }
             
             public YieldAwaitable(ContinuationQueue queue, CancellationSignal signal)
             {
                 m_Queue = queue;
                 m_Signal = signal;
+                m_CustomAwaiter = null;
             }
-
+            
+            public YieldAwaitable(ICriticalNotifyCompletion customAwaiter)
+            {
+                m_Queue = null;
+                m_Signal = default;
+                m_CustomAwaiter = customAwaiter;
+            }
+            
             public Awaiter GetAwaiter()
             {
-                return new Awaiter(m_Queue, m_Signal);
+                return m_CustomAwaiter != null ? new Awaiter(GetCustomAwaiterResult, OnCustomAwaiterCompleted) : new Awaiter(GetContinuationQueueResult, OnContinuationQueueCompleted);
+            }
+            
+            private void GetCustomAwaiterResult()
+            {
+                if (m_Signal is { CanBeCanceled: true, IsCancellationRequested: true })
+                {
+                    throw new OperationCanceledException("Yield was cancelled");
+                }
+            }
+            
+            private void OnCustomAwaiterCompleted(Action continuation)
+            {
+                // ReSharper disable once PossibleNullReferenceException
+                m_CustomAwaiter.OnCompleted(continuation);
+            }
+
+            public Awaiter GetContinuationQueueAwaiter()
+            {
+                return new Awaiter(GetContinuationQueueResult, OnContinuationQueueCompleted);
+            }
+            
+            public Awaiter GetUniTaskAwaiter()
+            {
+                return new Awaiter(GetContinuationQueueResult, OnContinuationQueueCompleted);
+            }
+            
+            public void GetContinuationQueueResult()
+            {
+                if (m_Queue.IsDisposed || m_Signal is { CanBeCanceled: true, IsCancellationRequested: true })
+                {
+                    throw new OperationCanceledException("Yield was cancelled");
+                }
+            }
+            
+            public void OnContinuationQueueCompleted(Action continuation)
+            {
+                m_Queue.Enqueue(continuation);
             }
             
             public UniTask ToUniTask()
@@ -89,82 +139,65 @@ namespace Metamatic
             
             public readonly struct Awaiter : ICriticalNotifyCompletion
             {
-                private readonly ContinuationQueue m_Queue;
-                private readonly CancellationSignal m_Signal;
+                private readonly Action m_GetResult;
+                private readonly Action<Action> m_OnCompleted;
                 // ReSharper disable once InconsistentNaming
                 public bool IsCompleted => false;
 
-                public Awaiter(ContinuationQueue queue, CancellationSignal signal = default)
+                public Awaiter(Action getResult, Action<Action> onCompleted)
                 {
-                    m_Queue = queue;
-                    m_Signal = signal;
+                    m_GetResult = getResult;
+                    m_OnCompleted = onCompleted;
                 }
 
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public void GetResult()
                 {
-                    if (m_Queue.IsDisposed || m_Signal is { CanBeCanceled: true, IsCancellationRequested: true })
-                    {
-                        throw new OperationCanceledException("Yield was cancelled");
-                    }
+                    m_GetResult();
                 }
 
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public void OnCompleted(Action continuation)
                 {
-                    m_Queue.Enqueue(continuation);
+                    m_OnCompleted(continuation);
                 }
 
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public void UnsafeOnCompleted(Action continuation)
                 {
-                    m_Queue.Enqueue(continuation);
+                    m_OnCompleted(continuation);
                 }
             }
         }
         
 
-        // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-        public class TimeSource
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static float DefaultTimeGetter()
-            {
-                return UnityEngine.Time.time;
-            }
-            public virtual float time => m_TimeGetter();
-            
-            private readonly Func<float> m_TimeGetter;
-            
-            public TimeSource(Func<float> timeGetter = null)
-            {
-                m_TimeGetter = timeGetter ?? DefaultTimeGetter;
-            }
-        }
+        
         private static readonly TimeSource DefaultTimeSource = new TimeSource();
         #endregion
         #if DEBUG
         // ReSharper disable once InconsistentNaming
         // ReSharper disable once MemberCanBePrivate.Global
-        public System.Func<float, bool>[] m_Actions = new System.Func<float, bool>[15];
+        public System.Func<bool>[] m_Actions = new System.Func<bool>[15];
         #else
-        private System.Func<float, bool>[] m_Actions = new System.Func<float, bool>[15];
+        private System.Func<bool>[] m_Actions = new System.Func<bool>[15];
         #endif
         
-        private readonly List<Func<float, bool>> m_PendingAdditions = new List<Func<float, bool>>();
+        private readonly List<Func<bool>> m_PendingAdditions = new List<Func<bool>>();
         
         private readonly object m_LockArray = new object();
         private int m_Tail = 0;
-        private float m_LastUpdateTime;
-        private float m_DeltaTime;
         private int m_FirstRemovedIndex;
         private readonly TimeSource m_TimeSource;
         private bool m_IsProcessing = false;
         private event Action OnDisposed;
         private ContinuationQueue m_ContinuationQueue = new ContinuationQueue();
+        
         public Loop(TimeSource timeSource = null)
         {
             m_TimeSource = timeSource ?? DefaultTimeSource;
-            m_LastUpdateTime = m_TimeSource.time;
         }
-        public void Update()
+        
+        public void Run()
         {
             m_ContinuationQueue.Run();
             m_IsProcessing = true;
@@ -189,8 +222,6 @@ namespace Metamatic
                 m_IsProcessing = false;
                 return;
             }
-            m_DeltaTime = m_TimeSource.time - m_LastUpdateTime;
-            m_LastUpdateTime = m_TimeSource.time;
             m_FirstRemovedIndex = -1;
             lock (m_LockArray)
             {
@@ -202,7 +233,7 @@ namespace Metamatic
                     {
                         try
                         {
-                            nextResult = action(m_DeltaTime);
+                            nextResult = action();
                         } catch (Exception e)
                         {
                             Console.Exception("Loop", "Update", e);
@@ -232,7 +263,7 @@ namespace Metamatic
             m_IsProcessing = false;
         }
         
-        public UniTask WaitUntil(System.Func<float, bool> action, CancellationSignal cancellationSignal = default)
+        public UniTask WaitUntil(System.Func<bool> action, CancellationSignal cancellationSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
 
@@ -241,7 +272,7 @@ namespace Metamatic
                 tsc.TrySetCanceled();
             }
             OnDisposed += HandleDispose;
-            bool WaitUntilAction(float deltaTime)
+            bool WaitUntilAction()
             {
                 if (cancellationSignal.IsCancellationRequested)
                 {
@@ -249,7 +280,7 @@ namespace Metamatic
                     tsc.TrySetCanceled();
                     return true;
                 }
-                if (action(deltaTime))
+                if (action())
                 {
                     OnDisposed -= HandleDispose;
                     tsc.TrySetResult();
@@ -279,7 +310,7 @@ namespace Metamatic
             return tsc.Task;
         }
         
-        public UniTask WaitWhile(System.Func<float, bool> action, CancellationSignal cancellationSignal = default)
+        public UniTask WaitWhile(System.Func<bool> action, CancellationSignal cancellationSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
             void HandleDispose()
@@ -287,7 +318,7 @@ namespace Metamatic
                 tsc.TrySetCanceled();
             }
             OnDisposed += HandleDispose;
-            bool WaitWhileAction(float deltaTime)
+            bool WaitWhileAction()
             {
                 if (cancellationSignal.IsCancellationRequested)
                 {
@@ -295,7 +326,7 @@ namespace Metamatic
                     tsc.TrySetCanceled();
                     return true;
                 }
-                if (!action(deltaTime))
+                if (!action())
                 {
                     OnDisposed -= HandleDispose;
                     tsc.TrySetResult();
@@ -325,13 +356,13 @@ namespace Metamatic
             return tsc.Task;
         }
         
-        public DisposableAction AddAction(System.Action<float> action)
+        public DisposableAction AddAction(System.Action action)
         {
             var active = true;
-            bool Action(float delta)
+            bool Action()
             {
-                if (!active) return true;
-                action(delta);
+                if (!active) return true; // TODO: Decide about this moment. Should we prevent of executing action right after disposing within the same loop?
+                action();
                 return false;
             }
 
@@ -348,6 +379,58 @@ namespace Metamatic
             {
                 active = false;
             });
+        }
+
+        public UniTask Delay(TimeSpan timeSpan, CancellationSignal cancellationSignal = default)
+        {
+            return Delay((float) timeSpan.TotalSeconds, cancellationSignal);
+        }
+        
+        public UniTask Delay(float seconds, CancellationSignal cancellationSignal = default)
+        {
+            var tsc = SafeUniTaskCompletionSource.Create();
+            void HandleDispose()
+            {
+                tsc.TrySetCanceled();
+            }
+            OnDisposed += HandleDispose;
+            var startTime = m_TimeSource.time;
+            bool DelayAction()
+            {
+                if (cancellationSignal.IsCancellationRequested)
+                {
+                    OnDisposed -= HandleDispose;
+                    tsc.TrySetCanceled();
+                    return true;
+                }
+                if (m_TimeSource.time - startTime >= seconds)
+                {
+                    OnDisposed -= HandleDispose;
+                    tsc.TrySetResult();
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (m_IsProcessing)
+            {
+                m_PendingAdditions.Add(DelayAction);
+            }
+            else
+            {
+                lock (m_LockArray)
+                {
+                    if (m_Tail == m_Actions.Length)
+                    {
+                        System.Array.Resize(ref m_Actions, m_Actions.Length * 2);
+                    }
+                    m_Actions[m_Tail] = DelayAction;
+                    m_Tail++;
+                }
+            }
+            
+            return tsc.Task;
         }
         
         public YieldAwaitable Yield() => new (m_ContinuationQueue);
@@ -374,13 +457,9 @@ namespace Metamatic
             }
         }
         
-        public void ResetTime() => m_LastUpdateTime = m_TimeSource.time;
-        
         public void Reset()
         {
             m_Tail = 0;
-            m_LastUpdateTime = m_TimeSource.time;
-            m_DeltaTime = 0;
             m_FirstRemovedIndex = -1;
             m_ContinuationQueue.Clear();
         }

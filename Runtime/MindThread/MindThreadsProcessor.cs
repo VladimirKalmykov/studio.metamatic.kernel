@@ -20,12 +20,16 @@ namespace Metamatic
         /// <summary>
         /// Contains currently active thread.
         /// </summary>
-        private IMindThread m_ActiveThread;
+        private readonly IMindThread m_ActiveThread;
         /// <summary>
         /// Should be assigned by the constructor parameter.
         /// It shows the level of detail of the object. Depends on it the AI updates are done.
         /// </summary>
         private ObservableReadOnly<LODLevel> m_LODLevel;
+        /// <summary>
+        /// Can be assigned by the constructor parameter.
+        /// </summary>
+        private IEventLoop<PlayerLoopTiming> m_PlayerLoop;
         
         private readonly CancellationSignalSource m_DisposeSignalSource;
         private CancellationSignalSource m_PlaybackCancellationSignalSource;
@@ -33,10 +37,11 @@ namespace Metamatic
         private float m_LogicUpdateFrequency;
         private float m_LastLogicUpdateTime;
         
-        public MindThreadsProcessor(IMindThread mindThread, ObservableReadOnly<LODLevel> lodLevel)
+        public MindThreadsProcessor(IMindThread mindThread, ObservableReadOnly<LODLevel> lodLevel, IEventLoop<PlayerLoopTiming> playerLoop)
         {
             m_ActiveThread = mindThread;
             m_LODLevel = lodLevel;
+            m_PlayerLoop = playerLoop;
             m_DisposeSignalSource = CancellationSignalSource.Create();
         }
 
@@ -59,7 +64,9 @@ namespace Metamatic
 
         private async UniTaskVoid AsyncInit(CancellationSignal cancellationSignal)
         {
-            m_LastLogicUpdateTime = Time.time;
+            m_LastLogicUpdateTime = m_PlayerLoop.time;
+            // Activate the root thread
+            m_ActiveThread.Activate(cancellationSignal);
             // Subscribe to the LOD level changes
             using var lodLevelSubscription = m_LODLevel.Watch(OnLODLevelChanged);
             await using var eventLoop = StartEventLoop();
@@ -76,25 +83,24 @@ namespace Metamatic
         {
             return MicroOperation.Call(async (CancellationSignal signal) =>
             {
-                m_LastLogicUpdateTime = Time.time;
-                PlayerLoopHelper.AddAction(PlayerLoopTiming.Update, new LoopItem(() =>
+                m_LastLogicUpdateTime = m_PlayerLoop.time;
+                using var subscribeToLoop = m_PlayerLoop.AddAction(PlayerLoopTiming.Update, () =>
                 {
                     // ReSharper disable once AccessToModifiedClosure
-                    if (Time.time - m_LastLogicUpdateTime >= m_LogicUpdateFrequency)
+                    if (m_PlayerLoop.time - m_LastLogicUpdateTime >= m_LogicUpdateFrequency)
                     {
-                        m_LastLogicUpdateTime = Time.time;
+                        m_LastLogicUpdateTime = m_PlayerLoop.time;
                         // Update the active thread
                         m_ActiveThread.Update();
                     }
-                    return signal.IsCancellationRequested;
-                }));
+                });
                 while (!signal.IsCancellationRequested)
                 {
                     // Weighting must be done on post late update
-                    await UniTask.Yield(PlayerLoopTiming.PostLateUpdate);
+                    await m_PlayerLoop.Yield(PlayerLoopTiming.PostLateUpdate);
                     signal.ThrowIfCancellationRequested();
                     m_ActiveThread.Weighting();
-                    await PlayerLoop.Delay(m_WeightingUpdateFrequency, timing: PlayerLoopTiming.FixedUpdate, signal: signal);
+                    await m_PlayerLoop.Delay(PlayerLoopTiming.FixedUpdate, m_WeightingUpdateFrequency, signal);
                 }
             });
         }

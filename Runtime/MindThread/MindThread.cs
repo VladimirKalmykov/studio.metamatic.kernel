@@ -4,17 +4,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public interface IMindThread: IDisposable
-    {
-        /// <summary>
-        /// Thread doesn't removed when reached zero weight
-        /// </summary>
-        public bool longLived { get; set; }
-        public UniTask Activate(CancellationSignal cancellationSignal);
-        public void Update();
-        public float GetWeight();
-        public void Weighting();
-    }
+    
     public abstract class MindThread<TContext>: IMindThread
     {
         public readonly TContext Context;
@@ -23,6 +13,10 @@ namespace Metamatic
         /// Children threads
         /// </summary>
         private List<IMindThread> m_ChildThreads;
+        /// <summary>
+        /// Reference to the root thread
+        /// </summary>
+        public IMindThread rootThread { get; set; }
 
         private List<IMindThread> childThreads => m_ChildThreads ??= ParamLessPool<List<IMindThread>>.GetShared();
         /// <summary>
@@ -30,6 +24,7 @@ namespace Metamatic
         /// </summary>
         private Observable<IMindThread> m_ActiveChildThread;
         private Observable<IMindThread> activeChildThread => m_ActiveChildThread ??= ParamLessPool<Observable<IMindThread>>.GetShared();
+        public IMindThread activeThread => activeChildThread.value;
         /// <summary>
         /// List of threads to remove (used in weighing)
         /// </summary>
@@ -45,6 +40,7 @@ namespace Metamatic
         /// </summary>
         private bool m_Activated;
         public bool longLived { get; set; }
+        public event Action<IMindThread> OnLoopEnd;
         /// <summary>
         /// 
         /// </summary>
@@ -56,22 +52,36 @@ namespace Metamatic
         
         public DisposableAction AddChildThread(IMindThread thread)
         {
+            thread.rootThread = this.rootThread ?? this;
             childThreads.Add(thread);
             Weighting();
             return new DisposableAction(() =>
             {
-                thread.Dispose();
-                
-                // Use trick to remove the thread from the list more efficiently
-                var index = childThreads.IndexOf(thread);
-                var last = childThreads.Count - 1;
-                if (index != -1)
-                {
-                    childThreads[index] = childThreads[last];
-                    childThreads.RemoveAt(last);
-                }
-                Weighting();
+                RemoveChildThread(thread);
             });
+        }
+        
+        public void RemoveChildThread(IMindThread thread, bool skipCheckActive = false)
+        {
+            var index = childThreads.IndexOf(thread);
+            var last = childThreads.Count - 1;
+            if (index != -1)
+            {
+                var childThread = childThreads[index];
+                var isCurrent = skipCheckActive && childThread == activeChildThread.value;
+                if (isCurrent)
+                {
+                    // If removing the active thread, set the active thread to null
+                    activeChildThread.SetUniqValue(null);
+                }
+                childThread.Dispose();
+                childThreads[index] = childThreads[last];
+                childThreads.RemoveAt(last);
+                if (isCurrent)
+                {
+                    Weighting();
+                }
+            }
         }
 
         public async UniTask Activate(CancellationSignal cancellationSignal)
@@ -84,6 +94,7 @@ namespace Metamatic
                     foreach (var thread in nextChildThreads)
                     {
                         // All threads created by CreateLongLiveThreads are long lived
+                        thread.rootThread = this.rootThread ?? this;
                         thread.longLived = true;
                         childThreads.Add(thread);
                     }
@@ -120,7 +131,7 @@ namespace Metamatic
         /// <param name="deltaTime"></param>
         public void Update()
         {
-            updateLoop.Update();
+            updateLoop.Run();
             // Update active child thread
             activeChildThread.value?.Update();
         }
@@ -171,19 +182,68 @@ namespace Metamatic
                 }
             }
             
+            bool wasActiveThreadRemoved = false;
             foreach (var thread in threadsToRemove)
             {
-                childThreads.Remove(thread);
+                if (thread == activeChildThread.value)
+                {
+                    wasActiveThreadRemoved = true;
+                }
+                RemoveChildThread(thread, true);
             }
             threadsToRemove.Clear();
 
-            WeightingPostProcessing(nextActiveThread).Forget();
+            WeightingPostProcessing(nextActiveThread, wasActiveThreadRemoved).Forget();
+        }
+
+        public void LoopEnd(IMindThread topThread)
+        {
+            if (rootThread != null)
+            {
+                rootThread.LoopEnd(topThread);
+            }
+            else
+            {
+                // Notify the root thread that the loop is ended at specified child thread.
+                OnLoopEnd?.Invoke(topThread);
+            }
         }
         
-        private async UniTaskVoid WeightingPostProcessing(IMindThread nextActiveThread)
+        /// <summary>
+        /// Wait the moment when the bubbling of the loop reaches the top thread.
+        /// </summary>
+        /// <param name="cancellationSignal"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public UniTask WaitLoopEnd(CancellationSignal cancellationSignal = default)
         {
-            // Wait for the next frame to apply the changes.
-            await UniTask.Yield(PlayerLoopTiming.EarlyUpdate);
+            var tsc = SafeUniTaskCompletionSource.Create();
+            DisposableAction registration = default;
+            void OnLoopEndHandler(IMindThread topThread)
+            {
+                registration.Dispose();
+                tsc.TrySetResult();
+            }
+            OnLoopEnd += OnLoopEndHandler;
+            registration = cancellationSignal.Register(() =>
+            {
+                registration.Dispose();
+                OnLoopEnd -= OnLoopEndHandler;
+                tsc.TrySetCanceled();
+            });
+            return tsc.Task;
+        }
+
+        private async UniTaskVoid WeightingPostProcessing(IMindThread nextActiveThread, bool wasActiveThreadRemoved)
+        {
+            // If the active thread was not removed, wait for the next frame to apply the changes.
+            if (!wasActiveThreadRemoved)
+            {
+                // Wait for the next frame to apply the changes.
+                await UniTask.Yield(PlayerLoopTiming.EarlyUpdate);
+            }
+            // Otherwise, apply the changes immediately.
+            
             // Apply the changes. Replace the active thread and remove the threads that are not needed anymore.
             activeChildThread.SetUniqValue(nextActiveThread);
             if (nextActiveThread != null)
@@ -191,6 +251,10 @@ namespace Metamatic
                 // Wait for the post late update to perform weighting in children threads.
                 await UniTask.Yield(PlayerLoopTiming.PostLateUpdate);
                 nextActiveThread.Weighting();
+            }
+            else
+            {
+                rootThread?.LoopEnd(this);
             }
         }
         

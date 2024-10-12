@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
+using UnityEngine.TestTools;
 
 namespace Metamatic.Tests.PlayMode
 {
@@ -91,14 +92,34 @@ namespace Metamatic.Tests.PlayMode
             }
         }
 
+        private float m_Time = 0f;
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+        [UnityTest]
         public IEnumerator EatSleepLazeTest() => UniTask.ToCoroutine(async () =>
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
-            var eventLoop = new EventLoop<PlayerLoopTiming>();
+            var timeSource = new TimeSource(() => m_Time);
+            var eventLoop = new EventLoop<PlayerLoopTiming>(timeSource);
             var animal = new TestAnimal();
             var rootThread = new EatSleepLazeMindThread(animal);
             var observableLodLevel = new Observable<LODLevel>(LODLevel.High);
-            var processor = new MindThreadsProcessor(rootThread, observableLodLevel);
+            var processor = new MindThreadsProcessor(rootThread, observableLodLevel, eventLoop);
             processor.Run();
+            
+            // Make animal hungry
+            animal.hunger = 1f;
+            // Play loop to run weighting
+            eventLoop.RunCycle();
+            // Play loop again to activate most heaviest thread
+            eventLoop.RunCycle();
+            // Wait loop end
+            await rootThread.WaitLoopEnd();
+            
+            // Active thread should be EatMindThread
+            Assert.IsTrue(rootThread.activeThread is EatMindThread);
+            
+            m_Time += 0.1f;
         });
     }
 }
