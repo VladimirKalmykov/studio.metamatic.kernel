@@ -13,6 +13,7 @@ namespace Metamatic.Tests.PlayMode
         {
             public float hunger = 0f;
             public float fatigue = 0f;
+            public float boredom = 0f;
         }
         public class SleepMindThread : MindThread<TestAnimal>
         {
@@ -65,6 +66,67 @@ namespace Metamatic.Tests.PlayMode
             }
         }
         
+        public class FunHuntingMindThread : MindThread<TestAnimal>
+        {
+            public FunHuntingMindThread(TestAnimal context) : base(context)
+            {
+            }
+
+            public override float GetWeight()
+            {
+                // Animal prefer to hunt when it's bored and hungry
+                return Context.hunger;
+            }
+
+            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            {
+                return UniTask.CompletedTask;
+            }
+        }
+        
+        public class PlayWithOwnTailMindThread : MindThread<TestAnimal>
+        {
+            public PlayWithOwnTailMindThread(TestAnimal context) : base(context)
+            {
+            }
+
+            public override float GetWeight()
+            {
+                // Animal prefer to play with own tail when it's bored and not hungry
+                return Context.boredom;
+            }
+
+            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            {
+                return UniTask.CompletedTask;
+            }
+        }
+        
+        public class BoredomMindThread : MindThread<TestAnimal>
+        {
+            public BoredomMindThread(TestAnimal context) : base(context)
+            {
+            }
+
+            public override float GetWeight()
+            {
+                return Context.boredom > 0.5f ? (Context.boredom - 0.5f) / 0.5f : 0f;
+            }
+
+            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            {
+                return UniTask.CompletedTask;
+            }
+            
+            protected override IEnumerable<IMindThread> CreateChildrenThreads()
+            {
+                return new IMindThread[1]
+                {
+                    new LazeMindThread(Context)
+                };
+            }
+        }
+        
         public class EatSleepLazeMindThread : MindThread<TestAnimal>
         {
             public EatSleepLazeMindThread(TestAnimal context) : base(context)
@@ -96,7 +158,7 @@ namespace Metamatic.Tests.PlayMode
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         [UnityTest]
-        public IEnumerator EatSleepLazeTest() => UniTask.ToCoroutine(async () =>
+        public IEnumerator EatSleepLazeTest_HungerToEatThread() => UniTask.ToCoroutine(async () =>
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             var timeSource = new TimeSource(() => m_Time);
@@ -118,8 +180,74 @@ namespace Metamatic.Tests.PlayMode
             
             // Active thread should be EatMindThread
             Assert.IsTrue(rootThread.activeThread is EatMindThread);
+        });
+        
+        [UnityTest]
+        public IEnumerator EatSleepLazeTest_HungerToEatAndThenToSleep() => UniTask.ToCoroutine(async () =>
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        {
+            m_Time = 0f;
+            var timeSource = new TimeSource(() => m_Time);
+            var eventLoop = new EventLoop<PlayerLoopTiming>(timeSource);
+            var animal = new TestAnimal();
+            var rootThread = new EatSleepLazeMindThread(animal);
+            var observableLodLevel = new Observable<LODLevel>(LODLevel.High);
+            var processor = new MindThreadsProcessor(rootThread, observableLodLevel, eventLoop);
+            processor.Run();
+            
+            // Make animal hungry
+            animal.hunger = 1f;
+            // Play loop to run weighting
+            eventLoop.RunCycle();
+            // Play loop again to activate most heaviest thread
+            eventLoop.RunCycle();
+            // Wait loop end
+            await rootThread.WaitLoopEnd();
+            // Active thread should be EatMindThread
+            Assert.IsTrue(rootThread.activeThread is EatMindThread);
+            // Satisfy hunger
+            animal.hunger = 0.1f;
+            // But getting tired
+            animal.fatigue = 0.75f;
+            // Increase time to replay wighting loop
+            m_Time += 0.3f;
+            eventLoop.RunCycle();
+            // Play loop to activate thread
+            eventLoop.RunCycle();
+            // Wait loop end
+            await rootThread.WaitLoopEnd();
+            
+            // Active thread should be EatMindThread
+            Assert.IsTrue(rootThread.activeThread is SleepMindThread);
             
             m_Time += 0.1f;
+        });
+
+        [UnityTest]
+        public IEnumerator LazyIfNotHungryAndNotTired() => UniTask.ToCoroutine(async () =>
+        {
+            m_Time = 0f;
+            var timeSource = new TimeSource(() => m_Time);
+            var eventLoop = new EventLoop<PlayerLoopTiming>(timeSource);
+            var animal = new TestAnimal();
+            var rootThread = new EatSleepLazeMindThread(animal);
+            var observableLodLevel = new Observable<LODLevel>(LODLevel.High);
+            var processor = new MindThreadsProcessor(rootThread, observableLodLevel, eventLoop);
+            processor.Run();
+            
+            // Make animal not hungry
+            animal.hunger = 0.1f;
+            // Make animal not tired
+            animal.fatigue = 0.1f;
+            // Play loop to run weighting
+            eventLoop.RunCycle();
+            // Play loop again to activate most heaviest thread
+            eventLoop.RunCycle();
+            // Wait loop end
+            await rootThread.WaitLoopEnd();
+            
+            // Active thread should be LazeMindThread
+            Assert.IsTrue(rootThread.activeThread is LazeMindThread);
         });
     }
 }

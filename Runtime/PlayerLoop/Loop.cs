@@ -174,13 +174,9 @@ namespace Metamatic
         
         private static readonly TimeSource DefaultTimeSource = new TimeSource();
         #endregion
-        #if DEBUG
         // ReSharper disable once InconsistentNaming
         // ReSharper disable once MemberCanBePrivate.Global
         public System.Func<bool>[] m_Actions = new System.Func<bool>[15];
-        #else
-        private System.Func<bool>[] m_Actions = new System.Func<bool>[15];
-        #endif
         
         private readonly List<Func<bool>> m_PendingAdditions = new List<Func<bool>>();
         
