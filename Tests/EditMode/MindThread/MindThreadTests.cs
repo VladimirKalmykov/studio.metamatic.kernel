@@ -93,7 +93,7 @@ namespace Metamatic.Tests.PlayMode
             public override float GetWeight()
             {
                 // Animal prefer to play with own tail when it's bored and not hungry
-                return Context.boredom;
+                return 0.1f;
             }
 
             protected override UniTask OnActivate(CancellationSignal cancellationSignal)
@@ -120,9 +120,10 @@ namespace Metamatic.Tests.PlayMode
             
             protected override IEnumerable<IMindThread> CreateChildrenThreads()
             {
-                return new IMindThread[1]
+                return new IMindThread[]
                 {
-                    new LazeMindThread(Context)
+                    new FunHuntingMindThread(Context),
+                    new PlayWithOwnTailMindThread(Context)
                 };
             }
         }
@@ -145,11 +146,12 @@ namespace Metamatic.Tests.PlayMode
 
             protected override IEnumerable<IMindThread> CreateChildrenThreads()
             {
-                return new IMindThread[3]
+                return new IMindThread[]
                 {
                     new SleepMindThread(Context),
                     new EatMindThread(Context),
-                    new LazeMindThread(Context)
+                    new LazeMindThread(Context),
+                    new BoredomMindThread(Context)
                 };
             }
         }
@@ -248,6 +250,41 @@ namespace Metamatic.Tests.PlayMode
             
             // Active thread should be LazeMindThread
             Assert.IsTrue(rootThread.activeThread is LazeMindThread);
+        });
+        
+        [UnityTest]
+        public IEnumerator BoredomAsAnExampleOfSubSubThreads_ShouldBeActivated() => UniTask.ToCoroutine(async () =>
+        {
+            m_Time = 0f;
+            var timeSource = new TimeSource(() => m_Time);
+            var eventLoop = new EventLoop<PlayerLoopTiming>(timeSource);
+            var animal = new TestAnimal();
+            var rootThread = new EatSleepLazeMindThread(animal);
+            var observableLodLevel = new Observable<LODLevel>(LODLevel.High);
+            var processor = new MindThreadsProcessor(rootThread, observableLodLevel, eventLoop);
+            processor.Run();
+            
+            // Make animal not hungry
+            animal.hunger = 0.2f;
+            // Make animal not tired
+            animal.fatigue = 0.1f;
+            // Make animal bored
+            animal.boredom = 1f;
+            // Play loop to run weighting
+            eventLoop.RunCycle();
+            // Play loop again to activate most heaviest thread
+            eventLoop.RunCycle();
+            // Play loop to weighting sub threads
+            eventLoop.RunCycle();
+            // Play loop again to activate most heaviest thread
+            eventLoop.RunCycle();
+            // Wait loop end
+            await rootThread.WaitLoopEnd();
+            
+            // Active thread should be BoredomMindThread
+            Assert.IsTrue(rootThread.activeThread is BoredomMindThread, "Direct active thread should be BoredomMindThread");
+            // Active thread should have FunHuntingMindThread as active sub thread
+            Assert.IsTrue(rootThread.topThread is FunHuntingMindThread, "Top active thread should be FunHuntingMindThread");
         });
     }
 }

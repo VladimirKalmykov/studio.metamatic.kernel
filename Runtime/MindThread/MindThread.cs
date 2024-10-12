@@ -25,6 +25,8 @@ namespace Metamatic
         private Observable<IMindThread> m_ActiveChildThread;
         private Observable<IMindThread> activeChildThread => m_ActiveChildThread ??= ParamLessPool<Observable<IMindThread>>.GetShared();
         public IMindThread activeThread => activeChildThread.value;
+        public IMindThread topThread { get; private set; }
+
         /// <summary>
         /// List of threads to remove (used in weighing)
         /// </summary>
@@ -204,6 +206,7 @@ namespace Metamatic
             }
             else
             {
+                this.topThread = topThread;
                 // Notify the root thread that the loop is ended at specified child thread.
                 OnLoopEnd?.Invoke(topThread);
             }
