@@ -19,6 +19,19 @@ namespace Metamatic
         public static SpellMetadata GetMetadata(System.Type spellType)
         {
             var spellAttribute = (SpellAttribute)System.Attribute.GetCustomAttribute(spellType, typeof(SpellAttribute));
+            if (spellAttribute == null)
+            {
+                global::Metamatic.Console.Exception("Spell", $"Spell {spellType.Name} does not have SpellAttribute");
+                
+                return new SpellMetadata
+                {
+                    SpellType = spellType,
+                    Name = spellType.Name,
+                    Description = "",
+                    IconPath = null,
+                    Category = "Common",
+                };
+            }
             return new SpellMetadata
             {
                 SpellType = spellType,

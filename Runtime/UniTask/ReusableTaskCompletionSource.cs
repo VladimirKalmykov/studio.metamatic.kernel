@@ -159,7 +159,7 @@ namespace Metamatic
             }
         }
         
-        private void InternalReset()
+        private void InternalReset(bool cancel = false)
         {
 #if DEBUG
             /*
@@ -170,8 +170,15 @@ namespace Metamatic
             */
             if (core.UnsafeGetStatus() == UniTaskStatus.Pending)
             {
-                UnityEngine.Debug.LogError($"Task status is {core.UnsafeGetStatus()}. You must call SetResult, SetException, or SetCanceled in ReusableUniTaskCompletionSource before Reset.");
-                TrySetException(new Exception("You must call SetResult, SetException, or SetCanceled in ReusableUniTaskCompletionSource before Reset."));
+                if (cancel)
+                {
+                    TrySetCanceled();
+                }
+                else
+                {
+                    UnityEngine.Debug.LogError($"Task status is {core.UnsafeGetStatus()}. You must call SetResult, SetException, or SetCanceled in ReusableUniTaskCompletionSource before Reset.");
+                    TrySetException(new Exception("You must call SetResult, SetException, or SetCanceled in ReusableUniTaskCompletionSource before Reset."));
+                }
             }
 #endif
             continuations?.Clear();
@@ -192,10 +199,11 @@ namespace Metamatic
         /// <summary>
         /// When you want to reuse this task completion source right now, call this method. It resets the state and start tracking again.
         /// </summary>
-        public void Reset()
+        /// <param name="cancel">Cancel current task if it is pending</param>
+        public void Reset(bool cancel = false)
         {
             TaskTracker.RemoveTracking(this);
-            InternalReset();
+            InternalReset(cancel);
             core.Reset();
             TaskTracker.TrackActiveTask(this, 2);
         }

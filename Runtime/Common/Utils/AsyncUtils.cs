@@ -378,5 +378,31 @@ namespace Metamatic
                 action();
             }
         }
+        
+        public static async UniTask RunOnThreadPool(Action action, bool configureAwait = true, CancellationSignal cancellationSignal = default)
+        {
+            cancellationSignal.ThrowIfCancellationRequested();
+
+            await UniTask.SwitchToThreadPool();
+            if (configureAwait)
+            {
+                try
+                {
+                    cancellationSignal.ThrowIfCancellationRequested();
+                    action();
+                }
+                finally
+                {
+                    await UniTask.Yield();
+                }
+            }
+            else
+            {
+                cancellationSignal.ThrowIfCancellationRequested();
+                action();
+            }
+
+            cancellationSignal.ThrowIfCancellationRequested();
+        }
     }
 }
