@@ -10,6 +10,7 @@ namespace Metamatic.Framework.Workshop
     {
         private event Action OnEntityResetEvent;
         private event Action OnEntityUpdateEvent;
+        public readonly ObservableList<EntityComponent> Components = new ObservableList<EntityComponent>();
         public void ResetEntity()
         {
             OnEntityResetEvent?.Invoke();

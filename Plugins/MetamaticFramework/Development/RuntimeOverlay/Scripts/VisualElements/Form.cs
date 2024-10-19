@@ -11,6 +11,7 @@ namespace Metamatic.Framework
         private Label m_FooterMessage;
 
         private bool m_IsValid;
+        public override VisualElement contentContainer => m_Content;
 
         public bool isValid
         {
@@ -49,8 +50,8 @@ namespace Metamatic.Framework
             m_Footer.Add(m_FooterMessage);
             m_Footer.Add(m_SubmitButton);
             
-            Add(m_Content);
-            Add(m_Footer);
+            hierarchy.Add(m_Content);
+            hierarchy.Add(m_Footer);
         }
         
         public void AddContent(VisualElement element)

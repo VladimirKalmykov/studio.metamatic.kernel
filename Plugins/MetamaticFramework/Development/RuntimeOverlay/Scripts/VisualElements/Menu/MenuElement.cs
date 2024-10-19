@@ -67,7 +67,7 @@ namespace Metamatic.Framework
             m_IsActive.SetUniqValue(active);
         }
         
-        private async UniTaskVoid OnItemLifecycleSwitch(MenuItem menuItem, CancellationSignal detachSignal)
+        private async UniTaskVoid OnItemLifecycleSwitch(MenuItem menuItem, int index, CancellationSignal detachSignal)
         {
             var item = AddMenuItem(menuItem);
             await detachSignal;

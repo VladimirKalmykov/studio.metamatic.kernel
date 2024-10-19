@@ -15,13 +15,12 @@ namespace Metamatic.Framework.Workshop
         #region Fields
         [SerializeField] private float m_DefaultMaxHealth;
         [Tooltip("Auto heal per second")]
-        [SerializeField] public float m_AutoHeal = 0f;
+        [SerializeField] public float autoHeal = 0f;
         [SerializeField][Tooltip("Entity can not die")]
         public bool immortal;
         [SerializeField][Tooltip("Entity can not take damage")]
         public bool invulnerable;
         #endregion
-        
         
         public float maxHealth { get; set; }
         [ShowInInspector][ReadOnly]
@@ -138,11 +137,6 @@ namespace Metamatic.Framework.Workshop
             return new DisposableAction(() => OnDamage -= handler);
         }
 
-        protected override UniTask OnEntityRun(Ready ready, CancellationSignal signal)
-        {
-            return ready();
-        }
-
         protected override void OnEntityReset()
         {
             currentHealth = maxHealth;
@@ -151,9 +145,9 @@ namespace Metamatic.Framework.Workshop
 
         protected override void OnEntityUpdate(float deltaTime)
         {
-            if (m_AutoHeal > 0)
+            if (autoHeal > 0)
             {
-                currentHealth = Mathf.Min(maxHealth, currentHealth + m_AutoHeal * deltaTime);
+                currentHealth = Mathf.Min(maxHealth, currentHealth + autoHeal * deltaTime);
             }
         }
     }

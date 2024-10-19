@@ -14,7 +14,7 @@ namespace Metamatic.SocketSystem
     public abstract class SocketComponent<T>: SocketComponent
     {
         private static readonly ObservableList<SocketComponent<T>> m_Sockets = new ();
-        public static DisposableAction WatchEachLifecycle(Func<SocketComponent<T>, CancellationSignal, UniTaskVoid> handler)
+        public static DisposableAction WatchEachLifecycle(Func<SocketComponent<T>, int, CancellationSignal, UniTaskVoid> handler)
         {
             return m_Sockets.WatchEachLifecycle(handler);
         }

@@ -18,7 +18,7 @@ namespace Metamatic.UIToolKit
         private PlayerLoopTiming m_Timing;
         public Tracker(TElement target, TData source, Action<TElement, TData> update, PlayerLoopTiming timing = PlayerLoopTiming.LastUpdate)
         {
-            m_Target = target ;
+            m_Target = target;
             m_Source = source;
             m_Update = update;
             Add(target);

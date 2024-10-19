@@ -6,12 +6,12 @@ namespace Metamatic.Framework
     using UnityEngine;
     using UnityEngine.UIElements;
 
-    public class EditorFormElement : VisualElement
+    public class StructEditorFormElement : VisualElement
     {
         private Type targetType;
         private readonly Dictionary<string, (Field field, VisualElement editor)> fieldElements = new ();
 
-        public EditorFormElement(Type type)
+        public StructEditorFormElement(Type type)
         {
             targetType = type;
             GenerateForm();

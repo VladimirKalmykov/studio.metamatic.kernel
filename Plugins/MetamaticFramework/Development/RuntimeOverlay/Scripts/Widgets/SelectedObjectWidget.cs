@@ -23,7 +23,7 @@ namespace Metamatic.Framework.Widgets
             
             
             /* Subscribe to selected objects */
-            using var selectedObjectSubscription = m_Overlay.core.SwitchOnEverySelectedObject(OnObserveSelectedObject);
+            using var selectedObjectSubscription = m_Overlay.core.WatchEverySelectedObjectLifecycle(OnObserveSelectedObject);
 
             await cancellationSignal;
         }
@@ -33,7 +33,7 @@ namespace Metamatic.Framework.Widgets
             return new Preferences(new UnityEngine.Vector2(0, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(0, 0));
         }
         
-        private async UniTaskVoid OnObserveSelectedObject(GameObject selectedObject, CancellationSignal signal)
+        private async UniTaskVoid OnObserveSelectedObject(GameObject selectedObject, int index, CancellationSignal signal)
         {
             if (selectedObject == null) return;
             m_SelectedObjectTemplate.CloneTree(m_Container);

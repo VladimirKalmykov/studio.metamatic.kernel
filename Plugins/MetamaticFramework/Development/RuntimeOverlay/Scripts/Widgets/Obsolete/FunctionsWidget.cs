@@ -41,8 +41,7 @@ namespace Metamatic.Framework
             overlay.root.Remove(panel);
         }
 
-        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction,
-            CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction, int index, CancellationSignal cancellationSignal)
         {
             var button = new Button(customFunction.Invoke)
             {

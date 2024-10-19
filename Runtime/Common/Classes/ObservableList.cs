@@ -15,7 +15,7 @@ namespace Metamatic
         private Func<T, CancellationSignal, UniTask> m_Handler;
         private readonly Dictionary<T, CancellationSignalSource> m_CancellationTokens = new Dictionary<T, CancellationSignalSource>();
         private bool m_Disposed = false;
-        public event Action<T, CancellationSignal> OnItemAdded;
+        public event Action<T, int, CancellationSignal> OnItemAdded;
         public IReadOnlyCollection<T> items => m_List;
 
         public ObservableList(Func<T, CancellationSignal, UniTask> handler = null)
@@ -31,23 +31,28 @@ namespace Metamatic
             m_Handler = handler ?? DefaultHandler;
         }
         
-        public DisposableAction WatchEachLifecycle(Func<T, CancellationSignal, UniTaskVoid> handler)
+        public DisposableAction WatchEachLifecycle(Func<T, int, CancellationSignal, UniTaskVoid> handler, Func<T, int, bool> filter = null)
         {
             var cssList = new List<CancellationSignalSource>();
-            void ForgetAsyncHandler(T item, CancellationSignal signal)
+            void ForgetAsyncHandler(T item, int index, CancellationSignal signal)
             {
+                if (filter != null && !filter(item, index))
+                    return;
                 var css = CancellationSignalSource.CreateLinked(signal);
                 cssList.Add(css);
-                handler(item, css.Signal).Forget();
+                handler(item, index, css.Signal).Forget();
             }
             /*
              * First, iterate over existing items and call the handler for each item.
              */
-            foreach (var item in m_List)
+            for (var i = 0; i < m_List.Count; i++)
             {
+                var item = m_List[i];
+                if (filter != null && !filter(item, i))
+                    continue;
                 var css = CancellationSignalSource.CreateLinked(m_CancellationTokens[item].Signal);
                 cssList.Add(css);
-                ForgetAsyncHandler(item, css.Signal);
+                ForgetAsyncHandler(item, i, css.Signal);
             }
             OnItemAdded += ForgetAsyncHandler;
             return new DisposableAction(() =>
@@ -60,6 +65,27 @@ namespace Metamatic
         private static UniTask DefaultHandler(T item, CancellationSignal signal)
         {
             return UniTask.CompletedTask;
+        }
+        
+        /// <summary>
+        /// Syncs the list with the new items. Removes items that are not in the new list and adds that are not in this list.
+        /// </summary>
+        /// <param name="items"></param>
+        public void Synchronize(IEnumerable<T> items)
+        {
+            /* Remove items that are not in the new list and add that are not in this list */
+            for (var i = m_List.Count - 1; i >= 0; i--)
+            {
+                var item = m_List[i];
+                if (!items.Contains(item))
+                {
+                    Remove(item);
+                }
+            }
+            foreach (var item in items)
+            {
+                TryAdd(item);
+            }
         }
         
         /// <summary>
@@ -138,7 +164,7 @@ namespace Metamatic
             
             var signal = cts.Signal;
             m_Handler(item, signal).Forget();
-            OnItemAdded?.Invoke(item, signal);
+            OnItemAdded?.Invoke(item, m_List.Count - 1, signal);
         }
         
         /// <summary>
@@ -168,7 +194,7 @@ namespace Metamatic
             
             var signal = cts.Signal;
             m_Handler(item, signal).Forget();
-            OnItemAdded?.Invoke(item, signal);
+            OnItemAdded?.Invoke(item, m_List.Count - 1, signal);
         }
 
         public bool Remove(T item)
@@ -232,7 +258,7 @@ namespace Metamatic
 
                 var signal = cts.Signal;
                 m_Handler(value, signal).Forget();
-                OnItemAdded?.Invoke(value, signal);
+                OnItemAdded?.Invoke(value, index, signal);
             }
         }
 
@@ -262,7 +288,7 @@ namespace Metamatic
             
             var signal = newCts.Signal;
             m_Handler(item, signal).Forget();
-            OnItemAdded?.Invoke(item, signal);
+            OnItemAdded?.Invoke(item, index, signal);
         }
 
         public void RemoveAt(int index)

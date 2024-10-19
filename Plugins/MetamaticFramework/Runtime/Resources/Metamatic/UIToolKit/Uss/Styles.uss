@@ -2,7 +2,9 @@
     --MetamaticUIKit_TextColor: #f0f0f0;
     --MetamaticUIKit_BackgroundColor: #1a1a1a;
     --MetamaticUIKit_BorderColor: #282828;
-    --MetamaticUIKit_PanelBackgroundColor: #2a2a2a;
+    --MetamaticUIKit_BorderLightColor: #3a3a3a;
+    --MetamaticUIKit_PanelBackgroundColor: #222222;
+    --MetamaticUIKit_PanelInactiveBackgroundColor: #1a1a1a;
     --MetamaticUIKit_IndicatorUnactiveColor: #4d4d4d;
     --MetamaticUIKit_IndicatorActiveColor: #1bffdd;
 }
@@ -136,4 +138,52 @@
     padding: 6px 0;
     color: var(--MetamaticUIKit_TextColor);
     overflow: hidden;
+}
+
+/* Multi column view */
+.MetamaticUIKit_MultiColumnsView {
+    flex-direction: row;
+    padding: 0;
+    margin: 0 -6px;
+}
+
+.MetamaticUIKit_MultiColumnsView > * {
+    flex-direction: column;
+    padding: 0;
+    flex-grow: 1;
+    margin: 0 6px;
+}
+
+/* Tabs */
+.MetamaticUIKit_Tabs {
+    flex-direction: column;
+}
+
+.MetamaticUIKit_Tabs .MetamaticUIKit_TabsHeader {
+    flex-direction: row;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--MetamaticUIKit_BorderColor);
+}
+
+.MetamaticUIKit_Tabs .MetamaticUIKit_TabsHeader .MetamaticUIKit_Tab {
+    flex-grow: 0;
+    padding: 2px 6px;
+    margin: 0 3px 0 0;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    background-color: var(--MetamaticUIKit_PanelInactiveBackgroundColor);
+    color: var(--MetamaticUIKit_TextColor);
+}
+
+.MetamaticUIKit_Tabs .MetamaticUIKit_TabsHeader .MetamaticUIKit_Tab.MetamaticUIKit_Selected {
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+}
+
+.MetamaticUIKit_Tabs .MetamaticUIKit_TabsContent {
+    flex-direction: column;
+    padding: 0;
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+    border-top-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
 }

@@ -58,7 +58,7 @@ namespace Metamatic.Framework
             return null;
         }
         
-        public DisposableAction WatchEachItemLifecycle(Func<MenuItem, CancellationSignal, UniTaskVoid> onEachItem)
+        public DisposableAction WatchEachItemLifecycle(Func<MenuItem, int, CancellationSignal, UniTaskVoid> onEachItem)
         {
             return m_MenuItems.WatchEachLifecycle(onEachItem);
         }

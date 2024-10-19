@@ -18,7 +18,7 @@ namespace Metamatic.Framework.Widgets
         private Form m_SpellForm;
         private Type m_ActiveSpellType;
         private List<string> m_Messages = new List<string>();
-        private EditorFormElement m_CurrentEditor;
+        private StructEditorFormElement m_CurrentStructEditor;
         
         public SpellsWidget()
         {
@@ -96,9 +96,9 @@ namespace Metamatic.Framework.Widgets
             var selectedObjects = RuntimeCore.Instance.selectedObjects;
             if (selectedObjects.Count > 0)
             {
-                if (m_CurrentEditor != null)
+                if (m_CurrentStructEditor != null)
                 {
-                    var spell = m_CurrentEditor.Submit() as ISpell;
+                    var spell = m_CurrentStructEditor.Submit() as ISpell;
                     if (spell != null)
                     {
                         foreach (var selectedObject in selectedObjects)
@@ -139,9 +139,9 @@ namespace Metamatic.Framework.Widgets
             }
             
             m_ActiveSpellType = spellType;
-            m_CurrentEditor = new EditorFormElement(spellType);
+            m_CurrentStructEditor = new StructEditorFormElement(spellType);
             m_SpellForm.ClearContent();
-            m_SpellForm.AddContent(m_CurrentEditor);
+            m_SpellForm.AddContent(m_CurrentStructEditor);
             Revalidate();
             await signal;
             m_SpellForm.ClearContent();
@@ -156,7 +156,7 @@ namespace Metamatic.Framework.Widgets
             {
                 return;
             }
-            var spell = m_CurrentEditor.Submit() as ISpell;
+            var spell = m_CurrentStructEditor.Submit() as ISpell;
             if (spell is IAsyncSpell asyncSpell)
             {
                 foreach (var selectedObject in RuntimeCore.Instance.selectedObjects)

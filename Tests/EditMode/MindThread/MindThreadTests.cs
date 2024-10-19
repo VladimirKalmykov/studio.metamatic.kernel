@@ -21,7 +21,7 @@ namespace Metamatic.Tests.PlayMode
             {
             }
 
-            public override float GetWeight()
+            public override float UpdateWeight()
             {
                 return Context.fatigue > 0.5f ? (Context.fatigue - 0.5f) / 0.5f : 0f;
             }
@@ -38,7 +38,7 @@ namespace Metamatic.Tests.PlayMode
             {
             }
 
-            public override float GetWeight()
+            public override float UpdateWeight()
             {
                 return Context.hunger > 0.5f ? (Context.hunger - 0.5f) / 0.5f : 0f;
             }
@@ -55,7 +55,7 @@ namespace Metamatic.Tests.PlayMode
             {
             }
 
-            public override float GetWeight()
+            public override float UpdateWeight()
             {
                 return 0.25f;
             }
@@ -72,7 +72,7 @@ namespace Metamatic.Tests.PlayMode
             {
             }
 
-            public override float GetWeight()
+            public override float UpdateWeight()
             {
                 // Animal prefer to hunt when it's bored and hungry
                 return Context.hunger;
@@ -90,7 +90,7 @@ namespace Metamatic.Tests.PlayMode
             {
             }
 
-            public override float GetWeight()
+            public override float UpdateWeight()
             {
                 // Animal prefer to play with own tail when it's bored and not hungry
                 return 0.1f;
@@ -108,7 +108,7 @@ namespace Metamatic.Tests.PlayMode
             {
             }
 
-            public override float GetWeight()
+            public override float UpdateWeight()
             {
                 return Context.boredom > 0.5f ? (Context.boredom - 0.5f) / 0.5f : 0f;
             }
@@ -134,7 +134,7 @@ namespace Metamatic.Tests.PlayMode
             {
             }
 
-            public override float GetWeight()
+            public override float UpdateWeight()
             {
                 return 1f;
             }

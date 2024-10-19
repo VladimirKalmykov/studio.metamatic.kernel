@@ -184,7 +184,7 @@ namespace Metamatic.UIToolKit
             }
         }
         
-        private async UniTaskVoid OnListItemChanged(T item, CancellationSignal signal)
+        private async UniTaskVoid OnListItemChanged(T item, int index, CancellationSignal signal)
         {
             var rowElement = AddRow(item);
             await signal;

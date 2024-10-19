@@ -20,7 +20,7 @@ namespace Metamatic
         /// <summary>
         /// Contains currently active thread.
         /// </summary>
-        private readonly IMindThread m_ActiveThread;
+        public readonly IMindThread MindThread;
         /// <summary>
         /// Should be assigned by the constructor parameter.
         /// It shows the level of detail of the object. Depends on it the AI updates are done.
@@ -39,7 +39,7 @@ namespace Metamatic
         
         public MindThreadsProcessor(IMindThread mindThread, ObservableReadOnly<LODLevel> lodLevel, IEventLoop<PlayerLoopTiming> playerLoop)
         {
-            m_ActiveThread = mindThread;
+            MindThread = mindThread;
             m_LODLevel = lodLevel;
             m_PlayerLoop = playerLoop;
             m_DisposeSignalSource = CancellationSignalSource.Create();
@@ -66,7 +66,7 @@ namespace Metamatic
         {
             m_LastLogicUpdateTime = m_PlayerLoop.time;
             // Activate the root thread
-            m_ActiveThread.Activate(cancellationSignal);
+            MindThread.Activate(cancellationSignal);
             // Subscribe to the LOD level changes
             using var lodLevelSubscription = m_LODLevel.Watch(OnLODLevelChanged);
             await using var eventLoop = StartEventLoop();
@@ -91,7 +91,7 @@ namespace Metamatic
                     {
                         m_LastLogicUpdateTime = m_PlayerLoop.time;
                         // Update the active thread
-                        m_ActiveThread.Update();
+                        MindThread.Update();
                     }
                 });
                 while (!signal.IsCancellationRequested)
@@ -99,7 +99,7 @@ namespace Metamatic
                     // Weighting must be done on post late update
                     await m_PlayerLoop.Yield(PlayerLoopTiming.PostLateUpdate);
                     signal.ThrowIfCancellationRequested();
-                    m_ActiveThread.Weighting();
+                    MindThread.Weighting();
                     await m_PlayerLoop.Delay(PlayerLoopTiming.FixedUpdate, m_WeightingUpdateFrequency, signal);
                 }
             });

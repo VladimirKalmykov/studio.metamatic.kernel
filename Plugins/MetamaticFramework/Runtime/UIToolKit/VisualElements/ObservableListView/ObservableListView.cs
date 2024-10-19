@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 using UnityEngine.Serialization;
 using UnityEngine.UIElements;
@@ -8,12 +9,6 @@ namespace Metamatic.UIToolKit
 {
     public class ObservableListView<T>: AsyncVisualElement
     {
-        public enum SelectionType
-        {
-            None,
-            Single,
-            Multiple
-        }
         #region Static
         private static UniTaskVoid DefaultItemRenderer(T item, VisualElement container, CancellationSignal signal)
         {
@@ -21,17 +16,33 @@ namespace Metamatic.UIToolKit
             return new UniTaskVoid();
         }
         #endregion
-        private ObservableList<T> m_ObservableList;
+        public ObservableList<T> ObservableList;
         private readonly ObservableList<T> m_SelectedItems = new ObservableList<T>();
+        
         public IReadOnlyCollection<T> SelectedItems => m_SelectedItems.items;
+        #region Config
         private SelectionType m_SelectionType;
+        private bool m_InteractiveSelection;
+        #endregion
         private readonly Dictionary<T, VisualElement> m_MapToElement = new Dictionary<T, VisualElement>();
         public Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer { get; set; } = DefaultItemRenderer;
-        public ObservableListView(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null)
+        public ObservableListView(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
+        {
+            Init(observableList, selectionType, itemRenderer, interactiveSelection);
+        }
+        
+        public ObservableListView(SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
+        {
+            var observableList = new ObservableList<T>();
+            Init(observableList, selectionType, itemRenderer, interactiveSelection);
+        }
+        
+        private void Init(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
         {
             styleSheets.Add(UIToolKitCore.styleSheet);
-            m_ObservableList = observableList;
+            ObservableList = observableList;
             m_SelectionType = selectionType;
+            m_InteractiveSelection = interactiveSelection;
             if (itemRenderer != null)
             {
                 this.itemRenderer = itemRenderer;
@@ -39,12 +50,30 @@ namespace Metamatic.UIToolKit
             AddToClassList("MetamaticUIKit_ItemsList");
         }
         
+        public void Select(T item)
+        {
+            if (m_SelectedItems.Contains(item))
+            {
+                return;
+            }
+            if (m_SelectionType == SelectionType.Single)
+            {
+                m_SelectedItems.Clear();
+            }
+
+            if (!ObservableList.Contains(item))
+            {
+                return;
+            }
+            m_SelectedItems.Add(item);
+        }
+        
         /// <summary>
         /// Watch for selected items lifecycle
         /// </summary>
         /// <param name="action"></param>
         /// <returns></returns>
-        public DisposableAction WatchSelectedLifecycle(Func<T, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchSelectedLifecycle(Func<T, int, CancellationSignal, UniTaskVoid> action)
         {
             return m_SelectedItems.WatchEachLifecycle(action);
         }
@@ -52,11 +81,11 @@ namespace Metamatic.UIToolKit
         public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
         {
             using var watchSelected = m_SelectedItems.WatchEachLifecycle(OnSelectedChange);
-            using var watcher = m_ObservableList.WatchEachLifecycle(OnItemLifecycle);
+            using var watcher = ObservableList.WatchEachLifecycle(OnItemLifecycle);
             await detachSignal;
         }
         
-        private async UniTaskVoid OnSelectedChange(T item, CancellationSignal signal)
+        private async UniTaskVoid OnSelectedChange(T item, int index, CancellationSignal signal)
         {
             if (m_MapToElement.TryGetValue(item, out var element))
             {
@@ -71,7 +100,7 @@ namespace Metamatic.UIToolKit
             }
         }
 
-        private async UniTaskVoid OnItemLifecycle(T item, CancellationSignal signal)
+        private async UniTaskVoid OnItemLifecycle(T item, int index, CancellationSignal signal)
         {
             var itemElement = new VisualElement();
             itemElement.AddToClassList("MetamaticUIKit_Item");
@@ -80,20 +109,26 @@ namespace Metamatic.UIToolKit
 
             if (m_SelectionType != SelectionType.None)
             {
-                // Listen for click
-                itemElement.RegisterCallback<ClickEvent>(evt =>
+                if (m_InteractiveSelection)
                 {
-                    if (m_SelectedItems.Contains(item))
+                    // Listen for click
+                    itemElement.RegisterCallback<ClickEvent>(evt =>
                     {
-                        m_SelectedItems.Remove(item);
-                        return;
-                    }
-                    if (m_SelectionType == SelectionType.Single)
-                    {
-                        m_SelectedItems.Clear();
-                    }
-                    m_SelectedItems.Add(item);
-                });
+                        if (m_SelectedItems.Contains(item))
+                        {
+                            m_SelectedItems.Remove(item);
+                            return;
+                        }
+
+                        if (m_SelectionType == SelectionType.Single)
+                        {
+                            m_SelectedItems.Clear();
+                        }
+
+                        m_SelectedItems.Add(item);
+                    });
+                }
+
                 // Add indicator for item
                 var indicator = new VisualElement
                 {

@@ -1,0 +1,264 @@
+/* Themes */
+:root {
+    --MetamaticTailwind_TextColor: #f0f0f0;
+    --MetamaticTailwind_BackgroundColor: #1a1a1a;
+    --MetamaticTailwind_BorderColor: #282828;
+    --MetamaticTailwind_BorderLightColor: #3a3a3a;
+    --MetamaticTailwind_PanelBackgroundColor: #2a2a2a;
+    --MetamaticTailwind_IndicatorInactiveColor: #4d4d4d;
+    --MetamaticTailwind_IndicatorActiveColor: #1bffdd;
+}
+
+/* Flex direction */
+.MetamaticTailwind_Row {
+    flex-direction: row;
+}
+
+.MetamaticTailwind_Column {
+    flex-direction: column;
+}
+
+/* Grow */
+.MetamaticTailwind_Grow0 {
+    flex-grow: 0;
+}
+
+.MetamaticTailwind_Grow1 {
+    flex-grow: 1;
+}
+
+.MetamaticTailwind_Grow2 {
+    flex-grow: 2;
+}
+
+.MetamaticTailwind_Grow3 {
+    flex-grow: 3;
+}
+
+/* Justify content */
+.MetamaticTailwind_JustifyContentStart {
+    justify-content: flex-start;
+}
+
+.MetamaticTailwind_JustifyContentEnd {
+    justify-content: flex-end;
+}
+
+.MetamaticTailwind_JustifyContentCenter {
+    justify-content: center;
+}
+
+.MetamaticTailwind_JustifyContentSpaceBetween {
+    justify-content: space-between;
+}
+
+.MetamaticTailwind_JustifyContentSpaceAround {
+    justify-content: space-around;
+}
+
+/* Align items */
+.MetamaticTailwind_AlignItemsStart {
+    align-items: flex-start;
+}
+
+.MetamaticTailwind_AlignItemsEnd {
+    align-items: flex-end;
+}
+
+.MetamaticTailwind_AlignItemsCenter {
+    align-items: center;
+}
+
+.MetamaticTailwind_AlignItemsStretch {
+    align-items: stretch;
+}
+
+/* Padding */
+.MetamaticTailwind_Padding0 {
+    padding: 0;
+}
+
+.MetamaticTailwind_Padding6 {
+    padding: 6px;
+}
+
+.MetamaticTailwind_Padding12 {
+    padding: 12px;
+}
+
+.MetamaticTailwind_Padding24 {
+    padding: 24px;
+}
+
+/* Right padding */
+.MetamaticTailwind_PaddingRight0 {
+    padding-right: 0;
+}
+
+.MetamaticTailwind_PaddingRight6 {
+    padding-right: 6px;
+}
+
+.MetamaticTailwind_PaddingRight12 {
+    padding-right: 12px;
+}
+
+.MetamaticTailwind_PaddingRight24 {
+    padding-right: 24px;
+}
+
+/* Left padding */
+.MetamaticTailwind_PaddingLeft0 {
+    padding-left: 0;
+}
+
+.MetamaticTailwind_PaddingLeft6 {
+    padding-left: 6px;
+}
+
+.MetamaticTailwind_PaddingLeft12 {
+    padding-left: 12px;
+}
+
+.MetamaticTailwind_PaddingLeft24 {
+    padding-left: 24px;
+}
+
+/* Margin */
+.MetamaticTailwind_Margin0 {
+    margin: 0;
+}
+
+.MetamaticTailwind_Margin6 {
+    margin: 6px;
+}
+
+.MetamaticTailwind_Margin12 {
+    margin: 12px;
+}
+
+.MetamaticTailwind_Margin24 {
+    margin: 24px;
+}
+
+/* Margin right */
+.MetamaticTailwind_MarginRight0 {
+    margin-right: 0;
+}
+
+.MetamaticTailwind_MarginRight6 {
+    margin-right: 6px;
+}
+
+.MetamaticTailwind_MarginRight12 {
+    margin-right: 12px;
+}
+
+.MetamaticTailwind_MarginRight24 {
+    margin-right: 24px;
+}
+
+/* Margin left */
+.MetamaticTailwind_MarginLeft0 {
+    margin-left: 0;
+}
+
+.MetamaticTailwind_MarginLeft6 {
+    margin-left: 6px;
+}
+
+.MetamaticTailwind_MarginLeft12 {
+    margin-left: 12px;
+}
+
+.MetamaticTailwind_MarginLeft24 {
+    margin-left: 24px;
+}
+
+/* Fixed width */
+.MetamaticTailwind_FixedWidth60 {
+    width: 60px;
+    max-width: 60px;
+    min-width: 60px;
+    flex-basis: 60px;
+}
+
+.MetamaticTailwind_FixedWidth80 {
+    width: 80px;
+    max-width: 80px;
+    min-width: 80px;
+    flex-basis: 80px;
+}
+
+.MetamaticTailwind_FixedWidth100 {
+    width: 100px;
+    max-width: 100px;
+    min-width: 100px;
+    flex-basis: 100px;
+}
+
+.MetamaticTailwind_FixedWidth120 {
+    width: 160px;
+    max-width: 160px;
+    min-width: 160px;
+    flex-basis: 160px;
+}
+
+.MetamaticTailwind_FixedWidth140 {
+    width: 140px;
+    max-width: 140px;
+    min-width: 140px;
+    flex-basis: 140px;
+}
+
+.MetamaticTailwind_FixedWidth160 {
+    width: 160px;
+    max-width: 160px;
+    min-width: 160px;
+    flex-basis: 160px;
+}
+
+.MetamaticTailwind_FixedWidth200 {
+    width: 200px;
+    max-width: 200px;
+    min-width: 200px;
+    flex-basis: 200px;
+}
+
+/* Background color */
+.MetamaticTailwind_BackgroundColorDefault {
+    background-color: var(--MetamaticTailwind_BackgroundColor);
+}
+
+.MetamaticTailwind_BackgroundColorPanel {
+    background-color: var(--MetamaticTailwind_PanelBackgroundColor);
+}
+
+.MetamaticTailwind_BackgroundColorIndicatorInactive {
+    background-color: var(--MetamaticTailwind_IndicatorInactiveColor);
+}
+
+.MetamaticTailwind_BackgroundColorIndicatorActive {
+    background-color: var(--MetamaticTailwind_IndicatorActiveColor);
+}
+
+/* Border radius */
+.MetamaticTailwind_BorderRadius0 {
+    border-radius: 0px;
+}
+
+.MetamaticTailwind_BorderRadius3 {
+    border-radius: 3px;
+}
+
+.MetamaticTailwind_BorderRadius4 {
+    border-radius: 4px;
+}
+
+.MetamaticTailwind_BorderRadius8 {
+    border-radius: 8px;
+}
+
+.MetamaticTailwind_BorderRadius12 {
+    border-radius: 12px;
+}

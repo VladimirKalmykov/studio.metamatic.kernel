@@ -52,7 +52,7 @@ namespace Metamatic.Framework.Widgets
             }
         }
         
-        private async UniTaskVoid OnObserverCursorTool(CursorTool cursorTool, CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnObserverCursorTool(CursorTool cursorTool, int index, CancellationSignal cancellationSignal)
         {
             var name = cursorTool.Name;
             try

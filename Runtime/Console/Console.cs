@@ -121,6 +121,7 @@ namespace Metamatic
             LogOnTheMainThread(message, new []{ tag1, tag2, tag3, tag4 }, logLevel, finalStackTrace).Forget();
         }
         
+        [DebuggerHidden]
         private static async UniTaskVoid LogOnTheMainThread(string message, string[] tags, LogLevel logLevel, string stackTrace)
         {
             /* Get current thread */
@@ -152,6 +153,7 @@ namespace Metamatic
             }
         }
         
+        [DebuggerHidden]
         public static string CompileMessageWithTags(string[] tags, string message)
         {
             if (tags.Length == 0)

@@ -118,9 +118,9 @@ namespace Metamatic.Framework
             }
         }
         
-        public DisposableAction SwitchOnEverySelectedObject(Func<GameObject, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchEverySelectedObjectLifecycle(Func<GameObject, int, CancellationSignal, UniTaskVoid> action, Func<GameObject, int, bool> filter = null)
         {
-            return m_SelectedObjects.WatchEachLifecycle(action);
+            return m_SelectedObjects.WatchEachLifecycle(action, filter);
         }
         
         /// <summary>
@@ -157,7 +157,7 @@ namespace Metamatic.Framework
             return new DisposableAction(() => m_CustomFunctions.Remove(customFunction));
         }
         
-        public DisposableAction WatchEachCustomFunctionLifecycle(Func<CustomFunction, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchEachCustomFunctionLifecycle(Func<CustomFunction, int, CancellationSignal, UniTaskVoid> action)
         {
             return m_CustomFunctions.WatchEachLifecycle(action);
         }

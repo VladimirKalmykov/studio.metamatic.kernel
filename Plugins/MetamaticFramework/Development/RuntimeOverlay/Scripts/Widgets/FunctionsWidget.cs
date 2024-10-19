@@ -23,8 +23,7 @@ namespace Metamatic.Framework.Widgets
             return new Preferences(new UnityEngine.Vector2(0, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(0, 0));
         }
         
-        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction,
-            CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction, int index, CancellationSignal cancellationSignal)
         {
             var button = new Button(customFunction.Invoke)
             {
