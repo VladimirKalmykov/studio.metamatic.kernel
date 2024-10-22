@@ -50,9 +50,7 @@ namespace Metamatic
                 var item = m_List[i];
                 if (filter != null && !filter(item, i))
                     continue;
-                var css = CancellationSignalSource.CreateLinked(m_CancellationTokens[item].Signal);
-                cssList.Add(css);
-                ForgetAsyncHandler(item, i, css.Signal);
+                ForgetAsyncHandler(item, i, m_CancellationTokens[item].Signal);
             }
             OnItemAdded += ForgetAsyncHandler;
             return new DisposableAction(() =>
@@ -133,8 +131,10 @@ namespace Metamatic
                 m_Handler = DefaultHandler;
 
             var cts = CancellationSignalSource.Create();
+            var signal = cts.Signal;
             m_CancellationTokens[item] = cts;
             m_List.Add(item);
+            OnItemAdded?.Invoke(item, m_List.Count - 1, signal);
 
             try
             {

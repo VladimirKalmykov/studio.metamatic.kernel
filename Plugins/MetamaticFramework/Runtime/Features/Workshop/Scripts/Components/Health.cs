@@ -10,7 +10,13 @@ using Object = UnityEngine.Object;
 
 namespace Metamatic.Framework.Workshop
 {
-    public class Health: EntityComponent
+    [Serializable]
+    public struct HealthState
+    {
+        public float maxHealth;
+        public float health;
+    }
+    public class Health: EntityComponent<HealthState>
     {
         #region Fields
         [SerializeField] private float m_DefaultMaxHealth;
@@ -21,10 +27,17 @@ namespace Metamatic.Framework.Workshop
         [SerializeField][Tooltip("Entity can not take damage")]
         public bool invulnerable;
         #endregion
-        
-        public float maxHealth { get; set; }
-        [ShowInInspector][ReadOnly]
-        public float currentHealth { get; set; }
+        [ShowInInspector]
+        public float maxHealth
+        {
+            get => State.maxHealth;
+            set => State.maxHealth = value;
+        }
+        [ShowInInspector]
+        public float health {
+            get => State.health;
+            set => State.health = value;
+        }
         /// <summary>
         /// Determine if the entity is alive (not killed)
         /// </summary>
@@ -36,14 +49,16 @@ namespace Metamatic.Framework.Workshop
         private bool m_IsKilled = false;
         
         public (float damage, ImpactType impactType, float time) RecentDamage { get; private set; }
-        
-        protected override void Awake()
+
+        protected override HealthState GetDefaultState()
         {
-            base.Awake();
-            maxHealth = m_DefaultMaxHealth;
-            currentHealth = maxHealth;
+            return new HealthState()
+            {
+                maxHealth = m_DefaultMaxHealth,
+                health = m_DefaultMaxHealth
+            };
         }
-        
+
         /// <summary>
         /// Set max health of the entity
         /// </summary>
@@ -54,7 +69,7 @@ namespace Metamatic.Framework.Workshop
             maxHealth = health;
             if (resetCurrent)
             {
-                currentHealth = maxHealth;
+                this.health = maxHealth;
             }
         }
 
@@ -63,7 +78,7 @@ namespace Metamatic.Framework.Workshop
             #if METAMATIC_VERBOSE_LOG
             Console.Verbose("Health",$"ApplyDamage {damage} to {gameObject.name}");            
             #endif
-            if (currentHealth <= 0)
+            if (health <= 0)
             {
                 /* Already dead */
                 return;
@@ -75,8 +90,8 @@ namespace Metamatic.Framework.Workshop
             }
             OnDamage?.Invoke(damage);
             RecentDamage = (damage, impactType, Time.time);
-            currentHealth = Mathf.Max(currentHealth - damage);
-            if (currentHealth <= 0 && immortal == false)
+            health = Mathf.Max(health - damage);
+            if (health <= 0 && immortal == false)
             {
                 HealthService.DieRequest(producer, this);
             }
@@ -89,12 +104,12 @@ namespace Metamatic.Framework.Workshop
         /// <param name="overHeal">Can be healed more that max health</param>
         public void TakeHeal(float hp, bool overHeal = false)
         {
-            if (currentHealth <= 0)
+            if (health <= 0)
             {
                 /* Already dead */
                 return;
             }
-            currentHealth = overHeal ? (currentHealth + hp) : Mathf.Min(maxHealth, currentHealth + hp);
+            health = overHeal ? (health + hp) : Mathf.Min(maxHealth, health + hp);
         }
         
         /// <summary>
@@ -110,7 +125,7 @@ namespace Metamatic.Framework.Workshop
         public void Resurrect(Object resurrectionist, float health = 0)
         {
             m_IsKilled = false;
-            currentHealth = health != 0 ? health : maxHealth;
+            this.health = health != 0 ? health : maxHealth;
             OnResurrect?.Invoke(resurrectionist);
         }
         
@@ -139,7 +154,7 @@ namespace Metamatic.Framework.Workshop
 
         protected override void OnEntityReset()
         {
-            currentHealth = maxHealth;
+            health = maxHealth;
             m_IsKilled = false;
         }
 
@@ -147,7 +162,7 @@ namespace Metamatic.Framework.Workshop
         {
             if (autoHeal > 0)
             {
-                currentHealth = Mathf.Min(maxHealth, currentHealth + autoHeal * deltaTime);
+                health = Mathf.Min(maxHealth, health + autoHeal * deltaTime);
             }
         }
     }

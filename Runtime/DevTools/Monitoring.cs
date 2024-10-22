@@ -141,7 +141,6 @@ namespace Metamatic.DevTools
             
             public void Return()
             {
-                Debug.Log("Cancel group 12345");
                 m_CancellationSignalSource.TryCancel();
                 Items.Clear();
                 ParamLessPool<Group>.ReturnShared(this);

@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 
 namespace Metamatic.UIToolKit
 {
-    public class ObservableListView<T>: AsyncVisualElement
+    public class ObservableListView<T>: AsyncVisualElement, IDisposable
     {
         #region Static
         private static UniTaskVoid DefaultItemRenderer(T item, VisualElement container, CancellationSignal signal)
@@ -16,7 +16,7 @@ namespace Metamatic.UIToolKit
             return new UniTaskVoid();
         }
         #endregion
-        public ObservableList<T> ObservableList;
+        public ObservableList<T> source { get; private set; }
         private readonly ObservableList<T> m_SelectedItems = new ObservableList<T>();
         
         public IReadOnlyCollection<T> SelectedItems => m_SelectedItems.items;
@@ -37,10 +37,15 @@ namespace Metamatic.UIToolKit
             Init(observableList, selectionType, itemRenderer, interactiveSelection);
         }
         
+        ~ObservableListView()
+        {
+            Console.Exception("ObservableListView", "Was not disposed. You should dispose it manually.");
+        }
+        
         private void Init(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
         {
             styleSheets.Add(UIToolKitCore.styleSheet);
-            ObservableList = observableList;
+            source = observableList;
             m_SelectionType = selectionType;
             m_InteractiveSelection = interactiveSelection;
             if (itemRenderer != null)
@@ -61,7 +66,7 @@ namespace Metamatic.UIToolKit
                 m_SelectedItems.Clear();
             }
 
-            if (!ObservableList.Contains(item))
+            if (!source.Contains(item))
             {
                 return;
             }
@@ -81,7 +86,7 @@ namespace Metamatic.UIToolKit
         public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
         {
             using var watchSelected = m_SelectedItems.WatchEachLifecycle(OnSelectedChange);
-            using var watcher = ObservableList.WatchEachLifecycle(OnItemLifecycle);
+            using var watcher = source.WatchEachLifecycle(OnItemLifecycle);
             await detachSignal;
         }
         
@@ -147,6 +152,13 @@ namespace Metamatic.UIToolKit
             await signal;
             m_MapToElement.Remove(item);
             Remove(itemElement);
+        }
+
+        public void Dispose()
+        {
+            source.Dispose();
+            m_SelectedItems.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

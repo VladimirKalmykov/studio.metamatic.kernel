@@ -44,7 +44,7 @@ namespace Metamatic.UIToolKit
             }
             return new DisposableAction(() =>
             {
-                if (ActiveTab.Value.Equals(value))
+                if (ActiveTab.Value != null && ActiveTab.Value.Equals(value))
                 {
                     ActiveTab.Value = default;
                 }

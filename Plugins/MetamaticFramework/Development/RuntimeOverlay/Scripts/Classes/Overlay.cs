@@ -16,6 +16,15 @@ namespace Metamatic.Framework
 
     public class Overlay : AsyncBehaviour
     {
+        [Serializable]
+        public class KeyCombination
+        {
+            public Key mainKey;      // Основная клавиша
+            public bool ctrl;        // Модификатор CTRL
+            public bool shift;       // Модификатор SHIFT
+            public bool alt;         // Модификатор ALT
+        }
+        
         #region Static
         private static Observable<Overlay> m_Instance = new();
         public static UniTask<Overlay> GetInstance(CancellationSignal signal) => m_Instance.WaitUntilValueIsNotNull(signal);
@@ -64,6 +73,12 @@ namespace Metamatic.Framework
         }
         #endregion
 
+        #region Fields
+        [Tooltip("Show overlay on start up")]
+        [SerializeField] private bool m_IsActiveOnStartUp;
+        [SerializeField] private KeyCombination m_ToggleKeyCombination;
+        #endregion
+        
         private readonly ObservableList<CursorTool> m_CursorTools = new();
         private readonly HashSet<string> m_CursorToolNames = new();
         private readonly Dictionary<string, WidgetBlueprint> m_Widgets = new();
@@ -94,6 +109,9 @@ namespace Metamatic.Framework
         /// Signal source for active cursor tool. It will be canceled when the active cursor tool is changed.
         /// </summary>
         private CancellationSignalSource m_CursorToolActivationCancellationSignalSource;
+
+        private bool m_IsVisible;
+        
         private readonly HashSet<VisualElement> m_HoveredPanels = new();
         public readonly Observable<bool> IsHoveringOverPanel = new(false);
 
@@ -111,6 +129,12 @@ namespace Metamatic.Framework
 
             uiDocument = GetComponent<UIDocument>();
             uiDocument.rootVisualElement.styleSheets.Add(Resources.Load<StyleSheet>("Uss/MetamaticOverlay"));
+            
+            m_IsVisible = m_IsActiveOnStartUp;
+            if (!m_IsVisible)
+            {
+                uiDocument.rootVisualElement.style.display = DisplayStyle.None;
+            }
 
             /* Create context provider */
             var contextProvider = new VisualElementContextProvider();
@@ -197,6 +221,30 @@ namespace Metamatic.Framework
             BuildMenu();
             
             await ready();
+        }
+        
+        private void Update()
+        {
+            if (IsKeyCombinationPressed())
+            {
+                ToggleOverlay();
+            }
+        }
+        
+        private bool IsKeyCombinationPressed()
+        {
+            bool isMainKeyPressed = Keyboard.current[m_ToggleKeyCombination.mainKey].wasPressedThisFrame;
+            bool isCtrlPressed = !m_ToggleKeyCombination.ctrl || Keyboard.current[Key.LeftCtrl].isPressed || Keyboard.current[Key.RightCtrl].isPressed;
+            bool isShiftPressed = !m_ToggleKeyCombination.shift || Keyboard.current[Key.LeftShift].isPressed || Keyboard.current[Key.RightShift].isPressed;
+            bool isAltPressed = !m_ToggleKeyCombination.alt || Keyboard.current[Key.LeftAlt].isPressed || Keyboard.current[Key.RightAlt].isPressed;
+
+            return isMainKeyPressed && isCtrlPressed && isShiftPressed && isAltPressed;
+        }
+        
+        private void ToggleOverlay()
+        {
+            m_IsVisible = !m_IsVisible;
+            uiDocument.rootVisualElement.style.display = m_IsVisible ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void ActivateWidget(WidgetBlueprint blueprint)

@@ -62,4 +62,33 @@ namespace Metamatic.Framework.Workshop
         protected abstract void OnEntityReset();
         protected abstract void OnEntityUpdate(float deltaTime);
     }
+    
+    public abstract class EntityComponent<T>: EntityComponent
+    {
+        protected T State;
+        public delegate void StateModifier(ref T state);
+        public bool pristine { get; private set; }
+        
+        public void SetState(T state)
+        {
+            State = state;
+            pristine = false;
+        }
+        
+        public void EditState(StateModifier modifier)
+        {
+            modifier(ref State);
+            pristine = false;
+        }
+
+        protected override void Awake()
+        {
+            base.Awake();
+            State = GetDefaultState();
+        }
+        
+        protected override void OnEntityReset() => State = GetDefaultState();
+
+        protected abstract T GetDefaultState();
+    }
 }
