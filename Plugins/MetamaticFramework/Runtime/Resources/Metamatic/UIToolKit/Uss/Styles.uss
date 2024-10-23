@@ -1,12 +1,25 @@
 :root {
     --MetamaticUIKit_TextColor: #f0f0f0;
-    --MetamaticUIKit_BackgroundColor: #1a1a1a;
+    --MetamaticUIKit_BackgroundColor: #1e1e1e;
+    --MetamaticUIKit_InputColor: #161616;
     --MetamaticUIKit_BorderColor: #282828;
     --MetamaticUIKit_BorderLightColor: #3a3a3a;
     --MetamaticUIKit_PanelBackgroundColor: #222222;
     --MetamaticUIKit_PanelInactiveBackgroundColor: #1a1a1a;
     --MetamaticUIKit_IndicatorUnactiveColor: #4d4d4d;
     --MetamaticUIKit_IndicatorActiveColor: #1bffdd;
+}
+
+/* Darkify build-in visual elements */
+.MetamaticUIKit_DarkEnough .unity-base-field {
+    color: var(--MetamaticUIKit_TextColor);
+}
+
+.MetamaticUIKit_DarkEnough .unity-base-field__input {
+    background-color: var(--MetamaticUIKit_InputColor);
+    padding: 3px 6px;
+    border-radius: 3px;
+    border-color: rgba(0, 0, 0, 0);
 }
 
 /* Common styles */

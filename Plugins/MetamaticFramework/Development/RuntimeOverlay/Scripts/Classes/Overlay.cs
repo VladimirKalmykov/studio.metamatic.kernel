@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Metamatic.Framework.CursorTools;
+using Metamatic.UIToolKit;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 using TouchPhase = UnityEngine.InputSystem.TouchPhase;
@@ -129,6 +130,9 @@ namespace Metamatic.Framework
 
             uiDocument = GetComponent<UIDocument>();
             uiDocument.rootVisualElement.styleSheets.Add(Resources.Load<StyleSheet>("Uss/MetamaticOverlay"));
+            uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.styleSheet);
+            uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.tailwindStyleSheet);
+            uiDocument.rootVisualElement.AddToClassList(UIToolKitCore.DarkEnoughClassName);
             
             m_IsVisible = m_IsActiveOnStartUp;
             if (!m_IsVisible)

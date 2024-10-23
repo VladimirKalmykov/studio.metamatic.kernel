@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using Cysharp.Threading.Tasks;
 using Metamatic.Framework.Workshop;
 using Metamatic.UIToolKit;
@@ -7,11 +9,11 @@ using UnityEngine.UIElements;
 namespace Metamatic.Framework.Widgets
 {
     [MetamaticWidget("Metamatic/Entity", null, WidgetApplicability.Both)]
-    public class EntityWidget: Widget
+    public class EntityEditorWidget: Widget
     {
         private Tabs<EntityComponent> m_EntityComponentsTabs;
         
-        public EntityWidget()
+        public EntityEditorWidget()
         {
             styleSheets.Add(UIToolKitCore.styleSheet);
             styleSheets.Add(UIToolKitCore.tailwindStyleSheet);
@@ -33,9 +35,26 @@ namespace Metamatic.Framework.Widgets
             m_EntityComponentsTabs.Clear();
             if (entityComponent == null)
             {
+                m_EntityComponentsTabs.Add(new Label($"Entity component is not selected"));
                 return;
             }
-            m_EntityComponentsTabs.Add(new Label($"Here will be editor for {entityComponent.GetType().Name}"));
+
+            if (entityComponent.stateType == null)
+            {
+                m_EntityComponentsTabs.Add(new Label($"{entityComponent.GetType().Name} has no state"));
+                return;
+            }
+            Type entityType = entityComponent.GetType();
+            // Получаем свойство "state"
+            PropertyInfo stateProperty = entityType.GetProperty("state");
+            if (stateProperty == null)
+            {
+                m_EntityComponentsTabs.Add(new Label($"{entityComponent.GetType().Name} has no state property"));
+                return;
+            }
+            var editor = new StructEditorFormElement(entityComponent.stateType, () => stateProperty.GetValue(entityComponent), (o => stateProperty.SetValue(entityComponent, o)));
+            editor.AddToClassList(UIToolKitCore.Tailwind.Padding12);
+            m_EntityComponentsTabs.Add(editor);
             await signal;
         }
         

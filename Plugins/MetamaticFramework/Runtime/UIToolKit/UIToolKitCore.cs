@@ -154,6 +154,7 @@ namespace Metamatic.UIToolKit
         #endregion 
         
         #region ClassNames
+        public const string DarkEnoughClassName = "MetamaticUIKit_DarkEnough";
         public const string PaddedContentClassName = "MetamaticUIKit_PaddedContent";
         /// <summary>
         /// Creates vertical layout with 6px visual gap between and around children

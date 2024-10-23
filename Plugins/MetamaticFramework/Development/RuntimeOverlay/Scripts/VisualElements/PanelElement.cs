@@ -1,12 +1,15 @@
+
+
 using System;
+using Cysharp.Threading.Tasks;
+using Metamatic.UIElements;
 using Metamatic.UIToolKit;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Framework
 {
-    [UxmlElement]
-    public partial class PanelElement: VisualElement
+    public class PanelElement: global::Metamatic.UIElements.AsyncVisualElement
     {
         
         [Version("0.1")]
@@ -44,10 +47,13 @@ namespace Metamatic.Framework
         private Label m_Title;
         private Button m_RightButton;
         private ScrollView m_Content;
-        private event Action OnDetachFromPanelEvent;
+        private VisualElement m_Resizer;
         private ObservableReadOnly<Overlay> m_OverlayContext;
         private UserPreferences m_Preferences;
         private Constraints m_Constraints;
+        private Observable<bool> m_IsResizing = new Observable<bool>(false);
+        private Vector2 m_StartResizeMousePosition;
+        private Vector2 m_StartResizeSize;
         
         public override VisualElement contentContainer => m_Content;
         
@@ -62,25 +68,26 @@ namespace Metamatic.Framework
         }
         public PanelElement(string name, string title, Constraints constraints = default, Action onClose = null)
         {
+            AddToClassList(UIToolKitCore.DarkEnoughClassName);
             this.PanelName = name;
             m_Constraints = constraints;
-            AddToClassList("Panel");
+            AddToClassList("MetamaticOverlay_Panel");
             m_Header = new VisualElement();
-            m_Header.AddToClassList("PanelHeader");
+            m_Header.AddToClassList("MetamaticOverlay_PanelHeader");
             
             m_Title = new Label("Panel");
-            m_Title.AddToClassList("PanelTitle");
+            m_Title.AddToClassList("MetamaticOverlay_PanelTitle");
             m_Title.text = title;
             m_Header.Add(m_Title);
             
             var spacer = new VisualElement();
-            spacer.AddToClassList("PanelHeaderSpace");
+            spacer.AddToClassList("MetamaticOverlay_PanelHeaderSpace");
             m_Header.Add(spacer);
 
             if (onClose != null)
             {
                 m_RightButton = new Button(() => { });
-                m_RightButton.AddToClassList("PanelHeaderRightButton");
+                m_RightButton.AddToClassList("MetamaticOverlay_PanelHeaderRightButton");
                 m_RightButton.style.backgroundImage = new StyleBackground(UIToolKitCore.closeIcon12X12);
                 m_RightButton.clicked += onClose;
                 m_Header.Add(m_RightButton);
@@ -90,35 +97,15 @@ namespace Metamatic.Framework
             {
                 name = "unity-content-container"
             };
-            m_Content.AddToClassList("PanelContent");
+            m_Content.AddToClassList("MetamaticOverlay_PanelContent");
             
             hierarchy.Add(m_Header);
             hierarchy.Add(m_Content);
             
-            RegisterCallback<AttachToPanelEvent>(OnAttachedToPanel);
-            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
-        }
-        
-        private void OnAttachedToPanel(AttachToPanelEvent evt)
-        {
-            m_OverlayContext = this.GetContext<Overlay>();
-
-            if (m_OverlayContext == null) return;
-            
-            /* Load preferences */
-            m_Preferences = m_OverlayContext.Value.GetPanelPreferences(PanelName, m_Constraints.DefaultPreferences);
-            m_OverlayContext.Value.uiDocument.rootVisualElement.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
-            
-            /* Detect mouse enter and leave */
-           
-            RegisterCallback<MouseEnterEvent>(EnterHandler);
-            
-            
-            RegisterCallback<MouseLeaveEvent>(LeaveHandler);
-            
-            ApplyPreferences(m_Preferences);
-            
-            InitDraggable();
+            // Add resizer
+            var resizer = m_Resizer = new VisualElement();
+            resizer.AddToClassList("MetamaticOverlay_PanelResizer");
+            hierarchy.Add(resizer);
         }
         
         void EnterHandler(MouseEnterEvent evt)
@@ -137,14 +124,29 @@ namespace Metamatic.Framework
             ApplyPreferences(m_Preferences);
         }
 
-        private void OnDetachFromPanel(DetachFromPanelEvent evt)
+        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
         {
-            m_OverlayContext.Value.uiDocument.rootVisualElement.UnregisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
-            OnDetachFromPanelEvent?.Invoke();
+            m_OverlayContext = this.GetContext<Overlay>();
+
+            if (m_OverlayContext == null) return;
+            
+            /* Load preferences */
+            m_Preferences = m_OverlayContext.Value.GetPanelPreferences(PanelName, m_Constraints.DefaultPreferences);
+            m_OverlayContext.Value.uiDocument.rootVisualElement.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
+            
+            /* Detect mouse enter and leave */
+            RegisterCallback<MouseEnterEvent>(EnterHandler);
+            RegisterCallback<MouseLeaveEvent>(LeaveHandler);
+            ApplyPreferences(m_Preferences);
+            InitDraggable(detachSignal).Forget();
+            InitResizable(detachSignal).Forget();
+            
+            await detachSignal;
             UnregisterCallback<MouseEnterEvent>(EnterHandler);
             UnregisterCallback<MouseLeaveEvent>(LeaveHandler);
+            m_OverlayContext.Value.uiDocument.rootVisualElement.UnregisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
         }
-        
+
         private void ApplyPreferences(UserPreferences preferences)
         {
             var finalPosition = preferences.Position;
@@ -196,7 +198,7 @@ namespace Metamatic.Framework
             m_OverlayContext.Value.SetPanelPreferences(PanelName, preferences);
         }
 
-        private void InitDraggable()
+        private async UniTaskVoid InitDraggable(CancellationSignal signal)
         {
             var startMousePosition = Vector2.zero;
             var startPanelPosition = Vector2.zero;
@@ -213,7 +215,6 @@ namespace Metamatic.Framework
             }
             
             m_Header.RegisterCallback<MouseDownEvent>(OnMouseDown);
-            OnDetachFromPanelEvent += () => m_Header.UnregisterCallback<MouseDownEvent>(OnMouseDown);
             
             void OnMouseMove(MouseMoveEvent evt)
             {
@@ -228,7 +229,6 @@ namespace Metamatic.Framework
             }
 
             m_Header.RegisterCallback<MouseMoveEvent>(OnMouseMove);
-            OnDetachFromPanelEvent += () => m_Header.UnregisterCallback<MouseMoveEvent>(OnMouseMove);
             
             void OnMouseUp(MouseUpEvent evt)
             {
@@ -240,7 +240,77 @@ namespace Metamatic.Framework
             }
 
             m_Header.RegisterCallback<MouseUpEvent>(OnMouseUp);
-            OnDetachFromPanelEvent += () => m_Header.UnregisterCallback<MouseUpEvent>(OnMouseUp);
+            
+            await signal;
+            m_Header.UnregisterCallback<MouseDownEvent>(OnMouseDown);
+            m_Header.UnregisterCallback<MouseMoveEvent>(OnMouseMove);
+            m_Header.UnregisterCallback<MouseUpEvent>(OnMouseUp);
+        }
+
+        private async UniTaskVoid InitResizable(CancellationSignal signal)
+        {
+            // Listen for mouse down on resizer
+            m_Resizer.RegisterCallback<MouseDownEvent>(OnMouseDownOnResizer);
+            m_Resizer.RegisterCallback<MouseMoveEvent>(OnMouseMoveOnResizer);
+            m_Resizer.RegisterCallback<MouseUpEvent>(OnMouseUpOnResizer);
+            await signal;
+            m_Resizer.UnregisterCallback<MouseDownEvent>(OnMouseDownOnResizer);
+            m_Resizer.UnregisterCallback<MouseMoveEvent>(OnMouseMoveOnResizer);
+            m_Resizer.UnregisterCallback<MouseUpEvent>(OnMouseUpOnResizer);
+        }
+        
+        private void OnMouseDownOnResizer(MouseDownEvent evt)
+        {
+            if (evt.button == 0)
+            {
+                m_StartResizeMousePosition = evt.mousePosition;
+                m_StartResizeSize = new Vector2(resolvedStyle.width, resolvedStyle.height);
+                m_IsResizing.Value = true;
+                m_Resizer.CaptureMouse();
+            }
+        }
+        
+        private void OnMouseUpOnResizer(MouseUpEvent evt)
+        {
+            if (evt.button == 0)
+            {
+                m_IsResizing.Value = false;
+                m_Resizer.ReleaseMouse();
+                WritePreferences();
+            }
+        }
+        private void OnMouseMoveOnResizer(MouseMoveEvent evt)
+        {
+            if (m_IsResizing.Value)
+            {
+                var diff = evt.mousePosition - m_StartResizeMousePosition;
+                var nextSize = m_StartResizeSize + diff;
+                
+                /* Fix next size according constraints */
+                if (m_Constraints.AutoWidth)
+                {
+                    nextSize.x = m_StartResizeSize.x;
+                }
+                if (m_Constraints.AutoHeight)
+                {
+                    nextSize.y = m_StartResizeSize.y;
+                }
+                if (m_Constraints.MinSize != Vector2.zero)
+                {
+                    nextSize = Vector2.Max(nextSize, m_Constraints.MinSize);
+                }
+                if (m_Constraints.MaxSize.x != 0)
+                {
+                    nextSize.x = Mathf.Min(nextSize.x, m_Constraints.MaxSize.x);
+                }
+                if (m_Constraints.MaxSize.y != 0)
+                {
+                    nextSize.y = Mathf.Min(nextSize.y, m_Constraints.MaxSize.y);
+                }
+                
+                m_Preferences.Size = nextSize;
+                ApplyPreferences(m_Preferences);
+            }
         }
         
         public void AddContent(VisualElement content)

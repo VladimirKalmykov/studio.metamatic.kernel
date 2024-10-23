@@ -5,7 +5,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Metamatic
+namespace Metamatic.UIElements
 {
     public abstract class AsyncVisualElement: VisualElement
     {

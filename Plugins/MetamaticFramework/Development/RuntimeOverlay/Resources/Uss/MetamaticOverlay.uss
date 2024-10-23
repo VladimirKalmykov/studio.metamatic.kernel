@@ -124,7 +124,7 @@
     flex-shrink: 1;
 }
 
-.Panel {
+.MetamaticOverlay_Panel {
     flex-grow: 1;
     position: absolute;
     background-color: #141414;
@@ -136,7 +136,17 @@
     border-width: 1px;
 }
 
-.PanelHeader {
+.MetamaticOverlay_PanelResizer {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: red;
+    width: 12px;
+    height: 12px;
+    cursor: resize-up-left;
+}
+
+.MetamaticOverlay_PanelHeader {
     flex-grow: 0;
     height: 42px;
     justify-content: flex-start;
@@ -150,7 +160,7 @@
     font-size: 12px;
 }
 
-.PanelTitle {
+.MetamaticOverlay_PanelTitle {
     align-self: center;
     font-size: 18px;
     margin-top: 0;
@@ -164,7 +174,7 @@
     padding-left: 0;
 }
 
-.PanelContent {
+.MetamaticOverlay_PanelContent {
     flex-grow: 1;
     flex-direction: column-reverse;
     flex-wrap: wrap;
@@ -179,11 +189,11 @@
     align-content: flex-start;
 }
 
-.PanelHeaderSpace {
+.MetamaticOverlay_PanelHeaderSpace {
     flex-grow: 1;
 }
 
-.PanelHeaderRightButton {
+.MetamaticOverlay_PanelHeaderRightButton {
     background-color: rgba(188, 188, 188, 0);
     border-top-width: 0;
     border-right-width: 0;
@@ -204,7 +214,7 @@
     flex-shrink: 1;
 }
 
-.PanelHeaderRightButton:hover {
+.MetamaticOverlay_PanelHeaderRightButton:hover {
     background-color: rgba(188, 188, 188, 0.1);
     -unity-background-image-tint-color: #fff;
 }

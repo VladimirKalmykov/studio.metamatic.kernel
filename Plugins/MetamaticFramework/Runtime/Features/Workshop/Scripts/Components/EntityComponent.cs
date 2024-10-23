@@ -13,6 +13,7 @@ namespace Metamatic.Framework.Workshop
         private float m_LastTimeUpdate;
         private event Action OnDestroyEvent;
         private Entity m_Entity;
+        public abstract Type stateType { get; }
         
         #region Public properties
         public Entity entity
@@ -67,18 +68,25 @@ namespace Metamatic.Framework.Workshop
     {
         protected T State;
         public delegate void StateModifier(ref T state);
-        public bool pristine { get; private set; }
+        public override Type stateType => typeof(T);
+        public T GetState() => State;
+        public ref T GetStateRef() => ref State;
+
+        public T state
+        {
+            get => State;
+            set => State = value;
+        }
+        public ref T stateRef => ref State;
         
         public void SetState(T state)
         {
             State = state;
-            pristine = false;
         }
         
         public void EditState(StateModifier modifier)
         {
             modifier(ref State);
-            pristine = false;
         }
 
         protected override void Awake()

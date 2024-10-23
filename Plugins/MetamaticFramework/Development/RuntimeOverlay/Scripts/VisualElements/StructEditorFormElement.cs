@@ -1,3 +1,6 @@
+using Cysharp.Threading.Tasks;
+using Metamatic.UIElements;
+
 namespace Metamatic.Framework
 {
     using System;
@@ -6,21 +9,25 @@ namespace Metamatic.Framework
     using UnityEngine;
     using UnityEngine.UIElements;
 
-    public class StructEditorFormElement : VisualElement
+    public class StructEditorFormElement : AsyncVisualElement
     {
-        private Type targetType;
-        private readonly Dictionary<string, (Field field, VisualElement editor)> fieldElements = new ();
+        private readonly Type m_TargetType;
+        private readonly Func<object> m_ValueGetter;
+        private readonly Action<object> m_ValueSetter;
+        private readonly Dictionary<string, (FieldInfo fieldInfo, Field field, VisualElement editor)> m_FieldElements = new ();
 
-        public StructEditorFormElement(Type type)
+        public StructEditorFormElement(Type type, Func<object> valueGetter = null, Action<object> valueSetter = null)
         {
-            targetType = type;
+            m_TargetType = type;
+            m_ValueGetter = valueGetter;
+            m_ValueSetter = valueSetter;
             GenerateForm();
         }
 
         private void GenerateForm()
         {
             // Use reflection to get public fields
-            FieldInfo[] fields = targetType.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            FieldInfo[] fields = m_TargetType.GetFields(BindingFlags.Public | BindingFlags.Instance);
 
             foreach (FieldInfo field in fields)
             {
@@ -30,7 +37,7 @@ namespace Metamatic.Framework
                 VisualElement fieldEditor = CreateFieldEditor(field);
                 if (fieldEditor != null)
                 {
-                    fieldElements.Add(field.Name, (fieldElement, fieldEditor));
+                    m_FieldElements.Add(field.Name, (field, fieldElement, fieldEditor));
                     fieldElement.AddContent(fieldEditor);
                 }
                 else
@@ -46,65 +53,146 @@ namespace Metamatic.Framework
         private VisualElement CreateFieldEditor(FieldInfo field)
         {
             Type fieldType = field.FieldType;
-
+            VisualElement editorElement = null;
             // Handle basic types
             if (fieldType == typeof(int))
             {
                 IntegerField intField = new IntegerField();
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    intField.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return intField;
             }
-            else if (fieldType == typeof(float))
+
+            if (fieldType == typeof(float))
             {
                 FloatField floatField = new FloatField();
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    floatField.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return floatField;
             }
-            else if (fieldType == typeof(string))
+
+            if (fieldType == typeof(string))
             {
                 TextField textField = new TextField();
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    textField.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return textField;
             }
-            else if (fieldType == typeof(bool))
+
+            if (fieldType == typeof(bool))
             {
                 Toggle toggle = new Toggle();
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    toggle.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return toggle;
             }
-            else if (fieldType.IsEnum)
+
+            if (fieldType.IsEnum)
             {
                 EnumField enumField = new EnumField((Enum)Enum.GetValues(fieldType).GetValue(0));
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    enumField.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return enumField;
             }
-            else if (fieldType == typeof(Vector2))
+
+            if (fieldType == typeof(Vector2))
             {
                 Vector2Field vector2Field = new Vector2Field();
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    vector2Field.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return vector2Field;
             }
-            else if (fieldType == typeof(Vector3))
+
+            if (fieldType == typeof(Vector3))
             {
                 Vector3Field vector3Field = new Vector3Field();
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    vector3Field.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return vector3Field;
             }
-            else if (fieldType == typeof(bool))
+
+            if (fieldType == typeof(bool))
             {
                 Toggle toggle = new Toggle();
+                if (m_ValueSetter != null)
+                {
+                    // Register callback to update the value in the struct
+                    toggle.RegisterValueChangedCallback(evt =>
+                    {
+                        m_ValueSetter(Submit(field.Name));
+                    });
+                }
                 return toggle;
             }
-            else
-            {
-                // Unsupported field type
-                return null;
-            }
+
+            // Unsupported field type
+            return null;
         }
 
         // Method to create an instance of the struct with values from the form
-        public object Submit()
+        public object Submit(string onlyFieldWithName = null)
         {
-            object instance = Activator.CreateInstance(targetType);
+            object instance = m_ValueGetter != null ? m_ValueGetter() : Activator.CreateInstance(m_TargetType);
 
-            foreach (var kvp in fieldElements)
+            // The mode where only one field is updated
+            if (onlyFieldWithName != null)
+            {
+                if (m_FieldElements.TryGetValue(onlyFieldWithName, out var fieldElement))
+                {
+                    FieldInfo field = fieldElement.fieldInfo;
+                    object value = GetValueFromEditor(field.FieldType, fieldElement.editor);
+                    field.SetValue(instance, value);
+                    return instance;
+                }
+            }
+
+            foreach (var kvp in m_FieldElements)
             {
                 string fieldName = kvp.Key;
                 VisualElement editor = kvp.Value.editor;
-                FieldInfo field = targetType.GetField(fieldName);
+                FieldInfo field = m_TargetType.GetField(fieldName);
 
                 if (field != null)
                 {
@@ -114,6 +202,61 @@ namespace Metamatic.Framework
             }
 
             return instance;
+        }
+        
+        private void SetValuesFromOrigin(object origin)
+        {
+            foreach (var kvp in m_FieldElements)
+            {
+                FieldInfo field = kvp.Value.fieldInfo;
+                SetValueFromOrigin(field, origin);
+            }
+        }
+        
+        private void SetValueFromOrigin(FieldInfo field, object origin)
+        {
+            object value = field.GetValue(origin);
+            if (m_FieldElements.TryGetValue(field.Name, out var fieldElement))
+            {
+                VisualElement editor = fieldElement.editor;
+                SetValueToEditor(field.FieldType, editor, value);
+            }
+        }
+        
+        private void SetValueToEditor(Type fieldType, VisualElement editor, object value)
+        {
+            if (fieldType == typeof(int))
+            {
+                ((IntegerField)editor).value = (int)value;
+            }
+            else if (fieldType == typeof(float))
+            {
+                ((FloatField)editor).value = (float)value;
+            }
+            else if (fieldType == typeof(string))
+            {
+                ((TextField)editor).value = (string)value;
+            }
+            else if (fieldType == typeof(bool))
+            {
+                ((Toggle)editor).value = (bool)value;
+            }
+            else if (fieldType.IsEnum)
+            {
+                ((EnumField)editor).value = (Enum)value;
+            }
+            else if (fieldType == typeof(Vector2))
+            {
+                ((Vector2Field)editor).value = (Vector2)value;
+            }
+            else if (fieldType == typeof(Vector3))
+            {
+                ((Vector3Field)editor).value = (Vector3)value;
+            }
+            else if (fieldType == typeof(bool))
+            {
+                ((Toggle)editor).value = (bool)value;
+            }
         }
 
         private object GetValueFromEditor(Type fieldType, VisualElement editor)
@@ -152,6 +295,18 @@ namespace Metamatic.Framework
             else
             {
                 return null;
+            }
+        }
+
+        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        {
+            if (m_ValueGetter != null)
+            {
+                using var updateRunner = PlayerLoop.EachFrame(() =>
+                {
+                    SetValuesFromOrigin(m_ValueGetter());
+                }, PlayerLoopTiming.Update);
+                await detachSignal;
             }
         }
     }

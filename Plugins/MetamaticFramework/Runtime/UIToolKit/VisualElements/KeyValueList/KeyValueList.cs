@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Metamatic;
+using Metamatic.UIElements;
 using UnityEngine.UIElements;
 
 namespace Metamatic.UIToolKit
