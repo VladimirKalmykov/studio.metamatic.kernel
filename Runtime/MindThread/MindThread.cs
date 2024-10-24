@@ -62,6 +62,8 @@ namespace Metamatic
         /// Determines if the thread is activated
         /// </summary>
         private bool m_InitiallyActivated;
+
+        public string thought { get; protected set; } = "Nothing";
         public bool longLived { get; set; }
         public bool isActive { get; set; }
         public event Action<IMindThread> OnLoopEnd;
@@ -307,6 +309,11 @@ namespace Metamatic
             {
                 OnLoopEnd -= action;
             });
+        }
+        
+        public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, CancellationSignal, UniTaskVoid> action)
+        {
+            return activeChildThread.WatchLifecycle(action);
         }
 
         /// <summary>

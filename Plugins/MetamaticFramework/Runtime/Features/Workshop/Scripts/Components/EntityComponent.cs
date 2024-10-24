@@ -38,7 +38,7 @@ namespace Metamatic.Framework.Workshop
         }
         protected virtual void Awake()
         {
-            entity.Components.Add(this);
+            entity.RegisterComponent(this);
             OnDestroyEvent += entity.SubscribeToEntityReset(OnEntityReset);
             OnDestroyEvent += entity.SubscribeToEntityUpdate(InternalOnEntityUpdate);
         }
@@ -46,7 +46,7 @@ namespace Metamatic.Framework.Workshop
         {
             if (entity != null)
             {
-                entity.Components.Remove(this);
+                entity.UnregisterComponent(this);
             }
             
             OnDestroyEvent?.Invoke();

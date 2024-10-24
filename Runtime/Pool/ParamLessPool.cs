@@ -54,7 +54,7 @@ namespace Metamatic
                     ParamLessPool.SharedPoolsCount--;
                     #endif
                     /* Remove useless pool */
-                    Debug.Log($"[POOL] Global pool of type {typeof(T)} is useless. Removing from global pool");
+                    global::Metamatic.Console.Verbose("Pool", "ParamLessPool", $"Global pool of type {typeof(T)} is useless. Removing from global pool");
                     _SharedPool.Dispose();
                     _SharedPool = null;
                 };

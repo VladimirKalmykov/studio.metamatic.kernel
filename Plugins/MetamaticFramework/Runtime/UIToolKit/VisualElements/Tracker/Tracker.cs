@@ -34,4 +34,27 @@ namespace Metamatic.UIToolKit
             await detachSignal;
         }
     }
+    
+    public class Tracker<TElement>: AsyncVisualElement
+        where TElement: VisualElement
+    {
+        private TElement m_Target;
+        private Action<TElement> m_Update;
+        private PlayerLoopTiming m_Timing;
+        public Tracker(TElement target, Action<TElement> update, PlayerLoopTiming timing = PlayerLoopTiming.LastUpdate)
+        {
+            m_Target = target;
+            m_Update = update;
+            Add(target);
+        }
+        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        {
+            UniTask.WaitUntil(() =>
+            {
+                m_Update(m_Target);
+                return detachSignal.IsCancellationRequested;
+            }, m_Timing);
+            await detachSignal;
+        }
+    }
 }

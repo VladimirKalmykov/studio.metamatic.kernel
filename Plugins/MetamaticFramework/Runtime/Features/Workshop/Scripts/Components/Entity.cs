@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic.Framework.Workshop
@@ -11,6 +12,18 @@ namespace Metamatic.Framework.Workshop
         private event Action OnEntityResetEvent;
         private event Action OnEntityUpdateEvent;
         public readonly ObservableList<EntityComponent> Components = new ObservableList<EntityComponent>();
+        private readonly Dictionary<Type, EntityComponent> m_RegisteredComponents = new Dictionary<Type, EntityComponent>();
+        public T ResolveComponent<T>() where T : EntityComponent
+        {
+            if (m_RegisteredComponents.TryGetValue(typeof(T), out var component))
+            {
+                return (T) component;
+            }
+
+            var newComponent = gameObject.AddComponent<T>();
+            RegisterComponent(newComponent);
+            return newComponent;
+        }
         public void ResetEntity()
         {
             OnEntityResetEvent?.Invoke();
@@ -23,6 +36,24 @@ namespace Metamatic.Framework.Workshop
         }
 
         protected abstract UniTask OnEntityRun(Ready ready, CancellationSignal signal);
+        
+        public void RegisterComponent(EntityComponent component)
+        {
+            if (!m_RegisteredComponents.ContainsKey(component.stateType))
+            {
+                m_RegisteredComponents.Add(component.stateType, component);
+                Components.Add(component);
+            }
+        }
+        
+        public void UnregisterComponent(EntityComponent component)
+        {
+            if (!m_RegisteredComponents.ContainsKey(component.stateType))
+            {
+                throw new InvalidOperationException($"Component of type {component.stateType} is not registered");
+            }
+            Components.Remove(component);
+        }
         
         public DisposableAction SubscribeToEntityReset(Action handler)
         {

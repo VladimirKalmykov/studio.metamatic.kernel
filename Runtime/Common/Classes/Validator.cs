@@ -282,8 +282,7 @@ namespace Metamatic
 #if DEBUG
             if (debug)
             {
-                Debug.Log(
-                    $"[VALIDATOR] Add new validator {newValidator?.ToString()} and set as children of {m_Current?.ToString()} (Parent: {m_Current?.Parent?.ToString()}, Children: {m_Current?.Child?.ToString()})");
+                Console.Info("Validator", $"Add new validator {newValidator?.ToString()} and set as children of {m_Current?.ToString()} (Parent: {m_Current?.Parent?.ToString()}, Children: {m_Current?.Child?.ToString()})");
             }
 
 #endif
@@ -295,8 +294,8 @@ namespace Metamatic
 #if DEBUG
                 if (debug)
                 {
-                    Debug.Log(
-                        $"[VALIDATOR] Dispose validator {newValidator.ToString()} (Parent: {newValidator.Parent?.ToString()}, Children: {newValidator.Child?.ToString()})");
+                    global::Metamatic.Console.Info("Validator", 
+                        $"Dispose validator {newValidator.ToString()} (Parent: {newValidator.Parent?.ToString()}, Children: {newValidator.Child?.ToString()})");
                 }
 #endif
                 m_Current = newValidator.Child ?? newValidator.Parent;
@@ -334,7 +333,7 @@ namespace Metamatic
         private void LogCurrentThread(string methodName)
         {
             var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-            Debug.Log($"[VALIDATOR] Method: {methodName}, Thread ID: {threadId}");
+            global::Metamatic.Console.Info("Validator", $"Method: {methodName}, Thread ID: {threadId}");
         }
 #endif
     }
