@@ -1,12 +1,42 @@
 /* Themes */
 :root {
+    --MetamaticTailwind_PrimarySize: 12;
     --MetamaticTailwind_TextColor: #f0f0f0;
     --MetamaticTailwind_BackgroundColor: #1a1a1a;
     --MetamaticTailwind_BorderColor: #282828;
     --MetamaticTailwind_BorderLightColor: #3a3a3a;
     --MetamaticTailwind_PanelBackgroundColor: #2a2a2a;
+    --MetamaticTailwind_PanelBackgroundColorTransparent: rgba(42, 42, 42, 0.65);
     --MetamaticTailwind_IndicatorInactiveColor: #4d4d4d;
     --MetamaticTailwind_IndicatorActiveColor: #1bffdd;
+}
+
+/* Text size */
+.MetamaticTailwind_TextSizeDefault {
+    font-size: var(--MetamaticTailwind_PrimarySize);
+}
+
+/* Text color */
+.MetamaticTailwind_TextColorDefault {
+    color: var(--MetamaticTailwind_TextColor);
+}
+
+/* Position */
+.MetamaticTailwind_Relative {
+    position: relative;
+}
+
+.MetamaticTailwind_Absolute {
+    position: absolute;
+}
+
+/* Size */
+.MetamaticTailwind_WidthFull {
+    width: 100%;
+}
+
+.MetamaticTailwind_HeightFull {
+    height: 100%;
 }
 
 /* Flex direction */
@@ -232,6 +262,10 @@
 
 .MetamaticTailwind_BackgroundColorPanel {
     background-color: var(--MetamaticTailwind_PanelBackgroundColor);
+}
+
+.MetamaticTailwind_BackgroundColorPanelTransparent {
+    background-color: var(--MetamaticTailwind_PanelBackgroundColorTransparent);
 }
 
 .MetamaticTailwind_BackgroundColorIndicatorInactive {

@@ -184,7 +184,7 @@ namespace Metamatic.Framework
                         var menuPanel = new MenuPanel(this, parentMenuPanel == null ? MenuPanel.Placement.Bottom : MenuPanel.Placement.Right);
                         var subMenuElement = new MenuElement(MenuElement.Orientation.Vertical, submenu);
                         menuPanel.Add(subMenuElement);
-                        var overlayRoot = this.GetContext<Overlay>().value.root;
+                        var overlayRoot = this.GetContext<DevToolsOverlay>().value.root;
 
                         Add(menuPanel);
                         await cancellationSignal;

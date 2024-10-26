@@ -39,18 +39,18 @@ namespace Metamatic.Framework.Workshop
         
         public void RegisterComponent(EntityComponent component)
         {
-            if (!m_RegisteredComponents.ContainsKey(component.stateType))
+            if (!m_RegisteredComponents.ContainsKey(component.GetType()))
             {
-                m_RegisteredComponents.Add(component.stateType, component);
+                m_RegisteredComponents.Add(component.GetType(), component);
                 Components.Add(component);
             }
         }
         
         public void UnregisterComponent(EntityComponent component)
         {
-            if (!m_RegisteredComponents.ContainsKey(component.stateType))
+            if (!m_RegisteredComponents.ContainsKey(component.GetType()))
             {
-                throw new InvalidOperationException($"Component of type {component.stateType} is not registered");
+                throw new InvalidOperationException($"Component of type {component.GetType().Name} is not registered");
             }
             Components.Remove(component);
         }

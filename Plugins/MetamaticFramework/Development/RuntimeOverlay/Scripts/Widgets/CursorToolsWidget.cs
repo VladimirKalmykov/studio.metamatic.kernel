@@ -6,15 +6,15 @@ using UnityEngine.UIElements;
 
 namespace Metamatic.Framework.Widgets
 {
-    [MetamaticWidget("Metamatic/Tools", null, WidgetApplicability.Viewport)]
-    public class ToolsWidget: Widget
+    [MetamaticWidget("Metamatic/CursorTools", null, WidgetApplicability.Viewport)]
+    public class CursorToolsWidget: Widget
     {
-        private Overlay m_Overlay;
+        private DevToolsOverlay m_Overlay;
         private VisualTreeAsset m_CursorToolItemTemplate;
         private VisualElement m_Element;
         private Dictionary<string, VisualElement> m_CursorToolItems = new ();
         
-        public ToolsWidget()
+        public CursorToolsWidget()
         {
             m_CursorToolItemTemplate = Resources.Load<VisualTreeAsset>("Tool");
             
@@ -25,7 +25,7 @@ namespace Metamatic.Framework.Widgets
         }
         public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
         {
-            var overlay = m_Overlay = this.GetContext<Overlay>().Value;
+            var overlay = m_Overlay = this.GetContext<DevToolsOverlay>().Value;
             /* Subscribe to cursor tools */
             using var cursorToolSubscription = overlay.ObserveCursorTools(OnObserverCursorTool);
             using var activeCursorToolSubscription = overlay.SubscribeToActiveCursorTool(OnActiveCursorTool);
@@ -52,28 +52,28 @@ namespace Metamatic.Framework.Widgets
             }
         }
         
-        private async UniTaskVoid OnObserverCursorTool(CursorTool cursorTool, int index, CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnObserverCursorTool(DevToolsOverlay.CursorToolBlueprint cursorTool, int index, CancellationSignal cancellationSignal)
         {
-            var name = cursorTool.Name;
+            var pathName = cursorTool.Metadata.PathName;
             try
             {
                 // Here we can add cursor tool button to the panel
                 m_CursorToolItemTemplate.CloneTree(m_Element);
                 var cursorToolItem = this.Query<VisualElement>("ToolItem").Last();
-                m_CursorToolItems.Add(name, cursorToolItem);
+                m_CursorToolItems.Add(pathName, cursorToolItem);
                 var icon = cursorToolItem.Query<VisualElement>("Icon").First();
                 var iconImage = new Image();
-                iconImage.image = Resources.Load<Texture2D>(cursorTool.IconPath);
+                iconImage.image = Resources.Load<Texture2D>(cursorTool.Metadata.Icon);
                 iconImage.AddToClassList(".IconImage");
                 icon.Add(iconImage);
 
                 var label = cursorToolItem.Query<Label>("Label").First();
-                label.text = cursorTool.DisplayName;
+                label.text = cursorTool.Metadata.DisplayName;
                 
                 /* Listen for click at the cursor tool button */
                 cursorToolItem.RegisterCallback<ClickEvent>(evt =>
                 {
-                    m_Overlay.ToggleActivate(cursorTool);
+                    m_Overlay.ToggleActivate(pathName);
                 });
                 
             } catch (Exception e)
@@ -82,7 +82,7 @@ namespace Metamatic.Framework.Widgets
             }
 
             await cancellationSignal;
-            m_CursorToolItems.Remove(name);
+            m_CursorToolItems.Remove(pathName);
         }
     }
 }

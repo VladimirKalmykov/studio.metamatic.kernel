@@ -7,7 +7,7 @@ namespace Metamatic.Framework
     public class FunctionsWidget: WidgetLegacy
     {
         private VisualElement m_Root;
-        public FunctionsWidget(Overlay overlay) : base(overlay)
+        public FunctionsWidget(DevToolsOverlay overlay) : base(overlay)
         {
         }
 

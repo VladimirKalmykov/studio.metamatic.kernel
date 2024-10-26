@@ -577,7 +577,7 @@ namespace Metamatic
 #if DEBUG
             if (DebugId != null)
             {
-                Debug.Log($"[CancellationSignalSource] Dispose {DebugId}");
+                Console.Info("CancellationSignalSource", $"CancellationSignalSource] Dispose {DebugId}");
             }
 #endif
             TryCancel(Version, true);

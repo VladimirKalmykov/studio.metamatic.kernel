@@ -31,6 +31,28 @@ namespace Metamatic
             m_Handler = handler ?? DefaultHandler;
         }
         
+        public DisposableAction WatchEach(Action<T, int> handler, Func<T, int, bool> filter = null)
+        {
+            void ForgetHandler(T item, int index, CancellationSignal signal)
+            {
+                if (filter != null && !filter(item, index))
+                    return;
+                handler(item, index);
+            }
+            for (var i = 0; i < m_List.Count; i++)
+            {
+                var item = m_List[i];
+                if (filter != null && !filter(item, i))
+                    continue;
+                ForgetHandler(item, i, m_CancellationTokens[item].Signal);
+            }
+            OnItemAdded += ForgetHandler;
+            return new DisposableAction(() =>
+            {
+                OnItemAdded -= ForgetHandler;
+            });
+        }
+        
         public DisposableAction WatchEachLifecycle(Func<T, int, CancellationSignal, UniTaskVoid> handler, Func<T, int, bool> filter = null)
         {
             var cssList = new List<CancellationSignalSource>();

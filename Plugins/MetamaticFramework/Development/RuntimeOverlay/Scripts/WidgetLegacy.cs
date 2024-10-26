@@ -5,9 +5,9 @@ namespace Metamatic.Framework
 {
     public abstract class WidgetLegacy: IDisposable
     {
-        public Overlay overlay { get; private set; }
+        public DevToolsOverlay overlay { get; private set; }
         private CancellationSignalSource m_DisposeSignal;
-        public WidgetLegacy(Overlay overlay)
+        public WidgetLegacy(DevToolsOverlay overlay)
         {
             this.overlay = overlay;
             m_DisposeSignal = CancellationSignalSource.Create();

@@ -25,6 +25,7 @@ namespace Metamatic
         public IMindThread rootThread { get; set; }
         public string thought { get; }
         public UniTask Activate(CancellationSignal cancellationSignal);
+        public DisposableAction AddChildThread(IMindThread thread);
         public void Update();
         public float GetWeight();
         public void Weighting();

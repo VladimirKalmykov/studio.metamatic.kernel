@@ -6,15 +6,16 @@ using UnityEngine.UIElements;
 
 namespace Metamatic.Framework.CursorTools
 {
+    [MetamaticCursorTool("System/Select", "Select", "Sprites/Tools/Icons/Selector")]
     public class SelectorCursorTool : AsyncCursorTool
     {
         private Camera m_Camera;
         protected bool IsPressed;
         private Collider2D m_ColliderUnderCursor;
-        protected Overlay Overlay;
+        protected DevToolsOverlay Overlay;
         private Label m_CursorTextElement;
 
-        public SelectorCursorTool() : base("System/Select", "Select", "Sprites/Tools/Icons/Selector")
+        public SelectorCursorTool()
         {
             InitAsync();
         }
@@ -34,7 +35,7 @@ namespace Metamatic.Framework.CursorTools
             
         }
 
-        public override async UniTaskVoid OnActivate(Overlay overlay, CancellationSignal signal)
+        public override async UniTaskVoid OnActivate(DevToolsOverlay overlay, CancellationSignal signal)
         {
             Overlay = overlay;
             /* Create cursor hint and it to the overlay root */

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -9,6 +10,12 @@ namespace Metamatic.Framework.Widgets
     [MetamaticWidget("Metamatic/Spells", null, WidgetApplicability.Viewport)]
     public class SpellsWidget: Widget
     {
+        /// <summary>
+        /// Contains all spells that are available in the project
+        /// </summary>
+        public static SpellMetadata[] spellMetadata { get; private set; }
+        private static readonly Observable<Type> m_ActiveSpellType = new();
+        
         private VisualTreeAsset m_ItemTemplate;
         private readonly Dictionary<Type, VisualElement> m_MapSpellTypeToElement = new ();
         private VisualElement m_SpellsContainer;
@@ -16,12 +23,24 @@ namespace Metamatic.Framework.Widgets
         
         // Spell
         private Form m_SpellForm;
-        private Type m_ActiveSpellType;
         private List<string> m_Messages = new List<string>();
         private StructEditorFormElement m_CurrentStructEditor;
         
         public SpellsWidget()
         {
+            // Initialize spells metadata if not initialized
+            if (spellMetadata == null)
+            {
+                /* Find all structures that implement the ISpell interface */
+                var spellTypes = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(s => s.GetTypes())
+                    .Where(p => typeof(ISpell).IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract)
+                    .Select(SpellAttribute.GetMetadata);
+                var enumerable = spellTypes as SpellMetadata[] ?? spellTypes.ToArray();
+            
+                Console.Info("Metamatic Framework", $"Found {enumerable.Count()} spells");
+                spellMetadata = enumerable.ToArray();
+            }
             m_ItemTemplate = Resources.Load<VisualTreeAsset>("SelectableItem");
             var splitter = new TwoPaneSplitView(0, 200, TwoPaneSplitViewOrientation.Horizontal);
 
@@ -41,9 +60,9 @@ namespace Metamatic.Framework.Widgets
         public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
         {
             /* Subscribe to active spell type */
-            using var activeSpellTypeSubscription = RuntimeCore.Instance.WatchActiveSpellType(OnActiveSpellTypeChanged);
+            using var activeSpellTypeSubscription = WatchActiveSpellType(OnActiveSpellTypeChanged);
             /* Watch for active spell type */
-            using var watchActiveSpellType = RuntimeCore.Instance.OnSwitchActiveSpellType(OnSwitchActiveSpellType);
+            using var watchActiveSpellType = OnSwitchActiveSpellType(OnSwitchActiveSpellType);
             /* Watch for selected objects */
             using var watchSelectedObjects = RuntimeCore.Instance.WatchSelectObjectsChanged(Revalidate);
             
@@ -57,7 +76,7 @@ namespace Metamatic.Framework.Widgets
 
         private void CreateSpellsGUI()
         {
-            var allSpells = RuntimeCore.Instance.spellMetadata;
+            var allSpells = spellMetadata;
             foreach (var spell in allSpells)
             {
                 m_ItemTemplate.CloneTree(m_SpellsContainer);
@@ -70,7 +89,7 @@ namespace Metamatic.Framework.Widgets
                 /* Capture click */
                 void ClickHandler(MouseUpEvent evt)
                 {
-                    RuntimeCore.Instance.SetActiveSpellType(spell.SpellType);
+                    SetActiveSpellType(spell.SpellType);
                 }
                 item.RegisterCallback<MouseUpEvent>(ClickHandler);
             }
@@ -138,7 +157,7 @@ namespace Metamatic.Framework.Widgets
                 return;
             }
             
-            m_ActiveSpellType = spellType;
+            m_ActiveSpellType.value = spellType;
             m_CurrentStructEditor = new StructEditorFormElement(spellType);
             m_SpellForm.ClearContent();
             m_SpellForm.AddContent(m_CurrentStructEditor);
@@ -170,6 +189,20 @@ namespace Metamatic.Framework.Widgets
                     syncSpell.OnCast(God.Instance, selectedObject);
                 }
             }
+        }
+        public void SetActiveSpellType(Type spellType)
+        {
+            m_ActiveSpellType.value = spellType;
+        }
+
+        public DisposableAction WatchActiveSpellType(Action<Type> action)
+        {
+            return m_ActiveSpellType.Watch(action);
+        }
+        
+        public DisposableAction OnSwitchActiveSpellType(Func<Type, CancellationSignal, UniTaskVoid> action)
+        {
+            return SequentialHandler<Type>.WatchAsync(m_ActiveSpellType.Watch, action);
         }
     }
 }

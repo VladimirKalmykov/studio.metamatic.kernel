@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Metamatic.Framework.CursorTools;
+using Metamatic.Framework.Workshop;
 using Metamatic.UIToolKit;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
@@ -13,24 +14,41 @@ namespace Metamatic.Framework
     using Cysharp.Threading.Tasks;
     using UnityEngine;
     using UnityEngine.UIElements;
-    using Cursor = UnityEngine.Cursor;
 
-    public class Overlay : AsyncBehaviour
+    /// <summary>
+    /// Singleton class that manages the overlay and all the tools that are used in the overlay.
+    /// </summary>
+    public class DevToolsOverlay : AsyncBehaviour
     {
         [Serializable]
         public class KeyCombination
         {
-            public Key mainKey;      // Основная клавиша
-            public bool ctrl;        // Модификатор CTRL
-            public bool shift;       // Модификатор SHIFT
-            public bool alt;         // Модификатор ALT
+            public Key mainKey; // Основная клавиша
+            public bool ctrl; // Модификатор CTRL
+            public bool shift; // Модификатор SHIFT
+            public bool alt; // Модификатор ALT
         }
-        
+
         #region Static
-        private static Observable<Overlay> m_Instance = new();
-        public static UniTask<Overlay> GetInstance(CancellationSignal signal) => m_Instance.WaitUntilValueIsNotNull(signal);
+
+        /// <summary>
+        /// Provides observable access to the instance of the DevToolsOverlay.
+        /// </summary>
+        private static Observable<DevToolsOverlay> m_Instance = new();
+
+        /// <summary>
+        /// Get instance of the DevToolsOverlay asynchronously.
+        /// </summary>
+        /// <param name="signal"></param>
+        /// <returns></returns>
+        public static UniTask<DevToolsOverlay> GetInstance(CancellationSignal signal) =>
+            m_Instance.WaitUntilValueIsNotNull(signal);
+
         public static int Version = 1;
-        
+
+        /// <summary>
+        /// Class that holds the persistent state of the overlay.
+        /// </summary>
         [Serializable]
         [Version("0.1")]
         public class PersistentState
@@ -39,6 +57,7 @@ namespace Metamatic.Framework
 
             public SerializableDictionary<string, PanelElement.UserPreferences> panelPreferences =
                 new SerializableDictionary<string, PanelElement.UserPreferences>();
+
             public List<string> activeWidgets = new List<string>();
         }
 
@@ -46,14 +65,14 @@ namespace Metamatic.Framework
         {
             public readonly Widget Instance;
             public readonly PanelElement Panel;
-            
+
             public WidgetInstanceMetadata(Widget instance, PanelElement panel)
             {
                 Instance = instance;
                 Panel = panel;
             }
         }
-        
+
         public class WidgetBlueprint
         {
             public readonly Type type;
@@ -61,33 +80,56 @@ namespace Metamatic.Framework
             public readonly Observable<bool> isEnabled = new(false);
             public readonly List<WidgetInstanceMetadata> Instances = new();
             public readonly string widgetName;
-            
+
             public WidgetBlueprint(Type type, MetamaticWidgetAttribute metadata)
             {
                 this.type = type;
                 this.metadata = metadata;
-                
+
                 // Split widget name by slashes
                 var path = metadata.widgetName.Split('/');
                 widgetName = path[path.Length - 1];
             }
         }
+
+        public class CursorToolBlueprint
+        {
+            public readonly Type Type;
+            public readonly MetamaticCursorToolAttribute Metadata;
+            private CursorTool m_Instance;
+            public CursorTool Instance => m_Instance ??= Instantiate();
+            
+            public CursorToolBlueprint(Type type, MetamaticCursorToolAttribute metadata)
+            {
+                this.Type = type;
+                this.Metadata = metadata;
+            }
+            
+            public CursorTool Instantiate()
+            {
+                return Activator.CreateInstance(Type) as CursorTool;
+            }
+        }
+
         #endregion
 
         #region Fields
-        [Tooltip("Show overlay on start up")]
-        [SerializeField] private bool m_IsActiveOnStartUp;
+
+        [Tooltip("Show overlay on start up")] [SerializeField]
+        private bool m_IsActiveOnStartUp;
+
         [SerializeField] private KeyCombination m_ToggleKeyCombination;
+
         #endregion
-        
-        private readonly ObservableList<CursorTool> m_CursorTools = new();
+
+        private readonly ObservableList<CursorToolBlueprint> m_CursorTools = new();
         private readonly HashSet<string> m_CursorToolNames = new();
         private readonly Dictionary<string, WidgetBlueprint> m_Widgets = new();
 
         public UIDocument uiDocument { get; private set; }
 
         private ScrollView m_WoodsPanelContent;
-        private readonly Observable<Overlay> m_OverlayContext = new Observable<Overlay>();
+        private readonly Observable<DevToolsOverlay> m_OverlayContext = new Observable<DevToolsOverlay>();
         private readonly Observable<RuntimeCore> m_CoreContext = new();
         private readonly Observable<PersistentState> m_PersistentState = new();
         private readonly Observable<string> m_CursorText = new();
@@ -111,47 +153,116 @@ namespace Metamatic.Framework
         /// </summary>
         private CancellationSignalSource m_CursorToolActivationCancellationSignalSource;
 
-        private bool m_IsVisible;
-        
+        private readonly Observable<bool> m_IsVisible = new();
+
         private readonly HashSet<VisualElement> m_HoveredPanels = new();
         public readonly Observable<bool> IsHoveringOverPanel = new(false);
+        private CursorService m_CursorService;
 
+        /* References to visual elements */
+        private CriticalNotification m_CriticalNotification;
         private Menu m_Menu;
 
         protected override async UniTask Run(Ready ready, CancellationSignal signal)
         {
-            m_Instance.Value = this;
-            m_OverlayContext.Value = this;
-            m_CoreContext.Value = core;
-            /* Load persistent state */
-            await LoadPersistentState();
-            
-            CameraService = await Service.Resolve<CameraService>(signal);
-
-            uiDocument = GetComponent<UIDocument>();
-            uiDocument.rootVisualElement.styleSheets.Add(Resources.Load<StyleSheet>("Uss/MetamaticOverlay"));
-            uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.styleSheet);
-            uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.tailwindStyleSheet);
-            uiDocument.rootVisualElement.AddToClassList(UIToolKitCore.DarkEnoughClassName);
-            
-            m_IsVisible = m_IsActiveOnStartUp;
-            if (!m_IsVisible)
+            try
             {
-                uiDocument.rootVisualElement.style.display = DisplayStyle.None;
+                m_Instance.Value = this;
+                m_OverlayContext.Value = this;
+                m_CoreContext.Value = core;
+                /* Load persistent state */
+                var loadPersistentStateTask = LoadPersistentState(signal);
+                /* Get CursorService */
+                try
+                {
+                    m_CursorService = await Service.Resolve<CursorService>(signal, 5f);
+                } catch (TimeoutException e)
+                {
+                    Console.Exception("MetamaticFramework", "Overlay", "Overlay requires CursorService to be run");
+                    return;
+                } catch (Exception e)
+                {
+                    Console.Exception("MetamaticFramework", "Overlay", e);
+                    return;
+                }
+
+                /* Wait for persistent state to load */
+                await loadPersistentStateTask;
+
+                // Resolve camera service
+                CameraService = await Service.Resolve<CameraService>(signal);
+                
+                // Prepare UIDocument and add styles
+                uiDocument = GetComponent<UIDocument>();
+                uiDocument.rootVisualElement.styleSheets.Add(Resources.Load<StyleSheet>("Uss/MetamaticOverlay"));
+                uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.styleSheet);
+                uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.tailwindStyleSheet);
+                uiDocument.rootVisualElement.AddToClassList(UIToolKitCore.DarkEnoughClassName);
+                
+                // Initialize default visibility
+                m_IsVisible.Value = m_IsActiveOnStartUp;
+
+                // Subscribe to visibility changes
+                using var watchVisibility = m_IsVisible.WatchLifecycle(OnVisibilityLifecycleChanged);
+
+                /* Create context provider */
+                var contextProvider = new VisualElementContextProvider();
+                contextProvider.AddContext(m_OverlayContext);
+                contextProvider.AddContext(m_CoreContext);
+                uiDocument.rootVisualElement.Add(contextProvider);
+                root = contextProvider;
+                root.AddToClassList(UIToolKitCore.Tailwind.PositionRelative);
+                root.AddToClassList(UIToolKitCore.Tailwind.WidthFull);
+                root.AddToClassList(UIToolKitCore.Tailwind.HeightFull);
+                
+                // Add critical notification visual element
+                m_CriticalNotification = new CriticalNotification();
+                root.Add(m_CriticalNotification);
+                
+                // Create cursor tools
+                var cursorToolClasses = CursorTool.GetClasses();
+                foreach (var cursorToolInfo in cursorToolClasses)
+                {
+                    RegisterCursorTool(new CursorToolBlueprint(cursorToolInfo.type, cursorToolInfo.metadata));
+                }
+                
+                // Watch active cursor tool
+                SequentialHandler<string>.Subscribe(m_ActiveCursorTool.Watch, InternalActivateCursorTool);
+
+                // Build menu tree and widgets
+                BuildMenuTreeAndWidgets();
+
+                /* Activate those widgets that marked as activated in persistent state */
+                foreach (var widget in m_Widgets)
+                {
+                    if (m_PersistentState.Value.activeWidgets.Contains(widget.Key))
+                    {
+                        ActivateWidget(widget.Value);
+                    }
+                }
+
+                /* Clean up: Remove from persistent state widgets that are not in the list */
+                var beforeCount = m_PersistentState.Value.activeWidgets.Count;
+                m_PersistentState.Value.activeWidgets.RemoveAll(x => !m_Widgets.ContainsKey(x));
+
+                if (beforeCount != m_PersistentState.Value.activeWidgets.Count)
+                {
+                    SavePersistentState();
+                }
+                
+                // Subscribe to hover panel changes
+                using var watchHoveringOverPanel = IsHoveringOverPanel.WatchLifecycle(OnHoveringOverPanelChanged);
+
+                await ready();
             }
+            catch (Exception e)
+            {
+                Console.Exception("MetamaticFramework", "Overlay", e);
+            }
+        }
 
-            /* Create context provider */
-            var contextProvider = new VisualElementContextProvider();
-            contextProvider.AddContext(m_OverlayContext);
-            contextProvider.AddContext(m_CoreContext);
-            uiDocument.rootVisualElement.Add(contextProvider);
-            root = contextProvider;
-
-            /* Add system tools */
-            RegisterCursorTool(new SelectorCursorTool());
-            SequentialHandler<string>.Subscribe(m_ActiveCursorTool.Watch, InternalActivateCursorTool);
-            
-            /* Build menu tree */
+        private void BuildMenuTreeAndWidgets()
+        {
             var menuItemMethods = MetamaticMenuItemAttribute.GetMenuItemMethods();
             var widgetClasses = Widget.GetWidgetClasses();
 
@@ -172,9 +283,9 @@ namespace Metamatic.Framework
                     }
                 }, ++widgetSortIndex, widgetConfig.isEnabled));
             }
-            
+
             m_Menu = new Menu();
-            
+
             // Add menu items from MenuItem attributes
             foreach (var menuMethod in menuItemMethods)
             {
@@ -195,7 +306,7 @@ namespace Metamatic.Framework
                             menuItem = current.CreateMenuItem(path[i]);
                         }
                     }
-                    
+
                     if (!isLast)
                     {
                         current = !menuItem.HasSubMenu ? menuItem.AddSubMenu() : menuItem.SubMenu.value;
@@ -203,30 +314,30 @@ namespace Metamatic.Framework
                 }
             }
             
-            /* Activate active widgets from persistent state */
-            foreach (var widget in m_Widgets)
-            {
-                if (m_PersistentState.Value.activeWidgets.Contains(widget.Key))
-                {
-                    ActivateWidget(widget.Value);
-                }
-            }
-            
-            /* Remove from persistent state widgets that are not in the list */
-            var beforeCount = m_PersistentState.Value.activeWidgets.Count;
-            m_PersistentState.Value.activeWidgets.RemoveAll(x => !m_Widgets.ContainsKey(x));
-            
-            if (beforeCount != m_PersistentState.Value.activeWidgets.Count)
-            {
-                SavePersistentState();
-            }
-            
-            /* Build menu */
-            BuildMenu();
-            
-            await ready();
+            var menu = new MenuElement(MenuElement.Orientation.Horizontal, m_Menu);
+            root.Add(menu);
         }
         
+        private async UniTaskVoid OnHoveringOverPanelChanged(bool hovering, CancellationSignal signal)
+        {
+            if (hovering)
+            {
+                /* Set default visible cursor to override any custom cursor (eg.created by cursor tool) */
+                using var showCursor = m_CursorService.SetCursor(new CursorService.CursorConfig(true));
+                await signal;
+            }
+        }
+
+        private async UniTaskVoid OnVisibilityLifecycleChanged(bool visible, CancellationSignal signal)
+        {
+            uiDocument.rootVisualElement.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            if (visible)
+            {
+                using var showCursor = m_CursorService.SetCursor(new CursorService.CursorConfig(true));
+                await signal;
+            }
+        }
+
         private void Update()
         {
             if (IsKeyCombinationPressed())
@@ -234,21 +345,23 @@ namespace Metamatic.Framework
                 ToggleOverlay();
             }
         }
-        
+
         private bool IsKeyCombinationPressed()
         {
             bool isMainKeyPressed = Keyboard.current[m_ToggleKeyCombination.mainKey].wasPressedThisFrame;
-            bool isCtrlPressed = !m_ToggleKeyCombination.ctrl || Keyboard.current[Key.LeftCtrl].isPressed || Keyboard.current[Key.RightCtrl].isPressed;
-            bool isShiftPressed = !m_ToggleKeyCombination.shift || Keyboard.current[Key.LeftShift].isPressed || Keyboard.current[Key.RightShift].isPressed;
-            bool isAltPressed = !m_ToggleKeyCombination.alt || Keyboard.current[Key.LeftAlt].isPressed || Keyboard.current[Key.RightAlt].isPressed;
+            bool isCtrlPressed = !m_ToggleKeyCombination.ctrl || Keyboard.current[Key.LeftCtrl].isPressed ||
+                                 Keyboard.current[Key.RightCtrl].isPressed;
+            bool isShiftPressed = !m_ToggleKeyCombination.shift || Keyboard.current[Key.LeftShift].isPressed ||
+                                  Keyboard.current[Key.RightShift].isPressed;
+            bool isAltPressed = !m_ToggleKeyCombination.alt || Keyboard.current[Key.LeftAlt].isPressed ||
+                                Keyboard.current[Key.RightAlt].isPressed;
 
             return isMainKeyPressed && isCtrlPressed && isShiftPressed && isAltPressed;
         }
-        
+
         private void ToggleOverlay()
         {
-            m_IsVisible = !m_IsVisible;
-            uiDocument.rootVisualElement.style.display = m_IsVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            m_IsVisible.value = !m_IsVisible.value;
         }
 
         private void ActivateWidget(WidgetBlueprint blueprint)
@@ -258,10 +371,11 @@ namespace Metamatic.Framework
 
             if (widgetInstance == null)
             {
-                Console.Exception("MetamaticFramework", "Overlay", $"Failed to instantiate widget {blueprint.type.Name}");
+                Console.Exception("MetamaticFramework", "Overlay",
+                    $"Failed to instantiate widget {blueprint.type.Name}");
                 return;
             }
-            
+
             var preferences = widgetInstance.GetDefaultPreferences();
             /* Create panel for widget */
             var panel = CreatePanel(blueprint.metadata.widgetName, blueprint.widgetName, new PanelElement.Constraints()
@@ -275,28 +389,24 @@ namespace Metamatic.Framework
                 MinSize = preferences.MinSize,
                 AutoHeight = true,
                 AutoWidth = false
-            }, onClose: () =>
-            {
-                DeactivateWidget(blueprint);   
-            });
+            }, onClose: () => { DeactivateWidget(blueprint); });
             root.Add(panel);
-            
-            
-            
+
+
             // Add widget to panel
             panel.AddContent(widgetInstance);
-            
+
             // Add widget to list
             blueprint.Instances.Add(new WidgetInstanceMetadata(widgetInstance, panel));
-            
+
             // Make list active
             blueprint.isEnabled.Value = true;
-            
+
             // Save persistent state
             m_PersistentState.Value.activeWidgets.Add(blueprint.metadata.widgetName);
             SavePersistentState();
         }
-        
+
         private void DeactivateWidget(WidgetBlueprint blueprint)
         {
             foreach (var metadata in blueprint.Instances)
@@ -305,15 +415,27 @@ namespace Metamatic.Framework
                 // Remove panel
                 root.Remove(metadata.Panel);
             }
+
             blueprint.Instances.Clear();
             blueprint.isEnabled.Value = false;
-            
+
             // Save persistent state
             m_PersistentState.Value.activeWidgets.Remove(blueprint.metadata.widgetName);
             SavePersistentState();
         }
+        
+        public void Notify(string message, float duration)
+        {
+            m_CriticalNotification.Show(message, duration);
+        }
+        
+        public DisposableAction Notify(string message)
+        {
+            return m_CriticalNotification.Show(message);
+        }
 
-        public PanelElement CreatePanel(string name, string title, PanelElement.Constraints constraints = default, Action onClose = null)
+        public PanelElement CreatePanel(string name, string title, PanelElement.Constraints constraints = default,
+            Action onClose = null)
         {
             var panel = new PanelElement(name, title, constraints, onClose: onClose);
             return panel;
@@ -324,7 +446,8 @@ namespace Metamatic.Framework
             m_CursorText.Value = text;
         }
 
-        public PanelElement.UserPreferences GetPanelPreferences(string panelName, PanelElement.UserPreferences defaultPreferences)
+        public PanelElement.UserPreferences GetPanelPreferences(string panelName,
+            PanelElement.UserPreferences defaultPreferences)
         {
             /* Search panel in persistent state */
             if (m_PersistentState.value.panelPreferences.ContainsKey(panelName))
@@ -341,11 +464,11 @@ namespace Metamatic.Framework
             SavePersistentState();
         }
 
-        public async UniTask LoadPersistentState()
+        public async UniTask LoadPersistentState(CancellationSignal signal)
         {
             var localStorage = Repository.LocalStorage;
             var state = await localStorage.TryGet("metamatic-framework/overlay", () => new PersistentState(),
-                CancellationToken.None);
+                signal);
             if (state != null)
             {
                 m_PersistentState.Value = state;
@@ -362,34 +485,31 @@ namespace Metamatic.Framework
             localStorage.Set("metamatic-framework/overlay", m_PersistentState.Value, CancellationToken.None).Forget();
         }
 
-        public DisposableAction RegisterCursorTool(CursorTool cursorTool)
+        public DisposableAction RegisterCursorTool(CursorToolBlueprint cursorTool)
         {
-            if (m_CursorToolNames.Contains(cursorTool.Name))
+            var pathName = cursorTool.Metadata.PathName;
+            var instance = cursorTool.Instantiate();
+            if (m_CursorToolNames.Contains(pathName))
             {
-                Debug.LogWarning($"Wood with name {cursorTool.Name} already exists.");
+                Debug.LogWarning($"Cursor tool with path name {pathName} already exists.");
                 return DisposableAction.Empty;
             }
 
-            m_CursorToolNames.Add(cursorTool.Name);
+            m_CursorToolNames.Add(pathName);
             m_CursorTools.Add(cursorTool);
-
-            if (m_ActiveCursorTool.Value == cursorTool.Name)
-            {
-                Activate(cursorTool);
-            }
 
             return new DisposableAction(() =>
             {
-                if (m_ActiveCursorTool.Value == cursorTool.Name)
+                if (m_ActiveCursorTool.Value == pathName)
                 {
                     m_CursorToolActivationCancellationSignalSource.TryCancel();
                 }
 
-                m_CursorToolNames.Remove(cursorTool.Name);
+                m_CursorToolNames.Remove(pathName);
                 m_CursorTools.Remove(cursorTool);
             });
         }
-        
+
         public void AddHoveredPanel(VisualElement panel)
         {
             m_HoveredPanels.Add(panel);
@@ -398,7 +518,7 @@ namespace Metamatic.Framework
                 IsHoveringOverPanel.Value = true;
             }
         }
-        
+
         public void RemoveHoveredPanel(VisualElement panel)
         {
             m_HoveredPanels.Remove(panel);
@@ -408,7 +528,7 @@ namespace Metamatic.Framework
             }
         }
 
-        public DisposableAction ObserveCursorTools(Func<CursorTool, int, CancellationSignal, UniTaskVoid> handler)
+        public DisposableAction ObserveCursorTools(Func<CursorToolBlueprint, int, CancellationSignal, UniTaskVoid> handler)
         {
             return m_CursorTools.WatchEachLifecycle(handler);
         }
@@ -418,46 +538,52 @@ namespace Metamatic.Framework
         /// </summary>
         /// <param name="cursorTool"></param>
         /// <param name="signal"></param>
-        public void Activate(CursorTool cursorTool)
+        public void ActivateCursorTool(string pathName)
         {
-            m_ActiveCursorTool.Value = cursorTool.Name;
+            m_ActiveCursorTool.Value = pathName;
         }
 
-        public void ToggleActivate(CursorTool cursorTool)
+        public void ToggleActivate(string pathName)
         {
-            if (m_ActiveCursorTool.Value == cursorTool.Name)
+            if (m_ActiveCursorTool.Value == pathName)
             {
                 m_ActiveCursorTool.Value = null;
             }
             else
             {
-                m_ActiveCursorTool.Value = cursorTool.Name;
+                m_ActiveCursorTool.Value = pathName;
             }
         }
-
+        
+        /// <summary>
+        /// Subscribe to active cursor tool changes.
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
         public DisposableAction SubscribeToActiveCursorTool(Action<string> handler)
         {
             return m_ActiveCursorTool.Watch(handler);
         }
 
-        private async UniTaskVoid InternalActivateCursorTool(string name, CancellationSignal cancellationSignal)
+        private async UniTaskVoid InternalActivateCursorTool(string pathName, CancellationSignal cancellationSignal)
         {
-            if (name == null)
+            if (pathName == null)
             {
                 return;
             }
 
             EnhancedTouchSupport
                 .Enable(); // TODO: Maybe we should use some singleton service for doing this, because it's not a good idea to enable/disable EnhancedTouchSupport in different places.
-            var cursorTool = m_CursorTools.FirstOrDefault(x => x.Name == name);
+            var cursorTool = m_CursorTools.FirstOrDefault(x => x.Metadata.PathName == pathName);
             if (cursorTool == null)
             {
-                Console.Exception("MetamaticFramework", "RuntimeCore", $"Cursor tool with name {name} not found.");
+                Console.Exception("MetamaticFramework", "RuntimeCore", $"Cursor tool with name {pathName} not found.");
                 return;
             }
 
-            cursorTool.OnActivate(this, cancellationSignal).Forget();
-            using (PlayerLoop.EachFrame(() => TrackPointer(cursorTool)))
+            var instance = cursorTool.Instance;
+            instance.OnActivate(this, cancellationSignal).Forget();
+            using (PlayerLoop.EachFrame(() => TrackPointer(instance)))
             {
                 await cancellationSignal;
             }
@@ -472,6 +598,11 @@ namespace Metamatic.Framework
         private void TrackPointer(CursorTool cursor)
         {
             Vector2 screenPosition = Vector2.zero;
+            if (IsHoveringOverPanel.value)
+            {
+                /* Ignore cursor tool if hovering over panel */
+                return;
+            }
 
             // Проверяем, есть ли тачскрин и активные тачи
             if (Touchscreen.current != null && UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches.Count > 0)
@@ -502,7 +633,6 @@ namespace Metamatic.Framework
             }
             else if (Mouse.current != null)
             {
-                
                 // Работаем с мышью
                 screenPosition = Mouse.current.position.ReadValue();
 
@@ -531,14 +661,6 @@ namespace Metamatic.Framework
                     m_PreviousPointerPosition = screenPosition;
                 }
             }
-        }
-        
-        
-        
-        private void BuildMenu()
-        {
-            var menu = new MenuElement(MenuElement.Orientation.Horizontal, m_Menu);
-            root.Add(menu);
         }
     }
 }

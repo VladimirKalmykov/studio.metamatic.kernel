@@ -9,7 +9,7 @@ namespace Metamatic.Framework.Widgets
     {
         private VisualTreeAsset m_SelectedObjectTemplate;
         private VisualElement m_Container;
-        private Overlay m_Overlay;
+        private DevToolsOverlay m_Overlay;
         public SelectedObjectWidget()
         {
             m_Container = new VisualElement();
@@ -18,7 +18,7 @@ namespace Metamatic.Framework.Widgets
         }
         public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
         {
-            m_Overlay = this.GetContext<Overlay>().Value;
+            m_Overlay = this.GetContext<DevToolsOverlay>().Value;
             m_SelectedObjectTemplate = Resources.Load<VisualTreeAsset>("SelectableItem");
             
             
@@ -60,7 +60,7 @@ namespace Metamatic.Framework.Widgets
                 /* Create bounds rect */
                 boundsRect = new VisualElement();
                 boundsRect.AddToClassList("Bounds");
-                m_Overlay.root.Add(boundsRect);
+                m_Overlay.root.Insert(0, boundsRect);
                 boundsRect.style.position = Position.Absolute;
                 /* Create update loop to update bounds rect for selected object */
                 trackBounds = PlayerLoop.EachFrame(() =>

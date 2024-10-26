@@ -100,6 +100,7 @@ namespace Metamatic
                 var disposeSignal = m_DisposeCancellationTokenSource.Signal;
                 FinalizeHandler += disposeSignal.Register(() =>
                 {
+                    m_DisposeCancellationTokenSource.Dispose();
                     FinalizeHandler?.Invoke();
                     tcs.TrySetCanceled();
                 });

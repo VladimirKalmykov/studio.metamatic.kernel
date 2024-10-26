@@ -13,6 +13,13 @@ namespace Metamatic.Framework.Workshop
             public readonly Texture2D CursorTexture;
             public readonly Vector2 Hotspot;
             public readonly bool Visible;
+            
+            public CursorConfig(bool visible, Texture2D cursorTexture = null, Vector2 hotspot = default)
+            {
+                CursorTexture = cursorTexture;
+                Hotspot = hotspot;
+                Visible = visible;
+            }
         }
         [SerializeField] private Texture2D m_CursorTexture;
         [SerializeField] private Vector2 m_Hotspot = Vector2.zero;
@@ -23,8 +30,7 @@ namespace Metamatic.Framework.Workshop
         protected override async UniTask RunService(Ready ready, CancellationSignal signal)
         {
             ResetCursorToDefaults();
-
-            await signal;
+            await ready();
             ResetCursor();
         }
         
@@ -53,6 +59,18 @@ namespace Metamatic.Framework.Workshop
             });
         }
         
+        private void OnCursorVisibilityChanged(bool visible)
+        {
+            if (visible)
+            {
+                ShowCursor();
+            }
+            else
+            {
+                HideCursor();
+            }
+        }
+        
         private void OnCursorChanged(CursorConfig cursorConfig)
         {
             m_CursorTexture = cursorConfig.CursorTexture;
@@ -68,7 +86,7 @@ namespace Metamatic.Framework.Workshop
         }
         
         /// <summary>
-        /// Скрыть курсор и заблокировать его
+        /// Hide and lock cursor. 
         /// </summary>
         private static void HideCursor()
         {
@@ -77,7 +95,7 @@ namespace Metamatic.Framework.Workshop
         }
 
         /// <summary>
-        /// Показать курсор и разблокировать его
+        /// Show and unlock cursor. 
         /// </summary>
         private static void ShowCursor()
         {
@@ -87,16 +105,9 @@ namespace Metamatic.Framework.Workshop
         
         public void ResetCursorToDefaults()
         {
-            if (m_CursorTexture != null)
-            {
-                Cursor.SetCursor(m_CursorTexture, m_Hotspot, CursorMode.Auto);
-            }
-            if (!m_Visible)
-            {
-                HideCursor();
-            } else {
-                ShowCursor();
-            }
+            m_Cursors.Clear();
+            var defaultCursorConfig = new CursorConfig(true, m_CursorTexture, m_Hotspot);
+            SetCursor(defaultCursorConfig);
         }
 
         public static void ResetCursor()

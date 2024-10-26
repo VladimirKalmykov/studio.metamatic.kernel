@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -7,21 +9,43 @@ namespace Metamatic.Framework
 {
     public abstract class CursorTool: IDisposable, IExposedDisposed
     {
-        public readonly string Name;
-        public readonly string DisplayName;
-        public readonly string IconPath;
-        public Vector2 ScreenPosition;
-        public LayerMask LayerMask;
-        
-        public CursorTool(string name, string displayName, string icon, LayerMask layerMask = default)
+        #region Static
+        private static List<(Type, MetamaticCursorToolAttribute)> _CachedCursorToolClasses;
+        /// <summary>
+        /// Return all CursorTool classes with MetamaticCursorToolAttribute
+        /// </summary>
+        /// <returns></returns>
+        public static List<(Type type, MetamaticCursorToolAttribute metadata)> GetClasses()
         {
-            Name = name;
-            DisplayName = displayName;
-            LayerMask = layerMask;
-            IconPath = icon;
-        }
+            if (_CachedCursorToolClasses != null) return _CachedCursorToolClasses;
+            _CachedCursorToolClasses = new List<(Type, MetamaticCursorToolAttribute)>();
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-        public abstract UniTaskVoid OnActivate(Overlay overlay, CancellationSignal signal);
+            foreach (var assembly in assemblies)
+            {
+                var types = assembly.GetTypes();
+
+                foreach (var type in types)
+                {
+                    // Проверяем, наследуется ли класс от Widget
+                    if (type.IsClass && !type.IsAbstract && type.IsSubclassOf(typeof(CursorTool)))
+                    {
+                        // Проверяем наличие атрибута MetamaticWidgetAttribute
+                        var attribute = type.GetCustomAttribute<MetamaticCursorToolAttribute>();
+                        if (attribute != null)
+                        {
+                            _CachedCursorToolClasses.Add((type, attribute));
+                        }
+                    }
+                }
+            }
+
+            return _CachedCursorToolClasses;
+        }
+        #endregion
+        
+        public Vector2 ScreenPosition;
+        public abstract UniTaskVoid OnActivate(DevToolsOverlay overlay, CancellationSignal signal);
 
         public abstract void OnPress(Vector2 screenPosition, InputModifiers modifiers);
 
@@ -50,7 +74,7 @@ namespace Metamatic.Framework
         private CancellationSignalSource m_DisposeSignalSource = CancellationSignalSource.Create();
         private bool m_IsReady;
         private event Action m_ReadyEvent;
-        protected AsyncCursorTool(string name, string displayName, string icon, LayerMask layerMask = default) : base(name, displayName, icon, layerMask)
+        protected AsyncCursorTool()
         {
             OnDisposed += () =>
             {

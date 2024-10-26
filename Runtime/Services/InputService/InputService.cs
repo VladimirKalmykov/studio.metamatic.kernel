@@ -1,3 +1,5 @@
+using Sirenix.OdinInspector;
+
 namespace Metamatic
 {
     using System;
@@ -8,6 +10,12 @@ namespace Metamatic
 
     public class InputService : Service
     {
+        public class ActionMap
+        {
+            public string Name;
+            public InputActionMap InputActionMap;
+        }
+        
         [SerializeField] private PlayerInput m_PlayerInputPrefab;
         private ObservableList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
@@ -37,6 +45,11 @@ namespace Metamatic
             await ready();
             playerInputManager.onPlayerJoined -= InternalOnPlayerJoined;
             playerInputManager.onPlayerLeft -= InternalOnPlayerLeft;
+        }
+        
+        public DisposableAction CheckoutActionMap(string actionMapName, Action<PlayerInput> action)
+        {
+            throw new NotImplementedException();
         }
 
         private async UniTask HandlePlayerInput(PlayerInput playerInput, CancellationSignal cancellationSignal)
@@ -224,6 +237,26 @@ namespace Metamatic
                 return null;
             return m_PlayerInputs[playerIndex].currentControlScheme;
         }
+        
+        #region Debug
+        [Button, HideInEditorMode]
+        public void DeactivateInput()
+        {
+            foreach (var playerInput in m_PlayerInputs)
+            {
+                playerInput.DeactivateInput();
+            }
+        }
+        
+        [Button, HideInEditorMode]
+        public void ActivateInput()
+        {
+            foreach (var playerInput in m_PlayerInputs)
+            {
+                playerInput.ActivateInput();
+            }
+        }
+        #endregion
     }
 
 }

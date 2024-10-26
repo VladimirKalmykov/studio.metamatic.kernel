@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 
 namespace Metamatic.Framework
@@ -38,20 +39,11 @@ namespace Metamatic.Framework
         
         #region Private observables
         private readonly ObservableList<GameObject> m_SelectedObjects = new();
-        private readonly Observable<Type> m_ActiveSpellType = new();
         public IReadOnlyCollection<GameObject> selectedObjects => m_SelectedObjects.items;
         #endregion
         
         #region Private properties
         private readonly ObservableList<CustomFunction> m_CustomFunctions = new();
-        #endregion
-        
-        #region Public properties
-        /// <summary>
-        /// Contains all spells that are available in the project
-        /// </summary>
-        public SpellMetadata[] spellMetadata { get; private set; }
-
         #endregion
         
         #region Events
@@ -62,17 +54,16 @@ namespace Metamatic.Framework
 
         private RuntimeCore()
         {
-            /* Find all structures that implement the ISpell interface */
-            var spellTypes = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(s => s.GetTypes())
-                .Where(p => typeof(ISpell).IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract)
-                .Select(SpellAttribute.GetMetadata);
-            var enumerable = spellTypes as SpellMetadata[] ?? spellTypes.ToArray();
-            
-            Console.Info("Metamatic Framework", $"Found {enumerable.Count()} spells");
-            spellMetadata = enumerable.ToArray();
-            
-            
+            // Subscribe to selection
+            #if UNITY_EDITOR
+            Selection.selectionChanged += () =>
+            {
+                m_SelectedObjects.Synchronize(Selection.gameObjects);
+                OnSelectedObjectsChanged?.Invoke();
+            };
+            // Check currently selected object
+            m_SelectedObjects.Synchronize(Selection.gameObjects);
+            #endif
         }
         
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -91,6 +82,9 @@ namespace Metamatic.Framework
             }
             m_SelectedObjects.Add(gameObject);
             OnSelectedObjectsChanged?.Invoke();
+            #if UNITY_EDITOR
+            Selection.activeObject = gameObject;
+            #endif
         }
         
         public void DeselectObject(GameObject gameObject)
@@ -98,23 +92,29 @@ namespace Metamatic.Framework
             if (!m_SelectedObjects.Contains(gameObject)) return;
             m_SelectedObjects.Remove(gameObject);
             OnSelectedObjectsChanged?.Invoke();
+#if UNITY_EDITOR
+            Selection.activeObject = null;
+#endif
+        }
+        
+        public void ClearSelection()
+        {
+            m_SelectedObjects.Clear();
+            OnSelectedObjectsChanged?.Invoke();
+#if UNITY_EDITOR
+            Selection.activeObject = null;
+#endif
         }
         
         public void ToggleObjectSelection(GameObject gameObject, bool add = false)
         {
             if (m_SelectedObjects.Contains(gameObject))
             {
-                m_SelectedObjects.Remove(gameObject);
-                OnSelectedObjectsChanged?.Invoke();
+                DeselectObject(gameObject);
             }
             else
             {
-                if (!add)
-                {
-                    m_SelectedObjects.Clear();
-                }
-                m_SelectedObjects.Add(gameObject);
-                OnSelectedObjectsChanged?.Invoke();
+                SelectObject(gameObject, add);
             }
         }
         
@@ -133,21 +133,6 @@ namespace Metamatic.Framework
             OnSelectedObjectsChanged += action;
             action();
             return new DisposableAction(() => OnSelectedObjectsChanged -= action);
-        }
-        
-        public void SetActiveSpellType(Type spellType)
-        {
-            m_ActiveSpellType.value = spellType;
-        }
-        
-        public DisposableAction WatchActiveSpellType(Action<Type> action)
-        {
-            return m_ActiveSpellType.Watch(action);
-        }
-        
-        public DisposableAction OnSwitchActiveSpellType(Func<Type, CancellationSignal, UniTaskVoid> action)
-        {
-            return SequentialHandler<Type>.WatchAsync(m_ActiveSpellType.Watch, action);
         }
 
         public DisposableAction AddCustomFunction(string name, Action action)

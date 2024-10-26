@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 namespace Metamatic.Framework
 {
-    public class PanelElement: global::Metamatic.UIElements.AsyncVisualElement
+    public class PanelElement: AsyncVisualElement
     {
         
         [Version("0.1")]
@@ -48,7 +48,7 @@ namespace Metamatic.Framework
         private Button m_RightButton;
         private ScrollView m_Content;
         private VisualElement m_Resizer;
-        private ObservableReadOnly<Overlay> m_OverlayContext;
+        private ObservableReadOnly<DevToolsOverlay> m_OverlayContext;
         private UserPreferences m_Preferences;
         private Constraints m_Constraints;
         private Observable<bool> m_IsResizing = new Observable<bool>(false);
@@ -126,7 +126,7 @@ namespace Metamatic.Framework
 
         public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
         {
-            m_OverlayContext = this.GetContext<Overlay>();
+            m_OverlayContext = this.GetContext<DevToolsOverlay>();
 
             if (m_OverlayContext == null) return;
             

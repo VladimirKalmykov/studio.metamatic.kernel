@@ -10,7 +10,6 @@ namespace Metamatic
         private readonly bool m_Default;
         
         private int m_Cons;
-        
         public bool result { get; private set; }
         
         public VetoVote(bool @default)

@@ -12,6 +12,20 @@ namespace Metamatic.UIToolKit
     {
         public static class Tailwind
         {
+            /* Text color */
+            public const string TextColorDefault = "MetamaticTailwind_TextColorDefault";
+            
+            /* Text size */
+            public const string TextSizeDefault = "MetamaticTailwind_TextSizeDefault";
+            
+            /* Position */
+            public const string PositionRelative = "MetamaticTailwind_PositionRelative";
+            public const string PositionAbsolute = "MetamaticTailwind_PositionAbsolute";
+            
+            /* Size */
+            public const string WidthFull = "MetamaticTailwind_WidthFull";
+            public const string HeightFull = "MetamaticTailwind_HeightFull";
+            
             /* Flex direction */
             public const string Row = "MetamaticTailwind_Row";
             public const string Column = "MetamaticTailwind_Column";
@@ -85,6 +99,7 @@ namespace Metamatic.UIToolKit
             /* Background color */
             public const string BackgroundColorDefault = "MetamaticTailwind_BackgroundColorDefault";
             public const string BackgroundColorPanel = "MetamaticTailwind_BackgroundColorPanel";
+            public const string BackgroundColorPanelTransparent = "MetamaticTailwind_BackgroundColorPanelTransparent";
             public const string BackgroundColorIndicatorInactive = "MetamaticTailwind_BackgroundColorIndicatorInactive";
             public const string BackgroundColorIndicatorActive = "MetamaticTailwind_BackgroundColorIndicatorActive";
             

@@ -23,6 +23,7 @@ namespace Metamatic
 
         public virtual void OnReturn(T instance)
         {
+            if (instance == null || instance.gameObject == null) return;
             instance.gameObject.SetActive(false);
         }
 

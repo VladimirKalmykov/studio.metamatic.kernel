@@ -87,14 +87,14 @@ namespace Metamatic
             });
         }
         
-        public void RemoveChildThread(IMindThread thread, bool skipCheckActive = false)
+        public void RemoveChildThread(IMindThread thread, bool skipCheckActive = false, bool skipWeighting = false)
         {
             var index = childThreads.IndexOf(thread);
             var last = childThreads.Count - 1;
             if (index != -1)
             {
                 var childThread = childThreads[index];
-                var isCurrent = skipCheckActive && childThread == activeChildThread.value;
+                var isCurrent = !skipCheckActive && childThread == activeChildThread.value;
                 if (isCurrent)
                 {
                     // If removing the active thread, set the active thread to null
@@ -103,7 +103,7 @@ namespace Metamatic
                 childThread.Dispose();
                 childThreads[index] = childThreads[last];
                 childThreads.RemoveAt(last);
-                if (isCurrent)
+                if (isCurrent && !skipWeighting)
                 {
                     Weighting();
                 }
@@ -224,7 +224,7 @@ namespace Metamatic
                 {
                     wasActiveThreadRemoved = true;
                 }
-                RemoveChildThread(thread, true);
+                RemoveChildThread(thread, true, true);
             }
             threadsToRemove.Clear();
 

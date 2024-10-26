@@ -13,7 +13,7 @@ namespace Metamatic.Framework.Widgets
         }
         public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
         {
-            var overlay = this.GetContext<Overlay>().Value;
+            var overlay = this.GetContext<DevToolsOverlay>().Value;
             using var functionSubscription = overlay.core.WatchEachCustomFunctionLifecycle(OnCustomFunctionLifecycle);
             await cancellationSignal;
         }
