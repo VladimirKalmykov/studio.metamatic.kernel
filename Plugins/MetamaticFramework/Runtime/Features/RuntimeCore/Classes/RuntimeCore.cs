@@ -73,6 +73,11 @@ namespace Metamatic.Framework
         }
         #endregion
         
+        private bool TakeFirst(GameObject obj, int index)
+        {
+            return index == 0;
+        }
+        
         #region Public methods
         public void SelectObject(GameObject gameObject, bool add = false)
         {
@@ -116,6 +121,20 @@ namespace Metamatic.Framework
             {
                 SelectObject(gameObject, add);
             }
+        }
+
+        public DisposableAction WatchFirstSelectObjectLifecycle(Func<GameObject, CancellationSignal, UniTaskVoid> action)
+        {
+            return DisposableOperation.Call(async (signal) =>
+            {
+                using var selectedObject = new Observable<GameObject>();
+                using var watchSelectedObject = selectedObject.WatchLifecycle(action);
+                using var watchSelectedObjects = m_SelectedObjects.WatchEach((obj, index) =>
+                {
+                    selectedObject.SetUniqValue(obj);
+                }, TakeFirst);
+                await signal;
+            });
         }
         
         public DisposableAction WatchEverySelectedObjectLifecycle(Func<GameObject, int, CancellationSignal, UniTaskVoid> action, Func<GameObject, int, bool> filter = null)

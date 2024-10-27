@@ -494,3 +494,42 @@ Button:disabled {
 .MenuPanel.BottomPlacement {
     border-radius: 0 6px 6px 6px;
 }
+
+/* Critical notification */
+.MetamaticOverlay_CriticalNotification {
+    width: auto;
+    height: auto;
+    display: flex;
+    max-width: 600px;
+    padding: 24px;
+    border-radius: 12px;
+    white-space: normal;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    flex-shrink: 1;
+    flex-grow: 0;
+    min-width: 300px;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+
+.MetamaticOverlay_CriticalNotification .MetamaticOverlay_CriticalNotificationPanel {
+    flex-shrink: 1;
+    flex-grow: 1;
+}
+
+.MetamaticOverlay_CriticalNotification Label {
+    white-space: normal;
+}
+
+.Notification_Info {
+    background-color: rgba(18, 18, 18, 0.7);
+    color: #F3F3F3;
+}
+
+.Notification_Error {
+    background-color: rgba(36, 18, 18, 0.7);
+    color: #F37676;
+}

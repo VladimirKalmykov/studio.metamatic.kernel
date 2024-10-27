@@ -429,9 +429,9 @@ namespace Metamatic.Framework
             m_CriticalNotification.Show(message, duration);
         }
         
-        public DisposableAction Notify(string message)
+        public DisposableAction Notify(string message, CriticalNotification.MessageType messageType)
         {
-            return m_CriticalNotification.Show(message);
+            return m_CriticalNotification.Show(message, messageType);
         }
 
         public PanelElement CreatePanel(string name, string title, PanelElement.Constraints constraints = default,

@@ -17,6 +17,7 @@ namespace Metamatic.UIToolKit
             
             /* Text size */
             public const string TextSizeDefault = "MetamaticTailwind_TextSizeDefault";
+            public const string TextSizeXl = "MetamaticTailwind_TextSizeXl";
             
             /* Position */
             public const string PositionRelative = "MetamaticTailwind_PositionRelative";

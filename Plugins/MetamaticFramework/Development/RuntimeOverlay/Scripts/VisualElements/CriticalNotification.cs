@@ -7,52 +7,53 @@ namespace Metamatic.Framework
 {
     public class CriticalNotification: AsyncVisualElement
     {
+        public enum MessageType
+        {
+            Info,
+            Error
+        }
         private Label m_Label;
         private int m_Iteration;
-        public Observable<(int, string, float)> m_Showing = new Observable<(int, string, float)>();
+        public Observable<(int, string, float, MessageType)> m_Showing = new Observable<(int, string, float, MessageType)>();
         
         public CriticalNotification()
         {
             AddToClassList(UIToolKitCore.DarkEnoughClassName);
-            
-            AddToClassList(UIToolKitCore.Tailwind.Padding24);
-            AddToClassList(UIToolKitCore.Tailwind.BackgroundColorPanelTransparent);
-            AddToClassList(UIToolKitCore.Tailwind.BorderRadius12);
+            AddToClassList("MetamaticOverlay_CriticalNotification");
             AddToClassList(UIToolKitCore.Tailwind.PositionAbsolute);
             m_Label = new Label();
-            m_Label.AddToClassList(UIToolKitCore.Tailwind.TextSizeDefault);
-            m_Label.AddToClassList(UIToolKitCore.Tailwind.TextColorDefault);
+            m_Label.AddToClassList(UIToolKitCore.Tailwind.TextSizeXl);
             Add(m_Label);
             style.opacity = 0;
-            style.translate = new StyleTranslate(new Translate(-50, -50, 0));
+            style.translate = new StyleTranslate(new Translate(new Length(-50, LengthUnit.Percent), new Length(-50, LengthUnit.Percent)));
             style.display = DisplayStyle.None;
             style.top = new StyleLength(new Length(50, LengthUnit.Percent));
             style.left = new StyleLength(new Length(50, LengthUnit.Percent));
         }
 
-        public void Show(string message, float duration = 2f)
+        public void Show(string message, float duration = 2f, MessageType messageType = MessageType.Error)
         {
             unchecked
             {
                 m_Iteration++;
             }
-            m_Showing.Value = (m_Iteration, message, duration);
+            m_Showing.Value = (m_Iteration, message, duration, messageType);
         }
 
-        public DisposableAction Show(string message)
+        public DisposableAction Show(string message, MessageType messageType)
         {
             unchecked
             {
                 m_Iteration++;
             }
             var thisIteration = m_Iteration;
-            m_Showing.Value = (m_Iteration, message, 0f);
+            m_Showing.Value = (m_Iteration, message, 0f, messageType);
             
             return new DisposableAction(() =>
             {
                 if (m_Iteration == thisIteration)
                 {
-                    m_Showing.Value = (m_Iteration, string.Empty, 0f);
+                    m_Showing.Value = (m_Iteration, string.Empty, 0f, messageType);
                 }
             });
         }
@@ -71,17 +72,20 @@ namespace Metamatic.Framework
             
         }
         
-        private async UniTaskVoid OnShowChanged((int, string, float) showing, CancellationSignal signal)
+        private async UniTaskVoid OnShowChanged((int, string, float, MessageType) showing, CancellationSignal signal)
         {
-            var (iteration, message, duration) = showing;
+            var (iteration, message, duration, messageType) = showing;
             
+            
+            style.opacity = 0;
             if (string.IsNullOrEmpty(message))
             {
+                style.display = DisplayStyle.None;
                 return;
             }
-            m_Label.text = message;
             style.display = DisplayStyle.Flex;
-            style.opacity = 0;
+            ApplyMessageType(messageType);
+            m_Label.text = message;
             await PlayerLoop.EachFrame((float progress) =>
             {
                 style.opacity = progress;
@@ -100,6 +104,21 @@ namespace Metamatic.Framework
                 // Wait for the next iteration
                 await signal;
             }            
+        }
+        
+        public void ApplyMessageType(MessageType messageType)
+        {
+            switch (messageType)
+            {
+                case MessageType.Info:
+                    RemoveFromClassList("Notification_Error");
+                    AddToClassList("Notification_Info");
+                    break;
+                case MessageType.Error:
+                    RemoveFromClassList("Notification_Info");
+                    AddToClassList("Notification_Error");
+                    break;
+            }
         }
     }
 }

@@ -16,6 +16,10 @@
     font-size: var(--MetamaticTailwind_PrimarySize);
 }
 
+.MetamaticTailwind_TextSizeXl {
+    font-size: 23px;
+}
+
 /* Text color */
 .MetamaticTailwind_TextColorDefault {
     color: var(--MetamaticTailwind_TextColor);

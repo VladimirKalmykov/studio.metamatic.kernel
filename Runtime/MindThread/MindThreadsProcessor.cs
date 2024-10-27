@@ -79,9 +79,9 @@ namespace Metamatic
         /// </summary>
         /// <returns></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        private MicroOperation StartEventLoop()
+        private DisposableOperation StartEventLoop()
         {
-            return MicroOperation.Call(async (CancellationSignal signal) =>
+            return DisposableOperation.Call(async (CancellationSignal signal) =>
             {
                 m_LastLogicUpdateTime = m_PlayerLoop.time;
                 using var subscribeToLoop = m_PlayerLoop.AddAction(PlayerLoopTiming.Update, () =>

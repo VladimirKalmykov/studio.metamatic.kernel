@@ -50,7 +50,8 @@ namespace Metamatic
             
             public UniTask WhenUnlocked(CancellationSignal cancellationSignal = default)
             {
-                if (_isDisposed) throw new ObjectDisposedException(nameof(DeferLock));
+                if (_isDisposed) return UniTask.CompletedTask;
+                
                 if (_lockCount == 0)
                 {
                     return UniTask.CompletedTask;

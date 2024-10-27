@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public readonly struct MicroOperation: IDisposableOperation, IExposedAsyncDisposed, IExposedDisposed
+    public readonly struct DisposableOperation: IDisposableOperation, IExposedAsyncDisposed, IExposedDisposed
     {
         /// <summary>
         /// Call an async action with cancellation token
@@ -11,7 +11,7 @@ namespace Metamatic
         /// <param name="action">Async action to execute</param>
         /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
         /// <returns></returns>
-        public static MicroOperation Call(InternalMicroOperation.AsyncAction action, object[] dependencies = null)
+        public static DisposableOperation Call(InternalMicroOperation.AsyncAction action, object[] dependencies = null)
         {
             return InternalMicroOperation.Call(action, dependencies);
         }
@@ -23,7 +23,7 @@ namespace Metamatic
         /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
         /// <param name="debug">Debug operation (use this in development purposes)</param>
         /// <returns></returns>
-        public static MicroOperation Run(InternalMicroOperation.AsyncOperationAction action, object[] dependencies = null, bool debug = false)
+        public static DisposableOperation Run(InternalMicroOperation.AsyncOperationAction action, object[] dependencies = null, bool debug = false)
         {
             return InternalMicroOperation.Run(action, dependencies, debug);
         }
@@ -38,7 +38,7 @@ namespace Metamatic
         public event Action<Exception> OnDisposedAsync { add => m_Operation.OnDisposedAsync += value; remove => m_Operation.OnDisposedAsync -= value; }
         public object[] dependencies => m_Operation.dependencies;
         
-        internal MicroOperation(InternalMicroOperation operation)
+        internal DisposableOperation(InternalMicroOperation operation)
         {
             m_Operation = operation;
             InquireId = m_Operation.Inquire();
@@ -54,7 +54,7 @@ namespace Metamatic
             m_Operation.Abort(InquireId);
         }
         
-        public static implicit operator DisposableAction(MicroOperation operation)
+        public static implicit operator DisposableAction(DisposableOperation operation)
         {
             return new DisposableAction(operation.Dispose);
         }
