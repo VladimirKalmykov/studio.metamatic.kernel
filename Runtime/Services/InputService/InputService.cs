@@ -239,6 +239,9 @@ namespace Metamatic
         }
         
         #region Debug
+        /// <summary>
+        /// Deactivate input for all players
+        /// </summary>
         [Button, HideInEditorMode]
         public void DeactivateInput()
         {
@@ -248,6 +251,9 @@ namespace Metamatic
             }
         }
         
+        /// <summary>
+        /// Activate input for all players
+        /// </summary>
         [Button, HideInEditorMode]
         public void ActivateInput()
         {

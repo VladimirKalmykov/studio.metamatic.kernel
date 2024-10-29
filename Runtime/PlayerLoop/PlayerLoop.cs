@@ -98,8 +98,10 @@ namespace Metamatic
         private MicroSteps m_CurrentMicroFixedSteps = MicroSteps.Zero;
         private Action<MicroSteps>[] m_UpdateActions = new Action<MicroSteps>[50];
         private Action<MicroSteps>[] m_FixedUpdateActions = new Action<MicroSteps>[50];
+        private Action[] m_DrawGizmosActions = new Action[50];
         private int m_UpdateActionsCount = 0;
         private int m_FixedUpdateActionsCount = 0;
+        private int m_DrawGizmosActionsCount = 0;
         
         public MicroSteps currentMicroStep => m_CurrentMicroSteps;
         public MicroSteps currentMicroFixedStep => m_CurrentMicroFixedSteps;
@@ -130,6 +132,56 @@ namespace Metamatic
                     m_FixedUpdateActions[i].Invoke(m_CurrentMicroFixedSteps);
                 }
             }
+        }
+        
+        #if UNITY_EDITOR
+        private void OnDrawGizmos()
+        {
+            for (var i = 0; i < m_DrawGizmosActionsCount; i++)
+            {
+                m_DrawGizmosActions[i].Invoke();
+            }
+        }
+        #endif
+
+        public static DisposableAction DrawGizmos(Action handler)
+        {
+            var instance = Instance;
+            if (!instance.enabled)
+            {
+                instance.enabled = true;
+            }
+            instance.m_DrawGizmosActions[instance.m_DrawGizmosActionsCount] = handler;
+            
+            /* Detect that current action capacity is not enough */
+            if (++instance.m_DrawGizmosActionsCount >= instance.m_DrawGizmosActions.Length)
+            {
+                Array.Resize(ref instance.m_DrawGizmosActions, instance.m_DrawGizmosActions.Length + ActionCapacityStep);
+            }
+            
+            return new DisposableAction(() =>
+            {
+                for (int i = 0; i < instance.m_DrawGizmosActionsCount; i++)
+                {
+                    if (instance.m_DrawGizmosActions[i] == handler)
+                    {
+                        instance.m_DrawGizmosActions[i] = null;
+                        
+                        /* Shift rest of the actions */
+                        for (int j = i; j < instance.m_DrawGizmosActionsCount - 1; j++)
+                        {
+                            instance.m_DrawGizmosActions[j] = instance.m_DrawGizmosActions[j + 1];
+                        }
+                        instance.m_DrawGizmosActionsCount--;
+                        
+                        if (instance.m_UpdateActionsCount == 0 && instance.m_FixedUpdateActionsCount == 0)
+                        {
+                            instance.enabled = false;
+                        }
+                        break;
+                    }
+                }
+            });
         }
 
         public static DisposableAction MicroStep(MicroSteps steps, Action action)

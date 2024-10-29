@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Metamatic.Framework.CursorTools;
@@ -7,6 +8,7 @@ using Metamatic.Framework.Workshop;
 using Metamatic.UIToolKit;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
+using UnityEngine.InputSystem.Utilities;
 using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 namespace Metamatic.Framework
@@ -43,6 +45,9 @@ namespace Metamatic.Framework
         /// <returns></returns>
         public static UniTask<DevToolsOverlay> GetInstance(CancellationSignal signal) =>
             m_Instance.WaitUntilValueIsNotNull(signal);
+
+        private static readonly Observable<bool> m_IsVisibleObservable = new();
+        public static readonly Observable<bool> IsInteractiveObservable = new();
 
         public static int Version = 1;
 
@@ -118,7 +123,15 @@ namespace Metamatic.Framework
         [Tooltip("Show overlay on start up")] [SerializeField]
         private bool m_IsActiveOnStartUp;
 
-        [SerializeField] private KeyCombination m_ToggleKeyCombination;
+        [SerializeField] private KeyCombination m_ToggleKeyCombination = new KeyCombination()
+        {
+            ctrl = true,
+            mainKey = Key.F9
+        };
+        [SerializeField] private KeyCombination m_ToggleInteractiveKeyCombination = new KeyCombination()
+        {
+            mainKey = Key.F10
+        };
 
         #endregion
 
@@ -137,6 +150,7 @@ namespace Metamatic.Framework
         public RuntimeCore core => RuntimeCore.Instance;
         public CameraService CameraService { get; private set; }
         private VisualElement m_CursorTextElement;
+        private SideFlyoutPanel m_TopSideFlyoutPanel;
 
         /// <summary>
         /// Helper variable to store the previous pointer position.
@@ -153,11 +167,12 @@ namespace Metamatic.Framework
         /// </summary>
         private CancellationSignalSource m_CursorToolActivationCancellationSignalSource;
 
-        private readonly Observable<bool> m_IsVisible = new();
-
         private readonly HashSet<VisualElement> m_HoveredPanels = new();
         public readonly Observable<bool> IsHoveringOverPanel = new(false);
+        
+        // Cached services
         private CursorService m_CursorService;
+        private InputService m_InputService;
 
         /* References to visual elements */
         private CriticalNotification m_CriticalNotification;
@@ -170,8 +185,10 @@ namespace Metamatic.Framework
                 m_Instance.Value = this;
                 m_OverlayContext.Value = this;
                 m_CoreContext.Value = core;
+                
                 /* Load persistent state */
                 var loadPersistentStateTask = LoadPersistentState(signal);
+                
                 /* Get CursorService */
                 try
                 {
@@ -185,6 +202,21 @@ namespace Metamatic.Framework
                     Console.Exception("MetamaticFramework", "Overlay", e);
                     return;
                 }
+                
+                // Resolve input service
+                try
+                {
+                    m_InputService = await Service.Resolve<InputService>(signal, 5f);
+                } catch (TimeoutException e)
+                {
+                    Console.Exception("MetamaticFramework", "Overlay", "Overlay requires InputService to be run");
+                    return;
+                } catch (Exception e)
+                {
+                    Console.Exception("MetamaticFramework", "Overlay", e);
+                    return;
+                }
+                
 
                 /* Wait for persistent state to load */
                 await loadPersistentStateTask;
@@ -200,10 +232,10 @@ namespace Metamatic.Framework
                 uiDocument.rootVisualElement.AddToClassList(UIToolKitCore.DarkEnoughClassName);
                 
                 // Initialize default visibility
-                m_IsVisible.Value = m_IsActiveOnStartUp;
+                m_IsVisibleObservable.Value = m_IsActiveOnStartUp;
 
                 // Subscribe to visibility changes
-                using var watchVisibility = m_IsVisible.WatchLifecycle(OnVisibilityLifecycleChanged);
+                using var watchVisibility = m_IsVisibleObservable.Watch(OnVisibilityLifecycleChanged);
 
                 /* Create context provider */
                 var contextProvider = new VisualElementContextProvider();
@@ -244,20 +276,45 @@ namespace Metamatic.Framework
                 /* Clean up: Remove from persistent state widgets that are not in the list */
                 var beforeCount = m_PersistentState.Value.activeWidgets.Count;
                 m_PersistentState.Value.activeWidgets.RemoveAll(x => !m_Widgets.ContainsKey(x));
-
+                
+                /* Save widgets state to persistent state */
                 if (beforeCount != m_PersistentState.Value.activeWidgets.Count)
                 {
                     SavePersistentState();
                 }
                 
+                // Create top side flyout panel
+                m_TopSideFlyoutPanel = new SideFlyoutPanel(SideFlyoutPanel.Position.Top, true);
+                m_TopSideFlyoutPanel.Add(new Label("Top side flyout panel"));
+                root.Add(m_TopSideFlyoutPanel);
+                
                 // Subscribe to hover panel changes
                 using var watchHoveringOverPanel = IsHoveringOverPanel.WatchLifecycle(OnHoveringOverPanelChanged);
-
+                // Watch interactive mode changes
+                using var watchInteractiveMode = IsInteractiveObservable.WatchLifecycle(OnInteractiveModeChanged);
                 await ready();
             }
             catch (Exception e)
             {
                 Console.Exception("MetamaticFramework", "Overlay", e);
+            }
+        }
+        
+        private async UniTaskVoid OnInteractiveModeChanged(bool interactive, CancellationSignal signal)
+        {
+            uiDocument.rootVisualElement.pickingMode = interactive ? PickingMode.Position : PickingMode.Ignore;
+            if (interactive)
+            {
+                m_InputService.DeactivateInput();
+                using (m_CursorService.SetCursor(new CursorService.CursorConfig(true)))
+                {
+                    await signal;
+                }
+            }
+            else
+            {
+                m_InputService.ActivateInput();
+                uiDocument.rootVisualElement.Focus();
             }
         }
 
@@ -328,25 +385,23 @@ namespace Metamatic.Framework
             }
         }
 
-        private async UniTaskVoid OnVisibilityLifecycleChanged(bool visible, CancellationSignal signal)
+        private void OnVisibilityLifecycleChanged(bool visible)
         {
             uiDocument.rootVisualElement.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-            if (visible)
-            {
-                using var showCursor = m_CursorService.SetCursor(new CursorService.CursorConfig(true));
-                await signal;
-            }
         }
 
         private void Update()
         {
-            if (IsKeyCombinationPressed())
+            if (IsToggleKeyCombinationPressed())
             {
                 ToggleOverlay();
+            } else if (IsToggleInteractiveKeyCombinationPressed())
+            {
+                IsInteractiveObservable.value = !IsInteractiveObservable.value;
             }
         }
 
-        private bool IsKeyCombinationPressed()
+        private bool IsToggleKeyCombinationPressed()
         {
             bool isMainKeyPressed = Keyboard.current[m_ToggleKeyCombination.mainKey].wasPressedThisFrame;
             bool isCtrlPressed = !m_ToggleKeyCombination.ctrl || Keyboard.current[Key.LeftCtrl].isPressed ||
@@ -359,9 +414,27 @@ namespace Metamatic.Framework
             return isMainKeyPressed && isCtrlPressed && isShiftPressed && isAltPressed;
         }
 
+        private bool IsToggleInteractiveKeyCombinationPressed()
+        {
+            bool isMainKeyPressed = Keyboard.current[m_ToggleInteractiveKeyCombination.mainKey].wasPressedThisFrame;
+            bool isCtrlPressed = !m_ToggleInteractiveKeyCombination.ctrl || Keyboard.current[Key.LeftCtrl].isPressed ||
+                                 Keyboard.current[Key.RightCtrl].isPressed;
+            bool isShiftPressed = !m_ToggleInteractiveKeyCombination.shift || Keyboard.current[Key.LeftShift].isPressed ||
+                                  Keyboard.current[Key.RightShift].isPressed;
+            bool isAltPressed = !m_ToggleInteractiveKeyCombination.alt || Keyboard.current[Key.LeftAlt].isPressed ||
+                                Keyboard.current[Key.RightAlt].isPressed;
+
+            return isMainKeyPressed && isCtrlPressed && isShiftPressed && isAltPressed;
+        }
+
         private void ToggleOverlay()
         {
-            m_IsVisible.value = !m_IsVisible.value;
+            m_IsVisibleObservable.value = !m_IsVisibleObservable.value;
+        }
+        
+        public void ToggleInteractiveMode()
+        {
+            IsInteractiveObservable.value = !IsInteractiveObservable.value;
         }
 
         private void ActivateWidget(WidgetBlueprint blueprint)

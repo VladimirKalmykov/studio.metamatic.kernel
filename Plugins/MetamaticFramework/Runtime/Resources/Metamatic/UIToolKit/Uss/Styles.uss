@@ -5,6 +5,7 @@
     --MetamaticUIKit_BorderColor: #282828;
     --MetamaticUIKit_BorderLightColor: #3a3a3a;
     --MetamaticUIKit_PanelBackgroundColor: #222222;
+    --MetamaticUIKit_TransclucentPanelBackgroundColor: rgba(34, 34, 34, 0.8);
     --MetamaticUIKit_PanelInactiveBackgroundColor: #1a1a1a;
     --MetamaticUIKit_IndicatorUnactiveColor: #4d4d4d;
     --MetamaticUIKit_IndicatorActiveColor: #1bffdd;
@@ -200,3 +201,24 @@
     border-bottom-left-radius: 3px;
     border-bottom-right-radius: 3px;
 }
+
+/* Toggle button */
+.MetamaticUIKit_ToggleButton {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    border-radius: 6px;
+}
+
+.MetamaticUIKit_ToggleButton .MetamaticUIKit_ToggleButtonChoice {
+    flex-grow: 1;
+    padding: 6px;
+    border-radius: 6px;
+    background-color: var(--MetamaticUIKit_PanelInactiveBackgroundColor);
+    color: var(--MetamaticUIKit_TextColor);
+}
+
+.MetamaticUIKit_ToggleButton .MetamaticUIKit_ToggleButtonChoice.MetamaticUIKit_ToggleButtonChoiceSelected {
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+}
+
