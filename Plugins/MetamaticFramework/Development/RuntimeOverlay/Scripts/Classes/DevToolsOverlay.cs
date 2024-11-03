@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Extensions;
 using Metamatic.Framework.CursorTools;
 using Metamatic.Framework.Workshop;
 using Metamatic.UIToolKit;
@@ -22,6 +23,13 @@ namespace Metamatic.Framework
     /// </summary>
     public class DevToolsOverlay : AsyncBehaviour
     {
+        public enum PresenceType
+        {
+            Hidden,
+            Visible,
+            Interactive
+        }
+        
         [Serializable]
         public class KeyCombination
         {
@@ -46,8 +54,15 @@ namespace Metamatic.Framework
         public static UniTask<DevToolsOverlay> GetInstance(CancellationSignal signal) =>
             m_Instance.WaitUntilValueIsNotNull(signal);
 
-        private static readonly Observable<bool> m_IsVisibleObservable = new();
-        public static readonly Observable<bool> IsInteractiveObservable = new();
+        /**
+         * Contains value that form the overlay presence: Hidden, Visible, Interactive.
+         * Hidden - overlay is not visible.
+         * Visible - overlay is visible, but not interactive.
+         * Interactive - overlay is visible and interactive.
+         */
+        private static readonly Observable<PresenceType> m_ObservablePresence = new();
+        
+        // TODO: Remove m_IsVisibleObservable and m_IsInteractiveObservable and use m_ObservablePresence instead.
 
         public static int Version = 1;
 
@@ -119,9 +134,8 @@ namespace Metamatic.Framework
         #endregion
 
         #region Fields
-
-        [Tooltip("Show overlay on start up")] [SerializeField]
-        private bool m_IsActiveOnStartUp;
+        [Tooltip("Presence of the overlay on start up")]
+        [SerializeField] private PresenceType m_PresenceOnStart;
 
         [SerializeField] private KeyCombination m_ToggleKeyCombination = new KeyCombination()
         {
@@ -130,7 +144,8 @@ namespace Metamatic.Framework
         };
         [SerializeField] private KeyCombination m_ToggleInteractiveKeyCombination = new KeyCombination()
         {
-            mainKey = Key.F10
+            shift = true,
+            mainKey = Key.F9
         };
 
         #endregion
@@ -217,6 +232,12 @@ namespace Metamatic.Framework
                     return;
                 }
                 
+                /*
+                 * Apply default presence
+                 * TODO: Load presence from persistent state
+                 */
+                m_ObservablePresence.Value = m_PresenceOnStart;
+                
 
                 /* Wait for persistent state to load */
                 await loadPersistentStateTask;
@@ -230,12 +251,6 @@ namespace Metamatic.Framework
                 uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.styleSheet);
                 uiDocument.rootVisualElement.styleSheets.Add(UIToolKitCore.tailwindStyleSheet);
                 uiDocument.rootVisualElement.AddToClassList(UIToolKitCore.DarkEnoughClassName);
-                
-                // Initialize default visibility
-                m_IsVisibleObservable.Value = m_IsActiveOnStartUp;
-
-                // Subscribe to visibility changes
-                using var watchVisibility = m_IsVisibleObservable.Watch(OnVisibilityLifecycleChanged);
 
                 /* Create context provider */
                 var contextProvider = new VisualElementContextProvider();
@@ -285,13 +300,20 @@ namespace Metamatic.Framework
                 
                 // Create top side flyout panel
                 m_TopSideFlyoutPanel = new SideFlyoutPanel(SideFlyoutPanel.Position.Top, true);
-                m_TopSideFlyoutPanel.Add(new Label("Top side flyout panel"));
+                
+                // Add toggle button
+                var toggleButton = new ToggleButton<PresenceType>(m_ObservablePresence);
+                toggleButton.AddChoice("Hidden", PresenceType.Hidden);
+                toggleButton.AddChoice("Visible", PresenceType.Visible);
+                toggleButton.AddChoice("Interactive", PresenceType.Interactive);
+                m_TopSideFlyoutPanel.Add(toggleButton);
+                
                 root.Add(m_TopSideFlyoutPanel);
                 
+                // Subscribe to presence changes
+                using var presenceSubscription = m_ObservablePresence.WatchLifecycle(OnPresenceChange);
                 // Subscribe to hover panel changes
                 using var watchHoveringOverPanel = IsHoveringOverPanel.WatchLifecycle(OnHoveringOverPanelChanged);
-                // Watch interactive mode changes
-                using var watchInteractiveMode = IsInteractiveObservable.WatchLifecycle(OnInteractiveModeChanged);
                 await ready();
             }
             catch (Exception e)
@@ -299,11 +321,14 @@ namespace Metamatic.Framework
                 Console.Exception("MetamaticFramework", "Overlay", e);
             }
         }
-        
-        private async UniTaskVoid OnInteractiveModeChanged(bool interactive, CancellationSignal signal)
+
+        private async UniTaskVoid OnPresenceChange(PresenceType presenceType, CancellationSignal signal)
         {
-            uiDocument.rootVisualElement.pickingMode = interactive ? PickingMode.Position : PickingMode.Ignore;
-            if (interactive)
+            uiDocument.rootVisualElement.style.display = presenceType == PresenceType.Hidden ? DisplayStyle.None : DisplayStyle.Flex;
+            var isInteractive = presenceType == PresenceType.Interactive;
+            uiDocument.rootVisualElement.SetPickingModeRecursively(isInteractive ? PickingMode.Position : PickingMode.Ignore); 
+            
+            if (isInteractive)
             {
                 m_InputService.DeactivateInput();
                 using (m_CursorService.SetCursor(new CursorService.CursorConfig(true)))
@@ -316,6 +341,8 @@ namespace Metamatic.Framework
                 m_InputService.ActivateInput();
                 uiDocument.rootVisualElement.Focus();
             }
+
+            await signal;
         }
 
         private void BuildMenuTreeAndWidgets()
@@ -385,11 +412,6 @@ namespace Metamatic.Framework
             }
         }
 
-        private void OnVisibilityLifecycleChanged(bool visible)
-        {
-            uiDocument.rootVisualElement.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-        }
-
         private void Update()
         {
             if (IsToggleKeyCombinationPressed())
@@ -397,7 +419,14 @@ namespace Metamatic.Framework
                 ToggleOverlay();
             } else if (IsToggleInteractiveKeyCombinationPressed())
             {
-                IsInteractiveObservable.value = !IsInteractiveObservable.value;
+                if (m_ObservablePresence.value != PresenceType.Interactive)
+                {
+                    m_ObservablePresence.value = PresenceType.Interactive;
+                }
+                else
+                {
+                    m_ObservablePresence.value = PresenceType.Visible;
+                }
             }
         }
 
@@ -429,12 +458,28 @@ namespace Metamatic.Framework
 
         private void ToggleOverlay()
         {
-            m_IsVisibleObservable.value = !m_IsVisibleObservable.value;
+            switch (m_ObservablePresence.value)
+            {
+                case PresenceType.Hidden:
+                    m_ObservablePresence.value = PresenceType.Visible;
+                    break;
+                case PresenceType.Visible:
+                case PresenceType.Interactive:
+                    m_ObservablePresence.value = PresenceType.Hidden; // TODO: Maybe we should remember the last state of the overlay and restore it.
+                    break;
+            }
         }
         
         public void ToggleInteractiveMode()
         {
-            IsInteractiveObservable.value = !IsInteractiveObservable.value;
+            if (m_ObservablePresence.value != PresenceType.Interactive)
+            {
+                m_ObservablePresence.value = PresenceType.Interactive;
+            }
+            else
+            {
+                m_ObservablePresence.value = PresenceType.Visible;
+            }
         }
 
         private void ActivateWidget(WidgetBlueprint blueprint)

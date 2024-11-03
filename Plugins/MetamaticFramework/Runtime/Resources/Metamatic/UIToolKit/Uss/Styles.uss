@@ -213,7 +213,6 @@
 .MetamaticUIKit_ToggleButton .MetamaticUIKit_ToggleButtonChoice {
     flex-grow: 1;
     padding: 6px;
-    border-radius: 6px;
     background-color: var(--MetamaticUIKit_PanelInactiveBackgroundColor);
     color: var(--MetamaticUIKit_TextColor);
 }
