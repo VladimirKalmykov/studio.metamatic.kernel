@@ -32,6 +32,16 @@ namespace Metamatic
 #endif
         }
         
+        private static event Action OnSceneInitiallyLoaded;
+        private static bool _IsInitialized;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Initialize()
+        {
+            _IsInitialized = true;
+            OnSceneInitiallyLoaded?.Invoke();
+            OnSceneInitiallyLoaded = null;
+        }
+        
         public static readonly Commander Commander = new Commander();
         
         #region Public Properties and Methods
@@ -128,8 +138,22 @@ namespace Metamatic
             var currentThread = System.Threading.Thread.CurrentThread;
             if (currentThread.ManagedThreadId != 1)
             {
+                /*
+                 Because this method can be called before UniTask actually initialize its `yielders` array (that is used in SwitchToMainThread)
+                 we must ensure that UniTask already initialized before ask for switch to main thread.
+                 The `yielders` array is initialized on BeforeSceneLoad event.
+                 
+                 To avoid this issue, we can defer the call to the main thread only after BeforeSceneLoad event.
+                 */
+                if (!_IsInitialized)
+                {
+                    OnSceneInitiallyLoaded += () =>
+                    {
+                        LogOnTheMainThread(message, tags, logLevel, stackTrace).Forget();
+                    };
+                    return;
+                }
                 await UniTask.SwitchToMainThread();
-                return;
             }
             
             if ((LogLevelTranslateToUnityConsole & logLevel) == logLevel)
