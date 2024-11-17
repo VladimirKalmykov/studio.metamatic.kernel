@@ -655,10 +655,9 @@ namespace Metamatic
         /// </summary>
         /// <param name="a"></param>
         /// <returns>Angle with range 0 360</returns>
-        public static float OptimizeAngle(float a)
+        public static float NormalizeAngle(float a)
         {
-            var normalizeAngle = a % 360;
-            return normalizeAngle < 0f ? 360f + normalizeAngle : normalizeAngle;
+            return (a % 360 + 360) % 360;
         }
 
         /// <summary>

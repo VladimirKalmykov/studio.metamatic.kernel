@@ -75,7 +75,7 @@ namespace Metamatic
             public bool isAborted => m_StateMachine.m_Status == TransitionStatus.Aborted;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public UniTask<TState> WaitNextState() => m_StateMachine.WaitNextState();
+            public UniTask<TState> WaitNextState() => m_StateMachine.SetTransitionReadyAndWaitNextState();
 
             public DisposableAction AddNextStateValidator(Validator<TState, TState>.ValidatorDelegate validator)
             {
@@ -357,7 +357,7 @@ namespace Metamatic
         /// Method to wait for the next state (should be used by transition handler when it is ready to transition to the next state)
         /// </summary>
         /// <returns></returns>
-        public UniTask<TState> WaitNextState()
+        public UniTask<TState> SetTransitionReadyAndWaitNextState()
         {
             if (m_HasNextState)
             {
@@ -787,9 +787,15 @@ namespace Metamatic
                         EnqueueState(nextId, newState, externalCancellationSignal, tcs);
                         return (tcs.Task, nextId);
                     }
+                        /* No transition is in progress, therefore we can set next state immediately */
+                    case TransitionStatus.Idle:
+                        Reset(newState, currentState, externalCancellationSignal);
+                    break;
+                    default:
+                        throw new InvalidOperationException(
+                            $"Invalid state {m_Status} for adding new state {newState} (id #{id})");
+                        break;
                 }
-
-                Reset(newState, currentState, externalCancellationSignal);
             }
             else
             {
@@ -918,6 +924,8 @@ namespace Metamatic
 #else
             SetStatus(TransitionStatus.FromPrevToCurrentProcessing);
 #endif
+                // Wait next frame to ensure that next state are set correctly from the m_StatesQueue)
+                await UniTask.Yield();
                 OnTransitionStep?.Invoke(prevState, currentState);
                 await m_Handler(new Transition(this, id));
                 if (m_SettingDebug)
@@ -1005,6 +1013,7 @@ namespace Metamatic
             }
             catch (OperationCanceledException)
             {
+                /* Transition to next state was cancelled, but it is not a problem, because it is expected behaviour */
                 HandleNextState(true).Forget();
             }
             catch (Exception e)
@@ -1017,7 +1026,7 @@ namespace Metamatic
         {
             if (m_StatesQueue.Count == 0)
             {
-                // Fallback to default state
+                // Fallback to default state if there are no states in queue
                 if (m_SettingAutoCompleteWithDefaultState && m_AutocompleteTransitionId != m_LatestTransitionId)
                 {
                     if (m_SettingDebug) Console.Verbose("AsyncStateMachine", $"Auto push default state");

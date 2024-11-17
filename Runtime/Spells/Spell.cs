@@ -27,7 +27,7 @@ namespace Metamatic
             }
             catch (Exception e)
             {
-                Console.Error("Spell", "Sync", e.Message);
+                Console.Error("Spell", "Sync", e.Message, e.StackTrace);
             }
         }
         /// <summary>
