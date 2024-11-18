@@ -338,6 +338,7 @@ namespace Metamatic.Framework
             }
             else
             {
+                m_ActiveCursorTool.Value = null;
                 m_InputService.ActivateInput();
                 uiDocument.rootVisualElement.Focus();
             }

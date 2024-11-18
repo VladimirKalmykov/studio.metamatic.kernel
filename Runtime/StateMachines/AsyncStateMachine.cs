@@ -718,7 +718,6 @@ namespace Metamatic
             ulong id = 0)
         {
 #if DEBUG
-            Console.Debug("AsyncStateMachine", "PushStateAsync", $"Push state {newState} (id #{id})");
             if (m_SettingDebug)
                 Console.Verbose("AsyncStateMachine", "Push",
                     $"Validate attempt to add state {newState} (id #{id}) (Curren status is {m_Status})");

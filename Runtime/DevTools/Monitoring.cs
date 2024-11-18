@@ -218,7 +218,6 @@ namespace Metamatic.DevTools
             {
                 onGroupAdded(group, group.CancellationSignal);
             }
-            Console.Debug("Monitoring", "ObserveGroups", $"{Time.realtimeSinceStartup - startRealTime}s");
 
             void Handler(Group group)
             {

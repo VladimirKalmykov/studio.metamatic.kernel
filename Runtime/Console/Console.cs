@@ -231,6 +231,13 @@ namespace Metamatic
         
         [DebuggerHidden]
         [UsedImplicitly]
+        public static void Error(string tag1, string tag2, Exception exception)
+        {
+            Log(tag1, exception.ToString(), LogLevel.Error, exception.StackTrace);
+        }
+        
+        [DebuggerHidden]
+        [UsedImplicitly]
         public static void Error(string tag1, string message)
         {
             Log(tag1, message, LogLevel.Error);

@@ -21,7 +21,6 @@ namespace Metamatic.Framework
                 if (s_CheckedIconTexture == null)
                 {
                     s_CheckedIconTexture = Resources.Load<Texture2D>(KCheckedIconPath);
-                    Console.Debug("MetamaticFramework", "Menu", $"Loaded checked icon texture: {s_CheckedIconTexture}");
                 }
 
                 return s_CheckedIconTexture;
@@ -176,7 +175,6 @@ namespace Metamatic.Framework
                 var parentMenuPanel = this.FindParent<MenuPanel>();
                 async UniTaskVoid HandleCombinedHover(bool isHovered, CancellationSignal cancellationSignal)
                 {
-                    Console.Debug("MetamaticFramework", "Menu", $"Combined hover: {isHovered}");
                     if (isHovered)
                     {
                         AddToClassList("Hover");

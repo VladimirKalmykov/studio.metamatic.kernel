@@ -19,7 +19,7 @@ namespace Metamatic.Framework
         {
             if (SubMenu.value != null)
             {
-                Console.Debug("MenuItem", "AddSubMenu", "SubMenu already exists! Why are you trying to add another one?");
+                Console.Warning("MenuItem", "AddSubMenu", "SubMenu already exists! Why are you trying to add another one?");
                 return SubMenu.value;
             }
             SubMenu.value = new Menu(this);
