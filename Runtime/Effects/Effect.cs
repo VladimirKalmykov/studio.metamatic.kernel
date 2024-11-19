@@ -41,17 +41,15 @@ namespace Metamatic.Effects
         public Effect<T> effect => new Effect<T>(this);
         public event Action<T> OnDataChanged;
         public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
+        /// <summary>
+        /// Determines whether the effect is used
+        /// </summary>
+        public bool isBusy { get; private set; }
         
         private CancellationSignalSource m_CancellationSignalSource;
         
-        private void Initialize(Object producer, Object consumer, T data, bool instant)
+        internal void Initialize(Object producer, Object consumer, T data, bool instant)
         {
-            this.Producer = producer;
-            this.Consumer = consumer;
-            this.data = data;
-            this.Instant = instant;
-            StartTime = Time.time;
-
             if (!instant)
             {
                 if (m_CancellationSignalSource.CanBeCancelled)
@@ -60,23 +58,41 @@ namespace Metamatic.Effects
                 }
                 m_CancellationSignalSource = CancellationSignalSource.Create();
             }
+            else
+            {
+                isBusy = true;
+                /* Instant effect never gets released, so we need to increment version here */
+                version++;
+            }
+            
+            this.Producer = producer;
+            this.Consumer = consumer;
+            this.data = data;
+            this.Instant = instant;
+            StartTime = Time.time;
+            
+            var effectStruct = new Effect<T>(this);
 
             if (producer is IEffectProducer effectProducer)
             {
-                effectProducer.OnEffectProduced(effect);
+                effectProducer.OnEffectProduced(effectStruct);
             }
             if (consumer is GameObject asGameObject)
             {
                 if (asGameObject.TryGetComponent(out EffectConsumer effectConsumerComponent))
                 {
-                    effectConsumerComponent.OnEffectReceived(effect);
+                    effectConsumerComponent.OnEffectReceived(effectStruct);
                 }
             } else if (consumer is IEffectConsumer effectConsumer)
             {
-                effectConsumer.OnEffectReceived(effect);
+                effectConsumer.OnEffectReceived(effectStruct);
             }
-            Effect<T>.EmitEffectCreated(effect);
+            Effect<T>.EmitEffectCreated(effectStruct);
             Console.Info("Effect", typeof(T).Name, $"{producer} -> {consumer} ({(instant ? "Instant" : "Durable")} {data})");
+            if (instant)
+            {
+                isBusy = false;
+            }
         }
         
         public void UpdateData(T data)
@@ -160,10 +176,19 @@ namespace Metamatic.Effects
     public readonly struct Effect<T>: IDisposable, IEffect
     where T: struct
     {
-        public static void Spawn(Object producer, Object consumer, T data, bool instant = false)
+        private static readonly InternalEffectSource<T> InstantEffectSource = new InternalEffectSource<T>();
+        public static void Spawn(Object producer, Object consumer, T data)
         {
-            var source = InternalEffectSource<T>.Create(producer, consumer, data, instant);
-            source.Release();
+            if (!InstantEffectSource.isBusy)
+            {
+                InstantEffectSource.Initialize(producer, consumer, data, true);
+            }
+            else
+            {
+                var source = InternalEffectSource<T>.Create(producer, consumer, data, true);
+                /* Release it right after creation, because instant effect is not used no longer than them moment of initialization */
+                source.Release();
+            }
         }
         private static event Action<Effect<T>> OnEffectCreated;
         public static DisposableAction SubscribeAll(Action<Effect<T>> action)
