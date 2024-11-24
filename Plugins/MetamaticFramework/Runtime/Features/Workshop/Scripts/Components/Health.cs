@@ -26,13 +26,13 @@ namespace Metamatic.Framework.Workshop
         [SerializeField][Tooltip("Entity can not take damage")]
         public bool invulnerable;
         #endregion
-        [ShowInInspector]
+        [ShowInInspector, ReadOnly]
         public float maxHealth
         {
             get => State.maxHealth;
             set => State.maxHealth = value;
         }
-        [ShowInInspector]
+        [ShowInInspector, ReadOnly]
         public float health {
             get => State.health;
             set => State.health = value;
