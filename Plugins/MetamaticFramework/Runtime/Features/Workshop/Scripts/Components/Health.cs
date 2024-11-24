@@ -1,7 +1,6 @@
 using System;
 using Cysharp.Threading.Tasks;
 using Metamatic;
-using Metamatic.Effects;
 using Sirenix.OdinInspector;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -43,8 +42,8 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         public bool isAlive => !m_IsKilled;
         
-        private event Action<Object> OnDie;
-        private event Action<Object> OnResurrect;
+        private event Action<GameObject> OnDie;
+        private event Action<GameObject> OnResurrect;
         private event Action<float> OnDamage;
         private bool m_IsKilled = false;
         
@@ -73,7 +72,7 @@ namespace Metamatic.Framework.Workshop
             }
         }
 
-        public void TakeDamage(Object producer, ImpactType impactType, float damage)
+        public void TakeDamage(GameObject producer, ImpactType impactType, float damage)
         {
             #if METAMATIC_VERBOSE_LOG
             Console.Verbose("Health",$"ApplyDamage {damage} to {gameObject.name}");            
@@ -93,7 +92,7 @@ namespace Metamatic.Framework.Workshop
             health = Mathf.Max(health - damage);
             if (health <= 0 && immortal == false)
             {
-                HealthService.DieRequest(producer, this);
+                Effect<KillSpell>.Cast(producer, gameObject);
             }
         }
         
@@ -116,13 +115,13 @@ namespace Metamatic.Framework.Workshop
         /// Immediately kill the entity
         /// </summary>
         /// <param name="killer"></param>
-        public void Kill(Object killer)
+        public void ConfirmedKill(GameObject killer)
         {
             m_IsKilled = true;
             OnDie?.Invoke(killer);
         }
         
-        public void Resurrect(Object resurrectionist, float health = 0)
+        public void Resurrect(GameObject resurrectionist, float health = 0)
         {
             m_IsKilled = false;
             this.health = health != 0 ? health : maxHealth;
@@ -134,7 +133,7 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public DisposableAction SubscribeToDie(Action<Object> handler)
+        public DisposableAction SubscribeToDie(Action<GameObject> handler)
         {
             OnDie += handler;
             return new DisposableAction(() => OnDie -= handler);

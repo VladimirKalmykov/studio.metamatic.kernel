@@ -1,7 +1,7 @@
 ﻿using Metamatic.Extensions;
 using UnityEngine.UIElements;
 
-namespace Metamatic.Effects
+namespace Metamatic
 {
     public class PinHeaderEditorComponent : EditorComponent
     {

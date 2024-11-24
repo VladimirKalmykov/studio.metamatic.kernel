@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Button = UnityEngine.UIElements.Button;
 
-namespace Metamatic.Effects
+namespace Metamatic
 {
     public class PinConnectionsEditorComponent : EditorComponent
     {

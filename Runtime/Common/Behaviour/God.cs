@@ -4,15 +4,17 @@ namespace Metamatic
 {
     public class God: MonoBehaviour
     {
-        private static God _Instance;
-        public static God Instance
+        private static GameObject _Instance;
+        public static GameObject Instance
         {
             get
             {
                 if (_Instance == null)
                 {
-                    _Instance = new GameObject("God").AddComponent<God>();
-                    DontDestroyOnLoad(_Instance.gameObject);
+                    var go = GameObject.Find("God");
+                    go.AddComponent<God>();
+                    DontDestroyOnLoad(go);
+                    _Instance = go;
                 }
                 return _Instance;
             }

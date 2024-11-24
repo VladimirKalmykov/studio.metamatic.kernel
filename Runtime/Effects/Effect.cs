@@ -1,251 +1,158 @@
-using System;
-using Metamatic.DevTools;
+using System.Collections.Generic;
+using System.Linq;
+using Cysharp.Threading.Tasks;
+using Metamatic;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
-namespace Metamatic.Effects
+namespace Metamatic
 {
-    public sealed class InternalEffectSource<T>: IDisposable
-    where T: struct
+    /// <summary>
+    /// Helper class to manage effects on GameObject. It is used only if someone watches for effects on the certain game object via Effect.Watch method
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public class GameObjectEffectsContainer<T> where T: struct
     {
-        #if DEBUG
-        static InternalEffectSource()
-        {
-            Monitoring.Create("Effects", "Count in pool",
-                ParamLessPool<InternalEffectSource<T>>.DebugGetCountInSharedPool);
-            Monitoring.Create("Effects", "Count out of pool",
-                ParamLessPool<InternalEffectSource<T>>.DebugGetCountOutOfSharedPool);
-        }
-        #endif
-        /// <summary>
-        /// Create internal effect source (do not use this method directly)
-        /// </summary>
-        /// <param name="producer">The object which apply effect</param>
-        /// <param name="target">The object which accept effect</param>
-        /// <param name="data">Effect data</param>
-        /// <param name="instant">Effect is not continuously</param>
-        /// <returns></returns>
-        internal static InternalEffectSource<T> Create(Object producer, Object target, T data, bool instant = false)
-        {
-            var effect = ParamLessPool<InternalEffectSource<T>>.GetShared();
-            effect.Initialize(producer, target, data, instant);
-            return effect;
-        }
-
-        public Object Producer;
-        public Object Consumer;
-        public float StartTime;
-        public bool Instant;
-        public T data { get; private set; }
-        public int version { get; private set; }
-        public Effect<T> effect => new Effect<T>(this);
-        public event Action<T> OnDataChanged;
-        public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
-        /// <summary>
-        /// Determines whether the effect is used
-        /// </summary>
-        public bool isBusy { get; private set; }
+        public event System.Action<GameObject, GameObject, T> OnInstantCast;
+        public event System.Action<GameObject, GameObject, EffectCast<T>> OnLongLastingCast;
+        public readonly HashSet<EffectCast<T>> ActiveEffects = new HashSet<EffectCast<T>>();
         
-        private CancellationSignalSource m_CancellationSignalSource;
-        
-        internal void Initialize(Object producer, Object consumer, T data, bool instant)
+        public void AddEffect(EffectCast<T> effect, GameObject caster, GameObject target)
         {
-            if (!instant)
-            {
-                if (m_CancellationSignalSource.CanBeCancelled)
-                {
-                    Console.Error("CancellationSignal", "You are about to create a new cancellation signal source without disposing the previous one");
-                }
-                m_CancellationSignalSource = CancellationSignalSource.Create();
-            }
-            else
-            {
-                isBusy = true;
-                /* Instant effect never gets released, so we need to increment version here */
-                version++;
-            }
-            
-            this.Producer = producer;
-            this.Consumer = consumer;
-            this.data = data;
-            this.Instant = instant;
-            StartTime = Time.time;
-            
-            var effectStruct = new Effect<T>(this);
-
-            if (producer is IEffectProducer effectProducer)
-            {
-                effectProducer.OnEffectProduced(effectStruct);
-            }
-            if (consumer is GameObject asGameObject)
-            {
-                if (asGameObject.TryGetComponent(out EffectConsumer effectConsumerComponent))
-                {
-                    effectConsumerComponent.OnEffectReceived(effectStruct);
-                }
-            } else if (consumer is IEffectConsumer effectConsumer)
-            {
-                effectConsumer.OnEffectReceived(effectStruct);
-            }
-            Effect<T>.EmitEffectCreated(effectStruct);
-            Console.Info("Effect", typeof(T).Name, $"{producer} -> {consumer} ({(instant ? "Instant" : "Durable")} {data})");
-            if (instant)
-            {
-                isBusy = false;
-            }
+            ActiveEffects.Add(effect);
+            OnLongLastingCast?.Invoke(caster, target, effect);
+            effect.cancellationSignal.Register(() => ActiveEffects.Remove(effect));
         }
         
-        public void UpdateData(T data)
+        public void OnCastInstant(GameObject caster, GameObject target, T data)
         {
-            this.data = data;
-            OnDataChanged?.Invoke(data);
-        }
-        
-        /// <summary>
-        /// Subscribe to data changes
-        /// </summary>
-        /// <param name="action"></param>
-        /// <returns></returns>
-        public DisposableAction SubscribeData(Action<T> action)
-        {
-            if (Instant)
-            {
-                action(data);
-                return DisposableAction.Empty;
-            }
-            OnDataChanged += action;
-            action(data);
-            return new DisposableAction(() => OnDataChanged -= action);
-        }
-
-        public void Release()
-        {
-            unchecked
-            {
-                version++;
-            }
-            m_CancellationSignalSource.TryCancel();
-            m_CancellationSignalSource = default;
-            ParamLessPool<InternalEffectSource<T>>.ReturnShared(this);
-        }
-
-        public void Dispose()
-        {
-            m_CancellationSignalSource.TryCancel();
+            OnInstantCast?.Invoke(caster, target, data);
         }
     }
     
-    public readonly struct EffectSource<T>: IDisposable
+    public static class Effect<T>
     where T: struct
     {
+        private static event System.Action<GameObject, GameObject, T> OnInstantCast;
+        private static event System.Action<GameObject, GameObject, EffectCast<T>> OnLongLastingCast;
+        private static readonly Dictionary<GameObject, GameObjectEffectsContainer<T>> GameObjectEffects = new Dictionary<GameObject, GameObjectEffectsContainer<T>>();
+        
         /// <summary>
-        /// Create new effect source
+        /// Cast a spell synchronously
         /// </summary>
-        /// <param name="producer"></param>
-        /// <param name="consumer"></param>
+        /// <param name="caster"></param>
+        /// <param name="target"></param>
         /// <param name="data"></param>
-        /// <param name="instant"></param>
+        public static void Cast(GameObject caster, GameObject target, T data = default)
+        {
+            if (GameObjectEffects.TryGetValue(caster, out var container))
+            {
+                container.OnCastInstant(caster, target, data);
+            }
+            Console.Log("Effect", "Cast",  typeof(T).Name, $"From {caster} to {target}");
+            OnInstantCast?.Invoke(caster, target, data);
+        }
+        
+        /// <summary>
+        /// The same as Cast(GameObject caster, GameObject target, T data = default) but with different order of arguments.
+        /// Allows to cast a spell with no target (target by default is caster)
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="caster"></param>
+        /// <param name="target"></param>
+        public static void Cast(T data, GameObject caster, GameObject target = null)
+        {
+            if (target == null) target = caster;
+            Cast(caster, target, data);
+        }
+        
+        /// <summary>
+        /// Cast a spell asynchronously (for long running spells)
+        /// </summary>
+        /// <param name="caster"></param>
+        /// <param name="target"></param>
+        /// <param name="data"></param>
+        /// <returns>SpellCast instance</returns>
+        public static EffectCast<T> Broadcast(GameObject caster, GameObject target, T data = default)
+        {
+            var spellCast = new EffectCast<T>();
+            spellCast.data = data;
+            if (GameObjectEffects.TryGetValue(caster, out var container))
+            {
+                container.AddEffect(spellCast, caster, target);
+            }
+
+            if (target.TryGetComponent<Effects>(out var effects))
+            {
+                effects.AddEffect(spellCast, caster, target);
+            }
+            Console.Log("Effect", "Broadcast",  typeof(T).Name, $"From {caster} to {target}");
+            OnLongLastingCast?.Invoke(caster, target, spellCast);
+            return spellCast;
+        }
+        
+        /// <summary>
+        /// Cast async effect with no target (target by default is caster)
+        /// </summary>
+        /// <param name="caster"></param>
+        /// <param name="data"></param>
         /// <returns></returns>
-        public static EffectSource<T> Create(Object producer, Object consumer, T data, bool instant = false)
+        public static EffectCast<T> Broadcast(GameObject caster, T data = default)
         {
-            return new EffectSource<T>(InternalEffectSource<T>.Create(producer, consumer, data, instant));
-        }
-        private readonly InternalEffectSource<T> m_Source;
-        private readonly int m_Version;
-
-        public T data
-        {
-            get => source?.data ?? default;
-            set => source?.UpdateData(value);
-        }
-
-        public EffectSource(InternalEffectSource<T> source)
-        {
-            m_Source = source;
-            m_Version = source.version;
+            return Broadcast(caster, caster, data);
         }
         
-        private InternalEffectSource<T> source => m_Source != null && m_Source.version == m_Version ? m_Source : null;
-
-        public void Dispose()
+        /// <summary>
+        /// Subscribe to instant effect casts
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public static DisposableAction Subscribe(System.Action<GameObject, GameObject, T> handler)
         {
-            source?.Release();
-        }
-    }
-    
-    public readonly struct Effect<T>: IDisposable, IEffect
-    where T: struct
-    {
-        private static readonly InternalEffectSource<T> InstantEffectSource = new InternalEffectSource<T>();
-        public static void Spawn(Object producer, Object consumer, T data)
-        {
-            if (!InstantEffectSource.isBusy)
-            {
-                InstantEffectSource.Initialize(producer, consumer, data, true);
-            }
-            else
-            {
-                var source = InternalEffectSource<T>.Create(producer, consumer, data, true);
-                /* Release it right after creation, because instant effect is not used no longer than them moment of initialization */
-                source.Release();
-            }
-        }
-        private static event Action<Effect<T>> OnEffectCreated;
-        public static DisposableAction SubscribeAll(Action<Effect<T>> action)
-        {
-            OnEffectCreated += action;
-            return new DisposableAction(() => OnEffectCreated -= action);
-        }
-        internal static void EmitEffectCreated(Effect<T> effect)
-        {
-            OnEffectCreated?.Invoke(effect);
+            OnInstantCast += handler;
+            return new DisposableAction(() => OnInstantCast -= handler);
         }
         
-        private readonly InternalEffectSource<T> m_Source;
-        private readonly int m_Version;
-        public T data => source?.data ?? default;
-
-        public Effect(InternalEffectSource<T> source)
+        /// <summary>
+        /// Watch async object's long lasting effect casts. If object already has active effects, they will be passed to the handler
+        /// To handle effect asynchronously and wait for effect dispose use EffectCast.cancellationToken
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public static DisposableAction WatchAsync(GameObject target, System.Func<GameObject, GameObject, EffectCast<T>, UniTaskVoid> handler)
         {
-            m_Source = source;
-            m_Version = source.version;
+            if (!GameObjectEffects.TryGetValue(target, out var container))
+            {
+                container = new GameObjectEffectsContainer<T>();
+                GameObjectEffects.Add(target, container);
+            }
+
+            void Handler(GameObject caster, GameObject target, EffectCast<T> effectCast)
+            {
+                handler(caster, target, effectCast).Forget();
+            }
+
+            container.OnLongLastingCast += Handler;
+            foreach (var activeEffect in container.ActiveEffects.ToArray())
+            {
+                Handler(target, target, activeEffect);
+            }
+            return new DisposableAction(() => container.OnLongLastingCast -= Handler);
         }
         
-        private InternalEffectSource<T> source => m_Source != null && m_Source.version == m_Version ? m_Source : null;
-
-        public void Dispose()
+        /// <summary>
+        /// Subscribe to long lasting spell casts for all objects
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public static DisposableAction Subscribe(System.Func<GameObject, GameObject, EffectCast<T>, UniTaskVoid> handler)
         {
-            if (m_Source != null)
+            void Handler(GameObject caster, GameObject target, EffectCast<T> effectCast)
             {
-                m_Source.Release();
+                handler(caster, target, effectCast).Forget();
             }
-        }
-
-        public Object producer => source?.Producer;
-        public Object consumer => source?.Consumer;
-        public float startTime => source?.StartTime ?? 0;
-        public Type type => typeof(T);
-        public bool instant => source?.Instant ?? false;
-        public CancellationSignal cancellationSignal => source?.cancellationSignal ?? default;
-
-        public DisposableAction SubscribeData(Action<T> handler)
-        {
-            return source?.SubscribeData(handler) ?? DisposableAction.Empty;
-        }
-
-        public DisposableAction SubscribeToRelease(Action action)
-        {
-            if (instant)
-            {
-                action();
-                return DisposableAction.Empty;
-            }
-            return cancellationSignal.Register(action);
-        }
-
-        public override string ToString()
-        {
-            return $"Effect<{type}> {producer} -> {consumer} ({data})";
+            OnLongLastingCast += Handler;
+            return new DisposableAction(() => OnLongLastingCast -= Handler);
         }
     }
 }

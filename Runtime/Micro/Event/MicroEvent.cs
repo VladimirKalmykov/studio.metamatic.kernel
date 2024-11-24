@@ -61,12 +61,20 @@ namespace Metamatic
         }
     }
     
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <remarks>
+    /// TODO: Should check this implementation for performance issues.
+    /// </remarks>
+    /// <typeparam name="T"></typeparam>
     public class MicroEvent<T>
     {
-        public delegate void Handler(T arg);
-        private List<Handler> m_EventHandlers = new List<Handler>();
+        private List<Action<T>> m_EventHandlers = new List<Action<T>>();
         
-        public DisposableAction Subscribe(Handler handler)
+        public bool isEmpty => m_EventHandlers.Count == 0;
+        
+        public DisposableAction Subscribe(Action<T> handler)
         {
             m_EventHandlers.Add(handler);
             return new DisposableAction(() =>
@@ -87,7 +95,7 @@ namespace Metamatic
         public UniTask<T> WaitUntilEmitted(CancellationToken cancellationToken)
         {
             var tcs = new UniTaskCompletionSource<T>();
-            Handler handler = null;
+            Action<T> handler = null;
             handler = arg =>
             {
                 tcs.TrySetResult(arg);

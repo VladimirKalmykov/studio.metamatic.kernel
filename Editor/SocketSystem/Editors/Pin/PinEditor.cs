@@ -1,5 +1,4 @@
-﻿using Metamatic.Effects;
-using UnityEditor;
+﻿using UnityEditor;
 
 namespace Metamatic
 {

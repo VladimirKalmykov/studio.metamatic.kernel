@@ -1,6 +1,5 @@
 using System;
 using Cysharp.Threading.Tasks;
-using Metamatic.Effects;
 using UnityEngine;
 using UnityEngine.UIElements;
 
