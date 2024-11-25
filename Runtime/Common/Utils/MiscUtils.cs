@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Metamatic.DevTools;
+using Random = UnityEngine.Random;
 
 namespace Metamatic
 {
@@ -1175,6 +1176,16 @@ namespace Metamatic
                 return "null";
             }
             return $"[{string.Join(", ", items)}]";
+        }
+        
+        /// <summary>
+        /// Get random bool value with given probability
+        /// </summary>
+        /// <param name="probability">The probability of getting a positive value</param>
+        /// <returns></returns>
+        public static bool GetRandomBool(float probability)
+        {
+            return Random.value <= probability;
         }
     }
 }
