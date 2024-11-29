@@ -4,7 +4,7 @@ namespace Metamatic
     using System;
 
     /// <summary>
-    /// 
+    /// The value accelerates over time, with the rate of change increasing indefinitely—similar to an object accelerating under gravity without terminal velocity.
     /// </summary>
     public class AcceleratingPulseValue
     {
