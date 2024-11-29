@@ -43,7 +43,7 @@ namespace Metamatic.Framework
         
         public DisposableAction WatchSubmenuLifecycle(Func<Menu, CancellationSignal, UniTaskVoid> action)
         {
-            return SubMenu.WatchLifecycle(action);
+            return SubMenu.WatchAsync(action);
         }
         
         public DisposableAction Subscribe(Action action)

@@ -59,7 +59,7 @@ namespace Metamatic.UIToolKit
 
         public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
         {
-            using var itemWithMaxWidthWatcher = m_CurrentItemWithMaxLabelWidth.WatchLifecycle(OnItemWithMaxWidthChanged);
+            using var itemWithMaxWidthWatcher = m_CurrentItemWithMaxLabelWidth.WatchAsync(OnItemWithMaxWidthChanged);
             RegisterCallback<GeometryChangedEvent>(OnGeometryChange);
             await detachSignal;
             UnregisterCallback<GeometryChangedEvent>(OnGeometryChange);

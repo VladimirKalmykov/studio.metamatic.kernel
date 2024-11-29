@@ -26,7 +26,7 @@ namespace Metamatic.Framework.Widgets
         public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
         {
             using var watchCharacterAIControllers = RuntimeCore.Instance.WatchEverySelectedObjectLifecycle(OnSelectedObjectChanged, TakeFirst);
-            using var watchActiveTab = m_EntityComponentsTabs.ActiveTab.WatchLifecycle(OnActiveTabLifecycleChanged);
+            using var watchActiveTab = m_EntityComponentsTabs.ActiveTab.WatchAsync(OnActiveTabLifecycleChanged);
             await cancellationSignal;
         }
         

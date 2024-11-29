@@ -65,7 +65,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public DisposableAction WatchLifecycle(Func<TValue, CancellationSignal, UniTaskVoid> handler)
+        public DisposableAction WatchAsync(Func<TValue, CancellationSignal, UniTaskVoid> handler)
         {
             return SequentialHandler<TValue>.Subscribe(Watch, handler);
         }

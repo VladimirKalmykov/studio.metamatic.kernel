@@ -29,6 +29,8 @@ namespace Metamatic
         public void Update();
         public float GetWeight();
         public void Weighting();
+        public void Mount();
+        public void Unmount();
         /// <summary>
         /// Determines that the thread nested weighting is finished
         /// </summary>

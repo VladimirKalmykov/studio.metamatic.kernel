@@ -121,7 +121,7 @@ namespace Metamatic.Framework
 
         public DisposableAction WatchHoveredLifecycle(Func<bool, CancellationSignal, UniTaskVoid> onHoveredChanged)
         {
-            return m_Hovered.WatchLifecycle(onHoveredChanged);
+            return m_Hovered.WatchAsync(onHoveredChanged);
         }
 
         public DisposableAction SubscribeToClick(Action onClicked)
@@ -194,7 +194,7 @@ namespace Metamatic.Framework
                     }
                 }
 
-                using var watchHovered = m_Hovered.WatchLifecycle(HandleCombinedHover);
+                using var watchHovered = m_Hovered.WatchAsync(HandleCombinedHover);
                 await cancellationSignal;
             }
         }

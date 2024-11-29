@@ -62,6 +62,7 @@ namespace Metamatic
         /// Determines if the thread is activated
         /// </summary>
         private bool m_InitiallyActivated;
+        private CancellationSignalSource m_MountCancellationSignalSource;
 
         public string thought { get; protected set; } = "Nothing";
         public bool longLived { get; set; }
@@ -76,10 +77,22 @@ namespace Metamatic
             Context = context;
         }
         
+        public void Mount()
+        {
+            m_MountCancellationSignalSource = CancellationSignalSource.Create();
+            OnMount(m_MountCancellationSignalSource.Signal).Forget();
+        }
+        
+        public void Unmount()
+        {
+            m_MountCancellationSignalSource.TryCancel();
+        }
+        
         public DisposableAction AddChildThread(IMindThread thread)
         {
             thread.rootThread = this.rootThread ?? this;
             childThreads.Add(thread);
+            thread.Mount();
             Weighting();
             return new DisposableAction(() =>
             {
@@ -108,6 +121,7 @@ namespace Metamatic
                     Weighting();
                 }
             }
+            thread.Unmount();
         }
 
         public async UniTask Activate(CancellationSignal cancellationSignal)
@@ -119,7 +133,7 @@ namespace Metamatic
                 {
                     foreach (var thread in nextChildThreads)
                     {
-                        // All threads created by CreateLongLiveThreads are long lived
+                        // All threads created by CreateChildrenThreads are long lived
                         thread.rootThread = this.rootThread ?? this;
                         thread.longLived = true;
                         childThreads.Add(thread);
@@ -128,7 +142,7 @@ namespace Metamatic
                 m_InitiallyActivated = true;
             }
             isActive = true;
-            using var watchActiveThread = activeChildThread.WatchLifecycle(OnActiveMindThreadChanged);
+            using var watchActiveThread = activeChildThread.WatchAsync(OnActiveMindThreadChanged);
             InternalCallUserActive(cancellationSignal).Forget();
             await cancellationSignal;
             isActive = false;
@@ -188,7 +202,11 @@ namespace Metamatic
         {
             return null;
         }
-        
+
+        protected virtual UniTaskVoid OnMount(CancellationSignal cancellationSignal)
+        {
+            return new UniTaskVoid();
+        }
         protected abstract UniTask OnActivate(CancellationSignal cancellationSignal);
 
         public void Weighting()
@@ -313,7 +331,7 @@ namespace Metamatic
         
         public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, CancellationSignal, UniTaskVoid> action)
         {
-            return activeChildThread.WatchLifecycle(action);
+            return activeChildThread.WatchAsync(action);
         }
 
         /// <summary>

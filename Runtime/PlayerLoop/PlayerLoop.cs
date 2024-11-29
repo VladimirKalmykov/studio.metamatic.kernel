@@ -311,6 +311,31 @@ namespace Metamatic
             return new DisposableAction(() => isActive = false);
         }
         
+        /// <summary>
+        /// Subscribe to the loop with delay. Action will be called every `seconds` seconds.
+        /// </summary>
+        /// <param name="seconds"></param>
+        /// <param name="action"></param>
+        /// <param name="timing"></param>
+        /// <returns></returns>
+        public static DisposableAction LoopDelay(float seconds, Action action, PlayerLoopTiming timing = PlayerLoopTiming.Update)
+        {
+            var currentTime = Time.time;
+            var isActive = true;
+            UniTask.WaitUntil(() =>
+            {
+                if (Time.time - currentTime >= seconds)
+                {
+                    currentTime = Time.time;
+                    action();
+                    return !isActive;
+                }
+                return false;
+            }, timing);
+            
+            return new DisposableAction(() => isActive = false);
+        }
+        
         public static async UniTask EachFrameUntil(Func<bool> predicate, PlayerLoopTiming timing = PlayerLoopTiming.Update,
             CancellationSignal signal = default)
         {

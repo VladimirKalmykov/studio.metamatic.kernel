@@ -170,7 +170,7 @@ namespace Metamatic.UIToolKit
         {
             // Start track container width
             RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
-            using var watchBoundList = m_BoundList.WatchLifecycle(OnBoundListChanged);
+            using var watchBoundList = m_BoundList.WatchAsync(OnBoundListChanged);
             await detachSignal;
             UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
         }

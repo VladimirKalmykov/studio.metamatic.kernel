@@ -128,7 +128,7 @@ namespace Metamatic.Framework
             return DisposableOperation.Call(async (signal) =>
             {
                 using var selectedObject = new Observable<GameObject>();
-                using var watchSelectedObject = selectedObject.WatchLifecycle(action);
+                using var watchSelectedObject = selectedObject.WatchAsync(action);
                 using var watchSelectedObjects = m_SelectedObjects.WatchEach((obj, index) =>
                 {
                     selectedObject.SetUniqValue(obj);

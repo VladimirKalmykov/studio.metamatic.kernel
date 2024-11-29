@@ -16,7 +16,7 @@ namespace Metamatic
     /// It doesn't support multi-threading, but you can use it in a single-threaded environment in Unity.
     /// it is targeted for Unity, and high performance is a priority.
     /// </summary>
-    public class Loop: IDisposable
+    public class Loop: IDisposable, ILoop
     {
         #region Static
         public readonly struct YieldAwaitable {

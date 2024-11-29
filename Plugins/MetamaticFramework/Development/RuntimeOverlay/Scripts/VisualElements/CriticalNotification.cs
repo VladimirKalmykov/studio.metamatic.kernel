@@ -60,7 +60,7 @@ namespace Metamatic.Framework
 
         public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
         {
-            using var showing = m_Showing.WatchLifecycle(OnShowChanged);
+            using var showing = m_Showing.WatchAsync(OnShowChanged);
             // Subscribe to geometry changes
             RegisterCallback<GeometryChangedEvent>(OnGeometryChange);
             await detachSignal;

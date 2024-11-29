@@ -311,9 +311,9 @@ namespace Metamatic.Framework
                 root.Add(m_TopSideFlyoutPanel);
                 
                 // Subscribe to presence changes
-                using var presenceSubscription = m_ObservablePresence.WatchLifecycle(OnPresenceChange);
+                using var presenceSubscription = m_ObservablePresence.WatchAsync(OnPresenceChange);
                 // Subscribe to hover panel changes
-                using var watchHoveringOverPanel = IsHoveringOverPanel.WatchLifecycle(OnHoveringOverPanelChanged);
+                using var watchHoveringOverPanel = IsHoveringOverPanel.WatchAsync(OnHoveringOverPanelChanged);
                 await ready();
             }
             catch (Exception e)
