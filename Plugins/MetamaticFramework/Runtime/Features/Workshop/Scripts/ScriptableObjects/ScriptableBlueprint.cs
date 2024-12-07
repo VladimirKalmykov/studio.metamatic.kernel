@@ -9,13 +9,16 @@ namespace Metamatic.Framework.Workshop
     {
         public abstract string blueprintName { get; }
         public abstract Type type { get; }
+        public abstract UniTask<GameObject> GetPrefab(CancellationSignal cancellationSignal = default);
+        public abstract UniTask<GameObject> Spawn(Vector3 position = default, Quaternion rotation = default,
+            CancellationSignal cancellationSignal = default);
     }
     public abstract class ScriptableBlueprint<T>: ScriptableBlueprint
     where T: Component
     {
-        public abstract UniTask<T> GetPrefab(CancellationSignal cancellationSignal = default);
+        public abstract UniTask<T> GetPrefabTyped(CancellationSignal cancellationSignal = default);
 
-        public abstract UniTask<T> Spawn(Vector3 position = default, Quaternion rotation = default,
+        public abstract UniTask<T> SpawnTyped(Vector3 position = default, Quaternion rotation = default,
             CancellationSignal cancellationSignal = default);
 
         public abstract void ReturnObject(T gameObject);

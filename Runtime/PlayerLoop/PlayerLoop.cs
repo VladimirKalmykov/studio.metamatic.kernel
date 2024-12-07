@@ -349,5 +349,12 @@ namespace Metamatic
             await UniTask.WaitWhile(() => !signal.IsCancellationRequested && Time.time - startTime < seconds, timing);
             signal.ThrowIfCancellationRequested();
         }
+        
+        public static async UniTask Delay(TimeSpan timeSpan, PlayerLoopTiming timing = PlayerLoopTiming.Update, CancellationSignal signal = default)
+        {
+            var startTime = Time.time;
+            await UniTask.WaitWhile(() => !signal.IsCancellationRequested && Time.time - startTime < timeSpan.TotalSeconds, timing);
+            signal.ThrowIfCancellationRequested();
+        }
     }
 }

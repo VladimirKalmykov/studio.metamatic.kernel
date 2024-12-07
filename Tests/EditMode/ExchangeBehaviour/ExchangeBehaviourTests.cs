@@ -15,7 +15,7 @@ namespace Metamatic.Tests
         public IEnumerator TestSimpleReceive() => UniTask.ToCoroutine(async () =>
         {
             var state = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = AsyncExchange.Create(async (exchanger, token) =>
             {
                 var receivedValue = await exchanger.Receive<int>();
                 state = receivedValue;
@@ -30,7 +30,7 @@ namespace Metamatic.Tests
         public IEnumerator TestSimpleSend() => UniTask.ToCoroutine(async () =>
         {
             var state = 0;
-            await using var exchange = ExchangeBehaviour.Run((exchanger, token) =>
+            await using var exchange = AsyncExchange.Create((exchanger, token) =>
             {
                 exchanger.Send(1);
                 return UniTask.CompletedTask;
@@ -46,7 +46,7 @@ namespace Metamatic.Tests
         {
             var innerState = 0;
             var outerState = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = AsyncExchange.Create(async (exchanger, token) =>
             {
                 innerState = await exchanger.Duplex<int, int>(33);
             });
@@ -63,7 +63,7 @@ namespace Metamatic.Tests
         {
             var innerState = 0;
             var outerState = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = AsyncExchange.Create(async (exchanger, token) =>
             {
                 innerState = await exchanger.Duplex<int, int>(33);
                 innerState = await exchanger.Duplex<int, int>(67);
@@ -84,7 +84,7 @@ namespace Metamatic.Tests
         {
             var innerState = 0;
             var outerState = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = AsyncExchange.Create(async (exchanger, token) =>
             {
                 innerState = await exchanger.Receive<int>();
                 innerState = await exchanger.Duplex<int, int>(67);
@@ -103,7 +103,7 @@ namespace Metamatic.Tests
         {
             var innerState = 0;
             var outerState = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = AsyncExchange.Create(async (exchanger, token) =>
             {
                 innerState = await exchanger.Duplex<int, int>(67);
             });
@@ -122,7 +122,7 @@ namespace Metamatic.Tests
         {
             var innerState = 0;
             var outerState = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = AsyncExchange.Create(async (exchanger, token) =>
             {
                 await exchanger.Receive();
                 innerState++;
@@ -152,7 +152,7 @@ namespace Metamatic.Tests
         {
             var innerState = 0;
             var outerState = 0;
-            await using var exchange = ExchangeBehaviour.Run(async (exchanger, token) =>
+            await using var exchange = AsyncExchange.Create(async (exchanger, token) =>
             {
                 await exchanger.Receive();
                 innerState++;
@@ -187,7 +187,7 @@ namespace Metamatic.Tests
             var wasError = false;
             try
             {
-                await using var test = ExchangeBehaviour.Run((exchanger, token) =>
+                await using var test = AsyncExchange.Create((exchanger, token) =>
                 {
                     exchanger.Send(1);
                     exchanger.Send(2);
@@ -207,7 +207,7 @@ namespace Metamatic.Tests
             var wasError = false;
             try
             {
-                await using var test = ExchangeBehaviour.Run((exchanger, token) => UniTask.CompletedTask);
+                await using var test = AsyncExchange.Create((exchanger, token) => UniTask.CompletedTask);
                 test.Send(1);
                 test.Send(2);
             } catch (System.Exception e)
@@ -225,7 +225,7 @@ namespace Metamatic.Tests
             var errorIsCancellation = false;
             try
             {
-                var test = ExchangeBehaviour.Run((exchanger, token) => UniTask.CompletedTask);
+                var test = AsyncExchange.Create((exchanger, token) => UniTask.CompletedTask);
                 /* Dispose after 100 ms */
                 UniTask.Delay(100).ContinueWith(() =>
                 {
@@ -246,7 +246,7 @@ namespace Metamatic.Tests
         {
             var wasError = false;
             var errorIsCancellation = false;
-            var test = ExchangeBehaviour.Run(async (exchanger, token) =>
+            var test = AsyncExchange.Create(async (exchanger, token) =>
             {
                 try
                 {
@@ -277,7 +277,7 @@ namespace Metamatic.Tests
             var errorIsCancellation = false;
             var valueAfterDelay = 0;
             {
-                await using var test = ExchangeBehaviour.Run(async (exchanger, token) =>
+                await using var test = AsyncExchange.Create(async (exchanger, token) =>
                 {
                     try
                     {

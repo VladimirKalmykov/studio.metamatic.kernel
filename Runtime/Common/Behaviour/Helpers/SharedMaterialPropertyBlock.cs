@@ -1,3 +1,5 @@
+using Sirenix.OdinInspector;
+
 namespace Metamatic
 {
     using Cysharp.Threading.Tasks;
@@ -16,7 +18,7 @@ namespace Metamatic
                 if (m_Value == null)
                 {
                     m_Value = new MaterialPropertyBlock();
-                    Renderer.GetPropertyBlock(m_Value);
+                    //Renderer.GetPropertyBlock(m_Value);
                 }
 
                 return m_Value;
@@ -37,12 +39,20 @@ namespace Metamatic
             }
         }
         
+        
         /// <summary>
         /// Apply the property block to the renderer
         /// </summary>
-        public void Apply()
+        [Button]
+        public void SetPropertyBlock()
         {
-            m_Renderer.SetPropertyBlock(m_Value);
+            Renderer.SetPropertyBlock(Value);
+        }
+
+        [Button]
+        public void GetPropertyBlock()
+        {
+            Renderer.GetPropertyBlock(Value);
         }
     }
 

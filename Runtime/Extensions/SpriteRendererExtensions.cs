@@ -49,7 +49,7 @@ namespace Metamatic
         /// <param name="spriteRenderer"></param>
         /// <param name="cellSize"></param>
         /// <returns></returns>
-        public static (Vector2 position, Color color)[] GetColorMatrix(this SpriteRenderer spriteRenderer, float cellSize)
+        public static (Vector2 position, Color color)[] GetWorldColorMatrix(this SpriteRenderer spriteRenderer, float cellSize)
         {
             var sprite = spriteRenderer.sprite;
             Texture2D texture = sprite.texture;
@@ -98,6 +98,57 @@ namespace Metamatic
 
             return colorMatrix.ToArray();
         }
+        
+        /// <summary>
+        /// Получает матрицу цветов из SpriteRenderer. Требует, чтобы изображение было доступно для чтения/записи.
+        /// </summary>
+        /// <param name="spriteRenderer"></param>
+        /// <param name="cellSize"></param>
+        /// <returns></returns>
+        public static (Vector2 position, Color color)[] GetLocalColorMatrix(this SpriteRenderer spriteRenderer, float cellSize)
+        {
+            var sprite = spriteRenderer.sprite;
+            Texture2D texture = sprite.texture;
+            Rect rect = sprite.textureRect;
+
+            List<(Vector2 position, Color color)> colorMatrix = new List<(Vector2 position, Color color)>();
+
+            int width = (int)rect.width;
+            int height = (int)rect.height;
+
+            Vector2 pivot = sprite.pivot;
+            float pixelsPerUnit = sprite.pixelsPerUnit;
+
+            // Вычисляем коэффициент преобразования из пикселей в единицы Unity
+            float unitsPerPixel = 1.0f / pixelsPerUnit;
+
+            // Пробегаемся по текстуре сеткой с заданным размером ячеек
+            for (float x = 0; x < width; x += cellSize)
+            {
+                for (float y = 0; y < height; y += cellSize)
+                {
+                    int pixelX = Mathf.FloorToInt(rect.x + x);
+                    int pixelY = Mathf.FloorToInt(rect.y + y);
+
+                    Color color = texture.GetPixel(pixelX, pixelY);
+
+                    if (color.a == 0)
+                        continue;
+
+                    // Преобразуем координаты в локальные координаты спрайта в единицах Unity
+                    Vector2 localPos = new Vector2(
+                        (x - pivot.x) * unitsPerPixel,
+                        (y - pivot.y) * unitsPerPixel
+                    );
+
+                    // Добавляем локальную позицию и цвет в матрицу
+                    colorMatrix.Add((localPos, color));
+                }
+            }
+
+            return colorMatrix.ToArray();
+        }
+
         
         public static Texture2D ExtractTextureFromSprite(this SpriteRenderer spriteRenderer)
         {

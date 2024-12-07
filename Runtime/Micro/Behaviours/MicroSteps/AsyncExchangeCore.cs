@@ -4,13 +4,88 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public class ExchangeBehaviour : IUniTaskAsyncDisposable, IExposedDisposed, IExposedAsyncDisposed, IAbortable
+    public readonly struct AsyncExchange: IUniTaskAsyncDisposable, IDisposable
     {
-        public class Exchanger: IUniTaskAsyncDisposable
+        public static AsyncExchange Create(AsyncExchangeCore.AsyncAction action, object[] dependencies = null)
         {
-            private readonly ExchangeBehaviour m_Master;
+            var core = ParamLessPool<AsyncExchangeCore>.GetShared();
+            core.Init(action, dependencies);
+            return new AsyncExchange(core);
+        }
+        
+        private readonly AsyncExchangeCore m_Core;
+        private readonly int m_Version;
+        
+        public AsyncExchange(AsyncExchangeCore core)
+        {
+            m_Core = core;
+            m_Version = core.version;
+        }
+        
+        private AsyncExchangeCore ResolveCore()
+        {
+            if (m_Core.version != m_Version)
+            {
+                return null;
+            }
+            return m_Core;
+        }
+        
+        #region Public API
+        public UniTask task => ResolveCore()?.task ?? UniTask.CompletedTask;
+        public void Send<TInput>(TInput inputValue) => ResolveCore()?.Send(inputValue);
+        
+        public void Send() => ResolveCore()?.Send();
+
+        public UniTask<TOutput> Receive<TOutput>(CancellationSignal token = default) =>
+            ResolveCore()?.Receive<TOutput>(token) ?? UniTask.FromCanceled<TOutput>();
+        
+        public UniTask Receive(CancellationSignal token = default) => ResolveCore()?.Receive(token) ?? UniTask.FromCanceled();
+        
+        public UniTask<TOutput> Duplex<TInput, TOutput>(TInput value, CancellationSignal token = default) =>
+            ResolveCore()?.Duplex<TInput, TOutput>(value, token) ?? UniTask.FromCanceled<TOutput>();
+        
+        public UniTask Duplex<TInput>(TInput value, CancellationSignal token = default) => ResolveCore()?.Duplex<TInput>(value, token) ?? UniTask.FromCanceled();
+        
+        public UniTask<TOutput> Duplex<TOutput>(CancellationSignal token = default) =>
+            ResolveCore()?.Duplex<TOutput>(token) ?? UniTask.FromCanceled<TOutput>();
+        
+        public UniTask Duplex(CancellationSignal token = default) => ResolveCore()?.Duplex(token) ?? UniTask.FromCanceled();
+        #endregion
+        
+        public void Dispose()
+        {
+            var core = ResolveCore();
+            if (core != null)
+            {
+                core.Reset();
+                ParamLessPool<AsyncExchangeCore>.ReturnShared(core);
+            }
+        }
+
+        public async UniTask DisposeAsync()
+        {
+            var core = ResolveCore();
+            try
+            {
+                if (core != null)
+                {
+                    await core.ResetAsync();
+                }
+            }
+            finally
+            {
+                ParamLessPool<AsyncExchangeCore>.ReturnShared(core);
+            }
+        }
+    }
+    public class AsyncExchangeCore : IUniTaskAsyncDisposable, IExposedDisposed, IExposedAsyncDisposed, IAbortable, IResettable
+    {
+        public readonly struct Exchanger: IUniTaskAsyncDisposable
+        {
+            private readonly AsyncExchangeCore m_Master;
             public bool isDisposedAsync => m_Master.isDisposedAsync;
-            internal Exchanger(ExchangeBehaviour master)
+            internal Exchanger(AsyncExchangeCore master)
             {
                 m_Master = master;
             }
@@ -24,18 +99,18 @@ namespace Metamatic
             /// <exception cref="InvalidOperationException"></exception>
             public async UniTask<TInput> Receive<TInput>()
             {
-                CancellationTokenRegistration registration = default;
+                DisposableAction registration = default;
                 if (m_Master.m_InputCompletionSource == null)
                 {
                     m_Master.m_ExpectedInputType = typeof(TInput);
-                    var source = new UniTaskCompletionSource<TInput>();
+                    var source = SafeUniTaskCompletionSource<TInput>.Create();
                     m_Master.m_InputCompletionSource = source;
-                    registration = m_Master.cancellationToken.Register(() =>
+                    registration = m_Master.cancellationSignal.Register(() =>
                     {
                         source.TrySetCanceled();
                     });
                 }
-                if (m_Master.m_InputCompletionSource is UniTaskCompletionSource<TInput> inputCompletionSource)
+                if (m_Master.m_InputCompletionSource is SafeUniTaskCompletionSource<TInput> inputCompletionSource)
                 {
                     var value = await inputCompletionSource.Task;
                     registration.Dispose();
@@ -71,7 +146,7 @@ namespace Metamatic
                 return Duplex<object, TOutput>(outputValue);
             }
             
-            public UniTask Duplex<TInput>()
+            public UniTask<TInput> Duplex<TInput>()
             {
                 return Duplex<TInput, object>(null);
             }
@@ -92,12 +167,12 @@ namespace Metamatic
                 if (m_Master.m_OutputCompletionSource == null)
                 {
                     m_Master.m_ExpectedOutputType = typeof(TOutput);
-                    var outputSource = new UniTaskCompletionSource<TOutput>();
+                    var outputSource = SafeUniTaskCompletionSource<TOutput>.Create();
                     m_Master.m_OutputCompletionSource = outputSource;
                 }
                 
                 /* Check that m_OutputCompletionSource is not resolved yet */
-                if (m_Master.m_OutputCompletionSource is UniTaskCompletionSource<TOutput> outputCompletionSource)
+                if (m_Master.m_OutputCompletionSource is SafeUniTaskCompletionSource<TOutput> outputCompletionSource)
                 {
                     if (outputCompletionSource.Task.Status == UniTaskStatus.Pending)
                     {
@@ -136,7 +211,7 @@ namespace Metamatic
         /// <summary>
         /// Common cancellation token for the exchange
         /// </summary>
-        private CancellationTokenSource m_CancellationTokenSource;
+        private CancellationSignalSource m_CancellationSignalSource;
         /// <summary>
         /// Contains the expected input type
         /// </summary>
@@ -148,11 +223,13 @@ namespace Metamatic
         /// <summary>
         /// This completion source is used to wait for the async dispose
         /// </summary>
-        private readonly UniTaskCompletionSource m_GeneralCompletionSource = new UniTaskCompletionSource();
+        private readonly ReusableUniTaskCompletionSource m_GeneralCompletionSource = ReusableUniTaskCompletionSource.Create();
+
+        public int version { get; private set; } = 0;
         /// <summary>
         /// Public reference to the cancellation token (that is called when the behaviour is disposed)
         /// </summary>
-        public CancellationToken cancellationToken => m_CancellationTokenSource.Token;
+        public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
         /// <summary>
         /// Disposing is called asynchronously (DisposeAsync() method is called), otherwise it is called synchronously (Dispose() method is called)
         /// </summary>
@@ -160,21 +237,15 @@ namespace Metamatic
 
         public event Action<Exception> OnDisposedAsync;
         public UniTask task => m_GeneralCompletionSource.Task;
-        
 
-        public delegate UniTask AsyncAction(Exchanger exchange, CancellationToken cancellationToken);
-
-        public static ExchangeBehaviour Run(AsyncAction action, object[] dependencies = null)
-        {
-            return new ExchangeBehaviour(action, dependencies);
-        }
+        public delegate UniTask AsyncAction(Exchanger exchange, CancellationSignal cancellationSignal);
 
         private AsyncAction m_Action;
 
-        public ExchangeBehaviour(AsyncAction action, object[] dependencies = null)
+        public void Init(AsyncAction action, object[] dependencies = null)
         {
             m_Action = action;
-            m_CancellationTokenSource = new CancellationTokenSource();
+            m_CancellationSignalSource = CancellationSignalSource.Create();
             if (dependencies != null)
             {
                 OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
@@ -182,16 +253,70 @@ namespace Metamatic
             RunAsync();
         }
 
-        ~ExchangeBehaviour()
+        ~AsyncExchangeCore()
         {
-            Dispose(true);
+            throw new InvalidOperationException("You should dispose ExchangeBehaviour manually");
+        }
+
+        public void Reset()
+        {
+            Reset(false);
+        }
+        
+        public void Reset(bool fromAsyncReset)
+        {
+            if (!fromAsyncReset)
+            {
+                m_CancellationSignalSource.Dispose();
+            }
+            unchecked
+            {
+                version++;
+            }
+            OnDisposed?.Invoke();
+            OnDisposed = null;
+            isDisposed = false;
+            m_GeneralCompletionSource.TrySetResult();
+            m_GeneralCompletionSource.Reset();
+            m_InputCompletionSource = null;
+            m_OutputCompletionSource = null;
+            OnDisposedAsync = null;
+            isDisposedAsync = false;
+            m_Action = null;
+            m_ExpectedInputType = null;
+            m_ExpectedOutputType = null;
+        }
+        
+        public async UniTask ResetAsync()
+        {
+            m_CancellationSignalSource.Dispose();
+            try
+            {
+                await m_GeneralCompletionSource.Task;
+            }
+            catch (Exception e)
+            {
+                OnDisposedAsync?.Invoke(e);
+                OnDisposedAsync = null;
+                isDisposedAsync = true;
+            }
+            finally
+            {
+                if (!isDisposedAsync)
+                {
+                    isDisposedAsync = true;
+                    OnDisposedAsync?.Invoke(null);
+                    OnDisposedAsync = null;
+                }
+                Reset(true);
+            }
         }
 
         private async void RunAsync()
         {
             try
             {
-                await m_Action(new Exchanger(this), m_CancellationTokenSource.Token);
+                await m_Action(new Exchanger(this), m_CancellationSignalSource.Signal);
             }
             catch (OperationCanceledException)
             {
@@ -215,10 +340,10 @@ namespace Metamatic
             if (m_InputCompletionSource == null)
             {
                 m_ExpectedInputType = typeof(TInput);
-                var source = new UniTaskCompletionSource<TInput>();
+                var source = SafeUniTaskCompletionSource<TInput>.Create();
                 m_InputCompletionSource = source;
             }
-            if (m_InputCompletionSource is UniTaskCompletionSource<TInput> inputCompletionSource)
+            if (m_InputCompletionSource is SafeUniTaskCompletionSource<TInput> inputCompletionSource)
             {
                 if (inputCompletionSource.Task.Status == UniTaskStatus.Pending)
                 {
@@ -239,28 +364,30 @@ namespace Metamatic
             Send<object>(null);
         }
         
-        public async UniTask<TOutput> Receive<TOutput>(CancellationToken token = default)
+        public async UniTask<TOutput> Receive<TOutput>(CancellationSignal signal = default)
         {
-            token.ThrowIfCancellationRequested();
-            cancellationToken.ThrowIfCancellationRequested();
-            CancellationTokenRegistration registrationSelf = default;
-            CancellationTokenRegistration registrationExternal = default;
+            signal.ThrowIfCancellationRequested();
+            cancellationSignal.ThrowIfCancellationRequested();
+            DisposableAction registrationSelf = default;
+            DisposableAction registrationExternal = default;
             if (m_OutputCompletionSource == null)
             {
                 m_ExpectedOutputType = typeof(TOutput);
-                var source = new UniTaskCompletionSource<TOutput>();
+                var source = SafeUniTaskCompletionSource<TOutput>.Create();
                 m_OutputCompletionSource = source;
-                registrationSelf = cancellationToken.Register(() =>
-                {
-                    source.TrySetCanceled();
-                });
-                registrationExternal = token.Register(() =>
+                registrationSelf = cancellationSignal.Register(() =>
                 {
                     source.TrySetCanceled();
                 });
             }
-            if (m_OutputCompletionSource is UniTaskCompletionSource<TOutput> outputCompletionSource)
+            
+            if (m_OutputCompletionSource is SafeUniTaskCompletionSource<TOutput> outputCompletionSource)
             {
+                registrationExternal = signal.Register(() =>
+                {
+                    Console.Debug("Eating", "Cancelled by cancellation signal");
+                    outputCompletionSource.TrySetCanceled();
+                });
                 var value = await outputCompletionSource.Task;
                 registrationSelf.Dispose();
                 registrationExternal.Dispose();
@@ -270,13 +397,13 @@ namespace Metamatic
             throw new InvalidOperationException($"Expected output type is {m_ExpectedOutputType}, but got {m_OutputCompletionSource.GetType()}");
         }
         
-        public async UniTask Receive(CancellationToken token = default)
+        public async UniTask Receive(CancellationSignal signal = default)
         {
-            await Receive<object>(token);
+            await Receive<object>(signal);
         }
 
         public UniTask<TOutput> Duplex<TInput, TOutput>(TInput value,
-            CancellationToken token = default)
+            CancellationSignal token = default)
         {
             var receiveTask = Receive<TOutput>(token);
             Send(value);
@@ -284,17 +411,17 @@ namespace Metamatic
         }
         
         public UniTask Duplex<TInput>(TInput value,
-            CancellationToken token = default)
+            CancellationSignal token = default)
         {
             return Duplex<TInput, object>(value, token);
         }
         
-        public UniTask<TOutput> Duplex<TOutput>(CancellationToken token = default)
+        public UniTask<TOutput> Duplex<TOutput>(CancellationSignal token = default)
         {
             return Duplex<object, TOutput>(default, token);
         }
         
-        public UniTask Duplex(CancellationToken token = default)
+        public UniTask Duplex(CancellationSignal token = default)
         {
             return Duplex<object, object>(default, token);
         }
@@ -306,13 +433,8 @@ namespace Metamatic
             Dispose(false);
         }
 
-        public void Dispose(bool isCalledFromFinalizer, bool isAsync = false)
+        public void Dispose(bool isAsync)
         {
-            if (isCalledFromFinalizer)
-            {
-                throw new InvalidOperationException("You should dispose ExchangeBehaviour manually");
-            }
-
             if (isDisposed)
             {
 #if DEBUG
@@ -324,8 +446,7 @@ namespace Metamatic
             isDisposed = true;
             OnDisposed?.Invoke();
 
-            m_CancellationTokenSource.Cancel();
-            m_CancellationTokenSource.Dispose();
+            m_CancellationSignalSource.Dispose();
 
             if (!isAsync)
             {
@@ -337,7 +458,7 @@ namespace Metamatic
 
         public async UniTask DisposeAsync()
         {
-            Dispose(false, true);
+            Dispose(true);
             try
             {
                 await m_GeneralCompletionSource.Task;
@@ -345,6 +466,7 @@ namespace Metamatic
             catch (Exception e)
             {
                 OnDisposedAsync?.Invoke(e);
+                OnDisposedAsync = null;
                 isDisposedAsync = true;
             }
             finally
@@ -353,6 +475,7 @@ namespace Metamatic
                 {
                     isDisposedAsync = true;
                     OnDisposedAsync?.Invoke(null);
+                    OnDisposedAsync = null;
                 }
             }
         }
@@ -367,7 +490,8 @@ namespace Metamatic
             }
             isAborted = true;
             OnAborted?.Invoke();
-            m_CancellationTokenSource.Cancel();
+            OnAborted = null;
+            m_CancellationSignalSource.TryCancel();
         }
 
         public bool isDisposed { get; private set;  }

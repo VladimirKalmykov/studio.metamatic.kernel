@@ -66,7 +66,7 @@ namespace Metamatic.Framework.Workshop
     
     public abstract class EntityComponent<T>: EntityComponent
     {
-        protected T State;
+        public T State;
         public delegate void StateModifier(ref T state);
         public override Type stateType => typeof(T);
         public T GetState() => State;
