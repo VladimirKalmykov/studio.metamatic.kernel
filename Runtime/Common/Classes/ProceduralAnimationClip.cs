@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class ProceduralAnimationClip<TSignal>: MicroBehaviour
+    public class ProceduralAnimationClip<TSignal>: MicroBehaviourLegacy
     {
         public delegate void SignalHandler(float timestamp);
         private Dictionary<TSignal, (bool was, float timestamp, Queue<SignalHandler> queue)> m_Signals = new ();

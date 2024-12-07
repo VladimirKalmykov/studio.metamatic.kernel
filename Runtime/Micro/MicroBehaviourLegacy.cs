@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class MicroBehaviour: IUniTaskAsyncDisposable, IDisposable
+    public abstract class MicroBehaviourLegacy: IUniTaskAsyncDisposable, IDisposable
     {
         private bool m_IsSyncDisposed;
         public bool isSyncDisposed => m_IsSyncDisposed;
@@ -15,7 +15,7 @@ namespace Metamatic
         public CancellationSignal disposeSignal => m_DisposeCancellationSignalSource.Signal;
         private readonly SafeUniTaskCompletionSource m_UniTaskCompletionSource = SafeUniTaskCompletionSource.Create();
         private bool m_IsRunning;
-        ~MicroBehaviour()
+        ~MicroBehaviourLegacy()
         {
             Dispose(true);
         }

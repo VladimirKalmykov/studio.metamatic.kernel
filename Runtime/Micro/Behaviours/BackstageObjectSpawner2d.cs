@@ -10,7 +10,7 @@ using UnityEngine.Pool;
 
 namespace Micro.Behaviours
 {
-    public class BackstageObjectSpawner2d: MicroBehaviour
+    public class BackstageObjectSpawner2d: MicroBehaviourLegacy
     {
         private readonly IObjectPool<GameObject> m_Pool;
         private int m_MaxObjectsCount;

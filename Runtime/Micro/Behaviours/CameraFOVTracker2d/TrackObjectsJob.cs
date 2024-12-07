@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Metamatic.MicroBehaviours
 {
-    public partial class CameraFOVTracker2d: MicroBehaviour
+    public partial class CameraFOVTracker2d: MicroBehaviourLegacy
     {
         [BurstCompile]
         public struct TrackObjectsJob : IJobParallelFor

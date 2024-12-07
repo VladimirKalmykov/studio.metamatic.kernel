@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class Pair<TVendor, TClient> : MicroBehaviour
+    public class Pair<TVendor, TClient> : MicroBehaviourLegacy
         where TVendor : class, IPairVendor<TClient>
         where TClient : class, IPairClient<TVendor>
     {

@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public class OneWayPair<TVendor, TClient>: MicroBehaviour
+    public class OneWayPair<TVendor, TClient>: MicroBehaviourLegacy
     where TVendor: class
     where TClient: class
     {

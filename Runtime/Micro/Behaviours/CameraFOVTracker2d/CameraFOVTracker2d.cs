@@ -14,7 +14,7 @@ namespace Metamatic.MicroBehaviours
     /// <summary>
     /// MicroBehaviour that tracks spawn areas and emit events when they are inside the camera field of view
     /// </summary>
-    public partial class CameraFOVTracker2d: MicroBehaviour
+    public partial class CameraFOVTracker2d: MicroBehaviourLegacy
     {
         [Flags]
         public enum FovBoundsType
