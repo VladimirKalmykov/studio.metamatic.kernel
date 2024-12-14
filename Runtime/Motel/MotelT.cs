@@ -12,7 +12,7 @@ namespace Metamatic
         {
             public int Version;
             public int Capacity;
-            public int Count;
+            public int UsedCapacity;
             public bool IsDisposed;
             
             public void Reset()
@@ -22,7 +22,7 @@ namespace Metamatic
                     Version++;
                 }
                 Capacity = 0;
-                Count = 0;
+                UsedCapacity = 0;
                 IsDisposed = false;
             }
         }
@@ -42,6 +42,7 @@ namespace Metamatic
             public AsyncDisposableOperation Operation;
             public Func<T, InternalMicroOperation, UniTask> OnCheckIn;
             public T[] PreferredCells;
+            public int Capacity;
             public bool Strict;
             public T CellId = default;
             public CheckStatus Status;
@@ -178,7 +179,7 @@ namespace Metamatic
         }
 
         private Action m_ChangeCellQueue;
-        private bool m_IsBeingChanged;
+        private bool m_IsDuringChange;
         
         
         private void ChangeGuestPreferredPosition(Guest guest, T[] preferredCells, bool strict = false)
@@ -188,28 +189,56 @@ namespace Metamatic
             Recheck(guest).Forget();
         }
         
-        public async UniTaskVoid ChangeCellCapacity(T cell, int capacity)
+        public async UniTask ChangeCellCapacity(T cell, int capacity, CancellationSignal cancellationSignal = default)
         {
             Debug.Assert(capacity > -1, "Capacity should be greater or equal to 0");
-            if (m_IsBeingChanged)
+            if (m_IsDuringChange)
             {
-                m_ChangeCellQueue += () => ChangeCellCapacity(cell, capacity).Forget();
+                var tsc = SafeUniTaskCompletionSource.Create();
+                async UniTaskVoid DeferredChangeCellCapacity(T cell, int capacity)
+                {
+                    try
+                    {
+                        cancellationSignal.ThrowIfCancellationRequested();
+                        await ChangeCellCapacity(cell, capacity, cancellationSignal);
+                        tsc.TrySetResult();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        tsc.TrySetCanceled();
+                    } catch (Exception e)
+                    {
+                        tsc.TrySetException(e);
+                    }
+                }
+                m_ChangeCellQueue += () =>
+                {
+                    DeferredChangeCellCapacity(cell, capacity).Forget();
+                };
+                using var listenSignal = cancellationSignal.Register(() =>
+                {
+                    tsc.TrySetCanceled();
+                });
+                await tsc.Task;
             }
-            m_IsBeingChanged = true;
+            m_IsDuringChange = true;
             if (m_Cells.TryGetValue(cell, out var cellData))
             {
                 cellData.Capacity = capacity;
-                if (cellData.Count > capacity)
+                if (cellData.UsedCapacity > capacity)
                 {
-                    var countToEvict = cellData.Count - capacity;
+                    var countToEvict = cellData.UsedCapacity - capacity;
                     var evictionTasks = new List<UniTask>();
-                    foreach (var guest in m_Guests)
+                    
+                    /* Iterate guests from the end to the beginning */
+                    for (var i = m_Guests.Count - 1; i >= 0; i--)
                     {
                         if (countToEvict == 0) break;
+                        var guest = m_Guests[i];
                         if (guest.Status == Guest.CheckStatus.CheckedIn && guest.CellId.Equals(cell))
                         {
                             evictionTasks.Add(Eviction(guest));
-                            countToEvict--;
+                            countToEvict -= guest.Capacity;
                         }
                     }
 
@@ -220,9 +249,9 @@ namespace Metamatic
                     {
                         Debug.LogError($"Error was thrown during eviction: {e}");
                     }
-                } else if (cellData.Count < capacity)
+                } else if (cellData.UsedCapacity < capacity)
                 {
-                    var countToCheckIn = capacity - cellData.Count;
+                    var countToCheckIn = capacity - cellData.UsedCapacity;
                     CheckInNextGuest(cell, countToCheckIn);
                 }
             }
@@ -230,7 +259,7 @@ namespace Metamatic
             {
                 m_CellsVersion++;
             }
-            m_IsBeingChanged = false;
+            m_IsDuringChange = false;
             
             if (m_ChangeCellQueue != null)
             {
@@ -244,7 +273,7 @@ namespace Metamatic
             if (m_Cells.TryGetValue(cell, out var cellData))
             {
                 cellData.IsDisposed = true;
-                if (cellData.Count > 0)
+                if (cellData.UsedCapacity > 0)
                 {
                     var evictionTasks = new List<UniTask>();
                     foreach (var guest in m_Guests)
@@ -280,7 +309,7 @@ namespace Metamatic
         }
         
         
-        public Reservation Reserve(T[] preferredCells, Func<T, InternalMicroOperation, UniTask> onCheckIn, bool strict = false, object[] dependencies = null)
+        public Reservation Reserve(T[] preferredCells, Func<T, InternalMicroOperation, UniTask> onCheckIn, int guestCapacity = 1, bool strict = false, object[] dependencies = null)
         {
             /*
              * Create guest
@@ -290,10 +319,11 @@ namespace Metamatic
             guest.OnCheckIn = onCheckIn;
             guest.PreferredCells = preferredCells;
             guest.Strict = strict;
+            guest.Capacity = guestCapacity;
             
             m_Guests.Add(guest);
             
-            if (!GetFreeCell(preferredCells, strict, out var freeCellId))
+            if (!GetFreeCell(preferredCells, guestCapacity, strict, out var freeCellId))
             {
                 guest.Status = Guest.CheckStatus.Waiting;
                 m_WaitingQueue.Add(guest);
@@ -365,7 +395,7 @@ namespace Metamatic
         
         private void CheckIn(Guest guest, T cellId)
         {
-            m_Cells[cellId].Count++;
+            m_Cells[cellId].UsedCapacity++;
             guest.CellId = cellId;
             guest.Status = Guest.CheckStatus.CheckedIn;
             var guestVersion = guest.Version;
@@ -408,7 +438,10 @@ namespace Metamatic
                 guest.CellId = default;
                 guest.Status = Guest.CheckStatus.Idle;
                 guest.Operation = default;
-                m_Cells[cellId].Count--;
+                if (m_Cells.TryGetValue(cellId, out var cellData))
+                {
+                    cellData.UsedCapacity -= guest.Capacity;
+                }
                 if (m_CheckedInUnsatisfiedGuests.Contains(guest))
                 {
                     m_CheckedInUnsatisfiedGuests.Remove(guest);
@@ -430,7 +463,7 @@ namespace Metamatic
             if (guest.Status == Guest.CheckStatus.CheckedIn)
             {
                 if (guest.IsSatisfied(guest.CellId)) return; // Guest is already satisfied of current cell
-                if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+                if (!GetFreeCell(guest.PreferredCells, guest.Capacity, guest.Strict, out var freeCellId))
                 {
                     /* No suitable cell found */
                     return;
@@ -461,7 +494,7 @@ namespace Metamatic
                 }
                 else
                 {
-                    if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+                    if (!GetFreeCell(guest.PreferredCells, guest.Capacity, guest.Strict, out var freeCellId))
                     {
                         /* No suitable cell found. Add user to waiting queue */
                         guest.Status = Guest.CheckStatus.Waiting;
@@ -479,7 +512,7 @@ namespace Metamatic
                 /*
                  * Guest in a waiting queue. We need to check if there is a suitable cell for it.
                  */
-                if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+                if (!GetFreeCell(guest.PreferredCells, guest.Capacity, guest.Strict, out var freeCellId))
                 {
                     /* No suitable cell found. Add user to waiting queue */
                     return;
@@ -509,7 +542,7 @@ namespace Metamatic
             };
             var cellsVersions = m_CellsVersion;
             /* Find free cell */
-            if (!GetFreeCell(guest.PreferredCells, guest.Strict, out var freeCellId))
+            if (!GetFreeCell(guest.PreferredCells, guest.Capacity, guest.Strict, out var freeCellId))
             {
                 unchecked
                 {
@@ -655,7 +688,7 @@ namespace Metamatic
             }
             var version = guest.Version;
             var cellDataVersion = startCellData.Version;
-            startCellData.Count++;
+            startCellData.UsedCapacity += guest.Capacity;
             /* Check out guest */
             unchecked
             {
@@ -676,7 +709,7 @@ namespace Metamatic
                 if (memoizedProcessVersion != guest.ProcessVersion)
                 {
                     /* Some other process was started, so we need to break */
-                    startCellData.Count--;
+                    startCellData.UsedCapacity -= guest.Capacity;
                 }
                 else
                 {
@@ -686,7 +719,7 @@ namespace Metamatic
                     {
                         if (cellData != null && cellData.Version == cellDataVersion)
                         {
-                            cellData.Count--;
+                            cellData.UsedCapacity -= guest.Capacity;
                         }
 
                         /* If guest is still here: not disposed, motel is not disposed and guest has the same version, then eviction it again */
@@ -698,7 +731,7 @@ namespace Metamatic
                     }
                     else
                     {
-                        cellData.Count--;
+                        cellData.UsedCapacity -= guest.Capacity;
                         if (cellsVersions != m_CellsVersion)
                         {
                             /* If cells were changed during eviction, then we need to recheck guest */
@@ -717,15 +750,16 @@ namespace Metamatic
         /// <summary>
         /// Get free cell for specified preferred cells and strict mode.
         /// </summary>
-        /// <param name="preferredCells"></param>
-        /// <param name="strict"></param>
+        /// <param name="preferredCells">Preferred cells for the guest</param>
+        /// <param name="capacity">Capacity of the guest</param>
+        /// <param name="strict">The guest is not ready to move into another room, except for the preferred ones</param>
         /// <param name="cell"></param>
         /// <returns></returns>
-        private bool GetFreeCell(T[] preferredCells, bool strict, out T cell)
+        private bool GetFreeCell(T[] preferredCells, int capacity, bool strict, out T cell)
         {
             foreach (var preferredCell in preferredCells)
             {
-                if (m_Cells.TryGetValue(preferredCell, out var cellData) && !cellData.IsDisposed && cellData.Count < cellData.Capacity)
+                if (m_Cells.TryGetValue(preferredCell, out var cellData) && !cellData.IsDisposed && cellData.Capacity - cellData.UsedCapacity >= capacity)
                 {
                     cell = preferredCell;
                     return true;
@@ -740,7 +774,7 @@ namespace Metamatic
 
             foreach (var c in m_Cells)
             {
-                if (c.Value.Count < c.Value.Capacity)
+                if (c.Value.UsedCapacity < c.Value.Capacity && !c.Value.IsDisposed)
                 {
                     cell = c.Key;
                     return true;

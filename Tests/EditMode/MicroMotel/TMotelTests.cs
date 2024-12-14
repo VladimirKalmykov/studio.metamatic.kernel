@@ -5,7 +5,7 @@ using Metamatic;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-// TODO: Write test for RemoveCall, ChangeCellCapacity and AddCell right after RemoveCall
+// TODO: Write test for RemoveCall, AddCell right after RemoveCall
 namespace Tests.EditMode.MicroMotel
 {
     [TestFixture]
@@ -504,6 +504,99 @@ namespace Tests.EditMode.MicroMotel
             await UniTask.Delay(1000);
             Assert.AreEqual(1, guest1Cell, "Guest 1 must be moved to cell 1");
             Assert.AreEqual(2, guest2Cell, "Guest 2 must be moved to cell 2");
+        });
+        
+        [UnityTest]
+        public IEnumerator ChangeCellCapacity() => UniTask.ToCoroutine(async () =>
+        {
+            var exposedDisposable = new ExposedDisposable();
+            var guest1Cell = -1;
+            var guest2Cell = -1;
+            await using var motel = new MotelT<int>(cellCapacity: 2, dependencies: new object[] { exposedDisposable });
+            motel.AddCell(0);
+            motel.AddCell(1);
+            var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                guest1Cell = cell;
+                await operation.cancellationSignal;
+            }, 1);
+            var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                guest2Cell = cell;
+                await operation.cancellationSignal;
+            }, 1);
+            Assert.AreEqual(1, guest1Cell);
+            Assert.AreEqual(1, guest2Cell);
+            await motel.ChangeCellCapacity(1, 1);
+            Assert.AreEqual(1, guest1Cell, "Guest 1 must stay in cell 1");
+            Assert.AreEqual(0, guest2Cell, "Guest 2 must be moved to cell 0");
+        });
+        
+        [UnityTest]
+        public IEnumerator ChangeCellCapacityTwiceToReturnBackGuestToItsPreferredCell() => UniTask.ToCoroutine(async () =>
+        {
+            var exposedDisposable = new ExposedDisposable();
+            var guest1Cell = -1;
+            var guest2Cell = -1;
+            await using var motel = new MotelT<int>(cellCapacity: 2, dependencies: new object[] { exposedDisposable });
+            motel.AddCell(0);
+            motel.AddCell(1);
+            var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                guest1Cell = cell;
+                await operation.cancellationSignal;
+            }, 1);
+            var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+            {
+                guest2Cell = cell;
+                await operation.cancellationSignal;
+            }, 1);
+            Assert.AreEqual(1, guest1Cell);
+            Assert.AreEqual(1, guest2Cell);
+            await motel.ChangeCellCapacity(1, 1);
+            Assert.AreEqual(1, guest1Cell, "Guest 1 must stay in cell 1");
+            Assert.AreEqual(0, guest2Cell, "Guest 2 must be moved to cell 0");
+            await motel.ChangeCellCapacity(1, 2);
+            Assert.AreEqual(1, guest1Cell, "Guest 1 must stay in cell 1");
+            Assert.AreEqual(1, guest2Cell, "Guest 2 must be moved to cell 1");
+        });
+        
+        [UnityTest]
+        public IEnumerator RemoveAllCells() => UniTask.ToCoroutine(async () =>
+        {
+            var guest1Cell = -1;
+            var guest2Cell = -1;
+            try
+            {
+                var exposedDisposable = new ExposedDisposable();
+                
+                await using var motel =
+                    new MotelT<int>(cellCapacity: 2, dependencies: new object[] { exposedDisposable });
+                motel.AddCell(0);
+                motel.AddCell(1);
+                await using var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+                {
+                    guest1Cell = cell;
+                    await operation.cancellationSignal;
+                    guest1Cell = -1;
+                }, 1);
+                await using var reservation2 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
+                {
+                    guest2Cell = cell;
+                    await operation.cancellationSignal;
+                    guest2Cell = -1;
+                }, 1);
+                Assert.AreEqual(1, guest1Cell);
+                Assert.AreEqual(1, guest2Cell);
+                await motel.RemoveCell(0);
+                await motel.RemoveCell(1);
+                
+            }
+            finally
+            {
+                Assert.AreEqual(-1, guest1Cell, "Guest 1 must be without cell");
+                Assert.AreEqual(-1, guest2Cell, "Guest 2 must be without cell");
+            }
         });
     }
 }
