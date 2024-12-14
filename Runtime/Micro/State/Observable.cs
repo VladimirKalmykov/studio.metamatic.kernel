@@ -1,4 +1,4 @@
-using System;
+ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -21,7 +21,7 @@ namespace Metamatic
     public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>, IResettable
     {
         private event Action<TValue> OnChange;
-        private CancellationSignalSource m_DisposeCancellationTokenSource;
+        private event Action OnDisposedOrReset;
 
         public TValue value
         {
@@ -67,6 +67,25 @@ namespace Metamatic
         /// <returns></returns>
         public DisposableAction WatchAsync(Func<TValue, CancellationSignal, UniTaskVoid> handler)
         {
+            CancellationSignalSource valueChangeSignalSource = default;
+            void DisposeHandler()
+            {
+                valueChangeSignalSource.TryCancel();
+            }
+            OnDisposedOrReset += DisposeHandler;
+            void Watcher(TValue value)
+            {
+                valueChangeSignalSource.TryCancel();
+                valueChangeSignalSource = CancellationSignalSource.Create();
+                handler(value, valueChangeSignalSource.Signal).Forget();
+            }
+            var unwatch = Watch(Watcher);
+            return DisposableAction.Create(() =>
+            {
+                OnDisposedOrReset -= DisposeHandler;
+                valueChangeSignalSource.TryCancel();
+                unwatch.Dispose();
+            });
             return SequentialHandler<TValue>.Subscribe(Watch, handler);
         }
         
@@ -93,23 +112,19 @@ namespace Metamatic
             
             Action FinalizeHandler = null;
             var tcs = SafeUniTaskCompletionSource<TValue>.Create();
-            
-            if (!m_DisposeCancellationTokenSource.CanBeCancelled)
+
+            void DisposeHandler()
             {
-                m_DisposeCancellationTokenSource = CancellationSignalSource.Create();
-                var disposeSignal = m_DisposeCancellationTokenSource.Signal;
-                FinalizeHandler += disposeSignal.Register(() =>
-                {
-                    m_DisposeCancellationTokenSource.Dispose();
-                    FinalizeHandler?.Invoke();
-                    tcs.TrySetCanceled();
-                });
+                FinalizeHandler?.Invoke();
+                tcs.TrySetCanceled();
             }
+            OnDisposedOrReset += DisposeHandler;
 
             if (cancellationSignal.CanBeCanceled)
             {
                 FinalizeHandler += cancellationSignal.Register(() =>
                 {
+                    OnDisposedOrReset -= DisposeHandler;
                     FinalizeHandler?.Invoke();
                     tcs.TrySetCanceled();
                 });
@@ -119,6 +134,7 @@ namespace Metamatic
             {
                 if (validator(value))
                 {
+                    OnDisposedOrReset -= DisposeHandler;
                     FinalizeHandler?.Invoke();
                     tcs.TrySetResult(value);
                 }
@@ -164,6 +180,9 @@ namespace Metamatic
 
         public void Reset()
         {
+            // Dispose and recreate cancellation token source
+            OnDisposedOrReset?.Invoke();
+            // Set value to default
             SetValue(default);
             // Reset all listeners
             OnChange = null;
@@ -171,7 +190,7 @@ namespace Metamatic
         
         public override void Dispose()
         {
-            m_DisposeCancellationTokenSource.TryCancel();
+            OnDisposedOrReset?.Invoke();
             OnChange = null;
             GC.SuppressFinalize(this);
         }

@@ -125,7 +125,7 @@ namespace Metamatic.Framework
 
         public DisposableAction WatchFirstSelectObjectLifecycle(Func<GameObject, CancellationSignal, UniTaskVoid> action)
         {
-            return DisposableOperation.Call(async (signal) =>
+            return AsyncDisposableOperation.Call(async (signal) =>
             {
                 using var selectedObject = new Observable<GameObject>();
                 using var watchSelectedObject = selectedObject.WatchAsync(action);

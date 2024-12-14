@@ -39,7 +39,7 @@ namespace Metamatic
             public int Version;
             public int ProcessVersion;
             public object[] Dependencies;
-            public DisposableOperation Operation;
+            public AsyncDisposableOperation Operation;
             public Func<T, InternalMicroOperation, UniTask> OnCheckIn;
             public T[] PreferredCells;
             public bool Strict;
@@ -383,7 +383,7 @@ namespace Metamatic
             {
                 Array.Copy(guest.Dependencies, 0, combinedDependencies, 1, guest.Dependencies.Length);
             }
-            guest.Operation = DisposableOperation.Run(Handler, dependencies: combinedDependencies);
+            guest.Operation = AsyncDisposableOperation.Run(Handler, dependencies: combinedDependencies);
             if (!guest.IsSatisfied(cellId))
             {
                 m_CheckedInUnsatisfiedGuests.Add(guest);

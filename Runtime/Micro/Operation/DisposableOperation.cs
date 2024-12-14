@@ -1,81 +1,95 @@
 using System;
 using Cysharp.Threading.Tasks;
+using UnityEngine.Serialization;
 
 namespace Metamatic
 {
-    public readonly struct DisposableOperation: IDisposableOperation, IExposedAsyncDisposed, IExposedDisposed
+    public readonly struct DisposableOperation: IDisposable
     {
-        /// <summary>
-        /// Call an async action with cancellation token
-        /// </summary>
-        /// <param name="action">Async action to execute</param>
-        /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
-        /// <returns></returns>
-        public static DisposableOperation Call(InternalMicroOperation.AsyncAction action, object[] dependencies = null)
+        public static DisposableOperation Create(Func<CancellationSignal, UniTask> operationAction)
         {
-            return InternalMicroOperation.Call(action, dependencies);
+            var instance = DisposableOperationImpl.Get(operationAction);
+            return new DisposableOperation(instance);
         }
-
-        /// <summary>
-        /// Run an async operation
-        /// </summary>
-        /// <param name="action">Async action to execute</param>
-        /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
-        /// <param name="debug">Debug operation (use this in development purposes)</param>
-        /// <returns></returns>
-        public static DisposableOperation Run(InternalMicroOperation.AsyncOperationAction action, object[] dependencies = null, bool debug = false)
-        {
-            return InternalMicroOperation.Run(action, dependencies, debug);
-        }
+        // ReSharper disable once InconsistentNaming
+        public static DisposableOperation Empty => default;
         
-        private readonly InternalMicroOperation m_Operation;
-        public readonly int InquireId;
-        public bool isInitialized => m_Operation != null;
-        public bool isAlive => m_Operation != null && m_Operation.inquireId == InquireId;
-        public bool isDisposedAsync => m_Operation.isDisposedAsync;
-        public bool isDisposed => m_Operation.isDisposed;
-        public event Action OnDisposed { add => m_Operation.OnDisposed += value; remove => m_Operation.OnDisposed -= value; }
-        public event Action<Exception> OnDisposedAsync { add => m_Operation.OnDisposedAsync += value; remove => m_Operation.OnDisposedAsync -= value; }
-        public object[] dependencies => m_Operation.dependencies;
-        
-        internal DisposableOperation(InternalMicroOperation operation)
-        {
-            m_Operation = operation;
-            InquireId = m_Operation.Inquire();
-        }
+        private readonly DisposableOperationImpl m_Impl;
+        private readonly int m_Version;
 
-        private UniTask AnyDispose(bool ignoreExceptions = false)
+        public DisposableOperation(DisposableOperationImpl impl)
         {
-            return m_Operation?.Release(InquireId, ignoreExceptions) ?? UniTask.CompletedTask;
+            m_Impl = impl;
+            m_Version = impl.version;
         }
 
         public void Dispose()
         {
-            m_Operation.Abort(InquireId);
+            if (m_Impl == null || m_Impl.version != m_Version) return;
+            m_Impl.Return();
         }
-        
-        public static implicit operator DisposableAction(DisposableOperation operation)
+    }
+
+    public class DisposableOperationImpl: IResettable, IDisposable
+    {
+        public static DisposableOperationImpl Get(Func<CancellationSignal, UniTask> operationAction)
         {
-            return new DisposableAction(operation.Dispose);
+            var instance = ParamLessPool<DisposableOperationImpl>.GetShared();
+            instance.Init(operationAction, () =>
+            {
+                ParamLessPool<DisposableOperationImpl>.ReturnShared(instance);
+            }).Forget();
+            return instance;
         }
 
-        public IDisposable ToIDisposable()
+        public int version { get; private set; }
+        private CancellationSignalSource m_CancellationSignalSource;
+        private Action m_OnReturn;
+        private async UniTaskVoid Init(Func<CancellationSignal, UniTask> operationAction, Action onReturn)
         {
-            return new DisposableAction(Dispose);
+            m_OnReturn = onReturn;
+            m_CancellationSignalSource = CancellationSignalSource.Create();
+            try
+            {
+                await operationAction(m_CancellationSignalSource.Signal);
+            }
+            catch (OperationCanceledException)
+            {
+                // Skip
+            }
+            catch (Exception e)
+            {
+                Console.Error("Disposable operation", e);
+            }
         }
 
-        public UniTask DisposeAsync()
-        {
-            return AnyDispose(true);
-        }
-        
         /// <summary>
-        /// Dispose the operation synchronously. Ignores any exceptions.
+        /// Return to the pool
         /// </summary>
-        /// <returns></returns>
-        public void TryDispose()
+        public void Return()
         {
-            AnyDispose(true).Forget();
+            m_OnReturn?.Invoke();
+        }
+
+        /// <summary>
+        /// Reset will be called automatically from the pool when the instance is returned.
+        /// </summary>
+        public void Reset()
+        {
+            unchecked
+            {
+                version++;
+            }
+            m_OnReturn = null;
+            m_CancellationSignalSource.TryCancel();
+        }
+
+        /// <summary>
+        /// Dispose will be called automatically from the pool when the instance is released.
+        /// </summary>
+        public void Dispose()
+        {
+            Reset();
         }
     }
 }

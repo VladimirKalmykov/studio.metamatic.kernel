@@ -37,7 +37,7 @@ namespace Metamatic
         /// </summary>
         private event Action OnBeforeReturn;
 
-        public static DisposableOperation Call(AsyncAction action, object[] dependencies = null)
+        public static AsyncDisposableOperation Call(AsyncAction action, object[] dependencies = null)
         {
             var operation = Pool2.Get();
 #if DEBUG
@@ -48,10 +48,10 @@ namespace Metamatic
             operation.isDisposed = false;
 
             operation.InternalRun(action);
-            return new DisposableOperation(operation);
+            return new AsyncDisposableOperation(operation);
         }
 
-        public static DisposableOperation Run(AsyncOperationAction action, object[] dependencies = null, bool debug = false)
+        public static AsyncDisposableOperation Run(AsyncOperationAction action, object[] dependencies = null, bool debug = false)
         {
             var operation = Pool2.Get();
 
@@ -64,7 +64,7 @@ namespace Metamatic
             operation.isDisposed = false;
 
             operation.InternalRun(action);
-            return new DisposableOperation(operation);
+            return new AsyncDisposableOperation(operation);
         }
 
         /// <summary>

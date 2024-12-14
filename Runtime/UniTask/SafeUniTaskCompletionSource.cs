@@ -45,6 +45,7 @@ namespace Metamatic
         public int version => m_Version;
         // ReSharper disable once InconsistentNaming
         public UniTask Task => new UniTask(this, (short)m_Version);
+        public bool isAlive => ResolveSource() != null;
 
         public UniTaskStatus GetStatus(short token)
         {
