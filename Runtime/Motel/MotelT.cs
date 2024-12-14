@@ -6,7 +6,7 @@ using Action = System.Action;
 
 namespace Metamatic
 {
-    public class MotelT<T>: IExposedDisposed, IUniTaskAsyncDisposableAbortable
+    public class MotelT<T>: IExposedDisposed, IUniTaskAsyncDisposableAbortable, IResettable
     {
         private class Cell
         {
@@ -156,9 +156,8 @@ namespace Metamatic
         {
             Debug.Assert(capacity > -1, "Capacity should be greater or equal to 0");
             var normalizedCapacity = capacity == 0 ? m_Config_CellCapacity : capacity;
-            if (m_Cells.ContainsKey(cell))
+            if (m_Cells.TryGetValue(cell, out var existingCell))
             {
-                var existingCell = m_Cells[cell];
                 existingCell.IsDisposed = false; // Cancel disposing
                 ChangeCellCapacity(cell, normalizedCapacity).Forget();
                 return;
@@ -870,5 +869,31 @@ namespace Metamatic
         public bool isAborted { get; private set;  }
         public event Action OnAborted;
         #endregion
+
+        public void Reset()
+        {
+            /* Dispose all guests */
+            foreach (var guest in m_Guests)
+            {
+                if (guest.Operation.isInitialized)
+                {
+                    if (!guest.Operation.isDisposed)
+                    {
+                        guest.Operation.DisposeAsync().Forget();
+                    }
+                }
+            }
+            m_IsDisposed = false;
+            m_IsAsyncDisposed = false;
+            m_IsDuringChange = false;
+            m_CellsVersion = 0;
+            m_Cells.Clear();
+            m_Guests.Clear();
+            m_CheckedInUnsatisfiedGuests.Clear();
+            m_WaitingQueue.Clear();
+            OnDisposed = null;
+            OnDisposedAsync = null;
+            OnAborted = null;
+        }
     }
 }
