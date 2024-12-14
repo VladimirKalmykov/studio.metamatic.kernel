@@ -62,6 +62,7 @@ namespace Metamatic
                 Operation = default;
                 OnCheckIn = null;
                 PreferredCells = null;
+                Capacity = 0;
                 Strict = false;
                 CellId = default;
                 IsDisposed = false;
