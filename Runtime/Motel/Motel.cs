@@ -7,7 +7,7 @@ using Cysharp.Threading.Tasks;
 namespace Metamatic
 {
     [Obsolete("Use MotelT instead", true)]
-    public class Motel<T> : IUniTaskAsyncDisposable, IExposedDisposed where T : Enum
+    public class Motel<T> : IUniTaskAsyncDisposable, IExposedDisposedSync where T : Enum
     {
         private readonly Dictionary<T, MotelReservation<T>> m_Rooms;
         private Queue<MotelReservation<T>> m_WaitingQueue = new();
@@ -32,14 +32,14 @@ namespace Metamatic
             m_Rooms = new Dictionary<T, MotelReservation<T>>();
             if (dependencies != null)
             {
-                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
+                OnDisposedSync += ObserveExposedDisposable.Create(dependencies, Abort);
             }
         }
 
         public MotelReservation<T> Reserve(T preferredRooms, Func<T, MotelReservation<T>, UniTask> onSettle,
             bool strict = false, object[] dependencies = null)
         {
-            if (isDisposed || m_AbortTokenSource.IsCancellationRequested)
+            if (isDisposedSync || m_AbortTokenSource.IsCancellationRequested)
             {
                 throw new ObjectDisposedException(nameof(Motel<T>));
             }
@@ -126,7 +126,7 @@ namespace Metamatic
                 {
                     var next = m_WaitingQueue.Dequeue();
                     // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                    if (resolvedReservation == null && !next.isDisposed && next.IsSuitable(freeRoom))
+                    if (resolvedReservation == null && !next.isDisposedSync && next.IsSuitable(freeRoom))
                     {
                         resolvedReservation = next;
                     }
@@ -147,7 +147,7 @@ namespace Metamatic
                 /* Search for reservation that already has a room, but not preferred */
                 foreach (var reserve in m_Rooms.ToArray())
                 {
-                    if (reserve.Value != null && reserve.Value != reservation && !reserve.Value.isDisposed && !reserve.Value.isSatisfied && reserve.Value.IsSuitable(freeRoom))
+                    if (reserve.Value != null && reserve.Value != reservation && !reserve.Value.isDisposedSync && !reserve.Value.isSatisfied && reserve.Value.IsSuitable(freeRoom))
                     {
                         resolvedReservation = reserve.Value;
                         m_Rooms[freeRoom] = resolvedReservation;
@@ -213,7 +213,7 @@ namespace Metamatic
             
             
             
-            OnDisposed?.Invoke();
+            OnDisposedSync?.Invoke();
             /* Wait for all reservations to be disposed */
             return UniTask.WhenAll(tasks);
         }
@@ -233,13 +233,13 @@ namespace Metamatic
                 m_ReleaseAllReservationsTask = ReleaseAllReservations();
             }
             
-            OnDisposed?.Invoke();
+            OnDisposedSync?.Invoke();
             m_AbortTokenSource.Dispose();
 
             return m_ReleaseAllReservationsTask.Value;
         }
 
-        public bool isDisposed => m_IsDisposeProcessing;
-        public event Action OnDisposed;
+        public bool isDisposedSync => m_IsDisposeProcessing;
+        public event Action OnDisposedSync;
     }
 }

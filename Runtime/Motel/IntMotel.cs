@@ -6,14 +6,14 @@ using Action = System.Action;
 
 namespace Metamatic
 {
-    public class IntMotel: IExposedDisposed, IUniTaskAsyncDisposableAbortable
+    public class IntMotel: IExposedDisposedSync, IUniTaskDisposedAsyncDisposableAbortable
     {
         private class Guest
         {
             public int Version;
             public object[] Dependencies;
-            public AsyncDisposableOperation Operation;
-            public Func<int, InternalMicroOperation, UniTask> OnCheckIn;
+            public PolyDisposableOperation Operation;
+            public Func<int, InternalAsyncDisposableOperation, UniTask> OnCheckIn;
             public int[] PreferredCells;
             public bool Strict;
             public int CellId = -1;
@@ -81,12 +81,12 @@ namespace Metamatic
             
             if (dependencies != null)
             {
-                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
+                OnDisposedSync += ObserveExposedDisposable.Create(dependencies, Abort);
             }
         }
         
         
-        public IUniTaskAsyncDisposable Reserve(int[] preferredCells, Func<int, InternalMicroOperation, UniTask> onCheckIn, bool strict = false, object[] dependencies = null)
+        public IUniTaskAsyncDisposable Reserve(int[] preferredCells, Func<int, InternalAsyncDisposableOperation, UniTask> onCheckIn, bool strict = false, object[] dependencies = null)
         {
             /*
              * Create guest
@@ -120,7 +120,7 @@ namespace Metamatic
                 UniTask asyncDisposeTask = default;
                 if (guest.CellId != -1)
                 {
-                    if (!guest.Operation.isDisposed)
+                    if (!guest.Operation.isDisposedSync)
                     {
                         asyncDisposeTask = guest.Operation.DisposeAsync();
                     }
@@ -163,7 +163,7 @@ namespace Metamatic
             guest.CellId = cellId;
             var onCheckIn = guest.OnCheckIn;
             
-            UniTask Handler(InternalMicroOperation op)
+            UniTask Handler(InternalAsyncDisposableOperation op)
             {
                 return onCheckIn(cellId, op);
             }
@@ -174,7 +174,7 @@ namespace Metamatic
             {
                 Array.Copy(guest.Dependencies, 0, combinedDependencies, 1, guest.Dependencies.Length);
             }
-            guest.Operation = AsyncDisposableOperation.Run(Handler, dependencies: combinedDependencies);
+            guest.Operation = PolyDisposableOperation.Run(Handler, dependencies: combinedDependencies);
             if (!guest.IsSatisfied(cellId))
             {
                 m_CheckedInUnsatisfiedGuests.Add(guest);
@@ -199,7 +199,7 @@ namespace Metamatic
                 {
                     m_CheckedInUnsatisfiedGuests.Remove(guest);
                 }
-                if (!isDisposed)
+                if (!isDisposedSync)
                 {
                     /* Check in next guest if motel is not disposed */
                     CheckInNextGuest(cellId);
@@ -255,7 +255,7 @@ namespace Metamatic
             }
             finally
             {
-                if (version != guest.Version || isDisposed || guest.IsDisposed)
+                if (version != guest.Version || isDisposedSync || guest.IsDisposed)
                 {
                     m_Cells[cellId]--;
                 }
@@ -314,10 +314,10 @@ namespace Metamatic
         private bool m_IsDisposed;
         private bool m_IsAsyncDisposed;
             
-        public bool isDisposed => m_IsDisposed;
+        public bool isDisposedSync => m_IsDisposed;
         public bool isDisposedAsync => m_IsAsyncDisposed;
             
-        public event Action OnDisposed;
+        public event Action OnDisposedSync;
         public event Action<Exception> OnDisposedAsync;
         
         /// <summary>
@@ -337,14 +337,14 @@ namespace Metamatic
                 return;
             }
             m_IsDisposed = true;
-            OnDisposed?.Invoke();
+            OnDisposedSync?.Invoke();
               List<UniTask> tasks = new List<UniTask>();
               /* Dispose all guests */
               foreach (var guest in m_Guests)
               {
                   if (guest.Operation.isInitialized)
                   {
-                      if (!guest.Operation.isDisposed)
+                      if (!guest.Operation.isDisposedSync)
                       {
                           tasks.Add(guest.Operation.DisposeAsync());
                       }

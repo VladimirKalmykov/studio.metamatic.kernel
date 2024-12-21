@@ -10,7 +10,7 @@ namespace Metamatic
     /// This class gives you the ability to add async disposal actions and dispose listeners to a MonoBehaviour.
     /// Important: this class do not dispose by itself, you need to call DisposeAsync or Dispose manually, thus it is not suitable for using as a disable/destroy listener.
     /// </summary>
-    public class DisposableBehaviour: MonoBehaviour, IUniTaskAsyncDisposable, IDisposable, IExposedDisposed
+    public class DisposableBehaviour: MonoBehaviour, IUniTaskAsyncDisposable, IDisposable, IExposedDisposedSync
     {
         private int m_Version;
         private readonly List<Func<UniTask>> m_AsyncDisposalActions = new List<Func<UniTask>>();
@@ -48,14 +48,14 @@ namespace Metamatic
 
             void Handler()
             {
-                OnDisposed -= Handler;
+                OnDisposedSync -= Handler;
                 action();
             }
-            OnDisposed += Handler;
+            OnDisposedSync += Handler;
             return new DisposableAction(() =>
             {
                 if (this.Equals(null) || m_Version != version) return;
-                OnDisposed -= Handler;
+                OnDisposedSync -= Handler;
             });
         }
         
@@ -91,13 +91,13 @@ namespace Metamatic
 
         private void Dispose(bool isFromAsync)
         {
-            if (isDisposed)
+            if (isDisposedSync)
             {
                 return;
             }
-            isDisposed = true;
-            OnDisposed?.Invoke();
-            OnDisposed = null;
+            isDisposedSync = true;
+            OnDisposedSync?.Invoke();
+            OnDisposedSync = null;
             
             if (!isFromAsync)
             {
@@ -112,15 +112,15 @@ namespace Metamatic
             {
                 m_Version++;
             }
-            isDisposed = false;
+            isDisposedSync = false;
             isAsyncDisposed = false;
-            OnDisposed = null;
+            OnDisposedSync = null;
             OnAsyncDisposed = null;
         }
 
-        public bool isDisposed { get; private set; }
+        public bool isDisposedSync { get; private set; }
         public bool isAsyncDisposed { get; private set; }
-        public event Action OnDisposed;
+        public event Action OnDisposedSync;
         public event Action<Exception> OnAsyncDisposed;
     }
 }

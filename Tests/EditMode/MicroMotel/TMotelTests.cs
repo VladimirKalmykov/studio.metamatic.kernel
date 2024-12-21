@@ -11,16 +11,16 @@ namespace Tests.EditMode.MicroMotel
     [TestFixture]
     public class MotelTTests
     {
-        private class ExposedDisposable: IDisposable, IExposedDisposed
+        private class ExposedDisposable: IDisposable, IExposedDisposedSync
         {
             public void Dispose()
             {
-                isDisposed = true;
-                OnDisposed?.Invoke();
+                isDisposedSync = true;
+                OnDisposedSync?.Invoke();
             }
 
-            public bool isDisposed { get; private set; }
-            public event Action OnDisposed;
+            public bool isDisposedSync { get; private set; }
+            public event Action OnDisposedSync;
         }
 
         public enum ReserveStage
@@ -39,7 +39,7 @@ namespace Tests.EditMode.MicroMotel
             var checkedOut = false;
             await using var motel = new MotelT<int>();
             motel.AddCell(1);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 checkedIn = true;
@@ -64,7 +64,7 @@ namespace Tests.EditMode.MicroMotel
             await using var motel = new MotelT<int>();
             motel.AddCell(0);
             motel.AddCell(1);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1CheckedIn = true;
@@ -98,7 +98,7 @@ namespace Tests.EditMode.MicroMotel
             await using var motel = new MotelT<int>();
             motel.AddCell(0);
             motel.AddCell(1);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1CheckedIn = true;
@@ -137,7 +137,7 @@ namespace Tests.EditMode.MicroMotel
             await using var motel = new MotelT<int>();
             motel.AddCell(0);
             motel.AddCell(1);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 checkedIn = true;

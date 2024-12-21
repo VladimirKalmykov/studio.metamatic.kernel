@@ -11,12 +11,12 @@ namespace Metamatic
     /// Objects that do not implement IExposedDisposed will be observed every frame until they are disposed.
     /// Try to avoid using not exposed disposables, because it will be observed every frame.
     /// </summary>
-    public class ObserveExposedDisposable: IDisposable, IExposedDisposed
+    public class ObserveExposedDisposable: IDisposable, IExposedDisposedSync
     {
         private static ParamLessPool<ObserveExposedDisposable> _Pool = new(10);
         private bool m_IsDisposed;
-        public bool isDisposed => m_IsDisposed;
-        public event Action OnDisposed;
+        public bool isDisposedSync => m_IsDisposed;
+        public event Action OnDisposedSync;
         public static ObserveExposedDisposable Create(object[] disposables, Action onFire, bool trackNotExposed = true)
         {
             var instance = _Pool.Get();
@@ -45,7 +45,7 @@ namespace Metamatic
                         break;
                     }
                     uniTaskAsyncDisposableAbortable.OnAborted += Fire;
-                    OnDisposed += () =>
+                    OnDisposedSync += () =>
                     {
                         if (!uniTaskAsyncDisposableAbortable.Equals(null))
                         {
@@ -53,7 +53,7 @@ namespace Metamatic
                         }
                     };
                 }
-                if (d is IExposedAsyncDisposed exposedAsyncDisposed)
+                if (d is IExposedDisposedAsync exposedAsyncDisposed)
                 {
                     /* If the object supports async disposal, we should fire only on async dispose event, unlike the sync dispose event in IExposedDisposed */
                     if (exposedAsyncDisposed.isDisposedAsync)
@@ -62,26 +62,26 @@ namespace Metamatic
                         break;
                     }
                     exposedAsyncDisposed.OnDisposedAsync += FireAsync;
-                    OnDisposed += () =>
+                    OnDisposedSync += () =>
                     {
                         if (!exposedAsyncDisposed.Equals(null))
                         {
                             exposedAsyncDisposed.OnDisposedAsync -= FireAsync;
                         }
                     };
-                } else if (d is IExposedDisposed exposedDisposed)
+                } else if (d is IExposedDisposedSync exposedDisposed)
                 {
-                    if (exposedDisposed.isDisposed)
+                    if (exposedDisposed.isDisposedSync)
                     {
                         Fire();
                         break;
                     }
-                    exposedDisposed.OnDisposed += Fire;
-                    OnDisposed += () =>
+                    exposedDisposed.OnDisposedSync += Fire;
+                    OnDisposedSync += () =>
                     {
                         if (!exposedDisposed.Equals(null))
                         {
-                            exposedDisposed.OnDisposed -= Fire;
+                            exposedDisposed.OnDisposedSync -= Fire;
                         }
                     };
                 }
@@ -135,8 +135,8 @@ namespace Metamatic
                 return;
             }
             m_IsDisposed = true;
-            OnDisposed?.Invoke();
-            OnDisposed = null;
+            OnDisposedSync?.Invoke();
+            OnDisposedSync = null;
             m_NotExposedDisposedDependencies.Clear();
             _Pool.Return(this);
         }

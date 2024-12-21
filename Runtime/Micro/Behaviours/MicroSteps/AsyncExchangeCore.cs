@@ -6,23 +6,23 @@ namespace Metamatic
 {
     public readonly struct AsyncExchange: IUniTaskAsyncDisposable, IDisposable
     {
-        public static AsyncExchange Create(AsyncExchangeCore.AsyncAction action, object[] dependencies = null)
+        public static AsyncExchange Create(DisposedAsyncExchangeCore.AsyncAction action, object[] dependencies = null)
         {
-            var core = ParamLessPool<AsyncExchangeCore>.GetShared();
+            var core = ParamLessPool<DisposedAsyncExchangeCore>.GetShared();
             core.Init(action, dependencies);
             return new AsyncExchange(core);
         }
         
-        private readonly AsyncExchangeCore m_Core;
+        private readonly DisposedAsyncExchangeCore m_Core;
         private readonly int m_Version;
         
-        public AsyncExchange(AsyncExchangeCore core)
+        public AsyncExchange(DisposedAsyncExchangeCore core)
         {
             m_Core = core;
             m_Version = core.version;
         }
         
-        private AsyncExchangeCore ResolveCore()
+        private DisposedAsyncExchangeCore ResolveCore()
         {
             if (m_Core.version != m_Version)
             {
@@ -59,7 +59,7 @@ namespace Metamatic
             if (core != null)
             {
                 core.Reset();
-                ParamLessPool<AsyncExchangeCore>.ReturnShared(core);
+                ParamLessPool<DisposedAsyncExchangeCore>.ReturnShared(core);
             }
         }
 
@@ -75,17 +75,17 @@ namespace Metamatic
             }
             finally
             {
-                ParamLessPool<AsyncExchangeCore>.ReturnShared(core);
+                ParamLessPool<DisposedAsyncExchangeCore>.ReturnShared(core);
             }
         }
     }
-    public class AsyncExchangeCore : IUniTaskAsyncDisposable, IExposedDisposed, IExposedAsyncDisposed, IAbortable, IResettable
+    public class DisposedAsyncExchangeCore : IUniTaskAsyncDisposable, IExposedDisposedSync, IExposedDisposedAsync, IAbortable, IResettable
     {
         public readonly struct Exchanger: IUniTaskAsyncDisposable
         {
-            private readonly AsyncExchangeCore m_Master;
+            private readonly DisposedAsyncExchangeCore m_Master;
             public bool isDisposedAsync => m_Master.isDisposedAsync;
-            internal Exchanger(AsyncExchangeCore master)
+            internal Exchanger(DisposedAsyncExchangeCore master)
             {
                 m_Master = master;
             }
@@ -248,12 +248,12 @@ namespace Metamatic
             m_CancellationSignalSource = CancellationSignalSource.Create();
             if (dependencies != null)
             {
-                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
+                OnDisposedSync += ObserveExposedDisposable.Create(dependencies, Abort);
             }
             RunAsync();
         }
 
-        ~AsyncExchangeCore()
+        ~DisposedAsyncExchangeCore()
         {
             throw new InvalidOperationException("You should dispose ExchangeBehaviour manually");
         }
@@ -273,9 +273,9 @@ namespace Metamatic
             {
                 version++;
             }
-            OnDisposed?.Invoke();
-            OnDisposed = null;
-            isDisposed = false;
+            OnDisposedSync?.Invoke();
+            OnDisposedSync = null;
+            isDisposedSync = false;
             m_GeneralCompletionSource.TrySetResult();
             m_GeneralCompletionSource.Reset();
             m_InputCompletionSource = null;
@@ -435,7 +435,7 @@ namespace Metamatic
 
         public void Dispose(bool isAsync)
         {
-            if (isDisposed)
+            if (isDisposedSync)
             {
 #if DEBUG
                 throw new InvalidOperationException("ExchangeBehaviour is already disposed");
@@ -443,8 +443,8 @@ namespace Metamatic
                 return;
             }
             
-            isDisposed = true;
-            OnDisposed?.Invoke();
+            isDisposedSync = true;
+            OnDisposedSync?.Invoke();
 
             m_CancellationSignalSource.Dispose();
 
@@ -494,7 +494,7 @@ namespace Metamatic
             m_CancellationSignalSource.TryCancel();
         }
 
-        public bool isDisposed { get; private set;  }
-        public event Action OnDisposed;
+        public bool isDisposedSync { get; private set;  }
+        public event Action OnDisposedSync;
     }
 }

@@ -2,7 +2,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public interface IUniTaskAsyncDisposableAbortable: IAbortable, IUniTaskAsyncDisposable, IExposedAsyncDisposed
+    public interface IUniTaskDisposedAsyncDisposableAbortable: IAbortable, IUniTaskAsyncDisposable, IExposedDisposedAsync
     {
         
     }

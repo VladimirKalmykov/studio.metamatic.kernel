@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class InternalMicroOperation : IExposedDisposed, IExposedAsyncDisposed, IAbortable
+    public class InternalAsyncDisposableOperation : IExposedAsyncCancellation, IAbortable
     {
 #if DEBUG
         private static int _LastInstanceID;
@@ -28,16 +28,16 @@ namespace Metamatic
 #endif
         public delegate UniTask AsyncAction(CancellationSignal signal);
 
-        public delegate UniTask AsyncOperationAction(InternalMicroOperation operation);
+        public delegate UniTask AsyncOperationAction(InternalAsyncDisposableOperation operation);
 
-        private static readonly ParamLessPool<InternalMicroOperation> Pool2 = new(20);
+        private static readonly ParamLessPool<InternalAsyncDisposableOperation> Pool2 = new(20);
 
         /// <summary>
         /// This event is called before the operation is returned to the pool.
         /// </summary>
         private event Action OnBeforeReturn;
 
-        public static AsyncDisposableOperation Call(AsyncAction action, object[] dependencies = null)
+        public static PolyDisposableOperation Call(AsyncAction action, object[] dependencies = null)
         {
             var operation = Pool2.Get();
 #if DEBUG
@@ -45,13 +45,13 @@ namespace Metamatic
             _InstanceCount++;
 #endif
             operation.dependencies = dependencies;
-            operation.isDisposed = false;
+            operation.isDisposedSync = false;
 
             operation.InternalRun(action);
-            return new AsyncDisposableOperation(operation);
+            return new PolyDisposableOperation(operation);
         }
 
-        public static AsyncDisposableOperation Run(AsyncOperationAction action, object[] dependencies = null, bool debug = false)
+        public static PolyDisposableOperation Run(AsyncOperationAction action, object[] dependencies = null, bool debug = false)
         {
             var operation = Pool2.Get();
 
@@ -61,10 +61,10 @@ namespace Metamatic
             _InstanceCount++;
 #endif
             operation.dependencies = dependencies;
-            operation.isDisposed = false;
+            operation.isDisposedSync = false;
 
             operation.InternalRun(action);
-            return new AsyncDisposableOperation(operation);
+            return new PolyDisposableOperation(operation);
         }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace Metamatic
 
         private bool isInquired { get; set; }
 
-        public InternalMicroOperation()
+        public InternalAsyncDisposableOperation()
         {
 #if DEBUG
             ID = GetNextID();
@@ -136,12 +136,15 @@ namespace Metamatic
 
             m_IsAborted = true;
             OnAborted?.Invoke();
-
-            /* If async dispose is called, we should cancel async dispose token and dispose it */
-            m_AsyncDisposeCancellationTokenSource.TryCancel();
-
+            
+            /* Mark as disposed sync */
+            isDisposedSync = true;
+            OnDisposedSync?.Invoke();
             /* Cancel perform token too */
             m_PerformCancellationTokenSource.TryCancel();
+            
+            /* If async dispose is called, we should cancel async dispose token and dispose it */
+            m_AsyncDisposeCancellationTokenSource.TryCancel();
         }
 
         internal int Inquire()
@@ -163,8 +166,8 @@ namespace Metamatic
                 throw new InvalidOperationException("Invalid inquire id");
             }
 
-            isDisposed = true;
-            OnDisposed?.Invoke();
+            isDisposedSync = true;
+            OnDisposedSync?.Invoke();
 
             m_PerformCancellationTokenSource.TryCancel();
 
@@ -257,9 +260,9 @@ namespace Metamatic
                 m_ExecuteTask = action(this);
          }
 
-        public bool isDisposed { get; private set; }
+        public bool isDisposedSync { get; private set; }
         public bool isDisposedAsync { get; private set; }
-        public event Action OnDisposed;
+        public event Action OnDisposedSync;
         public event Action<Exception> OnDisposedAsync;
     }
 }

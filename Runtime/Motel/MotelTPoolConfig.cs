@@ -16,7 +16,7 @@ namespace Metamatic
 
         public MotelT<T> OnCreate()
         {
-            return new MotelT<T>(dependencies: new object[] { this });
+            return new MotelT<T>(dependencies: m_Dependencies);
         }
 
         public void OnGet(MotelT<T> instance)

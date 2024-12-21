@@ -5,13 +5,13 @@ namespace Metamatic
     /// <summary>
     /// 
     /// </summary>
-    public interface IExposedDisposed
+    public interface IExposedDisposedSync
     {
-        bool isDisposed { get; }
-        event Action OnDisposed;
+        bool isDisposedSync { get; }
+        event Action OnDisposedSync;
     }
     
-    public interface IExposedAsyncDisposed
+    public interface IExposedDisposedAsync
     {
         bool isDisposedAsync { get; }
         event Action<Exception> OnDisposedAsync;

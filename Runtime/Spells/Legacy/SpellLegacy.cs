@@ -142,7 +142,7 @@ namespace Metamatic
         }
     }
 
-    public class SpellSource<TSpell>: ISpellSource<TSpell>, IDisposable, IExposedDisposed
+    public class SpellSource<TSpell>: ISpellSource<TSpell>, IDisposable, IExposedDisposedSync
         where TSpell : IAsyncSpell
     {
         private TSpell m_Spell;
@@ -183,10 +183,10 @@ namespace Metamatic
 
         public void Dispose()
         {
-            if (isDisposed)
+            if (isDisposedSync)
             {
                 return;
-                isDisposed = true;
+                isDisposedSync = true;
             }
             unchecked
             {
@@ -195,7 +195,7 @@ namespace Metamatic
             m_CancellationSignalSource.TryCancel();
         }
 
-        public bool isDisposed { get; private set;  }
-        public event Action OnDisposed;
+        public bool isDisposedSync { get; private set;  }
+        public event Action OnDisposedSync;
     }
 }

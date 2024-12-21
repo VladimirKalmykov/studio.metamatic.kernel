@@ -16,6 +16,7 @@ namespace Metamatic
         protected bool IsDisposed;
         protected event Action OnDispose;
         protected CancellationSignalSource EnablingCancellationSignalSource;
+        protected Func<Func<UniTask>, UniTask> m_ActivationHook;
         
         public void Enable()
         {
@@ -30,6 +31,17 @@ namespace Metamatic
         public void Disable()
         {
             EnabledObservable.SetUniqValue(false);
+        }
+        
+        /// <summary>
+        /// Allows to set activation hook. Hook is a function that can be used to wrap the activation process.
+        /// </summary>
+        /// <param name="hook"></param>
+        /// <returns></returns>
+        public DisposableAction SetActivationHook(Func<Func<UniTask>, UniTask> hook)
+        {
+            m_ActivationHook = hook;
+            return new DisposableAction(() => m_ActivationHook = null);
         }
 
         public virtual void Dispose()
@@ -56,7 +68,7 @@ namespace Metamatic
     public abstract class AsyncPresenter<TProperty>: AsyncPresenter
     {
          private TProperty m_Property;
-
+         
          ~AsyncPresenter()
          {
              Console.Error("AsyncPresenter", "Is not disposed");
@@ -125,10 +137,53 @@ namespace Metamatic
          
          internal override void InternalActivate()
          {
-             OnActivate(Ready).Forget();
+             if (m_ActivationHook == null)
+             {
+                 InternalActivateWithHook().Forget();
+             }
+             else
+             {
+                 InternalActivateWithoutHook().Forget();
+             }
+         }
+
+         /// <summary>
+         /// Method implements activation without hook.
+         /// </summary>
+         private async UniTask InternalActivateWithoutHook()
+         {
+             try
+             {
+                 await OnActivate(Ready);
+             }
+             catch (OperationCanceledException)
+             {
+                 // Skip
+             } catch (Exception e)
+             {
+                 Console.Error("AsyncPresenter", e);
+             }
+         }
+
+         /// <summary>
+         /// Method implements activation with hook. Hook is a function that can be used to wrap the activation process.
+         /// </summary>
+         private async UniTaskVoid InternalActivateWithHook()
+         {
+                try
+                {
+                    await m_ActivationHook.Invoke(InternalActivateWithoutHook);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Skip
+                } catch (Exception e)
+                {
+                    Console.Error("AsyncPresenter", e);
+                }
          }
         
-         protected abstract UniTaskVoid OnActivate(Func<TProperty, UniTask> ready);
+         protected abstract UniTask OnActivate(Func<TProperty, UniTask> ready);
          /// <summary>
          /// Allows to perform some async actions while the presenter is enabled.
          /// Enable cancellation signal will be triggered only when the presenter is asynchronously completed OnDisable method.

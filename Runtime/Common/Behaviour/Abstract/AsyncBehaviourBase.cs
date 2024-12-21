@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class AsyncBehaviourBase: MonoBehaviour, IExposedDisposed
+    public abstract class AsyncBehaviourBase: MonoBehaviour, IExposedDisposedSync
     {
         private CancellationSignalSource m_DisableCancellationSignalSource;
         private CancellationSignalSource m_DestroyCancellationSignalSource;
@@ -58,7 +58,7 @@ namespace Metamatic
         {
             isAboutToDestroy = true;
             m_DestroyCancellationSignalSource.TryCancel();
-            OnDisposed?.Invoke();
+            OnDisposedSync?.Invoke();
         }
 
         protected abstract UniTaskVoid RunAsync(CancellationSignal signal);
@@ -106,7 +106,7 @@ namespace Metamatic
             OnDrawGizmosEvent?.Invoke();
         }
         #endif
-        public bool isDisposed => m_DestroyCancellationSignalSource.IsCancellationRequested;
-        public event Action OnDisposed;
+        public bool isDisposedSync => m_DestroyCancellationSignalSource.IsCancellationRequested;
+        public event Action OnDisposedSync;
     }
 }

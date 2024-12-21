@@ -7,7 +7,7 @@ using UnityEngine.Serialization;
 
 namespace Metamatic.Framework
 {
-    public abstract class CursorTool: IDisposable, IExposedDisposed
+    public abstract class CursorTool: IDisposable, IExposedDisposedSync
     {
         #region Static
         private static List<(Type, MetamaticCursorToolAttribute)> _CachedCursorToolClasses;
@@ -56,17 +56,17 @@ namespace Metamatic.Framework
         protected abstract void OnDispose();
         public void Dispose()
         {
-            if (isDisposed)
+            if (isDisposedSync)
             {
                 return;
             }
-            isDisposed = true;
-            OnDisposed?.Invoke();
+            isDisposedSync = true;
+            OnDisposedSync?.Invoke();
             OnDispose();
         }
 
-        public bool isDisposed { get; private set; }
-        public event Action OnDisposed;
+        public bool isDisposedSync { get; private set; }
+        public event Action OnDisposedSync;
     }
     
     public abstract class AsyncCursorTool: CursorTool
@@ -76,7 +76,7 @@ namespace Metamatic.Framework
         private event Action m_ReadyEvent;
         protected AsyncCursorTool()
         {
-            OnDisposed += () =>
+            OnDisposedSync += () =>
             {
                 m_DisposeSignalSource.TryCancel();
             };

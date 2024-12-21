@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Metamatic
 {
     [Obsolete("Use MotelT instead", true)]
-    public class MotelReservation<T>: IUniTaskAsyncDisposable, IExposedDisposed where T : Enum
+    public class MotelReservation<T>: IUniTaskAsyncDisposable, IExposedDisposedSync where T : Enum
     {
         public enum Status
         {
@@ -81,7 +81,7 @@ namespace Metamatic
             this.strict = strict;
             if (dependencies != null)
             {
-                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
+                OnDisposedSync += ObserveExposedDisposable.Create(dependencies, Abort);
             }
         }
         
@@ -253,10 +253,10 @@ namespace Metamatic
             }
             m_CheckInCancellationTokenSource?.Dispose();
             m_CheckOutCancellationTokenSource?.Dispose();
-            OnDisposed?.Invoke();
+            OnDisposedSync?.Invoke();
         }
 
-        public bool isDisposed => m_IsDisposed;
-        public event Action OnDisposed;
+        public bool isDisposedSync => m_IsDisposed;
+        public event Action OnDisposedSync;
     }
 }

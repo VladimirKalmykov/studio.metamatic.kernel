@@ -6,7 +6,7 @@ using Action = System.Action;
 
 namespace Metamatic
 {
-    public class MotelT<T>: IExposedDisposed, IUniTaskAsyncDisposableAbortable, IResettable
+    public class MotelT<T>: IExposedDisposedSync, IUniTaskDisposedAsyncDisposableAbortable, IResettable
     {
         private class Cell
         {
@@ -39,8 +39,8 @@ namespace Metamatic
             public int Version;
             public int ProcessVersion;
             public object[] Dependencies;
-            public AsyncDisposableOperation Operation;
-            public Func<T, InternalMicroOperation, UniTask> OnCheckIn;
+            public PolyDisposableOperation Operation;
+            public Func<T, InternalAsyncDisposableOperation, UniTask> OnCheckIn;
             public T[] PreferredCells;
             public int Capacity;
             public bool Strict;
@@ -148,7 +148,7 @@ namespace Metamatic
             
             if (dependencies != null)
             {
-                OnDisposed += ObserveExposedDisposable.Create(dependencies, Abort);
+                OnDisposedSync += ObserveExposedDisposable.Create(dependencies, Abort);
             }
         }
 
@@ -309,7 +309,7 @@ namespace Metamatic
         }
         
         
-        public Reservation Reserve(T[] preferredCells, Func<T, InternalMicroOperation, UniTask> onCheckIn, int guestCapacity = 1, bool strict = false, object[] dependencies = null)
+        public Reservation Reserve(T[] preferredCells, Func<T, InternalAsyncDisposableOperation, UniTask> onCheckIn, int guestCapacity = 1, bool strict = false, object[] dependencies = null)
         {
             /*
              * Create guest
@@ -402,7 +402,7 @@ namespace Metamatic
             var onCheckIn = guest.OnCheckIn;
             Debug.Assert(onCheckIn != null && !onCheckIn.Equals(null), $"[DEBUG-HINT] onCheckIn is null before handling (guestId: {guest.Id})");
             
-            UniTask Handler(InternalMicroOperation op)
+            UniTask Handler(InternalAsyncDisposableOperation op)
             {
                 return onCheckIn(cellId, op);
             }
@@ -413,7 +413,7 @@ namespace Metamatic
             {
                 Array.Copy(guest.Dependencies, 0, combinedDependencies, 1, guest.Dependencies.Length);
             }
-            guest.Operation = AsyncDisposableOperation.Run(Handler, dependencies: combinedDependencies);
+            guest.Operation = PolyDisposableOperation.Run(Handler, dependencies: combinedDependencies);
             if (!guest.IsSatisfied(cellId))
             {
                 m_CheckedInUnsatisfiedGuests.Add(guest);
@@ -446,7 +446,7 @@ namespace Metamatic
                 {
                     m_CheckedInUnsatisfiedGuests.Remove(guest);
                 }
-                if (!isDisposed)
+                if (!isDisposedSync)
                 {
                     /* Check in next guest if motel is not disposed */
                     CheckInNextGuest(cellId);
@@ -598,7 +598,7 @@ namespace Metamatic
             guest.Status = Guest.CheckStatus.CheckingOut;
             UniTask asyncDisposeTask;
             
-            if (!guest.Operation.isDisposed)
+            if (!guest.Operation.isDisposedSync)
             {
                 asyncDisposeTask = guest.Operation.DisposeAsync();
             }
@@ -715,7 +715,7 @@ namespace Metamatic
                 {
                     var cellData = m_Cells[cellId];
                     if (cellData == null || cellData.IsDisposed || cellData.Version != cellDataVersion ||
-                        version != guest.Version || isDisposed || guest.IsDisposed)
+                        version != guest.Version || isDisposedSync || guest.IsDisposed)
                     {
                         if (cellData != null && cellData.Version == cellDataVersion)
                         {
@@ -723,7 +723,7 @@ namespace Metamatic
                         }
 
                         /* If guest is still here: not disposed, motel is not disposed and guest has the same version, then eviction it again */
-                        if (version == guest.Version && !isDisposed && !guest.IsDisposed)
+                        if (version == guest.Version && !isDisposedSync && !guest.IsDisposed)
                         {
                             /* Eviction guest again */
                             Eviction(guest).Forget();
@@ -788,10 +788,10 @@ namespace Metamatic
         private bool m_IsDisposed;
         private bool m_IsAsyncDisposed;
             
-        public bool isDisposed => m_IsDisposed;
+        public bool isDisposedSync => m_IsDisposed;
         public bool isDisposedAsync => m_IsAsyncDisposed;
             
-        public event Action OnDisposed;
+        public event Action OnDisposedSync;
         public event Action<Exception> OnDisposedAsync;
         
         /// <summary>
@@ -811,14 +811,14 @@ namespace Metamatic
                 return;
             }
             m_IsDisposed = true;
-            OnDisposed?.Invoke();
+            OnDisposedSync?.Invoke();
               List<UniTask> tasks = new List<UniTask>();
               /* Dispose all guests */
               foreach (var guest in m_Guests)
               {
                   if (guest.Operation.isInitialized)
                   {
-                      if (!guest.Operation.isDisposed)
+                      if (!guest.Operation.isDisposedSync)
                       {
                           tasks.Add(guest.Operation.DisposeAsync());
                       }
@@ -877,7 +877,7 @@ namespace Metamatic
             {
                 if (guest.Operation.isInitialized)
                 {
-                    if (!guest.Operation.isDisposed)
+                    if (!guest.Operation.isDisposedSync)
                     {
                         guest.Operation.DisposeAsync().Forget();
                     }
@@ -891,7 +891,7 @@ namespace Metamatic
             m_Guests.Clear();
             m_CheckedInUnsatisfiedGuests.Clear();
             m_WaitingQueue.Clear();
-            OnDisposed = null;
+            OnDisposedSync = null;
             OnDisposedAsync = null;
             OnAborted = null;
         }

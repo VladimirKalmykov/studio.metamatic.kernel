@@ -10,16 +10,16 @@ namespace Tests.EditMode.MictoMotel
     [TestFixture]
     public class IntMotelTests
     {
-        private class ExposedDisposable: IDisposable, IExposedDisposed
+        private class ExposedDisposable: IDisposable, IExposedDisposedSync
         {
             public void Dispose()
             {
-                isDisposed = true;
-                OnDisposed?.Invoke();
+                isDisposedSync = true;
+                OnDisposedSync?.Invoke();
             }
 
-            public bool isDisposed { get; private set; }
-            public event Action OnDisposed;
+            public bool isDisposedSync { get; private set; }
+            public event Action OnDisposedSync;
         }
 
         public enum ReserveStage
@@ -37,7 +37,7 @@ namespace Tests.EditMode.MictoMotel
             var checkedIn = false;
             var checkedOut = false;
             await using var motel = new IntMotel(4);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 checkedIn = true;
@@ -60,7 +60,7 @@ namespace Tests.EditMode.MictoMotel
             var guest2CheckedOut = false;
             var guest2Cell = 0;
             await using var motel = new IntMotel(4);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1CheckedIn = true;
@@ -92,7 +92,7 @@ namespace Tests.EditMode.MictoMotel
             var guest1CheckedOutBeforeCheckIn = false;
             var guest2Cell = 0;
             await using var motel = new IntMotel(4);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 guest1CheckedIn = true;
@@ -129,7 +129,7 @@ namespace Tests.EditMode.MictoMotel
             var checkedOut = false;
             var disposable = new ExposedDisposable();
             await using var motel = new IntMotel(4);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 checkedIn = true;
@@ -149,7 +149,7 @@ namespace Tests.EditMode.MictoMotel
         {
             var reserveStage = ReserveStage.Waiting;
             await using var motel = new IntMotel(4);
-            var a = motel.isDisposed;
+            var a = motel.isDisposedSync;
             var reservation1 = motel.Reserve(new int[] { 1 }, async (cell, operation) =>
             {
                 await operation.cancellationSignal;

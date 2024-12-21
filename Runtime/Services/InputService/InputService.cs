@@ -167,7 +167,7 @@ namespace Metamatic
             int mask = -1)
             where T : Component
         {
-            return AsyncDisposableOperation.Run(async (operation) =>
+            return PolyDisposableOperation.Run(async (operation) =>
             {
                 var cameraService = await Resolve<CameraService>(operation.cancellationSignal);
                 using var listener = SubscribeToActionTriggered(ctx =>
