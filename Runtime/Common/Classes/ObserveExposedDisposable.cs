@@ -11,6 +11,7 @@ namespace Metamatic
     /// Objects that do not implement IExposedDisposed will be observed every frame until they are disposed.
     /// Try to avoid using not exposed disposables, because it will be observed every frame.
     /// </summary>
+    [Obsolete("Too heavy. Use AbortableProxy instead", false)]
     public class ObserveExposedDisposable: IDisposable, IExposedDisposedSync
     {
         private static ParamLessPool<ObserveExposedDisposable> _Pool = new(10);
@@ -44,15 +45,10 @@ namespace Metamatic
                         Fire();
                         break;
                     }
-                    uniTaskAsyncDisposableAbortable.OnAborted += Fire;
-                    OnDisposedSync += () =>
-                    {
-                        if (!uniTaskAsyncDisposableAbortable.Equals(null))
-                        {
-                            uniTaskAsyncDisposableAbortable.OnAborted -= Fire;
-                        }
-                    };
+
+                    OnDisposedSync += uniTaskAsyncDisposableAbortable.AddAbortedListenerOnce(Fire);
                 }
+                // TODO: Are you sure we need to react to async dispose?
                 if (d is IExposedDisposedAsync exposedAsyncDisposed)
                 {
                     /* If the object supports async disposal, we should fire only on async dispose event, unlike the sync dispose event in IExposedDisposed */

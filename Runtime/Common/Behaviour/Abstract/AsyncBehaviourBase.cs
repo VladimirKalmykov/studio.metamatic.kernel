@@ -7,26 +7,26 @@ namespace Metamatic
 {
     public abstract class AsyncBehaviourBase: MonoBehaviour, IExposedDisposedSync
     {
-        private CancellationSignalSource m_DisableCancellationSignalSource;
-        private CancellationSignalSource m_DestroyCancellationSignalSource;
+        private SignalSource m_DisableCancellationSignalSource;
+        private SignalSource m_DestroyCancellationSignalSource;
         private bool m_IsDisabled;
-        public delegate UniTask RunAsyncHandler(CancellationSignal cancellationToken);
-        internal CancellationSignal componentDisableCancellationToken => m_DisableCancellationSignalSource.Signal;
+        public delegate UniTask RunAsyncHandler(Signal cancellationToken);
+        internal Signal componentDisableCancellationToken => m_DisableCancellationSignalSource.Signal;
         
         private event Action OnValidateEvent;
         private event Action OnDrawGizmosEvent;
         
         protected bool isAboutToDestroy { get; private set; }
         
-        public CancellationSignal componentDestroySignal => m_DestroyCancellationSignalSource.Signal;
+        public Signal componentDestroySignal => m_DestroyCancellationSignalSource.Signal;
 
-        public CancellationSignal componentDisableSignal
+        public Signal componentDisableSignal
         {
             get
             {
                 if (m_IsDisabled)
                 {
-                    return CancellationSignal.Cancelled;
+                    return Signal.Raised;
                 }
 
                 return m_DisableCancellationSignalSource.Signal;
@@ -36,33 +36,33 @@ namespace Metamatic
 
         protected virtual void Awake()
         {
-            m_DestroyCancellationSignalSource = CancellationSignalSource.Create();
+            m_DestroyCancellationSignalSource = SignalSource.Create();
             RunUntilDestroy(m_DestroyCancellationSignalSource.Signal).Forget();
         }
         
         protected virtual void OnEnable()
         {
             m_IsDisabled = false;
-            m_DisableCancellationSignalSource = CancellationSignalSource.Create();
+            m_DisableCancellationSignalSource = SignalSource.Create();
             RunAsync(componentDisableSignal).Forget();
         }
 
         protected virtual void OnDisable()
         {
             m_IsDisabled = true;
-            m_DisableCancellationSignalSource.TryCancel();
+            m_DisableCancellationSignalSource.TryRaise();
             OnDisabled?.Invoke();
         }
 
         protected virtual void OnDestroy()
         {
             isAboutToDestroy = true;
-            m_DestroyCancellationSignalSource.TryCancel();
+            m_DestroyCancellationSignalSource.TryRaise();
             OnDisposedSync?.Invoke();
         }
 
-        protected abstract UniTaskVoid RunAsync(CancellationSignal signal);
-        protected abstract UniTaskVoid RunUntilDestroy(CancellationSignal signal);
+        protected abstract UniTaskVoid RunAsync(Signal signal);
+        protected abstract UniTaskVoid RunUntilDestroy(Signal signal);
         
         /// <summary>
         /// IDisposable object will be disposed on component disable

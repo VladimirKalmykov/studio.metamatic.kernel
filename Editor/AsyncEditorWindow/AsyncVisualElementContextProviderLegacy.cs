@@ -9,7 +9,7 @@ namespace Metamatic.EditorTools
     {
         private readonly Observable<T> m_Context;
         public ObservableReadOnly<T> context => m_Context;
-        public AsyncVisualElementContextProviderLegacy(Observable<T> context, CancellationSignal signal): base(signal)
+        public AsyncVisualElementContextProviderLegacy(Observable<T> context, Signal signal): base(signal)
         {
             m_Context = context;
         }

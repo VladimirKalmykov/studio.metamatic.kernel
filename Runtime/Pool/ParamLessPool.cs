@@ -406,6 +406,10 @@ namespace Metamatic
         {
             var outOfPool = m_ObjectsInPool.Count == 0 || forceCreate ? CreateInstance() : m_ObjectsInPool.Dequeue();
             m_OutOfPool.Add(outOfPool);
+            if (outOfPool is IInitializable initializable)
+            {
+                initializable.Initialize();
+            }
             return outOfPool;
         }
 

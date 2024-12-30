@@ -5,7 +5,7 @@ namespace Metamatic
 {
     public struct UniTaskEventLoop: IEventLoop<PlayerLoopTiming>
     {
-        public UniTask WaitUntil(PlayerLoopTiming eventType, Func<bool> action, CancellationSignal cancellationSignal)
+        public UniTask WaitUntil(PlayerLoopTiming eventType, Func<bool> action, Signal cancellationSignal)
         {
             bool CancellationValidation()
             {
@@ -19,7 +19,7 @@ namespace Metamatic
             return UniTask.WaitUntil(CancellationValidation);
         }
 
-        public UniTask WaitWhile(PlayerLoopTiming eventType, Func<bool> action, CancellationSignal cancellationSignal)
+        public UniTask WaitWhile(PlayerLoopTiming eventType, Func<bool> action, Signal cancellationSignal)
         {
             bool CancellationValidation()
             {
@@ -40,12 +40,12 @@ namespace Metamatic
             return new Loop.YieldAwaitable(UniTask.Yield().GetAwaiter());
         }
 
-        public UniTask Delay(PlayerLoopTiming eventType, float seconds, CancellationSignal cancellationSignal = default)
+        public UniTask Delay(PlayerLoopTiming eventType, float seconds, Signal cancellationSignal = default)
         {
             return UniTask.Delay(TimeSpan.FromSeconds(seconds), false, PlayerLoopTiming.Update, cancellationSignal);
         }
 
-        public UniTask Delay(PlayerLoopTiming eventType, TimeSpan timeSpan, CancellationSignal cancellationSignal = default)
+        public UniTask Delay(PlayerLoopTiming eventType, TimeSpan timeSpan, Signal cancellationSignal = default)
         {
             return UniTask.Delay(timeSpan, false, PlayerLoopTiming.Update, cancellationSignal);
         }

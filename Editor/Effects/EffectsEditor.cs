@@ -41,7 +41,7 @@ namespace Metamatic.CustomEditors
             return root;
         }
 
-        protected override UniTask OnEnableAsync(CancellationSignal cancellationSignal)
+        protected override UniTask OnEnableAsync(Signal cancellationSignal)
         {
             return UniTask.CompletedTask;
         }

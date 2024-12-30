@@ -282,7 +282,7 @@ namespace Metamatic
         }
 
         public static async UniTask EachFrame(Action<float> action, float duration, PlayerLoopTiming timing = PlayerLoopTiming.Update,
-            CancellationSignal signal = default)
+            Signal signal = default)
         {
             if (duration <= 0f)
             {
@@ -296,7 +296,7 @@ namespace Metamatic
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
                 return progress == 1f || signal.IsCancellationRequested;
             }, timing);
-            signal.ThrowIfCancellationRequested();
+            signal.ThrowIfRaised();
         }
         
         public static DisposableAction EachFrame(Action action, PlayerLoopTiming timing = PlayerLoopTiming.Update)
@@ -336,25 +336,37 @@ namespace Metamatic
             return new DisposableAction(() => isActive = false);
         }
         
+        /// <summary>
+        /// Similar to UniTask.WaitUntil but with signal support.
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <param name="timing"></param>
+        /// <param name="signal"></param>
         public static async UniTask EachFrameUntil(Func<bool> predicate, PlayerLoopTiming timing = PlayerLoopTiming.Update,
-            CancellationSignal signal = default)
+            Signal signal = default)
         {
             await UniTask.WaitUntil(() => signal.IsCancellationRequested || predicate(), timing);
-            signal.ThrowIfCancellationRequested();
+            signal.ThrowIfRaised();
         }
         
-        public static async UniTask Delay(float seconds, PlayerLoopTiming timing = PlayerLoopTiming.Update, CancellationSignal signal = default)
+        /// <summary>
+        /// Similar to UniTask.Delay but with signal support.
+        /// </summary>
+        /// <param name="seconds"></param>
+        /// <param name="timing"></param>
+        /// <param name="signal"></param>
+        public static async UniTask Delay(float seconds, PlayerLoopTiming timing = PlayerLoopTiming.Update, Signal signal = default)
         {
             var startTime = Time.time;
             await UniTask.WaitWhile(() => !signal.IsCancellationRequested && Time.time - startTime < seconds, timing);
-            signal.ThrowIfCancellationRequested();
+            signal.ThrowIfRaised();
         }
         
-        public static async UniTask Delay(TimeSpan timeSpan, PlayerLoopTiming timing = PlayerLoopTiming.Update, CancellationSignal signal = default)
+        public static async UniTask Delay(TimeSpan timeSpan, PlayerLoopTiming timing = PlayerLoopTiming.Update, Signal signal = default)
         {
             var startTime = Time.time;
             await UniTask.WaitWhile(() => !signal.IsCancellationRequested && Time.time - startTime < timeSpan.TotalSeconds, timing);
-            signal.ThrowIfCancellationRequested();
+            signal.ThrowIfRaised();
         }
     }
 }

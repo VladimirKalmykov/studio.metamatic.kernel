@@ -57,7 +57,7 @@ namespace Metamatic.UIToolKit
             Remove(item);
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             using var itemWithMaxWidthWatcher = m_CurrentItemWithMaxLabelWidth.WatchAsync(OnItemWithMaxWidthChanged);
             RegisterCallback<GeometryChangedEvent>(OnGeometryChange);
@@ -65,7 +65,7 @@ namespace Metamatic.UIToolKit
             UnregisterCallback<GeometryChangedEvent>(OnGeometryChange);
         }
         
-        private async UniTaskVoid OnItemWithMaxWidthChanged(Item item, CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnItemWithMaxWidthChanged(Item item, Signal cancellationSignal)
         {
             if (item == null)
             {

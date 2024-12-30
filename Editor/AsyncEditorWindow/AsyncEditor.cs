@@ -8,17 +8,17 @@ namespace Metamatic.EditorTools
 {
     public abstract class AsyncEditor: Editor
     {
-        private CancellationSignalSource m_EnableCancellationSignalSource;
+        private SignalSource m_EnableCancellationSignalSource;
         private Observable<bool> m_InspectorGUIIsCreated = new(false);
         protected void OnEnable()
         {
-            m_EnableCancellationSignalSource = CancellationSignalSource.Create();
+            m_EnableCancellationSignalSource = SignalSource.Create();
             RunEnableAsync().Forget();
         }
 
         protected void OnDisable()
         {
-            m_EnableCancellationSignalSource.TryCancel();
+            m_EnableCancellationSignalSource.TryRaise();
         }
         
         protected UniTask WhenInspectorGUIIsCreated()
@@ -50,6 +50,6 @@ namespace Metamatic.EditorTools
         }
         
         protected abstract VisualElement CreateInspectorGUIAsync();
-        protected abstract UniTask OnEnableAsync(CancellationSignal cancellationSignal);
+        protected abstract UniTask OnEnableAsync(Signal cancellationSignal);
     }
 }

@@ -36,13 +36,13 @@ namespace Metamatic
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask WaitUntil(T eventType, Func<bool> action, CancellationSignal cancellationSignal = default)
+        public UniTask WaitUntil(T eventType, Func<bool> action, Signal cancellationSignal = default)
         {
             return GetLoop(eventType).WaitUntil(action, cancellationSignal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask WaitWhile(T eventType, Func<bool> action, CancellationSignal cancellationSignal = default)
+        public UniTask WaitWhile(T eventType, Func<bool> action, Signal cancellationSignal = default)
         {
             return GetLoop(eventType).WaitWhile(action, cancellationSignal);
         }
@@ -59,12 +59,12 @@ namespace Metamatic
             return GetLoop(eventType).Yield();
         }
 
-        public UniTask Delay(T eventType, float seconds, CancellationSignal cancellationSignal = default)
+        public UniTask Delay(T eventType, float seconds, Signal cancellationSignal = default)
         {
             return GetLoop(eventType).Delay(seconds, cancellationSignal);
         }
         
-        public UniTask Delay(T eventType, TimeSpan timeSpan, CancellationSignal cancellationSignal = default)
+        public UniTask Delay(T eventType, TimeSpan timeSpan, Signal cancellationSignal = default)
         {
             return GetLoop(eventType).Delay(timeSpan, cancellationSignal);
         }

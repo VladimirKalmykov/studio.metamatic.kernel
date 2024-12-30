@@ -60,9 +60,9 @@ namespace Metamatic
             return tsc.Task;
         }
         
-        public static CancellationSignal ToCancellationSignal(this CancellationToken cancellationToken)
+        public static Signal ToCancellationSignal(this CancellationToken cancellationToken)
         {
-            return new CancellationSignal(cancellationToken);
+            return new Signal(cancellationToken);
         }
         
         public static void CancelAndDispose(this CancellationTokenSource cts)

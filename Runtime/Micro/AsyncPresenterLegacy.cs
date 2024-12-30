@@ -8,14 +8,14 @@ namespace Metamatic
     /// It suitable for cases when you need to initialize some resources and then async enable/disable.
     /// E.g. modal window. By call Enable() method, you can initialize modal window, fade in, and by call Disable() method, you can hide it and release resources.
     /// </summary>
-    public abstract class AsyncPresenter: IDisposable, IUniTaskAsyncDisposable
+    public abstract class AsyncPresenterLegacy: IPolyDisposable, IAbortable
     {
         internal SafeUniTaskCompletionSource DisableCompletionSource;
         internal bool IsBeingActivated;
         internal readonly Observable<bool> EnabledObservable = ParamLessPool<Observable<bool>>.GetShared();
         protected bool IsDisposed;
         protected event Action OnDispose;
-        protected CancellationSignalSource EnablingCancellationSignalSource;
+        protected SignalSource EnablingCancellationSignalSource;
         protected Func<Func<UniTask>, UniTask> m_ActivationHook;
         
         public void Enable()
@@ -46,11 +46,7 @@ namespace Metamatic
 
         public virtual void Dispose()
         {
-            if (IsDisposed) return;
-            IsDisposed = true;
-            OnDispose?.Invoke();
-            DisableCompletionSource.TrySetResult();
-            ParamLessPool<Observable<bool>>.ReturnShared(EnabledObservable);
+            Abort();
         }
         
         public async UniTask DisposeAsync()
@@ -64,8 +60,24 @@ namespace Metamatic
                 await DisableCompletionSource.Task;
             }
         }
+
+        public bool isAborted => IsDisposed;
+        public void Abort()
+        {
+            if (IsDisposed) return;
+            IsDisposed = true;
+            OnDispose?.Invoke();
+            DisableCompletionSource.TrySetResult();
+            ParamLessPool<Observable<bool>>.ReturnShared(EnabledObservable);
+        }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            OnDispose += action;
+            return new DisposableAction(() => OnDispose -= action);
+        }
     }
-    public abstract class AsyncPresenter<TProperty>: AsyncPresenter
+    public abstract class AsyncPresenter<TProperty>: AsyncPresenterLegacy
     {
          private TProperty m_Property;
          
@@ -77,7 +89,6 @@ namespace Metamatic
      
          private async UniTask Ready(TProperty property)
          {
-
              try
              {
                  m_Property = property;
@@ -96,14 +107,14 @@ namespace Metamatic
              }
          }
      
-         private async UniTaskVoid AsyncEnablingChanged(bool enabled, CancellationSignal signal)
+         private async UniTaskVoid AsyncEnablingChanged(bool enabled, Signal signal)
          {
              Console.Debug("AsyncPresenter", $"Enabling changed: {enabled}");
              if (enabled)
              {
                  if (!EnablingCancellationSignalSource.CanBeCancelled)
                  {
-                     EnablingCancellationSignalSource = CancellationSignalSource.Create();
+                     EnablingCancellationSignalSource = SignalSource.Create();
                  }
                  
                  WhileEnabled(m_Property, EnablingCancellationSignalSource.Signal).Forget();
@@ -130,7 +141,7 @@ namespace Metamatic
                  }
                  finally
                  {
-                     EnablingCancellationSignalSource.TryCancel();
+                     EnablingCancellationSignalSource.TryRaise();
                  }
              }
          }
@@ -191,10 +202,10 @@ namespace Metamatic
          /// <param name="property"></param>
          /// <param name="cancellationSignal"></param>
          /// <returns></returns>
-         protected abstract UniTaskVoid WhileEnabled(TProperty property, CancellationSignal cancellationSignal);
+         protected abstract UniTaskVoid WhileEnabled(TProperty property, Signal cancellationSignal);
          protected abstract UniTask OnEnable(TProperty property,
-             CancellationSignal cancellationSignal);
+             Signal cancellationSignal);
 
-         protected abstract UniTask OnDisable(TProperty property, CancellationSignal cancellationSignal);
+         protected abstract UniTask OnDisable(TProperty property, Signal cancellationSignal);
     }
 }

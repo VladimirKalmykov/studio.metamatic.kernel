@@ -19,7 +19,7 @@ namespace Metamatic.Framework.CursorTools
             InitAsync();
         }
 
-        protected override async UniTaskVoid OnInitAsync(Func<UniTask> ready, CancellationSignal signal)
+        protected override async UniTaskVoid OnInitAsync(Func<UniTask> ready, Signal signal)
         {
             var cameraService = await Service.Resolve<CameraService>(signal);
             
@@ -34,7 +34,7 @@ namespace Metamatic.Framework.CursorTools
             
         }
 
-        public override async UniTaskVoid OnActivate(DevToolsOverlay overlay, CancellationSignal signal)
+        public override async UniTaskVoid OnActivate(DevToolsOverlay overlay, Signal signal)
         {
             Overlay = overlay;
             /* Create cursor hint and it to the overlay root */

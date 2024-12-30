@@ -21,7 +21,7 @@ namespace Metamatic
                 return new DisposableAction(Unlock);
             }
             
-            public async UniTask<DisposableAction> Lock(CancellationSignal signal) {
+            public async UniTask<DisposableAction> Lock(Signal signal) {
                 await WhenUnlocked(signal);
                 if (signal.IsCancellationRequested)
                 {
@@ -48,7 +48,7 @@ namespace Metamatic
                 return this;
             }
             
-            public UniTask WhenUnlocked(CancellationSignal cancellationSignal = default)
+            public UniTask WhenUnlocked(Signal cancellationSignal = default)
             {
                 if (_isDisposed) return UniTask.CompletedTask;
                 

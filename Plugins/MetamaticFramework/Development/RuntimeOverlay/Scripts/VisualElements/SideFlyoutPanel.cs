@@ -29,7 +29,7 @@ namespace Metamatic.Framework
             hierarchy.Add(m_Content);
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             using var watchPosition = m_Position.Watch(OnPositionChanged);
             using var watchOpened = m_IsOpened.Watch(OnOpenedChanged);

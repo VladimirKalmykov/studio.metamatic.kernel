@@ -10,7 +10,7 @@ namespace Metamatic.Framework.Workshop
     /// </summary>
     public class HealthService: Service
     {
-        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
+        protected override async UniTask RunService(Ready ready, Signal signal)
         {
             await ready();
         }

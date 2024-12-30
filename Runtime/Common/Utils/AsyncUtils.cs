@@ -111,7 +111,7 @@ namespace Metamatic
             }, timing, cancellationToken);
         }
         
-        public static UniTask PlayerLoopActionSignal(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, CancellationSignal cancellationSignal = default)
+        public static UniTask PlayerLoopActionSignal(Action<float> callback, PlayerLoopTiming timing = PlayerLoopTiming.Update, float duration = 0f, Signal cancellationSignal = default)
         {
             var startTime = Time.time;
             callback(0f);
@@ -379,16 +379,16 @@ namespace Metamatic
             }
         }
         
-        public static async UniTask RunOnThreadPool(Action action, bool configureAwait = true, CancellationSignal cancellationSignal = default)
+        public static async UniTask RunOnThreadPool(Action action, bool configureAwait = true, Signal cancellationSignal = default)
         {
-            cancellationSignal.ThrowIfCancellationRequested();
+            cancellationSignal.ThrowIfRaised();
 
             await UniTask.SwitchToThreadPool();
             if (configureAwait)
             {
                 try
                 {
-                    cancellationSignal.ThrowIfCancellationRequested();
+                    cancellationSignal.ThrowIfRaised();
                     action();
                 }
                 finally
@@ -398,11 +398,11 @@ namespace Metamatic
             }
             else
             {
-                cancellationSignal.ThrowIfCancellationRequested();
+                cancellationSignal.ThrowIfRaised();
                 action();
             }
 
-            cancellationSignal.ThrowIfCancellationRequested();
+            cancellationSignal.ThrowIfRaised();
         }
     }
 }

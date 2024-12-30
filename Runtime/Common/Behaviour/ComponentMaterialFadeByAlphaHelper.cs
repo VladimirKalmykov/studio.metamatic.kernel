@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Metamatic
 {
     [RequireComponent(typeof(SharedMaterialPropertyBlock))]
-    public class MaterialFadeInOutByAlpha: MonoBehaviour
+    public class ComponentMaterialFadeByAlphaHelper: MonoBehaviour
     {
         private SharedMaterialPropertyBlock m_SharedMaterialPropertyBlock;
         private static readonly int Alpha = Shader.PropertyToID("_Alpha");

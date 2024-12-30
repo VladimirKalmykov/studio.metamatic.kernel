@@ -74,7 +74,7 @@ namespace Metamatic
             return new VersionControlStorageDriver(repository, storage);
         }
         
-        public async UniTask<(T data, StorageLegacy.Metadata metadata, long version)> Sync<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationSignal signal)
+        public async UniTask<(T data, StorageLegacy.Metadata metadata, long version)> Sync<T>(string address, Store<T>.GetDefaultValue getDefaultValue, Signal signal)
         {
             /* Get StorageSynchronizer.UseStrategy attribute */
             var strategy = UseStrategyAttribute.GetStrategy<T>();

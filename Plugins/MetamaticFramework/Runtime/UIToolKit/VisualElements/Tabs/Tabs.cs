@@ -72,7 +72,7 @@ namespace Metamatic.UIToolKit
             return tab;
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             using var watchActiveTab = ActiveTab.Watch(OnActiveTabChanged);
             await detachSignal;

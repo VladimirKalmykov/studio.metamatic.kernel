@@ -53,7 +53,7 @@ namespace Metamatic.EditorTools
             }
         }
 
-        private CancellationSignal m_CancellationSignal;
+        private Signal m_CancellationSignal;
 
         private UniTask ReadyAsync()
         {
@@ -62,7 +62,7 @@ namespace Metamatic.EditorTools
             return m_CancellationSignal.CanBeCanceled ? m_CancellationSignal.ToUniTask() : UniTask.CompletedTask;
         }
         
-        public AsyncVisualElementLegacy(CancellationSignal signal): base()
+        public AsyncVisualElementLegacy(Signal signal): base()
         {
             m_CancellationSignal = signal;
             InternalInitializeAsync().Forget();
@@ -88,6 +88,6 @@ namespace Metamatic.EditorTools
             }
         }
         
-        protected abstract UniTask InitializeAsync(Func<UniTask> ready, CancellationSignal signal);
+        protected abstract UniTask InitializeAsync(Func<UniTask> ready, Signal signal);
     }
 }

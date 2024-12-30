@@ -298,7 +298,7 @@ namespace Metamatic.Framework
             }
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             if (m_ValueGetter != null)
             {

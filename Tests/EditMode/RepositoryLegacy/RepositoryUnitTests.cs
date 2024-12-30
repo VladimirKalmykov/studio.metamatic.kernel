@@ -54,7 +54,7 @@ namespace Tests.EditMode
                 a = 1,
                 b = "Hello",
             }, 1, default);
-            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, CancellationSignal.None);
+            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, Signal.None);
             /* Validate best data */
             Assert.AreEqual(1, bestData.data.a);
             Assert.AreEqual("Hello", bestData.data.b);
@@ -89,7 +89,7 @@ namespace Tests.EditMode
                 b = "Hello 2",
             }, 4, default);
             
-            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, CancellationSignal.None);
+            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, Signal.None);
             /* Validate best data */
             Assert.AreEqual(17, bestData.data.a);
             Assert.AreEqual("Hello 2", bestData.data.b);
@@ -124,7 +124,7 @@ namespace Tests.EditMode
                 b = "Hello 1",
             }, 3, default);
             
-            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, CancellationSignal.None);
+            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, Signal.None);
             /* Validate best data */
             Assert.AreEqual(16, bestData.data.a);
             Assert.AreEqual("Hello 1", bestData.data.b);
@@ -168,7 +168,7 @@ namespace Tests.EditMode
                 b = "Hello 3",
             }, 2, default);
             
-            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, CancellationSignal.None);
+            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, Signal.None);
             /* Validate best data */
             Assert.AreEqual(17, bestData.data.a);
             Assert.AreEqual("Hello 2", bestData.data.b);
@@ -202,7 +202,7 @@ namespace Tests.EditMode
         
             var exception = Assert.ThrowsAsync<StorageLegacy.UnreachableException>(async () =>
             {
-                await repository.synchronizer.Sync("key", GetDefaultTestData, CancellationSignal.None);
+                await repository.synchronizer.Sync("key", GetDefaultTestData, Signal.None);
             });
             Assert.AreEqual("Every driver returned error", exception.Message);
             return UniTask.CompletedTask;
@@ -217,7 +217,7 @@ namespace Tests.EditMode
             repository.AddStorage(storageA);
             repository.AddStorage(storageB);
         
-            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, CancellationSignal.None);
+            var bestData = await repository.synchronizer.Sync<TestData>("key", GetDefaultTestData, Signal.None);
             /* Validate best data */
             Assert.AreEqual(30021, bestData.data.a);
             Assert.AreEqual("Default", bestData.data.b);
@@ -322,7 +322,7 @@ namespace Tests.EditMode
             Assert.AreEqual(true, mockStorage.enabled, "Storage must be enabled again");
         });
         
-        private UniTask<TestData> GetDefaultTestData(string address, Metamatic.CancellationSignal signal)
+        private UniTask<TestData> GetDefaultTestData(string address, Metamatic.Signal signal)
         {
             var data = new TestData
             {

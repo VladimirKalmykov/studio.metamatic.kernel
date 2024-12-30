@@ -9,7 +9,7 @@ namespace Metamatic.Framework.Workshop
         [SerializeField] private ScriptableBlueprint[] m_Blueprints;
         
         private Dictionary<string, IObjectBlueprint> m_BlueprintMap = new ();
-        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
+        protected override async UniTask RunService(Ready ready, Signal signal)
         {
             foreach (var blueprint in m_Blueprints)
             {
@@ -24,7 +24,7 @@ namespace Metamatic.Framework.Workshop
             await ready();
         }
         
-        public static async UniTask<(T, IObjectBlueprint)> Spawn<T>(IObjectBlueprint<T> blueprint, Vector3 position = default, Quaternion rotation = default, CancellationSignal cancellationSignal = default) where T: Behaviour
+        public static async UniTask<(T, IObjectBlueprint)> Spawn<T>(IObjectBlueprint<T> blueprint, Vector3 position = default, Quaternion rotation = default, Signal cancellationSignal = default) where T: Behaviour
         {
             var instance = await blueprint.ProduceObject(cancellationSignal: cancellationSignal);
             var origin = instance.gameObject.TryAddComponent<BlueprintOrigin>();

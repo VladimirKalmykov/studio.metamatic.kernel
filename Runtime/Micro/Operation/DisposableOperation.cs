@@ -6,7 +6,7 @@ namespace Metamatic
 {
     public readonly struct DisposableOperation: IDisposable
     {
-        public static DisposableOperation Create(Func<CancellationSignal, UniTask> operationAction)
+        public static DisposableOperation Create(Func<Signal, UniTask> operationAction)
         {
             var instance = DisposableOperationImpl.Get(operationAction);
             return new DisposableOperation(instance);
@@ -32,7 +32,7 @@ namespace Metamatic
 
     public class DisposableOperationImpl: IResettable, IDisposable
     {
-        public static DisposableOperationImpl Get(Func<CancellationSignal, UniTask> operationAction)
+        public static DisposableOperationImpl Get(Func<Signal, UniTask> operationAction)
         {
             var instance = ParamLessPool<DisposableOperationImpl>.GetShared();
             instance.Init(operationAction, () =>
@@ -43,12 +43,12 @@ namespace Metamatic
         }
 
         public int version { get; private set; }
-        private CancellationSignalSource m_CancellationSignalSource;
+        private SignalSource m_CancellationSignalSource;
         private Action m_OnReturn;
-        private async UniTaskVoid Init(Func<CancellationSignal, UniTask> operationAction, Action onReturn)
+        private async UniTaskVoid Init(Func<Signal, UniTask> operationAction, Action onReturn)
         {
             m_OnReturn = onReturn;
-            m_CancellationSignalSource = CancellationSignalSource.Create();
+            m_CancellationSignalSource = SignalSource.Create();
             try
             {
                 await operationAction(m_CancellationSignalSource.Signal);
@@ -81,7 +81,7 @@ namespace Metamatic
                 version++;
             }
             m_OnReturn = null;
-            m_CancellationSignalSource.TryCancel();
+            m_CancellationSignalSource.TryRaise();
         }
 
         /// <summary>

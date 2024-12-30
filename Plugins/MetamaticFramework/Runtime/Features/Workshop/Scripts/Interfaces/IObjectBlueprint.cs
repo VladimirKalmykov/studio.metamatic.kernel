@@ -13,12 +13,12 @@ namespace Metamatic.Framework.Workshop
     public interface IObjectBlueprint<T>: IObjectBlueprint
     where T: Component
     {
-        public UniTask<T> GetPrefab(CancellationSignal cancellationSignal = default);
+        public UniTask<T> GetPrefab(Signal cancellationSignal = default);
         /// <summary>
         /// Produces an object from the blueprint.
         /// </summary>
         /// <returns></returns>
-        public UniTask<T> ProduceObject(Vector3 position = default, Quaternion rotation = default, CancellationSignal cancellationSignal = default);
+        public UniTask<T> ProduceObject(Vector3 position = default, Quaternion rotation = default, Signal cancellationSignal = default);
         /// <summary>
         /// Returns the object to the blueprint (e.g. for pooling).
         /// </summary>
@@ -28,11 +28,11 @@ namespace Metamatic.Framework.Workshop
         /// Gets the display name of the object.
         /// </summary>
         /// <returns></returns>
-        public UniTask<string> GetDisplayName(CancellationSignal cancellationSignal = default);
+        public UniTask<string> GetDisplayName(Signal cancellationSignal = default);
         /// <summary>
         /// Get the preview of the object.
         /// </summary>
         /// <returns></returns>
-        public UniTask<Texture2D> GetPreview(CancellationSignal cancellationSignal = default);
+        public UniTask<Texture2D> GetPreview(Signal cancellationSignal = default);
     }
 }

@@ -29,13 +29,13 @@ namespace Metamatic.Framework.Workshop
             OnEntityResetEvent?.Invoke();
         }
         
-        protected override async UniTask Run(Ready ready, CancellationSignal signal)
+        protected override async UniTask Run(Ready ready, Signal signal)
         {
             using var announce = Dispatcher.global.Announce(this, false);
             await OnEntityRun(ready, signal);
         }
 
-        protected abstract UniTask OnEntityRun(Ready ready, CancellationSignal signal);
+        protected abstract UniTask OnEntityRun(Ready ready, Signal signal);
         
         public void RegisterComponent(EntityComponent component)
         {

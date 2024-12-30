@@ -45,7 +45,7 @@ namespace Metamatic.Framework
         #endregion
         
         public Vector2 ScreenPosition;
-        public abstract UniTaskVoid OnActivate(DevToolsOverlay overlay, CancellationSignal signal);
+        public abstract UniTaskVoid OnActivate(DevToolsOverlay overlay, Signal signal);
 
         public abstract void OnPress(Vector2 screenPosition, InputModifiers modifiers);
 
@@ -71,14 +71,14 @@ namespace Metamatic.Framework
     
     public abstract class AsyncCursorTool: CursorTool
     {
-        private CancellationSignalSource m_DisposeSignalSource = CancellationSignalSource.Create();
+        private SignalSource m_DisposeSignalSource = SignalSource.Create();
         private bool m_IsReady;
         private event Action m_ReadyEvent;
         protected AsyncCursorTool()
         {
             OnDisposedSync += () =>
             {
-                m_DisposeSignalSource.TryCancel();
+                m_DisposeSignalSource.TryRaise();
             };
         }
 
@@ -88,9 +88,9 @@ namespace Metamatic.Framework
             OnInitAsync(Ready, m_DisposeSignalSource.Signal).Forget();
         }
         
-        protected abstract UniTaskVoid OnInitAsync(Func<UniTask> ready, CancellationSignal signal);
+        protected abstract UniTaskVoid OnInitAsync(Func<UniTask> ready, Signal signal);
 
-        public UniTask WhenReady(CancellationSignal signal)
+        public UniTask WhenReady(Signal signal)
         {
             if (m_IsReady)
             {

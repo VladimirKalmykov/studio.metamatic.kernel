@@ -7,18 +7,18 @@ namespace Metamatic
 {
     public abstract class SequentialHandlerBase: IDisposable
     {
-        protected CancellationSignal externCancellationToken;
-        protected CancellationSignalSource internalCancellationTokenSource;
+        protected Signal externCancellationToken;
+        protected SignalSource internalCancellationTokenSource;
         public bool disposed { get; private set; }
         protected void ResetInternalCancellationSignal()
         {
-            internalCancellationTokenSource.TryCancel();
-            internalCancellationTokenSource = CancellationSignalSource.CreateLinked(externCancellationToken);
+            internalCancellationTokenSource.TryRaise();
+            internalCancellationTokenSource = SignalSource.CreateLinked(externCancellationToken);
         }
         public void Dispose()
         {
             disposed = true;
-            internalCancellationTokenSource.TryCancel();
+            internalCancellationTokenSource.TryRaise();
             EraseProps();
         }
 
@@ -36,11 +36,11 @@ namespace Metamatic
                 subscriptionDisposable.Dispose();
             });
         }
-        public delegate void Handler(CancellationSignal signal);
+        public delegate void Handler(Signal signal);
 
         private Handler m_Handler;
     
-        public SequentialHandler(Handler handler, CancellationSignal externalCancellationToken = default)
+        public SequentialHandler(Handler handler, Signal externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
@@ -70,7 +70,7 @@ namespace Metamatic
                 subscriptionDisposable.Dispose();
             });
         }
-        public static DisposableAction Subscribe(Func<Action<T>, DisposableAction> subscribe, Func<T, CancellationSignal, UniTaskVoid> asyncHandler)
+        public static DisposableAction Subscribe(Func<Action<T>, DisposableAction> subscribe, Func<T, Signal, UniTaskVoid> asyncHandler)
         {
             var handlerDisposable = new SequentialHandler<T>(asyncHandler);
             var subscriptionDisposable = subscribe(handlerDisposable.Handle);
@@ -80,7 +80,7 @@ namespace Metamatic
                 subscriptionDisposable.Dispose();
             });
         }
-        public static DisposableAction WatchAsync(Func<Action<T>, DisposableAction> subscribe, Func<T, CancellationSignal, UniTaskVoid> asyncHandler)
+        public static DisposableAction WatchAsync(Func<Action<T>, DisposableAction> subscribe, Func<T, Signal, UniTaskVoid> asyncHandler)
         {
             var handlerDisposable = new SequentialHandler<T>(asyncHandler);
             var subscriptionDisposable = subscribe(handlerDisposable.Handle);
@@ -90,20 +90,20 @@ namespace Metamatic
                 subscriptionDisposable.Dispose();
             });
         }
-        public delegate void Handler(T value, CancellationSignal token);
+        public delegate void Handler(T value, Signal token);
 
         private Handler m_Handler;
-        private Func<T, CancellationSignal, UniTaskVoid> m_AsyncHandler;
+        private Func<T, Signal, UniTaskVoid> m_AsyncHandler;
         // ReSharper disable once InconsistentNaming
         public Action<T> Handle { get; private set; }
     
-        public SequentialHandler(Handler handler, CancellationSignal externalCancellationToken = default)
+        public SequentialHandler(Handler handler, Signal externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
             Handle = SyncHandle;
         }
-        public SequentialHandler(Func<T, CancellationSignal, UniTaskVoid> handler, CancellationSignal externalCancellationToken = default)
+        public SequentialHandler(Func<T, Signal, UniTaskVoid> handler, Signal externalCancellationToken = default)
         {
             m_AsyncHandler = handler;
             externCancellationToken = externalCancellationToken;
@@ -140,11 +140,11 @@ namespace Metamatic
                 subscriptionDisposable.Dispose();
             });
         }
-        public delegate void Handler(T1 value1, T2 value2, CancellationSignal token);
+        public delegate void Handler(T1 value1, T2 value2, Signal token);
 
         private Handler m_Handler;
     
-        public SequentialHandler(Handler handler, CancellationSignal externalCancellationToken = default)
+        public SequentialHandler(Handler handler, Signal externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
@@ -164,11 +164,11 @@ namespace Metamatic
     
     public class SequentialHandlerRef<T>: SequentialHandlerBase
     {
-        public delegate void Handler(ref T value, CancellationSignal token);
+        public delegate void Handler(ref T value, Signal token);
 
         private Handler m_Handler;
     
-        public SequentialHandlerRef(Handler handler, CancellationSignal externalCancellationToken = default)
+        public SequentialHandlerRef(Handler handler, Signal externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;
@@ -188,13 +188,13 @@ namespace Metamatic
     
     public class UniqueSequentialHandler<T>: SequentialHandlerBase
     {
-        public delegate void Handler(T value, CancellationSignal token);
+        public delegate void Handler(T value, Signal token);
 
         private Handler m_Handler;
         private bool m_MemoizedValueSet;
         private T m_MemoizedValue;
     
-        public UniqueSequentialHandler(Handler handler, CancellationSignal externalCancellationToken = default)
+        public UniqueSequentialHandler(Handler handler, Signal externalCancellationToken = default)
         {
             m_Handler = handler;
             externCancellationToken = externalCancellationToken;

@@ -4,9 +4,10 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete("Use AutoOffSwitch instead")]
     public struct AsyncDebounceSwitcher: IDisposable
     {
-        public static AsyncDebounceSwitcher Get(float delay, Func<bool, CancellationSignal, UniTaskVoid> onChange)
+        public static AsyncDebounceSwitcher Create(float delay, Func<bool, Signal, UniTaskVoid> onChange)
         {
             var instance = ParamLessPool<AsyncDebounceSwitcherInternal>.GetShared();
             instance.Initialize(delay, onChange);
@@ -40,7 +41,7 @@ namespace Metamatic
     public class AsyncDebounceSwitcherInternal: IDisposable, IResettable
     {
         private float m_Delay;
-        private Func<bool, CancellationSignal, UniTaskVoid> m_OnChange;
+        private Func<bool, Signal, UniTaskVoid> m_OnChange;
         private float m_NextTimeOff = 0f;
         private bool m_IsTimerOn = false;
         private bool m_Initialized = false;
@@ -49,18 +50,18 @@ namespace Metamatic
         /// </summary>
         private bool m_IsReset = false;
 
-        private CancellationSignalSource m_SwitchCancellationSignalSource = default;
+        private SignalSource m_SwitchCancellationSignalSource = default;
         
         public AsyncDebounceSwitcherInternal()
         {
         }
         
-        public AsyncDebounceSwitcherInternal(float delay, Func<bool, CancellationSignal, UniTaskVoid> onChange)
+        public AsyncDebounceSwitcherInternal(float delay, Func<bool, Signal, UniTaskVoid> onChange)
         {
             Initialize(delay, onChange);
         }
 
-        public void Initialize(float delay, Func<bool, CancellationSignal, UniTaskVoid> onChange)
+        public void Initialize(float delay, Func<bool, Signal, UniTaskVoid> onChange)
         {
             m_IsReset = false;
             m_Delay = delay;
@@ -76,8 +77,8 @@ namespace Metamatic
                 Console.Error("DebounceSwitcher", "Not initialized");
             }
             #endif
-            m_SwitchCancellationSignalSource.TryCancel();
-            m_SwitchCancellationSignalSource = CancellationSignalSource.Create();
+            m_SwitchCancellationSignalSource.TryRaise();
+            m_SwitchCancellationSignalSource = SignalSource.Create();
             m_OnChange(true, m_SwitchCancellationSignalSource.Signal).Forget();
             m_NextTimeOff = Time.time + m_Delay;
             if (!m_IsTimerOn)
@@ -93,8 +94,8 @@ namespace Metamatic
                 m_IsTimerOn = true;
                 await UniTask.WaitWhile(() =>
                     Time.time < m_NextTimeOff && !m_IsReset);
-                m_SwitchCancellationSignalSource.TryCancel();
-                m_SwitchCancellationSignalSource = CancellationSignalSource.Create();
+                m_SwitchCancellationSignalSource.TryRaise();
+                m_SwitchCancellationSignalSource = SignalSource.Create();
                 m_OnChange(false, m_SwitchCancellationSignalSource.Signal).Forget();
             }
             finally
@@ -110,7 +111,7 @@ namespace Metamatic
 
         public void Reset()
         {
-            m_SwitchCancellationSignalSource.TryCancel();
+            m_SwitchCancellationSignalSource.TryRaise();
             m_IsReset = true;
             m_Delay = default;
             m_OnChange = default;

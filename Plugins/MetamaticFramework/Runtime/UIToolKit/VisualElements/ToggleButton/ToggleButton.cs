@@ -40,7 +40,7 @@ namespace Metamatic.UIToolKit
             hierarchy.Add(choiceElement);
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             using var watchSelectedValue = m_Value.Watch(InternalOnValueChanged);
             await detachSignal;

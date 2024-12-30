@@ -115,7 +115,7 @@ namespace Metamatic.Framework
             MouseLeaveEvent?.Invoke();
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             /* Listen for mouse enter and leave events */
             RegisterCallback<MouseEnterEvent>(OnMouseEnter);

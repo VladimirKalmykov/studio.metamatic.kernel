@@ -29,7 +29,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="signal"></param>
         /// <returns></returns>
-        public UniTask<DisposableAction> Lock(CancellationSignal signal)
+        public UniTask<DisposableAction> Lock(Signal signal)
         {
             return m_Lock.Lock(signal);
         }

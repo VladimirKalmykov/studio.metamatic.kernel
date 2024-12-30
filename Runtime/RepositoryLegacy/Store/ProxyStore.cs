@@ -29,7 +29,7 @@ namespace Metamatic
         public long version => store.version;
         public bool isDirty => store.isDirty;
 
-        public UniTask WhenSynchronized(CancellationSignal signal)
+        public UniTask WhenSynchronized(Signal signal)
         {
             return store.WhenSynchronized(signal);
         }
@@ -51,7 +51,7 @@ namespace Metamatic
             store.Set(value);
         }
 
-        public UniTask<T> GetPristineValue(CancellationSignal signal)
+        public UniTask<T> GetPristineValue(Signal signal)
         {
             return store.GetPristineValue(signal);
         }
@@ -103,31 +103,31 @@ namespace Metamatic
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Commit(CancellationSignal signal)
+        public UniTask Commit(Signal signal)
         {
             return store.Commit(signal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Sync(CancellationSignal signal)
+        public UniTask Sync(Signal signal)
         {
             return store.Sync(signal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Reset(bool populate, CancellationSignal cancellationSignal)
+        public UniTask Reset(bool populate, Signal cancellationSignal)
         {
             return store.Reset(populate, cancellationSignal);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask Reset(CancellationSignal cancellationSignal)
+        public UniTask Reset(Signal cancellationSignal)
         {
             return store.Reset(cancellationSignal);
         }
     
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniTask<IDisposable> Lock(CancellationSignal signal)
+        public UniTask<IDisposable> Lock(Signal signal)
         {
             return store.Lock(signal);
         }

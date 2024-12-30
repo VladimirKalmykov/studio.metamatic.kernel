@@ -16,6 +16,6 @@ namespace Metamatic
 
     public interface IAsyncSpell: ISpell
     {
-        public UniTask OnCast(GameObject spellCaster, GameObject target, CancellationSignal signal);
+        public UniTask OnCast(GameObject spellCaster, GameObject target, Signal signal);
     }
 }

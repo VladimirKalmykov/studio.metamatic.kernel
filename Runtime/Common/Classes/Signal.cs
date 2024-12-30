@@ -18,17 +18,31 @@ namespace Metamatic
     /// <remarks>
     /// // TODO: Consider to rename to Signal and SignalSource instead of CancellationSignal and CancellationSignalSource
     /// </remarks>
-    public readonly struct CancellationSignal
+    public readonly struct Signal
     {
-        public static readonly CancellationSignal Cancelled = new (true);
-        public static readonly CancellationSignal None = new (false);
+        /// <summary>
+        /// Returns already raised signal
+        /// </summary>
+        public static readonly Signal Raised = new (true);
+        /// <summary>
+        /// Return signal that is never cancelled
+        /// </summary>
+        public static readonly Signal None = new (false);
         
         private readonly InternalCancellationSignalSource m_Source;
         private readonly CancellationToken m_CancellationToken;
         // ReSharper disable once MemberCanBePrivate.Global
         public readonly int Version;
+        /// <summary>
+        /// Backward compatibility with CancellationToken interface (use can use it in a usual way)
+        /// </summary>
         // ReSharper disable once InconsistentNaming
-        public bool IsCancellationRequested
+        public bool IsCancellationRequested => isRaised;
+        
+        /// <summary>
+        /// Determines if the signal is triggered. It is the same as IsCancellationRequested, but it is more readable and semantically correct for Signal.
+        /// </summary>
+        public bool isRaised
         {
             get {
                 if (Version == -2) return m_CancellationToken.IsCancellationRequested;
@@ -43,19 +57,19 @@ namespace Metamatic
         }
         // ReSharper disable once InconsistentNaming
         public bool CanBeCanceled => m_Source != null;
-        public CancellationSignal(InternalCancellationSignalSource source = null)
+        public Signal(InternalCancellationSignalSource source = null)
         {
             m_Source = source;
             Version = source?.Version ?? 0;
         }
         
-        public CancellationSignal(bool cancelled)
+        public Signal(bool cancelled)
         {
             m_Source = null;
             Version = cancelled ? -1 : 0;
         }
         
-        public CancellationSignal(CancellationToken token)
+        public Signal(CancellationToken token)
         {
             m_Source = null;
             m_CancellationToken = token;
@@ -136,7 +150,12 @@ namespace Metamatic
             return GetSource()?.ToUniTask().GetAwaiter() ?? UniTask.CompletedTask.GetAwaiter();
         }
         
-        public UniTask ToUniTask(bool cancelOnCancellationRequest = false)
+        /// <summary>
+        /// Convert signal to UniTask. If cancelOnRaised is true, the task will be cancelled when the signal is raised.
+        /// </summary>
+        /// <param name="cancelOnRaised"></param>
+        /// <returns></returns>
+        public UniTask ToUniTask(bool cancelOnRaised = false)
         {
             if (Version == -1)
             {
@@ -160,10 +179,10 @@ namespace Metamatic
                 return UniTask.CompletedTask;
             }
             
-            return GetSource()?.ToUniTask(cancelOnCancellationRequest) ?? UniTask.CompletedTask;
+            return GetSource()?.ToUniTask(cancelOnRaised) ?? UniTask.CompletedTask;
         }
         
-        public void ThrowIfCancellationRequested()
+        public void ThrowIfRaised()
         {
             if (IsCancellationRequested)
             {
@@ -181,7 +200,7 @@ namespace Metamatic
         }
         
         /* Make it convertable to CancellationToken */
-        public static implicit operator CancellationToken(CancellationSignal signal)
+        public static implicit operator CancellationToken(Signal signal)
         {
             if (signal.Version == -2)
             {
@@ -202,7 +221,7 @@ namespace Metamatic
         }
     }
 
-    public readonly struct CancellationSignalSource: IDisposable
+    public readonly struct SignalSource: IDisposable
     {
 #if DEBUG
         public static Dictionary<string, InternalCancellationSignalSource> DebugSources = new();
@@ -213,7 +232,7 @@ namespace Metamatic
             return icss;
         }
         
-        public static CancellationSignalSource Create(
+        public static SignalSource Create(
             #if DEBUG
             string debugId = null
             #endif
@@ -230,10 +249,10 @@ namespace Metamatic
                 DebugSources.Remove(icss.DebugId);
             };
 #endif
-            return new CancellationSignalSource(icss);
+            return new SignalSource(icss);
         }
 
-        public static CancellationSignalSource CreateLinked(params CancellationSignal[] signals)
+        public static SignalSource CreateLinked(params Signal[] signals)
         {
             /* First, check if all signals are not cancelled */
             var someCanBeCancelled = false;
@@ -241,7 +260,7 @@ namespace Metamatic
             {
                 if (signal.IsCancellationRequested)
                 {
-                    return new CancellationSignalSource();
+                    return new SignalSource();
                 } else if (signal.CanBeCanceled)
                 {
                     someCanBeCancelled = true;
@@ -275,7 +294,7 @@ namespace Metamatic
             {
                 icss.TryCancel(memoizedVersion);
             }
-            var css = new CancellationSignalSource(icss);
+            var css = new SignalSource(icss);
             
             foreach (var signal in signals)
             {
@@ -290,7 +309,7 @@ namespace Metamatic
             return css;
         }
 
-        public static CancellationSignalSource CreateLinked(params CancellationToken[] tokens)
+        public static SignalSource CreateLinked(params CancellationToken[] tokens)
         {
             /* First, check if all tokens are not cancelled */
             var someCanBeCancelled = false;
@@ -298,7 +317,7 @@ namespace Metamatic
             {
                 if (token.IsCancellationRequested)
                 {
-                    return new CancellationSignalSource();
+                    return new SignalSource();
                 } else if (token.CanBeCanceled)
                 {
                     someCanBeCancelled = true;
@@ -332,7 +351,7 @@ namespace Metamatic
                 icss.TryCancel(memoizedVersion);
             }
             
-            var css = new CancellationSignalSource(icss);
+            var css = new SignalSource(icss);
             
             foreach (var token in tokens)
             {
@@ -354,30 +373,33 @@ namespace Metamatic
         /// TODO: It is incorrect to return new CancellationSignal every time. It should return the same signal
         /// </summary>
         // ReSharper disable once InconsistentNaming
-        public CancellationSignal Signal
+        public Signal Signal
         {
             get
             {
                 var source = GetSource();
                 if (source == null)
                 {
-                    return CancellationSignal.Cancelled;
+                    return Signal.Raised;
                 }
-                return new CancellationSignal(source);
+                return new Signal(source);
             }
         }
         // ReSharper disable once InconsistentNaming
-        public bool IsCancellationRequested => GetSource()?.IsCancellationRequested ?? true;
+        public bool IsCancellationRequested => IsRaised;
+        // ReSharper disable once InconsistentNaming
+        public bool IsRaised => GetSource()?.IsCancellationRequested ?? true;
         // ReSharper disable once InconsistentNaming
         public bool CanBeCancelled => GetSource() != null;
+        public bool isAlive => GetSource() != null;
         
-        internal CancellationSignalSource(InternalCancellationSignalSource source)
+        internal SignalSource(InternalCancellationSignalSource source)
         {
             m_InternalSource = source;
             m_Version = source.Version;
         }
         
-        public void TryCancel()
+        public void TryRaise()
         {
             /* m_InternalSource can be null, because this struct can be created by default */
             if (m_InternalSource != null)
@@ -400,7 +422,7 @@ namespace Metamatic
         /// </summary>
         public void Dispose()
         {
-            TryCancel();
+            TryRaise();
         }
     }
     
@@ -416,8 +438,8 @@ namespace Metamatic
             var commander = new Commander();
             commander.RegisterCommand("List", s =>
             {
-                Console.Log("CancellationSignal", "Total count", CancellationSignalSource.DebugSources.Count.ToString(), Console.LogLevel.Interactive, Pool.Count.ToString());
-                foreach (var source in CancellationSignalSource.DebugSources)
+                Console.Log("CancellationSignal", "Total count", SignalSource.DebugSources.Count.ToString(), Console.LogLevel.Interactive, Pool.Count.ToString());
+                foreach (var source in SignalSource.DebugSources)
                 {
                     var createdAgo = Time.realtimeSinceStartup - source.Value.DebugCreateAt;
                     Console.Log("CancellationSignal", "Source", $"{source.Key} {createdAgo}s", Console.LogLevel.Interactive, source.Value.DebugCreateStackTrace);
@@ -437,7 +459,7 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public int Version { get; private set; }
         // ReSharper disable once InconsistentNaming
-        public CancellationSignal Signal => new CancellationSignal(this);
+        public Signal Signal => new Signal(this);
         private CancellationTokenSource m_CancellationTokenSource;
         private event Action<int> m_OnCancelled;
         

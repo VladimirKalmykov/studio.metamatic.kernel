@@ -9,7 +9,7 @@ namespace Metamatic
     where TSpell: IAsyncSpell
     {
         private readonly ISpellSource<TSpell> m_AsyncSpell;
-        private readonly CancellationSignalSource m_CancellationSignalSource;
+        private readonly SignalSource m_CancellationSignalSource;
         private readonly int m_Version;
         /// <summary>
         /// The task that represents the spell cast
@@ -20,7 +20,7 @@ namespace Metamatic
         {
             m_AsyncSpell = asyncSpell;
             m_Version = m_AsyncSpell.version;
-            var cancellationSignalSource = CancellationSignalSource.CreateLinked(asyncSpell.cancellationSignal);
+            var cancellationSignalSource = SignalSource.CreateLinked(asyncSpell.cancellationSignal);
             m_CancellationSignalSource = cancellationSignalSource;
             var spellReference = asyncSpell.GetSpellReference();
             CastTask = spellReference.OnCast(asyncSpell.spellCaster, target, cancellationSignalSource.Signal);
@@ -33,7 +33,7 @@ namespace Metamatic
 
         public void Dispose()
         {
-            m_CancellationSignalSource.TryCancel();
+            m_CancellationSignalSource.TryRaise();
             GetSpell()?.Release();
         }
         

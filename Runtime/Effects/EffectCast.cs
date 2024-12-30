@@ -5,11 +5,11 @@ namespace Metamatic
 {
     public class EffectCast : IDisposable
     {
-        protected CancellationSignalSource CancellationSignalSource;
+        protected SignalSource CancellationSignalSource;
         /// <summary>
         /// Cast cancellation signal. Will be triggered when the spell is disposed
         /// </summary>
-        public CancellationSignal cancellationSignal => CancellationSignalSource.Signal;
+        public Signal cancellationSignal => CancellationSignalSource.Signal;
         protected bool IsFromPool;
         protected bool IsDisposed;
         
@@ -21,7 +21,7 @@ namespace Metamatic
                 return;
             }
             IsDisposed = true;
-            CancellationSignalSource.TryCancel();
+            CancellationSignalSource.TryRaise();
         }
     }
     
@@ -45,7 +45,7 @@ namespace Metamatic
         public EffectCast()
         {
             this.data = default;
-            CancellationSignalSource = CancellationSignalSource.Create();
+            CancellationSignalSource = SignalSource.Create();
         }
 
         public override void Dispose()

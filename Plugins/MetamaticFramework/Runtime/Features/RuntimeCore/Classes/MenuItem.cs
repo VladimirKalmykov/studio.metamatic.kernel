@@ -41,7 +41,7 @@ namespace Metamatic.Framework
             Trigger = trigger;
         }
         
-        public DisposableAction WatchSubmenuLifecycle(Func<Menu, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchSubmenuLifecycle(Func<Menu, Signal, UniTaskVoid> action)
         {
             return SubMenu.WatchAsync(action);
         }

@@ -26,7 +26,7 @@ namespace Metamatic.Tests.PlayMode
                 return Context.fatigue > 0.5f ? (Context.fatigue - 0.5f) / 0.5f : 0f;
             }
 
-            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            protected override UniTask OnActivate(Signal cancellationSignal)
             {
                 return UniTask.CompletedTask;
             }
@@ -43,7 +43,7 @@ namespace Metamatic.Tests.PlayMode
                 return Context.hunger > 0.5f ? (Context.hunger - 0.5f) / 0.5f : 0f;
             }
 
-            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            protected override UniTask OnActivate(Signal cancellationSignal)
             {
                 return UniTask.CompletedTask;
             }
@@ -60,7 +60,7 @@ namespace Metamatic.Tests.PlayMode
                 return 0.25f;
             }
 
-            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            protected override UniTask OnActivate(Signal cancellationSignal)
             {
                 return UniTask.CompletedTask;
             }
@@ -78,7 +78,7 @@ namespace Metamatic.Tests.PlayMode
                 return Context.hunger;
             }
 
-            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            protected override UniTask OnActivate(Signal cancellationSignal)
             {
                 return UniTask.CompletedTask;
             }
@@ -96,7 +96,7 @@ namespace Metamatic.Tests.PlayMode
                 return 0.1f;
             }
 
-            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            protected override UniTask OnActivate(Signal cancellationSignal)
             {
                 return UniTask.CompletedTask;
             }
@@ -113,7 +113,7 @@ namespace Metamatic.Tests.PlayMode
                 return Context.boredom > 0.5f ? (Context.boredom - 0.5f) / 0.5f : 0f;
             }
 
-            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            protected override UniTask OnActivate(Signal cancellationSignal)
             {
                 return UniTask.CompletedTask;
             }
@@ -139,7 +139,7 @@ namespace Metamatic.Tests.PlayMode
                 return 1f;
             }
 
-            protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+            protected override UniTask OnActivate(Signal cancellationSignal)
             {
                 return UniTask.CompletedTask;
             }

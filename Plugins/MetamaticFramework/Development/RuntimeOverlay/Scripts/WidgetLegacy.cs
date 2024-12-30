@@ -6,20 +6,20 @@ namespace Metamatic.Framework
     public abstract class WidgetLegacy: IDisposable
     {
         public DevToolsOverlay overlay { get; private set; }
-        private CancellationSignalSource m_DisposeSignal;
+        private SignalSource m_DisposeSignal;
         public WidgetLegacy(DevToolsOverlay overlay)
         {
             this.overlay = overlay;
-            m_DisposeSignal = CancellationSignalSource.Create();
+            m_DisposeSignal = SignalSource.Create();
             // ReSharper disable once VirtualMemberCallInConstructor
             OnInitializeWidget(m_DisposeSignal.Signal).Forget();
         }
 
         public void Dispose()
         {
-            m_DisposeSignal.TryCancel();
+            m_DisposeSignal.TryRaise();
         }
 
-        public abstract UniTaskVoid OnInitializeWidget(CancellationSignal signal);
+        public abstract UniTaskVoid OnInitializeWidget(Signal signal);
     }
 }

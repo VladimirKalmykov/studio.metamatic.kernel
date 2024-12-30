@@ -166,7 +166,7 @@ namespace Metamatic.UIToolKit
             OnUpdateGeometry();
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             // Start track container width
             RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
@@ -175,7 +175,7 @@ namespace Metamatic.UIToolKit
             UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
         }
         
-        private async UniTaskVoid OnBoundListChanged(ObservableList<T> list, CancellationSignal signal)
+        private async UniTaskVoid OnBoundListChanged(ObservableList<T> list, Signal signal)
         {
             m_Body.Clear();
             if (list != null)
@@ -185,7 +185,7 @@ namespace Metamatic.UIToolKit
             }
         }
         
-        private async UniTaskVoid OnListItemChanged(T item, int index, CancellationSignal signal)
+        private async UniTaskVoid OnListItemChanged(T item, int index, Signal signal)
         {
             var rowElement = AddRow(item);
             await signal;

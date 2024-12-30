@@ -58,7 +58,7 @@ namespace Metamatic.Framework
             });
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             using var showing = m_Showing.WatchAsync(OnShowChanged);
             // Subscribe to geometry changes
@@ -72,7 +72,7 @@ namespace Metamatic.Framework
             
         }
         
-        private async UniTaskVoid OnShowChanged((int, string, float, MessageType) showing, CancellationSignal signal)
+        private async UniTaskVoid OnShowChanged((int, string, float, MessageType) showing, Signal signal)
         {
             var (iteration, message, duration, messageType) = showing;
             

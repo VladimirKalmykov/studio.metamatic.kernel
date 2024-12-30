@@ -62,7 +62,7 @@ namespace Metamatic
         /// Determines if the thread is activated
         /// </summary>
         private bool m_InitiallyActivated;
-        private CancellationSignalSource m_MountCancellationSignalSource;
+        private SignalSource m_MountCancellationSignalSource;
 
         public string thought { get; protected set; } = "Nothing";
         public bool longLived { get; set; }
@@ -79,13 +79,13 @@ namespace Metamatic
         
         public void Mount()
         {
-            m_MountCancellationSignalSource = CancellationSignalSource.Create();
+            m_MountCancellationSignalSource = SignalSource.Create();
             OnMount(m_MountCancellationSignalSource.Signal).Forget();
         }
         
         public void Unmount()
         {
-            m_MountCancellationSignalSource.TryCancel();
+            m_MountCancellationSignalSource.TryRaise();
         }
         
         public DisposableAction AddChildThread(IMindThread thread)
@@ -124,7 +124,7 @@ namespace Metamatic
             thread.Unmount();
         }
 
-        public async UniTask Activate(CancellationSignal cancellationSignal)
+        public async UniTask Activate(Signal cancellationSignal)
         {
             if (!m_InitiallyActivated)
             {
@@ -148,7 +148,7 @@ namespace Metamatic
             isActive = false;
         }
 
-        private async UniTaskVoid InternalCallUserActive(CancellationSignal cancellationSignal)
+        private async UniTaskVoid InternalCallUserActive(Signal cancellationSignal)
         {
             try
             {
@@ -203,11 +203,11 @@ namespace Metamatic
             return null;
         }
 
-        protected virtual UniTaskVoid OnMount(CancellationSignal cancellationSignal)
+        protected virtual UniTaskVoid OnMount(Signal cancellationSignal)
         {
             return new UniTaskVoid();
         }
-        protected abstract UniTask OnActivate(CancellationSignal cancellationSignal);
+        protected abstract UniTask OnActivate(Signal cancellationSignal);
 
         public void Weighting()
         {
@@ -300,7 +300,7 @@ namespace Metamatic
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public UniTask WaitLoopEnd(CancellationSignal cancellationSignal = default)
+        public UniTask WaitLoopEnd(Signal cancellationSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
             DisposableAction registration = default;
@@ -329,7 +329,7 @@ namespace Metamatic
             });
         }
         
-        public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, Signal, UniTaskVoid> action)
         {
             return activeChildThread.WatchAsync(action);
         }
@@ -339,7 +339,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="thread"></param>
         /// <param name="cancellationSignal"></param>
-        private async UniTaskVoid OnActiveMindThreadChanged(IMindThread thread, CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnActiveMindThreadChanged(IMindThread thread, Signal cancellationSignal)
         {
             if (thread == null)
             {
@@ -348,7 +348,7 @@ namespace Metamatic
 
             try
             {
-                cancellationSignal.ThrowIfCancellationRequested();
+                cancellationSignal.ThrowIfRaised();
                 await thread.Activate(cancellationSignal);
             } catch (Exception e)
             {

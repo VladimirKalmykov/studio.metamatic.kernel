@@ -89,7 +89,7 @@ namespace Metamatic
         /// </summary>
         private HashSet<ShakerSource> m_Shakers = new();
 
-        public Action<CancellationSignal> OnShakersActivated;
+        public Action<Signal> OnShakersActivated;
         public float shakeAmplitude { get; private set; }
         public float shakeFrequency { get; private set; }
 
@@ -103,7 +103,7 @@ namespace Metamatic
             }
         }
 
-        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
+        protected override async UniTask RunService(Ready ready, Signal signal)
         {
             using var cameraAnnounceSubscription =
                 Dispatcher.global.SubscribeAnnouncementsLegacy<CameraController>(HandlerCamerasAnnounce);
@@ -118,7 +118,7 @@ namespace Metamatic
 
         #region Public methods
 
-        public UniTask<CameraController> WaitForCamera(CancellationSignal signal)
+        public UniTask<CameraController> WaitForCamera(Signal signal)
         {
             return m_CameraController.WaitUntilValueIsNotNull(signal);
         }
@@ -149,7 +149,7 @@ namespace Metamatic
             return new Shaker(shakerSource);
         }
 
-        public void ShakeFor(float amplitude, float frequency, float duration, float extinctionDuration, CancellationSignal signal)
+        public void ShakeFor(float amplitude, float frequency, float duration, float extinctionDuration, Signal signal)
         {
             var shaker = Shake(amplitude, frequency);
             UniTask.RunOnThreadPool(async () =>
@@ -188,7 +188,7 @@ namespace Metamatic
             if (m_Shakers.Count == 0) return;
             if (m_Shakers.Count == 1)
             {
-                var css = CancellationSignalSource.Create();
+                var css = SignalSource.Create();
                 OnShakersActivated?.Invoke(css.Signal);
                 var maxAmplitude = 0f;
                 var maxFrequency = 0f;
@@ -204,7 +204,7 @@ namespace Metamatic
 
                     return m_Shakers.Count == 0;
                 });
-                css.TryCancel();
+                css.TryRaise();
             }
         }
 

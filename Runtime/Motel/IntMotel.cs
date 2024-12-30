@@ -12,8 +12,8 @@ namespace Metamatic
         {
             public int Version;
             public object[] Dependencies;
-            public PolyDisposableOperation Operation;
-            public Func<int, InternalAsyncDisposableOperation, UniTask> OnCheckIn;
+            public MicroOperation Operation;
+            public Func<int, InternalMicroOperation, UniTask> OnCheckIn;
             public int[] PreferredCells;
             public bool Strict;
             public int CellId = -1;
@@ -86,7 +86,7 @@ namespace Metamatic
         }
         
         
-        public IUniTaskAsyncDisposable Reserve(int[] preferredCells, Func<int, InternalAsyncDisposableOperation, UniTask> onCheckIn, bool strict = false, object[] dependencies = null)
+        public IUniTaskAsyncDisposable Reserve(int[] preferredCells, Func<int, InternalMicroOperation, UniTask> onCheckIn, bool strict = false, object[] dependencies = null)
         {
             /*
              * Create guest
@@ -163,7 +163,7 @@ namespace Metamatic
             guest.CellId = cellId;
             var onCheckIn = guest.OnCheckIn;
             
-            UniTask Handler(InternalAsyncDisposableOperation op)
+            UniTask Handler(InternalMicroOperation op)
             {
                 return onCheckIn(cellId, op);
             }
@@ -174,7 +174,7 @@ namespace Metamatic
             {
                 Array.Copy(guest.Dependencies, 0, combinedDependencies, 1, guest.Dependencies.Length);
             }
-            guest.Operation = PolyDisposableOperation.Run(Handler, dependencies: combinedDependencies);
+            guest.Operation = MicroOperation.Run(Handler, dependencies: combinedDependencies);
             if (!guest.IsSatisfied(cellId))
             {
                 m_CheckedInUnsatisfiedGuests.Add(guest);
@@ -329,7 +329,13 @@ namespace Metamatic
             OnAborted?.Invoke();
             DisposeAsync().Forget();
         }
-        
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            OnAborted += action;
+            return new DisposableAction(() => OnAborted -= action);
+        }
+
         public async UniTask DisposeAsync()
         {
             if (m_IsDisposed)

@@ -38,7 +38,7 @@ namespace Metamatic.Inspector
 
         }
 
-        protected override async UniTaskVoid EnableAsync(Func<UniTask> ready, CancellationSignal signal)
+        protected override async UniTaskVoid EnableAsync(Func<UniTask> ready, Signal signal)
         {
             Console.Debug("MonitoringEditorWindow", "EnableAsync");
             /* Listen for monitoring data */
@@ -53,7 +53,7 @@ namespace Metamatic.Inspector
             OnUpdate?.Invoke();
         }
 
-        private async UniTaskVoid OnGroupAdded(Monitoring.Group group, CancellationSignal signal)
+        private async UniTaskVoid OnGroupAdded(Monitoring.Group group, Signal signal)
         {
             Console.Debug("MonitoringEditorWindow", $"Group added: {group.Name}");
             /* Add panel */
@@ -66,7 +66,7 @@ namespace Metamatic.Inspector
             panel.RemoveFromHierarchy();
         }
         
-        private async UniTaskVoid OnItemAdded(VisualElement panel, Monitoring.MonitoringItem item, CancellationSignal signal)
+        private async UniTaskVoid OnItemAdded(VisualElement panel, Monitoring.MonitoringItem item, Signal signal)
         {
             Console.Debug("MonitoringEditorWindow", $"Item added: {item.Key}");
             /* Add key value */

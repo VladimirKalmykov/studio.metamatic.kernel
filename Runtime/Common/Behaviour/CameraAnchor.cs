@@ -10,7 +10,7 @@ namespace Metamatic
         [SerializeField] private Camera m_Camera;
         public new Camera camera => m_Camera;
 
-        protected override async UniTask Run(Ready ready, CancellationSignal signal)
+        protected override async UniTask Run(Ready ready, Signal signal)
         {
             /* Register camera controller */
             using var registration = Dispatcher.global.Register(this);

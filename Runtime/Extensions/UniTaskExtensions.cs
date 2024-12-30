@@ -107,14 +107,14 @@ namespace Metamatic
         /// </summary>
         /// <param name="task"></param>
         /// <returns></returns>
-        public static CancellationSignal ToCancellationSignal(this UniTask task)
+        public static Signal ToCancellationSignal(this UniTask task)
         {
-            var css = CancellationSignalSource.Create();
+            var css = SignalSource.Create();
             ConvertUniTaskToCancellationSignal(task, css).Forget();
             return css.Signal;
         }
 
-        private static async UniTaskVoid ConvertUniTaskToCancellationSignal(UniTask task, CancellationSignalSource signalSource)
+        private static async UniTaskVoid ConvertUniTaskToCancellationSignal(UniTask task, SignalSource signalSource)
         {
             try
             {
@@ -129,7 +129,7 @@ namespace Metamatic
             }
             finally
             {
-                signalSource.TryCancel();
+                signalSource.TryRaise();
             }
         }
     }

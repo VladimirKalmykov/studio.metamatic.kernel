@@ -24,7 +24,7 @@ namespace Metamatic.DevTools
                 return item;
             }
             private int m_Version;
-            private CancellationSignalSource m_CancellationSignalSource;
+            private SignalSource m_CancellationSignalSource;
             public string Group;
             public string Key;
             public Type Type;
@@ -32,7 +32,7 @@ namespace Metamatic.DevTools
             public Func<object> Accessor;
             public object Value;
             // ReSharper disable once InconsistentNaming
-            public CancellationSignal CancellationSignal => m_CancellationSignalSource.Signal;
+            public Signal CancellationSignal => m_CancellationSignalSource.Signal;
 
             public MonitoringItem()
             {
@@ -47,7 +47,7 @@ namespace Metamatic.DevTools
                 Type = type;
                 Timing = timing;
                 var version = m_Version;
-                m_CancellationSignalSource = CancellationSignalSource.Create();
+                m_CancellationSignalSource = SignalSource.Create();
                 UniTask.WaitWhile(() =>
                 {
                     Value = accessor();
@@ -57,7 +57,7 @@ namespace Metamatic.DevTools
             
             public void Return()
             {
-                m_CancellationSignalSource.TryCancel();
+                m_CancellationSignalSource.TryRaise();
                 unchecked
                 {
                     m_Version++;
@@ -76,8 +76,8 @@ namespace Metamatic.DevTools
             }
             public string Name;
             public readonly Dictionary<string, List<MonitoringItem>> Items = new Dictionary<string, List<MonitoringItem>>();
-            private CancellationSignalSource m_CancellationSignalSource;
-            public CancellationSignal CancellationSignal => m_CancellationSignalSource.Signal;
+            private SignalSource m_CancellationSignalSource;
+            public Signal CancellationSignal => m_CancellationSignalSource.Signal;
             public int count => Items.Count;
             private event Action<MonitoringItem> OnItemAdded;
             
@@ -85,7 +85,7 @@ namespace Metamatic.DevTools
             {
                 Name = name;
                 var uid = Guid.NewGuid().ToString();
-                m_CancellationSignalSource = CancellationSignalSource.Create();
+                m_CancellationSignalSource = SignalSource.Create();
             }
             
             public DisposableAction Add<T>(string key, Func<T> accessor, PlayerLoopTiming timing = PlayerLoopTiming.Update)
@@ -113,7 +113,7 @@ namespace Metamatic.DevTools
                 });
             }
             
-            public DisposableAction ObserveItems(Func<MonitoringItem, CancellationSignal, UniTaskVoid> onItemAdded)
+            public DisposableAction ObserveItems(Func<MonitoringItem, Signal, UniTaskVoid> onItemAdded)
             {
                 foreach (var keyData in Items.Values)
                 {
@@ -141,7 +141,7 @@ namespace Metamatic.DevTools
             
             public void Return()
             {
-                m_CancellationSignalSource.TryCancel();
+                m_CancellationSignalSource.TryRaise();
                 Items.Clear();
                 ParamLessPool<Group>.ReturnShared(this);
             }
@@ -211,7 +211,7 @@ namespace Metamatic.DevTools
         /// </summary>
         /// <param name="onGroupAdded"></param>
         /// <returns></returns>
-        public static DisposableAction ObserveGroups(Func<Group, CancellationSignal, UniTaskVoid> onGroupAdded)
+        public static DisposableAction ObserveGroups(Func<Group, Signal, UniTaskVoid> onGroupAdded)
         {
             var startRealTime = Time.realtimeSinceStartup;
             foreach (var group in m_MonitoringData.Values)

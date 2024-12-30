@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class InternalAsyncDisposableOperation : IExposedAsyncCancellation, IAbortable
+    public class InternalMicroOperation : IExposedAsyncCancellation, IAbortable
     {
 #if DEBUG
         private static int _LastInstanceID;
@@ -26,18 +26,18 @@ namespace Metamatic
             Monitoring.Create("MicroOperation", "Instances count", () => _InstanceCount);
         }
 #endif
-        public delegate UniTask AsyncAction(CancellationSignal signal);
+        public delegate UniTask AsyncAction(Signal signal);
 
-        public delegate UniTask AsyncOperationAction(InternalAsyncDisposableOperation operation);
+        public delegate UniTask AsyncOperationAction(InternalMicroOperation operation);
 
-        private static readonly ParamLessPool<InternalAsyncDisposableOperation> Pool2 = new(20);
+        private static readonly ParamLessPool<InternalMicroOperation> Pool2 = new(20);
 
         /// <summary>
         /// This event is called before the operation is returned to the pool.
         /// </summary>
         private event Action OnBeforeReturn;
 
-        public static PolyDisposableOperation Call(AsyncAction action, object[] dependencies = null)
+        public static MicroOperation Call(AsyncAction action, object[] dependencies = null)
         {
             var operation = Pool2.Get();
 #if DEBUG
@@ -48,10 +48,10 @@ namespace Metamatic
             operation.isDisposedSync = false;
 
             operation.InternalRun(action);
-            return new PolyDisposableOperation(operation);
+            return new MicroOperation(operation);
         }
 
-        public static PolyDisposableOperation Run(AsyncOperationAction action, object[] dependencies = null, bool debug = false)
+        public static MicroOperation Run(AsyncOperationAction action, object[] dependencies = null, bool debug = false)
         {
             var operation = Pool2.Get();
 
@@ -64,7 +64,7 @@ namespace Metamatic
             operation.isDisposedSync = false;
 
             operation.InternalRun(action);
-            return new PolyDisposableOperation(operation);
+            return new MicroOperation(operation);
         }
 
         /// <summary>
@@ -73,19 +73,19 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public object[] dependencies { get; private set; }
 
-        private CancellationSignalSource m_PerformCancellationTokenSource;
+        private SignalSource m_PerformCancellationTokenSource;
 
         /// <summary>
         /// This token is used to cancel async dispose. It is created when DisposeAsync is called.
         /// </summary>
-        private CancellationSignalSource m_AsyncDisposeCancellationTokenSource;
+        private SignalSource m_AsyncDisposeCancellationTokenSource;
 
-        public CancellationSignal cancellationSignal => m_PerformCancellationTokenSource.Signal;
+        public Signal cancellationSignal => m_PerformCancellationTokenSource.Signal;
 
         /// <summary>
         /// CancellationToken for async dispose. It will cancel async dispose.
         /// </summary>
-        public CancellationSignal asyncDisposeCancellationToken =>
+        public Signal asyncDisposeCancellationToken =>
             m_AsyncDisposeCancellationTokenSource.Signal;
 
         /// <summary>
@@ -108,6 +108,12 @@ namespace Metamatic
         {
             Abort(inquireId);
         }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            OnAborted += action;
+            return DisposableAction.Create(() => OnAborted -= action);
+        }
 #if DEBUG
         public bool isDebug { get; private set; }
 #endif
@@ -119,7 +125,7 @@ namespace Metamatic
 
         private bool isInquired { get; set; }
 
-        public InternalAsyncDisposableOperation()
+        public InternalMicroOperation()
         {
 #if DEBUG
             ID = GetNextID();
@@ -141,10 +147,10 @@ namespace Metamatic
             isDisposedSync = true;
             OnDisposedSync?.Invoke();
             /* Cancel perform token too */
-            m_PerformCancellationTokenSource.TryCancel();
+            m_PerformCancellationTokenSource.TryRaise();
             
             /* If async dispose is called, we should cancel async dispose token and dispose it */
-            m_AsyncDisposeCancellationTokenSource.TryCancel();
+            m_AsyncDisposeCancellationTokenSource.TryRaise();
         }
 
         internal int Inquire()
@@ -169,7 +175,7 @@ namespace Metamatic
             isDisposedSync = true;
             OnDisposedSync?.Invoke();
 
-            m_PerformCancellationTokenSource.TryCancel();
+            m_PerformCancellationTokenSource.TryRaise();
 
             if (m_ExecuteTask.HasValue)
             {
@@ -233,8 +239,8 @@ namespace Metamatic
                     }, true);
             }
 
-            m_PerformCancellationTokenSource = CancellationSignalSource.Create();
-            m_AsyncDisposeCancellationTokenSource = CancellationSignalSource.Create();
+            m_PerformCancellationTokenSource = SignalSource.Create();
+            m_AsyncDisposeCancellationTokenSource = SignalSource.Create();
             m_ExecuteTask = action(m_PerformCancellationTokenSource.Signal);
         }
 
@@ -255,8 +261,8 @@ namespace Metamatic
                     }, true);
             }
 
-            m_PerformCancellationTokenSource = CancellationSignalSource.Create();
-            m_AsyncDisposeCancellationTokenSource = CancellationSignalSource.Create();
+            m_PerformCancellationTokenSource = SignalSource.Create();
+            m_AsyncDisposeCancellationTokenSource = SignalSource.Create();
                 m_ExecuteTask = action(this);
          }
 

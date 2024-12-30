@@ -17,7 +17,7 @@ namespace Metamatic.Framework
         public event Action MouseLeaveEvent;
         public event Action MouseClickEvent;
         
-        private CancellationSignalSource m_MouseEnterCancellationSignalSource;
+        private SignalSource m_MouseEnterCancellationSignalSource;
         public Orientation orientation { get; private set; }
         private readonly Observable<bool> m_IsActive = new();
         
@@ -37,7 +37,7 @@ namespace Metamatic.Framework
         }
         
         #region AsyncVisualElement
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             /* Listen for mouse enter and leave events */
             RegisterCallback<MouseEnterEvent>(OnMouseEnter);
@@ -49,7 +49,7 @@ namespace Metamatic.Framework
             using var watchSource = m_Source.WatchEachItemLifecycle(OnItemLifecycleSwitch);
             await detachSignal;
             
-            m_MouseEnterCancellationSignalSource.TryCancel();
+            m_MouseEnterCancellationSignalSource.TryRaise();
             
             /* Unsubscribe from mouse enter and leave events */
             MouseEnterEvent = null;
@@ -68,7 +68,7 @@ namespace Metamatic.Framework
             m_IsActive.SetUniqValue(active);
         }
         
-        private async UniTaskVoid OnItemLifecycleSwitch(MenuItem menuItem, int index, CancellationSignal detachSignal)
+        private async UniTaskVoid OnItemLifecycleSwitch(MenuItem menuItem, int index, Signal detachSignal)
         {
             var item = AddMenuItem(menuItem);
             await detachSignal;
@@ -93,7 +93,7 @@ namespace Metamatic.Framework
             return false;
         }
         
-        public DisposableAction WatchMouseEnterLifecycle(Func<CancellationSignal, UniTaskVoid> onMouseEnter)
+        public DisposableAction WatchMouseEnterLifecycle(Func<Signal, UniTaskVoid> onMouseEnter)
         {
             void Handler()
             {
@@ -129,13 +129,13 @@ namespace Metamatic.Framework
         private void OnMouseEnter(MouseEnterEvent evt)
         {
             m_MouseEnterCancellationSignalSource.Dispose();
-            m_MouseEnterCancellationSignalSource = CancellationSignalSource.Create();
+            m_MouseEnterCancellationSignalSource = SignalSource.Create();
             MouseEnterEvent?.Invoke();
         }
 
         private void OnMouseLeave(MouseLeaveEvent evt)
         {
-            m_MouseEnterCancellationSignalSource.TryCancel();
+            m_MouseEnterCancellationSignalSource.TryRaise();
             MouseLeaveEvent?.Invoke();
         }
         

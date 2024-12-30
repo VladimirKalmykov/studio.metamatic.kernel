@@ -124,7 +124,7 @@ namespace Metamatic.Framework
             ApplyPreferences(m_Preferences);
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             m_OverlayContext = this.GetContext<DevToolsOverlay>();
 
@@ -198,7 +198,7 @@ namespace Metamatic.Framework
             m_OverlayContext.Value.SetPanelPreferences(PanelName, preferences);
         }
 
-        private async UniTaskVoid InitDraggable(CancellationSignal signal)
+        private async UniTaskVoid InitDraggable(Signal signal)
         {
             var startMousePosition = Vector2.zero;
             var startPanelPosition = Vector2.zero;
@@ -247,7 +247,7 @@ namespace Metamatic.Framework
             m_Header.UnregisterCallback<MouseUpEvent>(OnMouseUp);
         }
 
-        private async UniTaskVoid InitResizable(CancellationSignal signal)
+        private async UniTaskVoid InitResizable(Signal signal)
         {
             // Listen for mouse down on resizer
             m_Resizer.RegisterCallback<MouseDownEvent>(OnMouseDownOnResizer);

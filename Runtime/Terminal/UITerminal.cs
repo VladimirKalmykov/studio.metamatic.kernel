@@ -103,7 +103,7 @@ namespace Metamatic
             return new TextRow(this, text);
         }
 
-        protected override async UniTask Run(Ready ready, CancellationSignal signal)
+        protected override async UniTask Run(Ready ready, Signal signal)
         {
             /* Subscribe to input press enter event */
             m_InputField.onSubmit.AddListener(OnSubmit);

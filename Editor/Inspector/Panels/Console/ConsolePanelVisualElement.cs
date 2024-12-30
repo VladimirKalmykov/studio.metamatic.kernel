@@ -255,11 +255,11 @@ namespace Metamatic.EditorInspector
         private const string KLightStylePath = "Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/ConsoleDark.uss";
         private const string KDarkStylePath = "Packages/studio.metamatic.kernel/Editor/Inspector/Panels/Console/ConsoleDark.uss";
         
-        public ConsolePanelVisualElement(CancellationSignal signal) : base(signal)
+        public ConsolePanelVisualElement(Signal signal) : base(signal)
         {
         }
         
-        protected override async UniTask InitializeAsync(Func<UniTask> ready, CancellationSignal signal)
+        protected override async UniTask InitializeAsync(Func<UniTask> ready, Signal signal)
         {
             /* Set height 100% */
             style.height = new StyleLength(Length.Percent(100));

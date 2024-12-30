@@ -76,7 +76,7 @@ namespace Metamatic
 
             public bool isLocked => m_Lock.IsLocked;
 
-            public UniTask<DisposableAction> Lock(CancellationSignal cancellationSignal)
+            public UniTask<DisposableAction> Lock(Signal cancellationSignal)
             {
                 return m_Lock.Lock(cancellationSignal);
             }
@@ -158,12 +158,12 @@ namespace Metamatic
 
             if (dict.isLocked)
             {
-                var cts = CancellationSignalSource.Create();
+                var cts = SignalSource.Create();
                 Internal_AddAnnouncement<T>(dict, key, item, cts.Signal).Forget();
 
                 return new DisposableAction(() =>
                 {
-                    cts.TryCancel();
+                    cts.TryRaise();
                     Internal_Retract(dict, key).Forget();
                 });
             }
@@ -175,7 +175,7 @@ namespace Metamatic
             return new DisposableAction(() => { Internal_Retract(dict, key).Forget(); });
         }
 
-        public DisposableAction ObserveAnnouncementEach<T>(Func<T, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction ObserveAnnouncementEach<T>(Func<T, Signal, UniTaskVoid> action)
             where T : notnull
         {
             if (!m_Announcements.TryGetValue(typeof(T), out var dict))
@@ -184,12 +184,12 @@ namespace Metamatic
                 m_Announcements[typeof(T)] = dict;
             }
 
-            var cancellationTokenSources = ParamLessPool<List<CancellationSignalSource>>.GetShared();
+            var cancellationTokenSources = ParamLessPool<List<SignalSource>>.GetShared();
             var registrations = ParamLessPool<List<DisposableAction>>.GetShared();
 
             dict.GetEach((key, announcement) =>
             {
-                var cts = CancellationSignalSource.CreateLinked(announcement.ReleaseToken);
+                var cts = SignalSource.CreateLinked(announcement.ReleaseToken);
                 cancellationTokenSources.Add(cts);
                 var token = cts.Signal;
                 DisposableAction registration = default;
@@ -206,7 +206,7 @@ namespace Metamatic
 
             var dispose = dict.Subscribe((key, announcement) =>
             {
-                var cts = CancellationSignalSource.CreateLinked(announcement.ReleaseToken);
+                var cts = SignalSource.CreateLinked(announcement.ReleaseToken);
                 cancellationTokenSources.Add(cts);
                 var token = cts.Signal;
                 DisposableAction registration = default;
@@ -230,13 +230,13 @@ namespace Metamatic
 
                 foreach (var cts in cancellationTokenSources)
                 {
-                    cts.TryCancel();
+                    cts.TryRaise();
                 }
 
                 dispose.Dispose();
                 cancellationTokenSources.Clear();
                 registrations.Clear();
-                ParamLessPool<List<CancellationSignalSource>>.ReturnShared(cancellationTokenSources);
+                ParamLessPool<List<SignalSource>>.ReturnShared(cancellationTokenSources);
                 ParamLessPool<List<DisposableAction>>.ReturnShared(registrations);
             });
         }
@@ -307,7 +307,7 @@ namespace Metamatic
             return dispose;
         }
         
-        public UniTask<T> WaitForAnnouncement<T>(CancellationSignal signal) where T : notnull
+        public UniTask<T> WaitForAnnouncement<T>(Signal signal) where T : notnull
         {
             var completionSource = AutoResetUniTaskCompletionSource<T>.Create();
 
@@ -357,7 +357,7 @@ namespace Metamatic
             return completionSource.Task;
         }
 
-        public UniTask<T> WaitForAnnouncement<T>(CancellationSignal signal, Func<T, bool> condition) where T : notnull
+        public UniTask<T> WaitForAnnouncement<T>(Signal signal, Func<T, bool> condition) where T : notnull
         {
             var completionSource = AutoResetUniTaskCompletionSource<T>.Create();
 
@@ -415,7 +415,7 @@ namespace Metamatic
 
         // Внутренние методы
         private async UniTaskVoid Internal_AddAnnouncement<T>(ObservableLockedDictionaryContainer dict, object key,
-            T item, CancellationSignal cancellationSignal) where T : notnull
+            T item, Signal cancellationSignal) where T : notnull
         {
             try
             {
@@ -434,7 +434,7 @@ namespace Metamatic
         {
             try
             {
-                using (await dict.Lock(CancellationSignal.None))
+                using (await dict.Lock(Signal.None))
                 {
                     if (dict.ContainsKey(key))
                     {

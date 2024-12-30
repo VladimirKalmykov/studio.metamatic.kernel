@@ -27,7 +27,7 @@ namespace Metamatic.Framework.Workshop
         
         private readonly List<(string, CursorConfig)> m_Cursors = new();
         
-        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
+        protected override async UniTask RunService(Ready ready, Signal signal)
         {
             ResetCursorToDefaults();
             await ready();

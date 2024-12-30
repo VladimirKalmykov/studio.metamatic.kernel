@@ -19,7 +19,8 @@ namespace Metamatic
     /// 
     /// });
     /// </example>
-    public readonly struct PolyDisposableOperation: IPolyDisposableOperation
+    [Obsolete("Use AbortableOperation instead")]
+    public readonly struct MicroOperation: IPolyDisposableOperation
     {
         /// <summary>
         /// Call an async action with cancellation token
@@ -27,9 +28,9 @@ namespace Metamatic
         /// <param name="action">Async action to execute</param>
         /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
         /// <returns></returns>
-        public static PolyDisposableOperation Call(InternalAsyncDisposableOperation.AsyncAction action, object[] dependencies = null)
+        public static MicroOperation Call(InternalMicroOperation.AsyncAction action, object[] dependencies = null)
         {
-            return InternalAsyncDisposableOperation.Call(action, dependencies);
+            return InternalMicroOperation.Call(action, dependencies);
         }
 
         /// <summary>
@@ -39,12 +40,12 @@ namespace Metamatic
         /// <param name="dependencies">Array of dependencies. Disposed is sync if any of the dependencies equals null</param>
         /// <param name="debug">Debug operation (use this in development purposes)</param>
         /// <returns></returns>
-        public static PolyDisposableOperation Run(InternalAsyncDisposableOperation.AsyncOperationAction action, object[] dependencies = null, bool debug = false)
+        public static MicroOperation Run(InternalMicroOperation.AsyncOperationAction action, object[] dependencies = null, bool debug = false)
         {
-            return InternalAsyncDisposableOperation.Run(action, dependencies, debug);
+            return InternalMicroOperation.Run(action, dependencies, debug);
         }
         
-        private readonly InternalAsyncDisposableOperation m_Operation;
+        private readonly InternalMicroOperation m_Operation;
         public readonly int InquireId;
         public bool isInitialized => m_Operation != null;
         public bool isAlive => m_Operation != null && m_Operation.inquireId == InquireId;
@@ -54,7 +55,7 @@ namespace Metamatic
         public event Action<Exception> OnDisposedAsync { add => m_Operation.OnDisposedAsync += value; remove => m_Operation.OnDisposedAsync -= value; }
         public object[] dependencies => m_Operation.dependencies;
         
-        internal PolyDisposableOperation(InternalAsyncDisposableOperation operation)
+        internal MicroOperation(InternalMicroOperation operation)
         {
             m_Operation = operation;
             InquireId = m_Operation.Inquire();
@@ -70,7 +71,7 @@ namespace Metamatic
             m_Operation?.Abort(InquireId);
         }
         
-        public static implicit operator DisposableAction(PolyDisposableOperation operation)
+        public static implicit operator DisposableAction(MicroOperation operation)
         {
             return new DisposableAction(operation.Dispose);
         }

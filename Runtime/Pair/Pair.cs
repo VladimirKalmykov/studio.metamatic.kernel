@@ -26,7 +26,7 @@ namespace Metamatic
             Run();
         }
 
-        protected override async UniTask Main(CancellationSignal signal)
+        protected override async UniTask Main(Signal signal)
         {
             using var clientProviderListener = m_ClientProvider.OnPairingRequest(OnAnnounceClient);
             await signal;

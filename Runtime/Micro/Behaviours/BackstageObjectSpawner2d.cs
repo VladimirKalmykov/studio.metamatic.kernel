@@ -62,7 +62,7 @@ namespace Micro.Behaviours
             }
             OnFovManagerReady += () => m_AreasHandler.Handle(m_Areas);
         }
-        protected override async UniTask Main(CancellationSignal signal)
+        protected override async UniTask Main(Signal signal)
         {
             using var areaIntersectionHandler = m_AreaIntersectionHandler = new SequentialMapHandler<VirtualArea2d, CameraFOVTracker2d.AreaIntersection>(HandleAreaIntersection);
             using var areasArrayHandler = m_AreasHandler = new SequentialArrayHandler<VirtualArea2d>(HandleArea);
@@ -72,7 +72,7 @@ namespace Micro.Behaviours
             await signal;
         }
         
-        private async void HandleFOVManager(FOV2DService fovManager, CancellationSignal signal)
+        private async void HandleFOVManager(FOV2DService fovManager, Signal signal)
         {
             if (fovManager == null)
             {

@@ -39,7 +39,7 @@ namespace Metamatic
         /// <param name="signal"></param>
         /// <typeparam name="TSpell"></typeparam>
         /// <returns></returns>
-        public static SpellCastLehacy<TSpell> Cast<TSpell>(TSpell spell, GameObject spellCaster, GameObject target, CancellationSignal signal) where TSpell: IAsyncSpell
+        public static SpellCastLehacy<TSpell> Cast<TSpell>(TSpell spell, GameObject spellCaster, GameObject target, Signal signal) where TSpell: IAsyncSpell
         {
             var spellSource = ParamLessPool<SpellSourceReusable<TSpell>>.GetShared();
             return spellSource.Cast(spell, spellCaster, target);
@@ -53,7 +53,7 @@ namespace Metamatic
         /// <param name="signal"></param>
         /// <typeparam name="TSpell"></typeparam>
         /// <returns></returns>
-        public static SpellCastLehacy<TSpell> Cast<TSpell>(TSpell spell, GameObject spellCasterAndTarget, CancellationSignal signal) where TSpell: IAsyncSpell
+        public static SpellCastLehacy<TSpell> Cast<TSpell>(TSpell spell, GameObject spellCasterAndTarget, Signal signal) where TSpell: IAsyncSpell
         {
             var spellSource = ParamLessPool<SpellSourceReusable<TSpell>>.GetShared();
             return spellSource.Cast(spell, spellCasterAndTarget, spellCasterAndTarget);
@@ -82,7 +82,7 @@ namespace Metamatic
     where TSpell: IAsyncSpell
     {
         private TSpell m_Spell;
-        private CancellationSignalSource m_CancellationSignalSource;
+        private SignalSource m_CancellationSignalSource;
         private bool m_Casted = false;
         public int version { get; private set; }
         public GameObject spellCaster { get; private set; }
@@ -91,7 +91,7 @@ namespace Metamatic
             return ref m_Spell;
         }
 
-        public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
+        public Signal cancellationSignal => m_CancellationSignalSource.Signal;
 
         public void Modify(ISpellSource<TSpell>.SpellModifier modifier)
         {
@@ -109,7 +109,7 @@ namespace Metamatic
 
         public void Init()
         {
-            m_CancellationSignalSource = CancellationSignalSource.Create();
+            m_CancellationSignalSource = SignalSource.Create();
         }
 
         public SpellCastLehacy<TSpell> Cast(TSpell spell, GameObject spellCaster, GameObject target)
@@ -137,7 +137,7 @@ namespace Metamatic
             m_Casted = false;
             spellCaster = default;
             m_Spell = default;
-            m_CancellationSignalSource.TryCancel();
+            m_CancellationSignalSource.TryRaise();
             ParamLessPool<SpellSourceReusable<TSpell>>.ReturnShared(this);
         }
     }
@@ -146,7 +146,7 @@ namespace Metamatic
         where TSpell : IAsyncSpell
     {
         private TSpell m_Spell;
-        private CancellationSignalSource m_CancellationSignalSource = CancellationSignalSource.Create();
+        private SignalSource m_CancellationSignalSource = SignalSource.Create();
 
         public SpellSource(TSpell spell, GameObject spellCaster)
         {
@@ -169,7 +169,7 @@ namespace Metamatic
             return ref m_Spell;
         }
 
-        public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
+        public Signal cancellationSignal => m_CancellationSignalSource.Signal;
 
         public void Modify(ISpellSource<TSpell>.SpellModifier modifier)
         {
@@ -192,7 +192,7 @@ namespace Metamatic
             {
                 version++;
             }
-            m_CancellationSignalSource.TryCancel();
+            m_CancellationSignalSource.TryRaise();
         }
 
         public bool isDisposedSync { get; private set;  }

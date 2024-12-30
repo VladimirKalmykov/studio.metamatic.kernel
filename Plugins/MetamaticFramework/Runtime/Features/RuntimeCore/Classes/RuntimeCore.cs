@@ -123,9 +123,9 @@ namespace Metamatic.Framework
             }
         }
 
-        public DisposableAction WatchFirstSelectObjectLifecycle(Func<GameObject, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchFirstSelectObjectLifecycle(Func<GameObject, Signal, UniTaskVoid> action)
         {
-            return PolyDisposableOperation.Call(async (signal) =>
+            return MicroOperation.Call(async (signal) =>
             {
                 using var selectedObject = new Observable<GameObject>();
                 using var watchSelectedObject = selectedObject.WatchAsync(action);
@@ -137,7 +137,7 @@ namespace Metamatic.Framework
             });
         }
         
-        public DisposableAction WatchEverySelectedObjectLifecycle(Func<GameObject, int, CancellationSignal, UniTaskVoid> action, Func<GameObject, int, bool> filter = null)
+        public DisposableAction WatchEverySelectedObjectLifecycle(Func<GameObject, int, Signal, UniTaskVoid> action, Func<GameObject, int, bool> filter = null)
         {
             return m_SelectedObjects.WatchEachLifecycle(action, filter);
         }
@@ -161,7 +161,7 @@ namespace Metamatic.Framework
             return new DisposableAction(() => m_CustomFunctions.Remove(customFunction));
         }
         
-        public DisposableAction WatchEachCustomFunctionLifecycle(Func<CustomFunction, int, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchEachCustomFunctionLifecycle(Func<CustomFunction, int, Signal, UniTaskVoid> action)
         {
             return m_CustomFunctions.WatchEachLifecycle(action);
         }

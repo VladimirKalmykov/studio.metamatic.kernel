@@ -54,13 +54,13 @@ namespace Metamatic.Framework
             return WidgetClasses;
         }
         #endregion
-        public override UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override UniTask OnAttachedAsync(Signal detachSignal)
         {
             return OnPanelAttachedAsync(detachSignal);
         }
         
         #region Abstract methods
-        public abstract UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal);
+        public abstract UniTask OnPanelAttachedAsync(Signal cancellationSignal);
         public abstract Preferences GetDefaultPreferences();
         #endregion
         

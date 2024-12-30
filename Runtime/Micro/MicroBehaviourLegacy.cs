@@ -11,8 +11,8 @@ namespace Metamatic
         public bool isSyncDisposed => m_IsSyncDisposed;
         public bool isAsyncDisposed => !m_IsSyncDisposed;
         private bool m_Disposed;
-        private CancellationSignalSource m_DisposeCancellationSignalSource;
-        public CancellationSignal disposeSignal => m_DisposeCancellationSignalSource.Signal;
+        private SignalSource m_DisposeCancellationSignalSource;
+        public Signal disposeSignal => m_DisposeCancellationSignalSource.Signal;
         private readonly SafeUniTaskCompletionSource m_UniTaskCompletionSource = SafeUniTaskCompletionSource.Create();
         private bool m_IsRunning;
         ~MicroBehaviourLegacy()
@@ -46,20 +46,20 @@ namespace Metamatic
             }
             m_IsSyncDisposed = isSync;
             m_Disposed = true;
-            m_DisposeCancellationSignalSource.TryCancel();
+            m_DisposeCancellationSignalSource.TryRaise();
             GC.SuppressFinalize(this);
         }
         
-        protected delegate UniTask AsyncAction(CancellationSignal signal);
+        protected delegate UniTask AsyncAction(Signal signal);
 
-        protected async void Run(CancellationSignal externalCancellationSignal = default)
+        protected async void Run(Signal externalCancellationSignal = default)
         {
             if (m_IsRunning)
             {
                 throw new InvalidOperationException("Task is already running");
             }
             m_IsRunning = true;
-            m_DisposeCancellationSignalSource = CancellationSignalSource.CreateLinked(externalCancellationSignal);
+            m_DisposeCancellationSignalSource = SignalSource.CreateLinked(externalCancellationSignal);
             var task = Main(m_DisposeCancellationSignalSource.Signal);
             try
             {
@@ -79,6 +79,6 @@ namespace Metamatic
             }
         }
 
-        protected abstract UniTask Main(CancellationSignal signal);
+        protected abstract UniTask Main(Signal signal);
     }
 }

@@ -69,7 +69,7 @@ namespace Metamatic
             return m_Best.Watch(action);
         }
         
-        public DisposableAction WatchAsyncBest(Func<T, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchAsyncBest(Func<T, Signal, UniTaskVoid> action)
         {
             return m_Best.WatchAsync(action);
         }

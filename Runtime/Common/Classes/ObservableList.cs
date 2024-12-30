@@ -12,18 +12,18 @@ namespace Metamatic
     public class ObservableList<T> : IList<T>, IDisposable
     {
         private readonly List<T> m_List = new List<T>();
-        private Func<T, CancellationSignal, UniTask> m_Handler;
-        private readonly Dictionary<T, CancellationSignalSource> m_CancellationTokens = new Dictionary<T, CancellationSignalSource>();
+        private Func<T, Signal, UniTask> m_Handler;
+        private readonly Dictionary<T, SignalSource> m_CancellationTokens = new Dictionary<T, SignalSource>();
         private bool m_Disposed = false;
-        public event Action<T, int, CancellationSignal> OnItemAdded;
+        public event Action<T, int, Signal> OnItemAdded;
         public IReadOnlyCollection<T> items => m_List;
 
-        public ObservableList(Func<T, CancellationSignal, UniTask> handler = null)
+        public ObservableList(Func<T, Signal, UniTask> handler = null)
         {
             m_Handler = handler ?? DefaultHandler;
         }
         
-        public void SetHandler(Func<T, CancellationSignal, UniTask> handler)
+        public void SetHandler(Func<T, Signal, UniTask> handler)
         {
             if (m_Disposed)
                 throw new ObjectDisposedException(nameof(ObservableList<T>));
@@ -33,7 +33,7 @@ namespace Metamatic
         
         public DisposableAction WatchEach(Action<T, int> handler, Func<T, int, bool> filter = null)
         {
-            void ForgetHandler(T item, int index, CancellationSignal signal)
+            void ForgetHandler(T item, int index, Signal signal)
             {
                 if (filter != null && !filter(item, index))
                     return;
@@ -53,14 +53,14 @@ namespace Metamatic
             });
         }
         
-        public DisposableAction WatchEachLifecycle(Func<T, int, CancellationSignal, UniTaskVoid> handler, Func<T, int, bool> filter = null)
+        public DisposableAction WatchEachLifecycle(Func<T, int, Signal, UniTaskVoid> handler, Func<T, int, bool> filter = null)
         {
-            var cssList = new List<CancellationSignalSource>();
-            void ForgetAsyncHandler(T item, int index, CancellationSignal signal)
+            var cssList = new List<SignalSource>();
+            void ForgetAsyncHandler(T item, int index, Signal signal)
             {
                 if (filter != null && !filter(item, index))
                     return;
-                var css = CancellationSignalSource.CreateLinked(signal);
+                var css = SignalSource.CreateLinked(signal);
                 cssList.Add(css);
                 handler(item, index, css.Signal).Forget();
             }
@@ -77,12 +77,12 @@ namespace Metamatic
             OnItemAdded += ForgetAsyncHandler;
             return new DisposableAction(() =>
             {
-                cssList.ForEach(css => css.TryCancel());
+                cssList.ForEach(css => css.TryRaise());
                 OnItemAdded -= ForgetAsyncHandler;
             });
         }
         
-        private static UniTask DefaultHandler(T item, CancellationSignal signal)
+        private static UniTask DefaultHandler(T item, Signal signal)
         {
             return UniTask.CompletedTask;
         }
@@ -152,7 +152,7 @@ namespace Metamatic
             if (m_Handler == null)
                 m_Handler = DefaultHandler;
 
-            var cts = CancellationSignalSource.Create();
+            var cts = SignalSource.Create();
             var signal = cts.Signal;
             m_CancellationTokens[item] = cts;
             m_List.Add(item);
@@ -180,7 +180,7 @@ namespace Metamatic
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
-            var cts = CancellationSignalSource.Create();
+            var cts = SignalSource.Create();
             m_CancellationTokens[item] = cts;
             m_List.Add(item);
             
@@ -210,7 +210,7 @@ namespace Metamatic
             if (m_List.Contains(item))
                 return;
 
-            var cts = CancellationSignalSource.Create();
+            var cts = SignalSource.Create();
             m_CancellationTokens[item] = cts;
             m_List.Add(item);
             
@@ -230,7 +230,7 @@ namespace Metamatic
             {
                 if (m_CancellationTokens.TryGetValue(item, out var cts))
                 {
-                    cts.TryCancel();
+                    cts.TryRaise();
                     m_CancellationTokens.Remove(item);
                 }
 
@@ -247,7 +247,7 @@ namespace Metamatic
 
             foreach (var cts in m_CancellationTokens.Values)
             {
-                cts.TryCancel();
+                cts.TryRaise();
             }
             m_CancellationTokens.Clear();
             m_Disposed = true;
@@ -269,13 +269,13 @@ namespace Metamatic
 
                 if (m_CancellationTokens.TryGetValue(m_List[index], out var cts))
                 {
-                    cts.TryCancel();
+                    cts.TryRaise();
                     m_CancellationTokens.Remove(m_List[index]);
                 }
 
                 m_List[index] = value;
 
-                cts = CancellationSignalSource.Create();
+                cts = SignalSource.Create();
                 m_CancellationTokens[value] = cts;
 
                 var signal = cts.Signal;
@@ -298,14 +298,14 @@ namespace Metamatic
                 var existingItem = m_List[index];
                 if (m_CancellationTokens.TryGetValue(existingItem, out var cts))
                 {
-                    cts.TryCancel();
+                    cts.TryRaise();
                     m_CancellationTokens.Remove(existingItem);
                 }
             }
 
             m_List.Insert(index, item);
 
-            var newCts = CancellationSignalSource.Create();
+            var newCts = SignalSource.Create();
             m_CancellationTokens[item] = newCts;
             
             var signal = newCts.Signal;
@@ -323,7 +323,7 @@ namespace Metamatic
 
             if (m_CancellationTokens.TryGetValue(item, out var cts))
             {
-                cts.TryCancel();
+                cts.TryRaise();
                 m_CancellationTokens.Remove(item);
             }
         }
@@ -335,7 +335,7 @@ namespace Metamatic
 
             foreach (var cts in m_CancellationTokens.Values)
             {
-                cts.TryCancel();
+                cts.TryRaise();
             }
             m_CancellationTokens.Clear();
             m_List.Clear();

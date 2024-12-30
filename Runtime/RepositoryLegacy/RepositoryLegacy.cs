@@ -169,7 +169,7 @@ namespace Metamatic
         public readonly VersionControlStorageDriver inMemoryStorage;
         public VersionControlStorageDriver deviceStorage { get; private set; }
         public VersionControlStorageDriver remoteStorage { get; private set; }
-        public CancellationSignal disposeToken => m_DisposeCancellationSignalSource.Signal;
+        public Signal disposeToken => m_DisposeCancellationSignalSource.Signal;
         #endregion
         
         #region Private properties
@@ -179,7 +179,7 @@ namespace Metamatic
         private readonly Dictionary<(Type, string), Store> m_Stores = new ();
         private readonly List<VersionControlStorageDriver> m_Drivers = new ();
         public IReadOnlyList<VersionControlStorageDriver> drivers => m_Drivers.AsReadOnly();
-        private CancellationSignalSource m_DisposeCancellationSignalSource = CancellationSignalSource.Create();
+        private SignalSource m_DisposeCancellationSignalSource = SignalSource.Create();
         public DataSynchronizer synchronizer { get; private set; }
         private event Action<Store> OnAddStore;
         private event Action<Store> OnRemoveStore;
@@ -200,7 +200,7 @@ namespace Metamatic
             Initialization(disposeToken);
         }
         
-        private async void Initialization(CancellationSignal signal)
+        private async void Initialization(Signal signal)
         {
             /* Add memory storage to the list of storages */
             m_Drivers.Add(inMemoryStorage);
@@ -252,7 +252,7 @@ namespace Metamatic
             return new ProxyStore<T>((Store<T>)m_Stores[key]);
         }
 
-        public async UniTask<IStore<T>> CreateStore<T>(string address, Store<T>.GetDefaultValue getDefaultValue, CancellationSignal cancellationSignal)
+        public async UniTask<IStore<T>> CreateStore<T>(string address, Store<T>.GetDefaultValue getDefaultValue, Signal cancellationSignal)
         {
             var store = CreateStore<T>(address, getDefaultValue);
             await store.WhenSynchronized(cancellationSignal);
@@ -266,7 +266,7 @@ namespace Metamatic
         /// <param name="cancellationSignal"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public async UniTask<IStore<T>> GetStore<T>(string address, CancellationSignal cancellationSignal)
+        public async UniTask<IStore<T>> GetStore<T>(string address, Signal cancellationSignal)
         {
             var store = await GetStoreInternal<T>(address, cancellationSignal);
             await store.WhenSynchronized(cancellationSignal);
@@ -280,7 +280,7 @@ namespace Metamatic
         /// <param name="cancellationSignal"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        private UniTask<IStore<T>> GetStoreInternal<T>(string address, CancellationSignal cancellationSignal)
+        private UniTask<IStore<T>> GetStoreInternal<T>(string address, Signal cancellationSignal)
         {
             if (m_Stores.TryGetValue((typeof(T), address), out var store))
             {
@@ -323,12 +323,12 @@ namespace Metamatic
         /// Sync all stores
         /// </summary>
         /// <param name="cancellationSignal"></param>
-        public void SyncAll(CancellationSignal cancellationSignal = default)
+        public void SyncAll(Signal cancellationSignal = default)
         {
             #if METAMATIC_VERBOSE_LOG
             Console.Verbose("Repository", "Sync all stores");
             #endif
-            var combinedCancellation = CancellationSignalSource.CreateLinked(disposeToken, cancellationSignal);
+            var combinedCancellation = SignalSource.CreateLinked(disposeToken, cancellationSignal);
             foreach (var store in m_Stores.Values)
             {
                 store.Sync(combinedCancellation.Signal).Forget();
@@ -391,7 +391,7 @@ namespace Metamatic
         {
             if (m_Disposed) return;
             m_Disposed = true;
-            m_DisposeCancellationSignalSource.TryCancel();
+            m_DisposeCancellationSignalSource.TryRaise();
             GC.SuppressFinalize(this);
         }
 

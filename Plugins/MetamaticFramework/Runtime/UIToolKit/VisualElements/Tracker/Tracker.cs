@@ -24,7 +24,7 @@ namespace Metamatic.UIToolKit
             m_Update = update;
             Add(target);
         }
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             UniTask.WaitUntil(() =>
             {
@@ -47,7 +47,7 @@ namespace Metamatic.UIToolKit
             m_Update = update;
             Add(target);
         }
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             UniTask.WaitUntil(() =>
             {

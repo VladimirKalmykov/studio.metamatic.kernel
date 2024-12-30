@@ -26,7 +26,7 @@ namespace Metamatic
         public event Action<PlayerInput> OnPlayerLeft;
         #endregion
 
-        protected override async UniTask RunService(Ready ready, CancellationSignal signal)
+        protected override async UniTask RunService(Ready ready, Signal signal)
         {
             /* Prepare handler for player inputs */
             using var playerInputs = m_PlayerInputs = new ObservableList<PlayerInput>(HandlePlayerInput);
@@ -52,7 +52,7 @@ namespace Metamatic
             throw new NotImplementedException();
         }
 
-        private async UniTask HandlePlayerInput(PlayerInput playerInput, CancellationSignal cancellationSignal)
+        private async UniTask HandlePlayerInput(PlayerInput playerInput, Signal cancellationSignal)
         {
             /* Subscribe to player input actions */
             Action<InputAction.CallbackContext> handler = (InputAction.CallbackContext ctx) =>
@@ -167,7 +167,7 @@ namespace Metamatic
             int mask = -1)
             where T : Component
         {
-            return PolyDisposableOperation.Run(async (operation) =>
+            return MicroOperation.Run(async (operation) =>
             {
                 var cameraService = await Resolve<CameraService>(operation.cancellationSignal);
                 using var listener = SubscribeToActionTriggered(ctx =>

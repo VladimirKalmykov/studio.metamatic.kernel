@@ -14,11 +14,11 @@ namespace Metamatic.SocketSystem
     public abstract class SocketComponent<T>: SocketComponent
     {
         private static readonly ObservableList<SocketComponent<T>> m_Sockets = new ();
-        public static DisposableAction WatchEachLifecycle(Func<SocketComponent<T>, int, CancellationSignal, UniTaskVoid> handler)
+        public static DisposableAction WatchEachLifecycle(Func<SocketComponent<T>, int, Signal, UniTaskVoid> handler)
         {
             return m_Sockets.WatchEachLifecycle(handler);
         }
-        public delegate UniTask Plug(T property, CancellationSignal cancellationSignal);
+        public delegate UniTask Plug(T property, Signal cancellationSignal);
         public readonly struct PlugRequest
         {
             public readonly Plug Plug;
@@ -27,9 +27,9 @@ namespace Metamatic.SocketSystem
             /// <summary>
             /// This signal is called when the plug is removed from the socket totally.
             /// </summary>
-            public readonly CancellationSignal RemoveSignal;
+            public readonly Signal RemoveSignal;
             
-            public PlugRequest(Plug plug, float weight, CancellationSignal removeSignal)
+            public PlugRequest(Plug plug, float weight, Signal removeSignal)
             {
                 this.Plug = plug;
                 this.Weight = weight;
@@ -43,7 +43,7 @@ namespace Metamatic.SocketSystem
         }
         [ShowInInspector, ReadOnly]
         public PlugRequest connectedPlug { get; private set; }
-        private CancellationSignalSource m_DisconnectSignalSource;
+        private SignalSource m_DisconnectSignalSource;
         private readonly List<PlugRequest> m_ConnectRequests = new ();
 
         public void OnEnable()
@@ -72,7 +72,7 @@ namespace Metamatic.SocketSystem
                 /* Compare weights */
                 allowToConnect = weight > connectedPlug.Weight;
             }
-            var removeSignalSource = CancellationSignalSource.Create();
+            var removeSignalSource = SignalSource.Create();
             var plugRequest = new PlugRequest(plug, weight, removeSignalSource.Signal);
             if (allowToConnect)
             {
@@ -86,7 +86,7 @@ namespace Metamatic.SocketSystem
             
             return new DisposableAction(() =>
             {
-                removeSignalSource.TryCancel();
+                removeSignalSource.TryRaise();
                 Disconnect(connectedPlug);
                 
                 /* FInd and remove plug from queue */
@@ -111,7 +111,7 @@ namespace Metamatic.SocketSystem
             connectedPlug = plugRequest;
             try
             {
-                var disconnectSignalSource = m_DisconnectSignalSource = CancellationSignalSource.CreateLinked(plugRequest.RemoveSignal);
+                var disconnectSignalSource = m_DisconnectSignalSource = SignalSource.CreateLinked(plugRequest.RemoveSignal);
                 var socketValue = await GetSocketValue(disconnectSignalSource.Signal);
                 await plugRequest.Plug(socketValue, disconnectSignalSource.Signal);
             } catch (OperationCanceledException)
@@ -129,13 +129,13 @@ namespace Metamatic.SocketSystem
             if (connectedPlug.Plug == plugRequest.Plug)
             {
                 /* Cancel connection */
-                m_DisconnectSignalSource.TryCancel();
+                m_DisconnectSignalSource.TryRaise();
                 /* Return connected plug to queue */
                 m_ConnectRequests.Add(connectedPlug);
                 connectedPlug = default;
             }
         }
 
-        public abstract UniTask<T> GetSocketValue(CancellationSignal cancellationSignal);
+        public abstract UniTask<T> GetSocketValue(Signal cancellationSignal);
     }
 }

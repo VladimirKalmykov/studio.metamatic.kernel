@@ -39,8 +39,8 @@ namespace Metamatic
             public int Version;
             public int ProcessVersion;
             public object[] Dependencies;
-            public PolyDisposableOperation Operation;
-            public Func<T, InternalAsyncDisposableOperation, UniTask> OnCheckIn;
+            public MicroOperation Operation;
+            public Func<T, InternalMicroOperation, UniTask> OnCheckIn;
             public T[] PreferredCells;
             public int Capacity;
             public bool Strict;
@@ -189,7 +189,7 @@ namespace Metamatic
             Recheck(guest).Forget();
         }
         
-        public async UniTask ChangeCellCapacity(T cell, int capacity, CancellationSignal cancellationSignal = default)
+        public async UniTask ChangeCellCapacity(T cell, int capacity, Signal cancellationSignal = default)
         {
             Debug.Assert(capacity > -1, "Capacity should be greater or equal to 0");
             if (m_IsDuringChange)
@@ -199,7 +199,7 @@ namespace Metamatic
                 {
                     try
                     {
-                        cancellationSignal.ThrowIfCancellationRequested();
+                        cancellationSignal.ThrowIfRaised();
                         await ChangeCellCapacity(cell, capacity, cancellationSignal);
                         tsc.TrySetResult();
                     }
@@ -309,7 +309,7 @@ namespace Metamatic
         }
         
         
-        public Reservation Reserve(T[] preferredCells, Func<T, InternalAsyncDisposableOperation, UniTask> onCheckIn, int guestCapacity = 1, bool strict = false, object[] dependencies = null)
+        public Reservation Reserve(T[] preferredCells, Func<T, InternalMicroOperation, UniTask> onCheckIn, int guestCapacity = 1, bool strict = false, object[] dependencies = null)
         {
             /*
              * Create guest
@@ -402,7 +402,7 @@ namespace Metamatic
             var onCheckIn = guest.OnCheckIn;
             Debug.Assert(onCheckIn != null && !onCheckIn.Equals(null), $"[DEBUG-HINT] onCheckIn is null before handling (guestId: {guest.Id})");
             
-            UniTask Handler(InternalAsyncDisposableOperation op)
+            UniTask Handler(InternalMicroOperation op)
             {
                 return onCheckIn(cellId, op);
             }
@@ -413,7 +413,7 @@ namespace Metamatic
             {
                 Array.Copy(guest.Dependencies, 0, combinedDependencies, 1, guest.Dependencies.Length);
             }
-            guest.Operation = PolyDisposableOperation.Run(Handler, dependencies: combinedDependencies);
+            guest.Operation = MicroOperation.Run(Handler, dependencies: combinedDependencies);
             if (!guest.IsSatisfied(cellId))
             {
                 m_CheckedInUnsatisfiedGuests.Add(guest);
@@ -803,7 +803,13 @@ namespace Metamatic
             OnAborted?.Invoke();
             DisposeAsync().Forget();
         }
-        
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            OnAborted += action;
+            return DisposableAction.Create(() => OnAborted -= action);
+        }
+
         public async UniTask DisposeAsync()
         {
             if (m_IsDisposed)

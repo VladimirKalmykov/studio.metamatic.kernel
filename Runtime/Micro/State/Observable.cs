@@ -65,25 +65,25 @@ namespace Metamatic
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public DisposableAction WatchAsync(Func<TValue, CancellationSignal, UniTaskVoid> handler)
+        public DisposableAction WatchAsync(Func<TValue, Signal, UniTaskVoid> handler)
         {
-            CancellationSignalSource valueChangeSignalSource = default;
+            SignalSource valueChangeSignalSource = default;
             void DisposeHandler()
             {
-                valueChangeSignalSource.TryCancel();
+                valueChangeSignalSource.TryRaise();
             }
             OnDisposedOrReset += DisposeHandler;
             void Watcher(TValue value)
             {
-                valueChangeSignalSource.TryCancel();
-                valueChangeSignalSource = CancellationSignalSource.Create();
+                valueChangeSignalSource.TryRaise();
+                valueChangeSignalSource = SignalSource.Create();
                 handler(value, valueChangeSignalSource.Signal).Forget();
             }
             var unwatch = Watch(Watcher);
             return DisposableAction.Create(() =>
             {
                 OnDisposedOrReset -= DisposeHandler;
-                valueChangeSignalSource.TryCancel();
+                valueChangeSignalSource.TryRaise();
                 unwatch.Dispose();
             });
             return SequentialHandler<TValue>.Subscribe(Watch, handler);
@@ -105,7 +105,7 @@ namespace Metamatic
         }
 
         public UniTask<TValue> WaitUntilValueIs(Func<TValue, bool> validator,
-            CancellationSignal cancellationSignal)
+            Signal cancellationSignal)
         {
             if (cancellationSignal.IsCancellationRequested) return UniTask.FromCanceled<TValue>();
             if (validator(GetValue())) return UniTask.FromResult(GetValue());
@@ -145,7 +145,7 @@ namespace Metamatic
             return tcs.Task;
         }
 
-        public UniTask<TValue> WaitUntilValueIs(TValue value, CancellationSignal cancellationSignal = default)
+        public UniTask<TValue> WaitUntilValueIs(TValue value, Signal cancellationSignal = default)
         {
             bool Validator(TValue nextValue)
             {
@@ -154,7 +154,7 @@ namespace Metamatic
             return WaitUntilValueIs(Validator, cancellationSignal);
         }
         
-        public UniTask<TValue> WaitUntilValueIsNotNull(CancellationSignal signal = default)
+        public UniTask<TValue> WaitUntilValueIsNotNull(Signal signal = default)
         {
             return WaitUntilValueIs(v => v != null, signal);
         }
@@ -241,7 +241,7 @@ namespace Metamatic
         /// <param name="defaultValue"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public DisposableAction ReduceLifecycle<T>(Func<TValue, T> reducer, Func<T, CancellationSignal, UniTaskVoid> handler, T defaultValue = default) {
+        public DisposableAction ReduceLifecycle<T>(Func<TValue, T> reducer, Func<T, Signal, UniTaskVoid> handler, T defaultValue = default) {
             var sequentialHandler = new SequentialHandler<T>(handler);
             var memoizedValue = defaultValue;
             void Handler(TValue value)

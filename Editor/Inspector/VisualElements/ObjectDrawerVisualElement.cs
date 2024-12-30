@@ -9,7 +9,7 @@ namespace Metamatic.Inspector
     public class ObjectDrawerVisualElement: DrawerVisualElement<object>
     {
         private Label m_Label;
-        public ObjectDrawerVisualElement(bool editable, CancellationSignal signal = default) : base(editable, signal)
+        public ObjectDrawerVisualElement(bool editable, Signal signal = default) : base(editable, signal)
         {
         }
 
@@ -22,7 +22,7 @@ namespace Metamatic.Inspector
             m_Label.text = value.ToString();
         }
 
-        public override async UniTask OnRender(Action ready, bool editable, CancellationSignal cancellationSignal)
+        public override async UniTask OnRender(Action ready, bool editable, Signal cancellationSignal)
         {
             /* This drawer can not be editable */
             m_Label = new Label

@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// Calls callback when progress value reaches threshold. E.g. is thresholds are 0.25, 0.5, 0.75 and value is 0.6, then callback will be called with 0.5.
+    /// </summary>
     public class ProgressStepThresholds
     {
         private readonly Action<float> m_Callback;

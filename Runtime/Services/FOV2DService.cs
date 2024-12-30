@@ -19,7 +19,7 @@ public class FOV2DService : Service
     public CameraFOVTracker2d cameraFovTracker2d => m_CameraFovTracker2d;
     private List<DisposableAction> m_Trackers = new List<DisposableAction>(100);
 
-    protected async override UniTask RunService(Ready ready, CancellationSignal signal)
+    protected async override UniTask RunService(Ready ready, Signal signal)
     {
         /* Subscribe to camera controller */
         var cameraService = await Resolve<CameraService>();

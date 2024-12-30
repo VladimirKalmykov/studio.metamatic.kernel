@@ -8,7 +8,7 @@ namespace Metamatic
         public int version { get; }
         public GameObject spellCaster { get; }
         public ref TSpell GetSpellReference();
-        public CancellationSignal cancellationSignal { get; }
+        public Signal cancellationSignal { get; }
         public void Modify(SpellModifier modifier);
         public void Release();
     }

@@ -11,7 +11,7 @@ namespace Metamatic.Inspector
     {
         private TextField m_TextField;
         private Label m_Label;
-        public StringDrawerVisualElement(bool editable, CancellationSignal signal) : base(editable, signal)
+        public StringDrawerVisualElement(bool editable, Signal signal) : base(editable, signal)
         {
             
         }
@@ -28,7 +28,7 @@ namespace Metamatic.Inspector
             }
         }
 
-        public override async UniTask OnRender(Action ready, bool editable, CancellationSignal cancellationSignal)
+        public override async UniTask OnRender(Action ready, bool editable, Signal cancellationSignal)
         {
             if (editable)
             {

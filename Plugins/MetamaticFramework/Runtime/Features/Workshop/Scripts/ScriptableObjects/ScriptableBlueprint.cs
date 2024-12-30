@@ -9,23 +9,23 @@ namespace Metamatic.Framework.Workshop
     {
         public abstract string blueprintName { get; }
         public abstract Type type { get; }
-        public abstract UniTask<GameObject> GetPrefab(CancellationSignal cancellationSignal = default);
+        public abstract UniTask<GameObject> GetPrefab(Signal cancellationSignal = default);
         public abstract UniTask<GameObject> Spawn(Vector3 position = default, Quaternion rotation = default,
-            CancellationSignal cancellationSignal = default);
+            Signal cancellationSignal = default);
     }
     public abstract class ScriptableBlueprint<T>: ScriptableBlueprint
     where T: Component
     {
-        public abstract UniTask<T> GetPrefabTyped(CancellationSignal cancellationSignal = default);
+        public abstract UniTask<T> GetPrefabTyped(Signal cancellationSignal = default);
 
         public abstract UniTask<T> SpawnTyped(Vector3 position = default, Quaternion rotation = default,
-            CancellationSignal cancellationSignal = default);
+            Signal cancellationSignal = default);
 
         public abstract void ReturnObject(T gameObject);
 
-        public abstract UniTask<string> GetDisplayName(CancellationSignal cancellationSignal = default);
+        public abstract UniTask<string> GetDisplayName(Signal cancellationSignal = default);
 
-        public abstract UniTask<Texture2D> GetPreview(CancellationSignal cancellationSignal = default);
+        public abstract UniTask<Texture2D> GetPreview(Signal cancellationSignal = default);
         public override Type type => typeof(T);
     }
 }

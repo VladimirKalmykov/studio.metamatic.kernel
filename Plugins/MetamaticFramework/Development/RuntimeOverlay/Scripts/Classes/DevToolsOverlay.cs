@@ -51,7 +51,7 @@ namespace Metamatic.Framework
         /// </summary>
         /// <param name="signal"></param>
         /// <returns></returns>
-        public static UniTask<DevToolsOverlay> GetInstance(CancellationSignal signal) =>
+        public static UniTask<DevToolsOverlay> GetInstance(Signal signal) =>
             m_Instance.WaitUntilValueIsNotNull(signal);
 
         /**
@@ -180,7 +180,7 @@ namespace Metamatic.Framework
         /// <summary>
         /// Signal source for active cursor tool. It will be canceled when the active cursor tool is changed.
         /// </summary>
-        private CancellationSignalSource m_CursorToolActivationCancellationSignalSource;
+        private SignalSource m_CursorToolActivationCancellationSignalSource;
 
         private readonly HashSet<VisualElement> m_HoveredPanels = new();
         public readonly Observable<bool> IsHoveringOverPanel = new(false);
@@ -193,7 +193,7 @@ namespace Metamatic.Framework
         private CriticalNotification m_CriticalNotification;
         private Menu m_Menu;
 
-        protected override async UniTask Run(Ready ready, CancellationSignal signal)
+        protected override async UniTask Run(Ready ready, Signal signal)
         {
             try
             {
@@ -322,7 +322,7 @@ namespace Metamatic.Framework
             }
         }
 
-        private async UniTaskVoid OnPresenceChange(PresenceType presenceType, CancellationSignal signal)
+        private async UniTaskVoid OnPresenceChange(PresenceType presenceType, Signal signal)
         {
             uiDocument.rootVisualElement.style.display = presenceType == PresenceType.Hidden ? DisplayStyle.None : DisplayStyle.Flex;
             var isInteractive = presenceType == PresenceType.Interactive;
@@ -403,7 +403,7 @@ namespace Metamatic.Framework
             root.Add(menu);
         }
         
-        private async UniTaskVoid OnHoveringOverPanelChanged(bool hovering, CancellationSignal signal)
+        private async UniTaskVoid OnHoveringOverPanelChanged(bool hovering, Signal signal)
         {
             if (hovering)
             {
@@ -583,7 +583,7 @@ namespace Metamatic.Framework
             SavePersistentState();
         }
 
-        public async UniTask LoadPersistentState(CancellationSignal signal)
+        public async UniTask LoadPersistentState(Signal signal)
         {
             var localStorage = Repository.LocalStorage;
             var state = await localStorage.TryGet("metamatic-framework/overlay", () => new PersistentState(),
@@ -621,7 +621,7 @@ namespace Metamatic.Framework
             {
                 if (m_ActiveCursorTool.Value == pathName)
                 {
-                    m_CursorToolActivationCancellationSignalSource.TryCancel();
+                    m_CursorToolActivationCancellationSignalSource.TryRaise();
                 }
 
                 m_CursorToolNames.Remove(pathName);
@@ -647,7 +647,7 @@ namespace Metamatic.Framework
             }
         }
 
-        public DisposableAction ObserveCursorTools(Func<CursorToolBlueprint, int, CancellationSignal, UniTaskVoid> handler)
+        public DisposableAction ObserveCursorTools(Func<CursorToolBlueprint, int, Signal, UniTaskVoid> handler)
         {
             return m_CursorTools.WatchEachLifecycle(handler);
         }
@@ -684,7 +684,7 @@ namespace Metamatic.Framework
             return m_ActiveCursorTool.Watch(handler);
         }
 
-        private async UniTaskVoid InternalActivateCursorTool(string pathName, CancellationSignal cancellationSignal)
+        private async UniTaskVoid InternalActivateCursorTool(string pathName, Signal cancellationSignal)
         {
             if (pathName == null)
             {

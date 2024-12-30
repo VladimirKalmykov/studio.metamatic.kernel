@@ -35,7 +35,7 @@ namespace Metamatic
             OnReady?.Invoke();
             return componentDisableCancellationToken.ToUniTask();
         }
-        public UniTask WhenReady(CancellationSignal signal = default)
+        public UniTask WhenReady(Signal signal = default)
         {
             var tcs = new UniTaskCompletionSource();
             IDisposable readyListener = null;
@@ -79,7 +79,7 @@ namespace Metamatic
             }
         }
         
-        public UniTask Demand(CancellationSignal signal)
+        public UniTask Demand(Signal signal)
         {
             Demand();
             return WhenReady(signal);
@@ -87,7 +87,7 @@ namespace Metamatic
 
         private bool m_Demanded;
         private UniTaskCompletionSource m_DemandCompletionSource;
-        protected sealed override async UniTaskVoid RunAsync(CancellationSignal signal)
+        protected sealed override async UniTaskVoid RunAsync(Signal signal)
         {
             var type = this.GetType();
             if (_Services.ContainsKey(type))
@@ -128,7 +128,7 @@ namespace Metamatic
         }
         
         // TODO: Replace CancellationToken with CancellationSignal
-        public static async UniTask<T> Resolve<T>(CancellationSignal signal = default, float timeout = 10f)
+        public static async UniTask<T> Resolve<T>(Signal signal = default, float timeout = 10f)
             where T : Service
         {
             var service = await ResolveInternal<T>(signal, timeout);
@@ -141,7 +141,7 @@ namespace Metamatic
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static UniTask<T> ResolveInternal<T>(CancellationSignal signal = default, float timeout = 10f) where T : Service
+        public static UniTask<T> ResolveInternal<T>(Signal signal = default, float timeout = 10f) where T : Service
         {
             if (_Services.TryGetValue(typeof(T), out var service))
             {
@@ -178,7 +178,7 @@ namespace Metamatic
             return tcs.Task;
         }
         
-        private static async UniTask<T> DelayTimeout<T>(float timeout, CancellationSignal signal, UniTask<T> task, UniTaskCompletionSource<T> tcs, Action<Service> handler, DisposableAction cancellationTokenRegistration)
+        private static async UniTask<T> DelayTimeout<T>(float timeout, Signal signal, UniTask<T> task, UniTaskCompletionSource<T> tcs, Action<Service> handler, DisposableAction cancellationTokenRegistration)
         {
             var delayTask = UniTask.Delay(TimeSpan.FromSeconds(timeout), cancellationToken: signal);
             var result = await UniTask.WhenAny(task, delayTask);
@@ -207,9 +207,9 @@ namespace Metamatic
         protected delegate UniTask Ready();
         private bool m_InitializedOnDemand;
 
-        protected abstract UniTask RunService(Ready ready, CancellationSignal signal);
+        protected abstract UniTask RunService(Ready ready, Signal signal);
         
-        protected override UniTaskVoid RunUntilDestroy(CancellationSignal signal)
+        protected override UniTaskVoid RunUntilDestroy(Signal signal)
         {
             return new UniTaskVoid();
         }

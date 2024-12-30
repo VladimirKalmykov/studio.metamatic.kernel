@@ -11,7 +11,7 @@ namespace Metamatic.UIToolKit
     public class ObservableListView<T>: AsyncVisualElement, IDisposable
     {
         #region Static
-        private static UniTaskVoid DefaultItemRenderer(T item, VisualElement container, CancellationSignal signal)
+        private static UniTaskVoid DefaultItemRenderer(T item, VisualElement container, Signal signal)
         {
             container.Add(new Label(item.ToString()));
             return new UniTaskVoid();
@@ -26,13 +26,13 @@ namespace Metamatic.UIToolKit
         private bool m_InteractiveSelection;
         #endregion
         private readonly Dictionary<T, VisualElement> m_MapToElement = new Dictionary<T, VisualElement>();
-        public Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer { get; set; } = DefaultItemRenderer;
-        public ObservableListView(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
+        public Func<T, VisualElement, Signal, UniTaskVoid> itemRenderer { get; set; } = DefaultItemRenderer;
+        public ObservableListView(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, Signal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
         {
             Init(observableList, selectionType, itemRenderer, interactiveSelection);
         }
         
-        public ObservableListView(SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
+        public ObservableListView(SelectionType selectionType = SelectionType.None, Func<T, VisualElement, Signal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
         {
             var observableList = new ObservableList<T>();
             Init(observableList, selectionType, itemRenderer, interactiveSelection);
@@ -43,7 +43,7 @@ namespace Metamatic.UIToolKit
             Console.Exception("ObservableListView", "Was not disposed. You should dispose it manually.");
         }
         
-        private void Init(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, CancellationSignal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
+        private void Init(ObservableList<T> observableList, SelectionType selectionType = SelectionType.None, Func<T, VisualElement, Signal, UniTaskVoid> itemRenderer = null, bool interactiveSelection = true)
         {
             styleSheets.Add(UIToolKitCore.styleSheet);
             source = observableList;
@@ -79,19 +79,19 @@ namespace Metamatic.UIToolKit
         /// </summary>
         /// <param name="action"></param>
         /// <returns></returns>
-        public DisposableAction WatchSelectedLifecycle(Func<T, int, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction WatchSelectedLifecycle(Func<T, int, Signal, UniTaskVoid> action)
         {
             return m_SelectedItems.WatchEachLifecycle(action);
         }
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             using var watchSelected = m_SelectedItems.WatchEachLifecycle(OnSelectedChange);
             using var watcher = source.WatchEachLifecycle(OnItemLifecycle);
             await detachSignal;
         }
         
-        private async UniTaskVoid OnSelectedChange(T item, int index, CancellationSignal signal)
+        private async UniTaskVoid OnSelectedChange(T item, int index, Signal signal)
         {
             if (m_MapToElement.TryGetValue(item, out var element))
             {
@@ -106,7 +106,7 @@ namespace Metamatic.UIToolKit
             }
         }
 
-        private async UniTaskVoid OnItemLifecycle(T item, int index, CancellationSignal signal)
+        private async UniTaskVoid OnItemLifecycle(T item, int index, Signal signal)
         {
             var itemElement = new VisualElement();
             itemElement.AddToClassList("MetamaticUIKit_Item");

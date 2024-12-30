@@ -31,8 +31,8 @@ namespace Metamatic
         /// </summary>
         private IEventLoop<PlayerLoopTiming> m_PlayerLoop;
         
-        private readonly CancellationSignalSource m_DisposeSignalSource;
-        private CancellationSignalSource m_PlaybackCancellationSignalSource;
+        private readonly SignalSource m_DisposeSignalSource;
+        private SignalSource m_PlaybackCancellationSignalSource;
         private float m_WeightingUpdateFrequency;
         private float m_LogicUpdateFrequency;
         private float m_LastLogicUpdateTime;
@@ -42,7 +42,7 @@ namespace Metamatic
             MindThread = mindThread;
             m_LODLevel = lodLevel;
             m_PlayerLoop = playerLoop;
-            m_DisposeSignalSource = CancellationSignalSource.Create();
+            m_DisposeSignalSource = SignalSource.Create();
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Metamatic
         /// </summary>
         public void Run()
         {
-            m_PlaybackCancellationSignalSource = CancellationSignalSource.CreateLinked(m_DisposeSignalSource.Signal);
+            m_PlaybackCancellationSignalSource = SignalSource.CreateLinked(m_DisposeSignalSource.Signal);
             AsyncInit(m_PlaybackCancellationSignalSource.Signal).Forget();
         }
 
@@ -59,10 +59,10 @@ namespace Metamatic
         /// </summary>
         public void Stop()
         {
-            m_PlaybackCancellationSignalSource.TryCancel();
+            m_PlaybackCancellationSignalSource.TryRaise();
         }
 
-        private async UniTaskVoid AsyncInit(CancellationSignal cancellationSignal)
+        private async UniTaskVoid AsyncInit(Signal cancellationSignal)
         {
             m_LastLogicUpdateTime = m_PlayerLoop.time;
             // Activate the root thread
@@ -79,9 +79,9 @@ namespace Metamatic
         /// </summary>
         /// <returns></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        private PolyDisposableOperation StartEventLoop()
+        private MicroOperation StartEventLoop()
         {
-            return PolyDisposableOperation.Call(async (CancellationSignal signal) =>
+            return MicroOperation.Call(async (Signal signal) =>
             {
                 m_LastLogicUpdateTime = m_PlayerLoop.time;
                 using var subscribeToLoop = m_PlayerLoop.AddAction(PlayerLoopTiming.Update, () =>
@@ -98,7 +98,7 @@ namespace Metamatic
                 {
                     // Weighting must be done on post late update
                     await m_PlayerLoop.Yield(PlayerLoopTiming.PostLateUpdate);
-                    signal.ThrowIfCancellationRequested();
+                    signal.ThrowIfRaised();
                     MindThread.Weighting();
                     await m_PlayerLoop.Delay(PlayerLoopTiming.FixedUpdate, m_WeightingUpdateFrequency, signal);
                 }
@@ -132,7 +132,7 @@ namespace Metamatic
         
         public void Dispose()
         {
-            m_DisposeSignalSource.TryCancel();
+            m_DisposeSignalSource.TryRaise();
         }
     }
 }

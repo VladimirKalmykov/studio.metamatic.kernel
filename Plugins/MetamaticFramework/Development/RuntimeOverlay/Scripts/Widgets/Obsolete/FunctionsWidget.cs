@@ -11,7 +11,7 @@ namespace Metamatic.Framework
         {
         }
 
-        public override async UniTaskVoid OnInitializeWidget(CancellationSignal signal)
+        public override async UniTaskVoid OnInitializeWidget(Signal signal)
         {
             /* Create spawn panel */
             var panel = overlay.CreatePanel("panels/functions", "Functions", new PanelElement.Constraints()
@@ -41,7 +41,7 @@ namespace Metamatic.Framework
             overlay.root.Remove(panel);
         }
 
-        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction, int index, CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction, int index, Signal cancellationSignal)
         {
             var button = new Button(customFunction.Invoke)
             {

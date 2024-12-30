@@ -17,7 +17,7 @@ namespace Metamatic
             private bool m_PersistOnDispose;
             private readonly string m_Pattern;
             private object[] m_Args;
-            private CancellationSignalSource m_LifecycleTokenSource = CancellationSignalSource.Create();
+            private SignalSource m_LifecycleTokenSource = SignalSource.Create();
             private Observable<bool> m_UpdateInProgress = new ();
             private bool m_IsDisposed;
             private bool m_Peristed;
@@ -134,7 +134,7 @@ namespace Metamatic
                 m_IsDisposed = true;
                 m_TextRow.value.Dispose();
                 m_TextRow.Dispose();
-                m_LifecycleTokenSource.TryCancel();
+                m_LifecycleTokenSource.TryRaise();
                 m_LifecycleTokenSource.Dispose();
                 GC.SuppressFinalize(this);
             }
@@ -205,7 +205,7 @@ namespace Metamatic
         }
 
         private static Observable<UITerminal> m_CachedUITerminal = new ();
-        public static UniTask<UITerminal> WaitForUITerminal(CancellationSignal signal)
+        public static UniTask<UITerminal> WaitForUITerminal(Signal signal)
         {
             return m_CachedUITerminal.WaitUntilValueIsNotNull(signal);
         }

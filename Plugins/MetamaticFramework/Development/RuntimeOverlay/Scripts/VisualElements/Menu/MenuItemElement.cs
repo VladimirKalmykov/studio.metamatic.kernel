@@ -65,7 +65,7 @@ namespace Metamatic.Framework
 
         #region AsyncVisualElement
 
-        public override async UniTask OnAttachedAsync(CancellationSignal detachSignal)
+        public override async UniTask OnAttachedAsync(Signal detachSignal)
         {
             // Subscribe to the click event
             RegisterCallback<ClickEvent>(OnClick);
@@ -119,7 +119,7 @@ namespace Metamatic.Framework
             m_Hovered.SetUniqValue(false);
         }
 
-        public DisposableAction WatchHoveredLifecycle(Func<bool, CancellationSignal, UniTaskVoid> onHoveredChanged)
+        public DisposableAction WatchHoveredLifecycle(Func<bool, Signal, UniTaskVoid> onHoveredChanged)
         {
             return m_Hovered.WatchAsync(onHoveredChanged);
         }
@@ -167,13 +167,13 @@ namespace Metamatic.Framework
             });
         }
 
-        private async UniTaskVoid WatchHoveredForShowingPanel(Menu submenu, CancellationSignal cancellationSignal)
+        private async UniTaskVoid WatchHoveredForShowingPanel(Menu submenu, Signal cancellationSignal)
         {
             if (submenu != null)
             {
                 // Hover observer for both the menu item and the menu panel
                 var parentMenuPanel = this.FindParent<MenuPanel>();
-                async UniTaskVoid HandleCombinedHover(bool isHovered, CancellationSignal cancellationSignal)
+                async UniTaskVoid HandleCombinedHover(bool isHovered, Signal cancellationSignal)
                 {
                     if (isHovered)
                     {

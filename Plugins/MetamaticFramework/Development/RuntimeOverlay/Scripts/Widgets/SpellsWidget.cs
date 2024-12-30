@@ -57,7 +57,7 @@ namespace Metamatic.Framework.Widgets
 
             CreateSpellsGUI();
         }
-        public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
+        public override async UniTask OnPanelAttachedAsync(Signal cancellationSignal)
         {
             /* Subscribe to active spell type */
             using var activeSpellTypeSubscription = WatchActiveSpellType(OnActiveSpellTypeChanged);
@@ -146,7 +146,7 @@ namespace Metamatic.Framework.Widgets
             m_SpellForm.SetMessage("No object selected");
         }
 
-        private async UniTaskVoid OnSwitchActiveSpellType(Type spellType, CancellationSignal signal)
+        private async UniTaskVoid OnSwitchActiveSpellType(Type spellType, Signal signal)
         {
             if (spellType == null)
             {
@@ -180,7 +180,7 @@ namespace Metamatic.Framework.Widgets
             {
                 foreach (var selectedObject in RuntimeCore.Instance.selectedObjects)
                 {
-                    asyncSpell.OnCast(God.Instance, selectedObject, CancellationSignal.None).Forget();
+                    asyncSpell.OnCast(God.Instance, selectedObject, Signal.None).Forget();
                 }
             } else if (spell is ISyncSpell syncSpell)
             {
@@ -200,7 +200,7 @@ namespace Metamatic.Framework.Widgets
             return m_ActiveSpellType.Watch(action);
         }
         
-        public DisposableAction OnSwitchActiveSpellType(Func<Type, CancellationSignal, UniTaskVoid> action)
+        public DisposableAction OnSwitchActiveSpellType(Func<Type, Signal, UniTaskVoid> action)
         {
             return SequentialHandler<Type>.WatchAsync(m_ActiveSpellType.Watch, action);
         }

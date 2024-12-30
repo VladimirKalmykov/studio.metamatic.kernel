@@ -32,7 +32,7 @@ namespace Metamatic
             Sync,
             Async
         }
-        public CancellationSignal cancellationSignal { get; }
+        public Signal cancellationSignal { get; }
         public CancellationType cancellationType => isDisposedSync ? CancellationType.Sync : (isDisposedAsync ? CancellationType.Async : CancellationType.None);
     }
 }

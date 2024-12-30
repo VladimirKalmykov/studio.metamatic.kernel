@@ -174,10 +174,10 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
             Exception exception = null;
-            var cancellationTokenSource = CancellationSignalSource.Create();
+            var cancellationTokenSource = SignalSource.Create();
             UniTask.Delay(300).ContinueWith(() =>
             {
-                cancellationTokenSource.TryCancel();
+                cancellationTokenSource.TryRaise();
             }).Forget();
             try {
                 await stateMachine.PushLegacy(State.Running, cancellationTokenSource.Signal);
@@ -219,10 +219,10 @@ namespace Metamatic.Tests
                 actualStatus.Add(status);
             });
             Exception exception = null;
-            var cancellationTokenSource = CancellationSignalSource.Create();
+            var cancellationTokenSource = SignalSource.Create();
             UniTask.Delay(300).ContinueWith(() =>
             {
-                cancellationTokenSource.TryCancel();
+                cancellationTokenSource.TryRaise();
             }).Forget();
             stateMachine.PushLegacy(State.Running);
             try {

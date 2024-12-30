@@ -54,11 +54,11 @@ namespace Metamatic
         public readonly struct Transition
         {
             private readonly AsyncStateMachine<TState> m_StateMachine;
-            public readonly CancellationSignal cancellationSignal; // TODO: rename to CapitalCase
+            public readonly Signal cancellationSignal; // TODO: rename to CapitalCase
             public readonly ulong ID;
 
             public TransitionStatus status => m_StateMachine.m_Status;
-            public CancellationSignal externalCancellationSignal => m_StateMachine.m_ExternalCancellationSignal;
+            public Signal externalCancellationSignal => m_StateMachine.m_ExternalCancellationSignal;
             public TState prevState => m_StateMachine.prevState;
             public TState state => m_StateMachine.currentState;
             public TState nextState => m_StateMachine.nextState;
@@ -71,7 +71,7 @@ namespace Metamatic
             public UniTask completeTransitionToNextStateTask => m_StateMachine.completeTransitionToNextStateTask;
             public bool isInitial => m_StateMachine.isInitial;
             public bool isFinalize => m_StateMachine.m_Status == TransitionStatus.Aborted;
-            public CancellationSignal generalCancellationSignal => m_StateMachine.internalCancellationSignal;
+            public Signal generalCancellationSignal => m_StateMachine.internalCancellationSignal;
             public bool isAborted => m_StateMachine.m_Status == TransitionStatus.Aborted;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -97,17 +97,17 @@ namespace Metamatic
         /// <summary>
         /// Internal cancellation token for the whole state machine
         /// </summary>
-        private CancellationSignalSource m_InternalCancellationSignalSource = CancellationSignalSource.Create();
+        private SignalSource m_InternalCancellationSignalSource = SignalSource.Create();
 
         /// <summary>
         /// External cancellation token passed within the state
         /// </summary>
-        private CancellationSignal m_ExternalCancellationSignal;
+        private Signal m_ExternalCancellationSignal;
 
         /// <summary>
         /// Cancellation token source will be canceled when the transition gets next state, thus transition handler can know that it should stop
         /// </summary>
-        private CancellationSignalSource m_CancellationSignalSource;
+        private SignalSource m_CancellationSignalSource;
 
         /// <summary>
         /// Completion source for the transition from previous state to current state (will be completed when handler call WaitNextState() method or right after setting next state)
@@ -211,12 +211,12 @@ namespace Metamatic
         /// <summary>
         /// CancellationSignal for the transition (will be canceled when the transition gets next state)
         /// </summary>
-        private CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
+        private Signal cancellationSignal => m_CancellationSignalSource.Signal;
 
         /// <summary>
         /// Internal cancellation token for the whole state machine (will be canceled when state machine is disposed)
         /// </summary>
-        public CancellationSignal internalCancellationSignal => m_InternalCancellationSignalSource.Signal;
+        public Signal internalCancellationSignal => m_InternalCancellationSignalSource.Signal;
 
         private UniTask task =>
             UniTask.WhenAll(m_TransitionFromPrevStateCompletionSource?.Task ?? UniTask.CompletedTask,
@@ -225,7 +225,7 @@ namespace Metamatic
         public event Action<TState> OnStateChange;
 
         private void Reset(TState nextStateForReset, TState nextPrevState = default,
-            CancellationSignal externalCancellationSignal = default)
+            Signal externalCancellationSignal = default)
         {
             if (m_SettingDebug)
                 Console.Verbose("AsyncStateMachine",$"Reset (new prevState: {nextPrevState}, nextState: {nextStateForReset}");
@@ -261,7 +261,7 @@ namespace Metamatic
             }
             m_CancellationSignalSource.Dispose();
             m_CancellationSignalSource =
-                CancellationSignalSource.CreateLinked(m_InternalCancellationSignalSource.Signal,
+                SignalSource.CreateLinked(m_InternalCancellationSignalSource.Signal,
                     externalCancellationSignal);
             
             if (m_TransitionFromPrevStateCompletionSource == null)
@@ -307,7 +307,7 @@ namespace Metamatic
             OnAborted = null;
         }
 
-        private void Reset(TState nextStateForReset, CancellationSignal externalCancellationSignal = default)
+        private void Reset(TState nextStateForReset, Signal externalCancellationSignal = default)
         {
             Reset(nextStateForReset, default, externalCancellationSignal);
             prevState = m_DefaultState;
@@ -394,7 +394,7 @@ namespace Metamatic
                 {
                     Console.Verbose("AsyncStateMachine", $"Cancel because next state is defined during awaiting next state: {newNextState}");
                 }
-                m_CancellationSignalSource.TryCancel();
+                m_CancellationSignalSource.TryRaise();
                 tsc.TrySetResult(newNextState);
             }
 
@@ -451,7 +451,7 @@ namespace Metamatic
                 Console.Verbose("AsyncStateMachine", $"Cancel because next state is defined: {newNextState}");
             }
 #endif
-            memoizedCancellationSignalSource.TryCancel();
+            memoizedCancellationSignalSource.TryRaise();
             
             return true;
         }
@@ -625,7 +625,7 @@ namespace Metamatic
             return ++m_LastId == ulong.MaxValue ? m_LastId = 1 : m_LastId;
         }
 
-        private Queue<(ulong id, TState state, CancellationSignal cancellationToken, ReusableUniTaskCompletionSource tcs)>
+        private Queue<(ulong id, TState state, Signal cancellationToken, ReusableUniTaskCompletionSource tcs)>
             m_StatesQueue =
                 new();
 
@@ -636,7 +636,7 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns>Uni task for transition between prev task to this task</returns>
-        public UniTask PushLegacy(TState stateToPush, CancellationSignal externalCancellationSignal = default, ulong id = 0)
+        public UniTask PushLegacy(TState stateToPush, Signal externalCancellationSignal = default, ulong id = 0)
         {
             return PushStateAsync(stateToPush, externalCancellationSignal, id).task;
         }
@@ -649,7 +649,7 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <returns></returns>
         public UniTask TryPushNextState(TState ifCurrentStateIs, TState newNextState,
-            CancellationSignal externalCancellationSignal = default)
+            Signal externalCancellationSignal = default)
         {
             if (currentState.Equals(ifCurrentStateIs) && m_StatesQueue.Count == 0)
             {
@@ -665,7 +665,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="newNextState"></param>
         /// <param name="externalCancellationSignal"></param>
-        public bool TryPushState(TState newNextState, CancellationSignal externalCancellationSignal = default)
+        public bool TryPushState(TState newNextState, Signal externalCancellationSignal = default)
         {
             if (!currentState.Equals(newNextState))
             {
@@ -684,7 +684,7 @@ namespace Metamatic
         /// <param name="newNextState"></param>
         /// <param name="signal"></param>
         /// <returns></returns>
-        public ulong TryPushNextState(ulong id, TState newNextState, CancellationSignal signal = default)
+        public ulong TryPushNextState(ulong id, TState newNextState, Signal signal = default)
         {
             if (IsLatest(id))
             {
@@ -702,7 +702,7 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public ulong PushState(TState newState, CancellationSignal externalCancellationSignal = default, ulong id = 0)
+        public ulong PushState(TState newState, Signal externalCancellationSignal = default, ulong id = 0)
         {
             return PushStateAsync(newState, externalCancellationSignal, id).id;
         }
@@ -715,7 +715,7 @@ namespace Metamatic
         /// <param name="id"></param>
         /// <returns></returns>
         public (UniTask task, ulong id) PushStateAsync(TState newState,
-            CancellationSignal externalCancellationSignal = default,
+            Signal externalCancellationSignal = default,
             ulong id = 0)
         {
 #if DEBUG
@@ -876,7 +876,7 @@ namespace Metamatic
             return UniTask.CompletedTask;
         }
 
-        private void EnqueueState(ulong id, TState stateToEnqueue, CancellationSignal externalCancellationSignal,
+        private void EnqueueState(ulong id, TState stateToEnqueue, Signal externalCancellationSignal,
             ReusableUniTaskCompletionSource tcs)
         {
             if (m_SettingKeepOnlyLatestState && m_StatesQueue.Count > 1)

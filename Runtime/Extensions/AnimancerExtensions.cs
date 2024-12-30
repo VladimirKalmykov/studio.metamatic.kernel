@@ -47,16 +47,16 @@ namespace Metamatic
             return tcs.Task;
         }
         
-        public static async UniTask WhenEnds(this AnimancerState state, CancellationSignal cancellationSignal = default)
+        public static async UniTask WhenEnds(this AnimancerState state, Signal cancellationSignal = default)
         {
-            cancellationSignal.ThrowIfCancellationRequested();
+            cancellationSignal.ThrowIfRaised();
             var isReversed = state.Speed < 0;
             var isLooping = state.Clip.isLooping;
 
             if (isLooping)
             {
                 await UniTask.WaitWhile(() => state.IsPlaying && !cancellationSignal.IsCancellationRequested);
-                cancellationSignal.ThrowIfCancellationRequested();
+                cancellationSignal.ThrowIfRaised();
             }
 
             if (isReversed && state.NormalizedTime <= 0f)
@@ -72,7 +72,7 @@ namespace Metamatic
                 ? new Func<bool>(() => state.NormalizedTime > 0f && !cancellationSignal.IsCancellationRequested)
                 : new Func<bool>(() => state.NormalizedTime < 1f && !cancellationSignal.IsCancellationRequested);
             await UniTask.WaitWhile(checkFn);
-            cancellationSignal.ThrowIfCancellationRequested();
+            cancellationSignal.ThrowIfRaised();
         }
     }
 }

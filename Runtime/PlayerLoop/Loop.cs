@@ -20,7 +20,7 @@ namespace Metamatic
     {
         #region Static
         public readonly struct YieldAwaitable {
-            private readonly CancellationSignal m_Signal; // TODO: Do we need this signal?
+            private readonly Signal m_Signal; // TODO: Do we need this signal?
             private readonly ContinuationQueue m_Queue;
             /// <summary>
             /// Directly convert from Custom awaiter
@@ -33,7 +33,7 @@ namespace Metamatic
                 m_CustomAwaiter = null;
             }
             
-            public YieldAwaitable(ContinuationQueue queue, CancellationSignal signal)
+            public YieldAwaitable(ContinuationQueue queue, Signal signal)
             {
                 m_Queue = queue;
                 m_Signal = signal;
@@ -110,7 +110,7 @@ namespace Metamatic
                 return tsc.Task;
             }
             
-            public UniTask ToUniTask(CancellationSignal signal)
+            public UniTask ToUniTask(Signal signal)
             {
                 var queue = m_Queue;
                 if (m_Queue.IsDisposed)
@@ -259,7 +259,7 @@ namespace Metamatic
             m_IsProcessing = false;
         }
         
-        public UniTask WaitUntil(System.Func<bool> action, CancellationSignal cancellationSignal = default)
+        public UniTask WaitUntil(System.Func<bool> action, Signal cancellationSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
 
@@ -306,7 +306,7 @@ namespace Metamatic
             return tsc.Task;
         }
         
-        public UniTask WaitWhile(System.Func<bool> action, CancellationSignal cancellationSignal = default)
+        public UniTask WaitWhile(System.Func<bool> action, Signal cancellationSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
             void HandleDispose()
@@ -377,12 +377,12 @@ namespace Metamatic
             });
         }
 
-        public UniTask Delay(TimeSpan timeSpan, CancellationSignal cancellationSignal = default)
+        public UniTask Delay(TimeSpan timeSpan, Signal cancellationSignal = default)
         {
             return Delay((float) timeSpan.TotalSeconds, cancellationSignal);
         }
         
-        public UniTask Delay(float seconds, CancellationSignal cancellationSignal = default)
+        public UniTask Delay(float seconds, Signal cancellationSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
             void HandleDispose()
@@ -430,7 +430,7 @@ namespace Metamatic
         }
         
         public YieldAwaitable Yield() => new (m_ContinuationQueue);
-        public YieldAwaitable Yield(CancellationSignal signal) => new (m_ContinuationQueue, signal);
+        public YieldAwaitable Yield(Signal signal) => new (m_ContinuationQueue, signal);
         
         private void CleanUpArray(int firstRemovedIndex)
         {

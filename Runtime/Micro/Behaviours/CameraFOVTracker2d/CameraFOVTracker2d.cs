@@ -598,7 +598,7 @@ namespace Metamatic.MicroBehaviours
             m_Paused = false;
         }
 
-        protected override async UniTask Main(CancellationSignal signal)
+        protected override async UniTask Main(Signal signal)
         {
             /* Initialize native arrays */
             mapBoundsTypesToRectIndexesBoundTypes =
@@ -728,7 +728,7 @@ namespace Metamatic.MicroBehaviours
                         PlayerLoopTiming.Update, signal);
                     areasJobHandle.Complete();
                     objectsJobHandle.Complete();
-                    signal.ThrowIfCancellationRequested();
+                    signal.ThrowIfRaised();
 
                     /* Parse objects job result */
                     for (var i = 0; i < iterableTrackedObjects.Count; i++)

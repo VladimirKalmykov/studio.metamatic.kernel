@@ -15,7 +15,7 @@ namespace Metamatic.MindThreads
             return m_FixedWeight;
         }
 
-        protected override UniTask OnActivate(CancellationSignal cancellationSignal)
+        protected override UniTask OnActivate(Signal cancellationSignal)
         {
             return UniTask.CompletedTask;
         }

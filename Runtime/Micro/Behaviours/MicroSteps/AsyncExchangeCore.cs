@@ -37,20 +37,20 @@ namespace Metamatic
         
         public void Send() => ResolveCore()?.Send();
 
-        public UniTask<TOutput> Receive<TOutput>(CancellationSignal token = default) =>
+        public UniTask<TOutput> Receive<TOutput>(Signal token = default) =>
             ResolveCore()?.Receive<TOutput>(token) ?? UniTask.FromCanceled<TOutput>();
         
-        public UniTask Receive(CancellationSignal token = default) => ResolveCore()?.Receive(token) ?? UniTask.FromCanceled();
+        public UniTask Receive(Signal token = default) => ResolveCore()?.Receive(token) ?? UniTask.FromCanceled();
         
-        public UniTask<TOutput> Duplex<TInput, TOutput>(TInput value, CancellationSignal token = default) =>
+        public UniTask<TOutput> Duplex<TInput, TOutput>(TInput value, Signal token = default) =>
             ResolveCore()?.Duplex<TInput, TOutput>(value, token) ?? UniTask.FromCanceled<TOutput>();
         
-        public UniTask Duplex<TInput>(TInput value, CancellationSignal token = default) => ResolveCore()?.Duplex<TInput>(value, token) ?? UniTask.FromCanceled();
+        public UniTask Duplex<TInput>(TInput value, Signal token = default) => ResolveCore()?.Duplex<TInput>(value, token) ?? UniTask.FromCanceled();
         
-        public UniTask<TOutput> Duplex<TOutput>(CancellationSignal token = default) =>
+        public UniTask<TOutput> Duplex<TOutput>(Signal token = default) =>
             ResolveCore()?.Duplex<TOutput>(token) ?? UniTask.FromCanceled<TOutput>();
         
-        public UniTask Duplex(CancellationSignal token = default) => ResolveCore()?.Duplex(token) ?? UniTask.FromCanceled();
+        public UniTask Duplex(Signal token = default) => ResolveCore()?.Duplex(token) ?? UniTask.FromCanceled();
         #endregion
         
         public void Dispose()
@@ -211,7 +211,7 @@ namespace Metamatic
         /// <summary>
         /// Common cancellation token for the exchange
         /// </summary>
-        private CancellationSignalSource m_CancellationSignalSource;
+        private SignalSource m_CancellationSignalSource;
         /// <summary>
         /// Contains the expected input type
         /// </summary>
@@ -229,7 +229,7 @@ namespace Metamatic
         /// <summary>
         /// Public reference to the cancellation token (that is called when the behaviour is disposed)
         /// </summary>
-        public CancellationSignal cancellationSignal => m_CancellationSignalSource.Signal;
+        public Signal cancellationSignal => m_CancellationSignalSource.Signal;
         /// <summary>
         /// Disposing is called asynchronously (DisposeAsync() method is called), otherwise it is called synchronously (Dispose() method is called)
         /// </summary>
@@ -238,14 +238,14 @@ namespace Metamatic
         public event Action<Exception> OnDisposedAsync;
         public UniTask task => m_GeneralCompletionSource.Task;
 
-        public delegate UniTask AsyncAction(Exchanger exchange, CancellationSignal cancellationSignal);
+        public delegate UniTask AsyncAction(Exchanger exchange, Signal cancellationSignal);
 
         private AsyncAction m_Action;
 
         public void Init(AsyncAction action, object[] dependencies = null)
         {
             m_Action = action;
-            m_CancellationSignalSource = CancellationSignalSource.Create();
+            m_CancellationSignalSource = SignalSource.Create();
             if (dependencies != null)
             {
                 OnDisposedSync += ObserveExposedDisposable.Create(dependencies, Abort);
@@ -364,10 +364,10 @@ namespace Metamatic
             Send<object>(null);
         }
         
-        public async UniTask<TOutput> Receive<TOutput>(CancellationSignal signal = default)
+        public async UniTask<TOutput> Receive<TOutput>(Signal signal = default)
         {
-            signal.ThrowIfCancellationRequested();
-            cancellationSignal.ThrowIfCancellationRequested();
+            signal.ThrowIfRaised();
+            cancellationSignal.ThrowIfRaised();
             DisposableAction registrationSelf = default;
             DisposableAction registrationExternal = default;
             if (m_OutputCompletionSource == null)
@@ -397,13 +397,13 @@ namespace Metamatic
             throw new InvalidOperationException($"Expected output type is {m_ExpectedOutputType}, but got {m_OutputCompletionSource.GetType()}");
         }
         
-        public async UniTask Receive(CancellationSignal signal = default)
+        public async UniTask Receive(Signal signal = default)
         {
             await Receive<object>(signal);
         }
 
         public UniTask<TOutput> Duplex<TInput, TOutput>(TInput value,
-            CancellationSignal token = default)
+            Signal token = default)
         {
             var receiveTask = Receive<TOutput>(token);
             Send(value);
@@ -411,17 +411,17 @@ namespace Metamatic
         }
         
         public UniTask Duplex<TInput>(TInput value,
-            CancellationSignal token = default)
+            Signal token = default)
         {
             return Duplex<TInput, object>(value, token);
         }
         
-        public UniTask<TOutput> Duplex<TOutput>(CancellationSignal token = default)
+        public UniTask<TOutput> Duplex<TOutput>(Signal token = default)
         {
             return Duplex<object, TOutput>(default, token);
         }
         
-        public UniTask Duplex(CancellationSignal token = default)
+        public UniTask Duplex(Signal token = default)
         {
             return Duplex<object, object>(default, token);
         }
@@ -491,7 +491,13 @@ namespace Metamatic
             isAborted = true;
             OnAborted?.Invoke();
             OnAborted = null;
-            m_CancellationSignalSource.TryCancel();
+            m_CancellationSignalSource.TryRaise();
+        }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            OnAborted += action;
+            return DisposableAction.Create(() => OnAborted -= action);
         }
 
         public bool isDisposedSync { get; private set;  }

@@ -23,14 +23,14 @@ namespace Metamatic.Framework.Widgets
             m_EntityComponentsTabs = new Tabs<EntityComponent>();
             Add(m_EntityComponentsTabs);
         }
-        public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
+        public override async UniTask OnPanelAttachedAsync(Signal cancellationSignal)
         {
             using var watchCharacterAIControllers = RuntimeCore.Instance.WatchEverySelectedObjectLifecycle(OnSelectedObjectChanged, TakeFirst);
             using var watchActiveTab = m_EntityComponentsTabs.ActiveTab.WatchAsync(OnActiveTabLifecycleChanged);
             await cancellationSignal;
         }
         
-        private async UniTaskVoid OnActiveTabLifecycleChanged(EntityComponent entityComponent, CancellationSignal signal)
+        private async UniTaskVoid OnActiveTabLifecycleChanged(EntityComponent entityComponent, Signal signal)
         {
             m_EntityComponentsTabs.Clear();
             if (entityComponent == null)
@@ -63,7 +63,7 @@ namespace Metamatic.Framework.Widgets
             return index == 0;
         }
         
-        private async UniTaskVoid OnSelectedObjectChanged(GameObject selectedObject, int index, CancellationSignal signal)
+        private async UniTaskVoid OnSelectedObjectChanged(GameObject selectedObject, int index, Signal signal)
         {
             // Get Entity
             var entity = selectedObject.GetComponent<Entity>();
@@ -73,7 +73,7 @@ namespace Metamatic.Framework.Widgets
             await signal;
         }
         
-        private async UniTaskVoid OnEntityComponentsChanged(EntityComponent entityComponent, int index, CancellationSignal signal)
+        private async UniTaskVoid OnEntityComponentsChanged(EntityComponent entityComponent, int index, Signal signal)
         {
             using var tag = m_EntityComponentsTabs.AddTab(entityComponent.GetType().Name, entityComponent);
             await signal;

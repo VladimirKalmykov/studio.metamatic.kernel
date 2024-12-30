@@ -17,7 +17,7 @@ namespace Metamatic.EditorInspector
         private ConsolePanelVisualElement m_ConsolePanelVisualElement;
 
 
-        protected override async UniTaskVoid EnableAsync(Func<UniTask> ready, CancellationSignal signal)
+        protected override async UniTaskVoid EnableAsync(Func<UniTask> ready, Signal signal)
         {
             m_ConsolePanelVisualElement = new ConsolePanelVisualElement(signal);
             rootVisualElement.Add(m_ConsolePanelVisualElement);

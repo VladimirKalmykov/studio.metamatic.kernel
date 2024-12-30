@@ -16,7 +16,7 @@ namespace Metamatic.Framework.Widgets
             m_Container.AddToClassList("VerticalItemsContainer");
             Add(m_Container);
         }
-        public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
+        public override async UniTask OnPanelAttachedAsync(Signal cancellationSignal)
         {
             m_Overlay = this.GetContext<DevToolsOverlay>().Value;
             m_SelectedObjectTemplate = Resources.Load<VisualTreeAsset>("SelectableItem");
@@ -33,7 +33,7 @@ namespace Metamatic.Framework.Widgets
             return new Preferences(new UnityEngine.Vector2(0, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(0, 0));
         }
         
-        private async UniTaskVoid OnObserveSelectedObject(GameObject selectedObject, int index, CancellationSignal signal)
+        private async UniTaskVoid OnObserveSelectedObject(GameObject selectedObject, int index, Signal signal)
         {
             if (selectedObject == null) return;
             m_SelectedObjectTemplate.CloneTree(m_Container);

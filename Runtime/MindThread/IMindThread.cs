@@ -24,7 +24,7 @@ namespace Metamatic
         public bool longLived { get; set; }
         public IMindThread rootThread { get; set; }
         public string thought { get; }
-        public UniTask Activate(CancellationSignal cancellationSignal);
+        public UniTask Activate(Signal cancellationSignal);
         public DisposableAction AddChildThread(IMindThread thread);
         public void Update();
         public float GetWeight();
@@ -36,8 +36,8 @@ namespace Metamatic
         /// </summary>
         /// <param name="topThread">Top thread that has no children threads</param>
         public void LoopEnd(IMindThread topThread);
-        public UniTask WaitLoopEnd(CancellationSignal cancellationSignal);
+        public UniTask WaitLoopEnd(Signal cancellationSignal);
         public DisposableAction WatchLoopEnd(Action<IMindThread> action);
-        public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, CancellationSignal, UniTaskVoid> action);
+        public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, Signal, UniTaskVoid> action);
     }
 }

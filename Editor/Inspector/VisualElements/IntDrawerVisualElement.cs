@@ -9,7 +9,7 @@ namespace Metamatic.Inspector
     {
         private IntegerField m_IntField;
         private Label m_Label;
-        public IntDrawerVisualElement(bool editable, CancellationSignal signal = default) : base(editable, signal)
+        public IntDrawerVisualElement(bool editable, Signal signal = default) : base(editable, signal)
         {
         }
 
@@ -25,7 +25,7 @@ namespace Metamatic.Inspector
             }
         }
 
-        public override async UniTask OnRender(Action ready, bool editable, CancellationSignal cancellationSignal)
+        public override async UniTask OnRender(Action ready, bool editable, Signal cancellationSignal)
         {
             if (editable)
             {

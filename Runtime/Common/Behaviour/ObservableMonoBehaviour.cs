@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// Exposes the OnDisable and OnDestroy events as observables.
+    /// </summary>
     public class ObservableMonoBehaviour: MonoBehaviour
     {
         public event Action OnDisableEvent;
@@ -60,7 +63,7 @@ namespace Metamatic
             });
         }
 
-        public async UniTask WhenOnDestroy(CancellationSignal cancellationSignal)
+        public async UniTask WhenOnDestroy(Signal cancellationSignal)
         {
             var tcs = SafeUniTaskCompletionSource.Create();
             using var listening = AddOnDestroyListenerOnce(() => tcs.TrySetResult());

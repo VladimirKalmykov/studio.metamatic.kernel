@@ -13,14 +13,14 @@ namespace Metamatic
     {
         /// <summary>
         /// Placement request handler. This handler is called when the placement is ready to use. Positioning supply providers coords and anchor for the placement.
-        /// Exposed async cancellation is used to track the disposal of the placement. Placement can be disposed synchronously or asynchronously as from IPolyDisposableOperation,
+        /// Cancellation struct is used to track the disposal of the placement. Placement can be disposed synchronously or asynchronously as from IPolyDisposableOperation,
         /// also from IPlacementProvider itself (e.g. if the placement source object is removed from the scene or hidden).
         /// PlacementRequestHandler can be called multiple times, but each time its operation should be disposed before the next call.
         /// If operation is disposed asynchronously, the IPlacementProvider should wait for handler to finish its work.
         /// If operation is disposed synchronously, the IPlacementProvider still should wait for handler to finish its work, but handle should take into account that the operation is disposed synchronously,
         /// and should release resources immediately.
         /// </summary>
-        public delegate UniTask PlacementRequestHandler(IPositioningSupply positioningSupply, IExposedAsyncCancellation operation);
+        public delegate UniTask PlacementRequestHandler(IPositioningSupply positioningSupply, AsyncCancellation cancellation);
         /// <summary>
         /// Request placement. This method should be called by the object that needs to be placed. When the placement is ready, the handler is called.
         /// During the placement, handler can be called multiple times, but each time its operation should be disposed before the next call.
@@ -31,6 +31,6 @@ namespace Metamatic
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public IPolyDisposableOperation RequestPlacement(PlacementRequestHandler handler);
+        public IPolyDisposable RequestPlacement(PlacementRequestHandler handler);
     }
 }

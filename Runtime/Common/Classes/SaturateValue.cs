@@ -27,11 +27,11 @@ namespace Metamatic {
         /// </summary>
         /// <param name="maxTime"></param>
         /// <param name="maxCount"></param>
-        /// <param name="compare">Specifiing comparing function increases 15% performance!</param>
+        /// <param name="compare">Specifying comparing function increases 15% performance!</param>
         public SaturateValue(float maxTime = 1f, int maxCount = 10, Func<T, T, bool> compare = null)
         {
             m_TIndexMap = new Dictionary<T, int>();
-            m_Compare = compare == null ? IsEqual : compare;
+            m_Compare = compare ?? IsEqual;
             if (maxCount < 2)
             {
                 throw new Exception("The length can not be lower than 2");
@@ -79,7 +79,7 @@ namespace Metamatic {
             var diff = cachedCurrentTime - m_CurrentValueTime;
             var weight = Math.Min((float)(diff) / (float)m_MaxTime, 1f);
 
-            /* Get new weight for the existen value */
+            /* Get new weight for the existed value */
             var newWeight = Math.Min(1f, cachedCurrentWeight + weight);
 
             /* Get ratios of rest values */

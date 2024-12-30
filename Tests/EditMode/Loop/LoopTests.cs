@@ -168,10 +168,10 @@ namespace Metamatic.Tests
         public IEnumerator YieldToUniTaskWithCancellationToken_ShouldBeCancelled() => UniTask.ToCoroutine(async () =>
         {
             m_Loop.Reset();
-            var cancellationSignalSource = CancellationSignalSource.Create();
+            var cancellationSignalSource = SignalSource.Create();
             UniTask.Delay(500).ContinueWith(() =>
             {
-                cancellationSignalSource.TryCancel();
+                cancellationSignalSource.TryRaise();
             }).Forget();
             UniTask.Delay(1000).ContinueWith(() =>
             {

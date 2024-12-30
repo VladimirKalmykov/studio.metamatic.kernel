@@ -15,7 +15,7 @@ namespace Metamatic.Tests.EditMode
             public int id;
             public string name;
         }
-        private UniTask<TestData> GetTestData(string address, CancellationSignal signal)
+        private UniTask<TestData> GetTestData(string address, Signal signal)
         {
             return UniTask.FromResult(new TestData {id = 33, name = "default"});
         }
@@ -27,7 +27,7 @@ namespace Metamatic.Tests.EditMode
             var driver = new VersionControlStorageDriver(repository, storage);
             repository.AddStorage(driver);
             
-            await using var store = await repository.CreateStore("test", GetTestData, CancellationSignal.None);
+            await using var store = await repository.CreateStore("test", GetTestData, Signal.None);
             Assert.IsNotNull(store);
             Assert.AreEqual(33, store.value.id);
             Assert.AreEqual("default", store.value.name);
@@ -41,12 +41,12 @@ namespace Metamatic.Tests.EditMode
             var driver = new VersionControlStorageDriver(repository, storage);
             repository.AddStorage(driver);
             
-            await using var store = await repository.CreateStore("test", GetTestData, CancellationSignal.None);
+            await using var store = await repository.CreateStore("test", GetTestData, Signal.None);
             Assert.IsNotNull(store);
             Assert.AreEqual(33, store.value.id);
             Assert.AreEqual("default", store.value.name);
             
-            await using var store2 = await repository.GetStore<TestData>("test", CancellationSignal.None);
+            await using var store2 = await repository.GetStore<TestData>("test", Signal.None);
             Assert.IsNotNull(store2);
             Assert.AreEqual(33, store2.value.id);
             Assert.AreEqual("default", store2.value.name);
@@ -62,7 +62,7 @@ namespace Metamatic.Tests.EditMode
             
             driver.Set("test", new TestData {id = 56, name = "custom"}, 1, CancellationToken.None).Forget();
             
-            await using var store = await repository.CreateStore("test", GetTestData, CancellationSignal.None);
+            await using var store = await repository.CreateStore("test", GetTestData, Signal.None);
             Assert.IsNotNull(store);
             Assert.AreEqual(56, store.value.id);
             Assert.AreEqual("custom", store.value.name);
@@ -79,10 +79,10 @@ namespace Metamatic.Tests.EditMode
             
             driver.Set("test", new TestData {id = 56, name = "custom"}, 1, CancellationToken.None).Forget();
             
-            await using var store = await repository.CreateStore("test", GetTestData, CancellationSignal.None);
+            await using var store = await repository.CreateStore("test", GetTestData, Signal.None);
             store.value = new TestData {id = 57, name = "custom2"};
-            await store.Commit(CancellationSignal.None);
-            await store.Sync(CancellationSignal.None);
+            await store.Commit(Signal.None);
+            await store.Sync(Signal.None);
             Assert.IsNotNull(store);
             Assert.AreEqual(57, store.value.id);
             Assert.AreEqual("custom2", store.value.name);
@@ -99,7 +99,7 @@ namespace Metamatic.Tests.EditMode
             
             driver.Set("test", new TestData {id = 56, name = "custom"}, 1, CancellationToken.None).Forget();
             
-            await using var store = await repository.CreateStore("test", GetTestData, CancellationSignal.None);
+            await using var store = await repository.CreateStore("test", GetTestData, Signal.None);
             var releaseBetaBranch = store.Checkout("beta", true);
             store.value = new TestData {id = 57, name = "custom2"};
             Assert.AreEqual(57, store.value.id);
@@ -125,7 +125,7 @@ namespace Metamatic.Tests.EditMode
             
             driver.Set("test", new TestData {id = 56, name = "custom"}, 1, CancellationToken.None).Forget();
             
-            await using var store = await repository.CreateStore("test", GetTestData, CancellationSignal.None);
+            await using var store = await repository.CreateStore("test", GetTestData, Signal.None);
             var releaseBetaBranch = store.Checkout("beta", true);
             store.value = new TestData {id = 57, name = "custom2"};
 

@@ -23,7 +23,7 @@ namespace Metamatic.Framework.Widgets
             Add(content);
             m_Element = content;
         }
-        public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
+        public override async UniTask OnPanelAttachedAsync(Signal cancellationSignal)
         {
             var overlay = m_Overlay = this.GetContext<DevToolsOverlay>().Value;
             /* Subscribe to cursor tools */
@@ -52,7 +52,7 @@ namespace Metamatic.Framework.Widgets
             }
         }
         
-        private async UniTaskVoid OnObserverCursorTool(DevToolsOverlay.CursorToolBlueprint cursorTool, int index, CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnObserverCursorTool(DevToolsOverlay.CursorToolBlueprint cursorTool, int index, Signal cancellationSignal)
         {
             var pathName = cursorTool.Metadata.PathName;
             try

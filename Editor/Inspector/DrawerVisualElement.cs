@@ -10,7 +10,7 @@ namespace Metamatic.Inspector
 {
     public abstract class DrawerVisualElement : AsyncVisualElementLegacy
     {
-        public static DrawerVisualElement Create(Type type, bool editable, CancellationSignal signal = default)
+        public static DrawerVisualElement Create(Type type, bool editable, Signal signal = default)
         {
             var drawerType = VisualElementDrawerAttribute.GetDrawer(type);
             if (drawerType == null)
@@ -19,7 +19,7 @@ namespace Metamatic.Inspector
             }
             return (DrawerVisualElement) Activator.CreateInstance(drawerType, editable, signal);
         }
-        public DrawerVisualElement(CancellationSignal signal = default) : base(signal)
+        public DrawerVisualElement(Signal signal = default) : base(signal)
         {
         }
 
@@ -27,7 +27,7 @@ namespace Metamatic.Inspector
     }
     public abstract class DrawerVisualElement<T>: DrawerVisualElement
     {
-        private CancellationSignalSource m_RenderCancellationSignalSource;
+        private SignalSource m_RenderCancellationSignalSource;
         protected event Action OnReleaseRender;
         private bool m_Editable;
 
@@ -39,9 +39,9 @@ namespace Metamatic.Inspector
                 if (value != m_Editable)
                 {
                     m_Editable = value;
-                    m_RenderCancellationSignalSource.TryCancel();
+                    m_RenderCancellationSignalSource.TryRaise();
                     OnReleaseRender?.Invoke();
-                    m_RenderCancellationSignalSource = CancellationSignalSource.Create();
+                    m_RenderCancellationSignalSource = SignalSource.Create();
                     OnRender(Empty, editable, m_RenderCancellationSignalSource.Signal);
                 }
             }
@@ -51,14 +51,14 @@ namespace Metamatic.Inspector
         {
             set => SetValue(value);
         }
-        public DrawerVisualElement(bool editable, CancellationSignal signal = default) : base(signal)
+        public DrawerVisualElement(bool editable, Signal signal = default) : base(signal)
         {
             m_Editable = editable;
         }
 
-        protected override async UniTask InitializeAsync(Func<UniTask> ready, CancellationSignal signal)
+        protected override async UniTask InitializeAsync(Func<UniTask> ready, Signal signal)
         {
-            m_RenderCancellationSignalSource = CancellationSignalSource.CreateLinked(signal);
+            m_RenderCancellationSignalSource = SignalSource.CreateLinked(signal);
             var renderReadyTask = SafeUniTaskCompletionSource.Create();
             OnRender(() => renderReadyTask.TrySetResult(), m_Editable, m_RenderCancellationSignalSource.Signal)
                 .Then(() => renderReadyTask.TrySetResult())
@@ -75,7 +75,7 @@ namespace Metamatic.Inspector
             }
             finally
             {
-                m_RenderCancellationSignalSource.TryCancel();
+                m_RenderCancellationSignalSource.TryRaise();
                 OnReleaseRender?.Invoke();
             }
         }
@@ -89,7 +89,7 @@ namespace Metamatic.Inspector
         }
         
         public abstract void SetValue(T value);
-        public abstract UniTask OnRender(Action ready, bool editable, CancellationSignal cancellationSignal);
+        public abstract UniTask OnRender(Action ready, bool editable, Signal cancellationSignal);
         public abstract DisposableAction OnValueChanged(Action<T> action);
     }
 }

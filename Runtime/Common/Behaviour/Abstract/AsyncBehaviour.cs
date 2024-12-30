@@ -32,7 +32,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        private UniTask WaitForAwakeReady(CancellationSignal cancellationToken)
+        private UniTask WaitForAwakeReady(Signal cancellationToken)
         {
             var tcs = new UniTaskCompletionSource();
 
@@ -50,7 +50,7 @@ namespace Metamatic
             return tcs.Task;
         }
 
-        public async UniTask WhenReady(CancellationSignal signal = default)
+        public async UniTask WhenReady(Signal signal = default)
         {
             if (IsReady)
             {
@@ -74,7 +74,7 @@ namespace Metamatic
                 tcs.TrySetResult();
             });
 
-            var timeoutSignalSource = CancellationSignalSource.CreateLinked(signal);
+            var timeoutSignalSource = SignalSource.CreateLinked(signal);
             var timeoutTask = UniTask.Delay(TimeSpan.FromSeconds(30), DelayType.DeltaTime, PlayerLoopTiming.TimeUpdate,
                 signal);
             var result = await UniTask.WhenAny(timeoutTask, tcs.Task);
@@ -87,7 +87,7 @@ namespace Metamatic
             }
             finally
             {
-                timeoutSignalSource.TryCancel();
+                timeoutSignalSource.TryRaise();
             }
         }
 
@@ -104,7 +104,7 @@ namespace Metamatic
             return new DisposableAction(() => OnReady -= action);
         }
 
-        protected sealed override async UniTaskVoid RunAsync(CancellationSignal signal)
+        protected sealed override async UniTaskVoid RunAsync(Signal signal)
         {
             try
             {
@@ -129,7 +129,7 @@ namespace Metamatic
             }
         }
 
-        protected sealed override async UniTaskVoid RunUntilDestroy(CancellationSignal signal)
+        protected sealed override async UniTaskVoid RunUntilDestroy(Signal signal)
         {
             try
             {
@@ -150,7 +150,7 @@ namespace Metamatic
             }
         }
 
-        public static async UniTask<T> Resolve<T>(GameObject gameObject, CancellationSignal signal = default,
+        public static async UniTask<T> Resolve<T>(GameObject gameObject, Signal signal = default,
             float timeout = 10f)
             where T : Service
         {
@@ -160,7 +160,7 @@ namespace Metamatic
         }
 
         public static async UniTask<T> Resolve<T>(MonoBehaviour monoBehaviour,
-            CancellationSignal signal = default, float timeout = 10f)
+            Signal signal = default, float timeout = 10f)
             where T : Service
         {
             var behaviour = monoBehaviour.GetComponent<T>();
@@ -172,9 +172,9 @@ namespace Metamatic
 
         private bool m_InitializedOnDemand;
 
-        protected abstract UniTask Run(Ready ready, CancellationSignal signal);
+        protected abstract UniTask Run(Ready ready, Signal signal);
 
-        protected virtual UniTask AsyncAwake(Ready ready, CancellationSignal signal)
+        protected virtual UniTask AsyncAwake(Ready ready, Signal signal)
         {
             AwakeIsReady = true;
             OnAwakeReady?.Invoke();

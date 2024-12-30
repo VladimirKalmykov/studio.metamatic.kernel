@@ -11,7 +11,7 @@ namespace Metamatic.Framework.Widgets
             AddToClassList("VerticalItemsContainer");
             
         }
-        public override async UniTask OnPanelAttachedAsync(CancellationSignal cancellationSignal)
+        public override async UniTask OnPanelAttachedAsync(Signal cancellationSignal)
         {
             var overlay = this.GetContext<DevToolsOverlay>().Value;
             using var functionSubscription = overlay.core.WatchEachCustomFunctionLifecycle(OnCustomFunctionLifecycle);
@@ -23,7 +23,7 @@ namespace Metamatic.Framework.Widgets
             return new Preferences(new UnityEngine.Vector2(0, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(200, 0), new UnityEngine.Vector2(0, 0));
         }
         
-        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction, int index, CancellationSignal cancellationSignal)
+        private async UniTaskVoid OnCustomFunctionLifecycle(RuntimeCore.CustomFunction customFunction, int index, Signal cancellationSignal)
         {
             var button = new Button(customFunction.Invoke)
             {
