@@ -5,12 +5,12 @@ namespace Metamatic
 {
     public readonly struct AbortableObserver : IDisposable
     {
-        public static Func<IPolyDisposable, AbortableObserverProxy> CreateProxy(IAbortable abortable)
+        public static Func<IAsyncDisposableAbortable, AbortableObserverProxy> CreateProxy(IAbortable abortable)
         {
             return targetDisposable => new AbortableObserverProxy(abortable, targetDisposable);
         }
         
-        public static Func<IPolyDisposable, AbortableObserverProxy> CreateProxy(params IAbortable[] abortable)
+        public static Func<IAsyncDisposableAbortable, AbortableObserverProxy> CreateProxy(params IAbortable[] abortable)
         {
             return targetDisposable => new AbortableObserverProxy(abortable, targetDisposable);
         }
@@ -68,25 +68,25 @@ namespace Metamatic
     /// </example>
     public readonly struct AbortableObserverProxy: IDisposable, IUniTaskAsyncDisposable
     {
-        private readonly IPolyDisposable m_TargetDisposable;
+        private readonly IAsyncDisposableAbortable m_TargetDisposable;
         private readonly Action m_ReleaseFinalizer;
         
-        public AbortableObserverProxy(IAbortable abortable, IPolyDisposable targetDisposable)
+        public AbortableObserverProxy(IAbortable abortable, IAsyncDisposableAbortable targetDisposable)
         {
             m_TargetDisposable = targetDisposable;
 
             if (abortable.isAborted)
             {
-                targetDisposable.Dispose();
+                targetDisposable.Abort();
                 m_ReleaseFinalizer = null;
             }
             else
             {
-                m_ReleaseFinalizer = abortable.AddAbortedListenerOnce(targetDisposable.Dispose);
+                m_ReleaseFinalizer = abortable.AddAbortedListenerOnce(targetDisposable.Abort);
             }
         }
         
-        public AbortableObserverProxy(IAbortable[] abortables, IPolyDisposable targetDisposable)
+        public AbortableObserverProxy(IAbortable[] abortables, IAsyncDisposableAbortable targetDisposable)
         {
             m_TargetDisposable = targetDisposable;
 
@@ -94,7 +94,7 @@ namespace Metamatic
             {
                 if (abortable.isAborted)
                 {
-                    targetDisposable.Dispose();
+                    targetDisposable.Abort();
                     m_ReleaseFinalizer = null;
                     return;
                 }
@@ -104,7 +104,7 @@ namespace Metamatic
             
             foreach (var abortable in abortables)
             {
-                onRelease += abortable.AddAbortedListenerOnce(targetDisposable.Dispose);
+                onRelease += abortable.AddAbortedListenerOnce(targetDisposable.Abort);
             }
 
             m_ReleaseFinalizer = onRelease;
@@ -113,7 +113,7 @@ namespace Metamatic
         public void Dispose()
         {
             m_ReleaseFinalizer?.Invoke();
-            m_TargetDisposable.Dispose();
+            m_TargetDisposable.Abort();
         }
 
         public async UniTask DisposeAsync()

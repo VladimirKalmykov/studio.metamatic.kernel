@@ -10,18 +10,26 @@ namespace Metamatic
     /// 2. The async operation is disposed asynchronously without being aborted
     /// 3. The async operation is disposed asynchronously but during the async disposing process, it is aborted
     /// </summary>
-    public readonly struct AbortableOperation: IPolyDisposable, IAbortable
+    public readonly struct AbortableAsyncOperation: IAsyncDisposableAbortable
     {
         public delegate UniTask AsyncAction(AsyncCancellation cancellation);
-        public static AbortableOperation Call(AsyncAction action)
+        public static AbortableAsyncOperation Call(AsyncAction action)
         {
-            return new AbortableOperation(action);
+            return new AbortableAsyncOperation(action);
         }
+        // ReSharper disable once InconsistentNaming
+        public static AbortableAsyncOperation Aborted => new AbortableAsyncOperation(null);
         
         private readonly AsyncCancellationSource m_CancellationSource;
         private readonly UniTask m_OperationTask;
-        public AbortableOperation(AsyncAction action)
+        public AbortableAsyncOperation(AsyncAction action)
         {
+            if (action == null)
+            {
+                m_CancellationSource = AsyncCancellationSource.Aborted;
+                m_OperationTask = UniTask.CompletedTask;
+                return;
+            }
             var cancellationSource = AsyncCancellationSource.Create();
 
             m_CancellationSource = cancellationSource;
@@ -45,16 +53,21 @@ namespace Metamatic
             }
         }
 
-        public void Dispose()
-        {
-            m_CancellationSource.TryCancelSync();
-        }
-
         public bool isDisposedAsync => m_CancellationSource.Cancellation.isCancelledAsync;
         public bool isAborted => m_CancellationSource.isAborted;
         public void Abort()
         {
             m_CancellationSource.TryCancelSync();
+        }
+        
+        /// <summary>
+        /// Subscribe to the disposing event. The listener will be called once when the async operation is disposed asynchronously or synchronously.
+        /// </summary>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public DisposableAction AddDisposeListenerOnce(Action<bool> action)
+        {
+            return m_CancellationSource.AddDisposedListenerOnce(action);
         }
 
         public DisposableAction AddAbortedListenerOnce(Action action)

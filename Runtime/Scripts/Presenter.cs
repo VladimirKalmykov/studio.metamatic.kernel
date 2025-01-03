@@ -91,9 +91,9 @@ namespace Metamatic
         /// Wait for the presenter to be dismissed.
         /// </summary>
         /// <returns></returns>
-        public UniTask WaitForDismissal()
+        public UniTask WaitForDismissal(Signal cancellationSignal)
         {
-            return completeDismissSignal.ToUniTask();
+            return UniTask.WhenAny(completeDismissSignal.ToUniTask(), cancellationSignal.ToUniTask());
         }
 
         private async UniTask AsyncHide()

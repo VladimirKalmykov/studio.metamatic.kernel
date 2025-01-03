@@ -68,40 +68,43 @@ namespace Metamatic
         public DisposableAction WatchAsync(Func<TValue, Signal, UniTaskVoid> handler)
         {
             SignalSource valueChangeSignalSource = default;
+            var unwatch = Watch(Watcher);
             void DisposeHandler()
             {
+                unwatch.Dispose();
+                unwatch = default;
                 valueChangeSignalSource.TryRaise();
             }
             OnDisposedOrReset += DisposeHandler;
-            void Watcher(TValue value)
-            {
-                valueChangeSignalSource.TryRaise();
-                valueChangeSignalSource = SignalSource.Create();
-                handler(value, valueChangeSignalSource.Signal).Forget();
-            }
-            var unwatch = Watch(Watcher);
+            
             return DisposableAction.Create(() =>
             {
                 OnDisposedOrReset -= DisposeHandler;
                 valueChangeSignalSource.TryRaise();
                 unwatch.Dispose();
             });
-            return SequentialHandler<TValue>.Subscribe(Watch, handler);
+
+            void Watcher(TValue value)
+            {
+                valueChangeSignalSource.TryRaise();
+                valueChangeSignalSource = SignalSource.Create();
+                handler(value, valueChangeSignalSource.Signal).Forget();
+            }
         }
         
-        public Action SubscribeOnce(Action<TValue> handler)
+        public DisposableAction SubscribeOnce(Action<TValue> handler)
         {
             Action<TValue> onceHandler = null;
             onceHandler = v =>
             {
-                handler(v);
                 OnChange -= onceHandler;
+                handler(v);
             };
             OnChange += onceHandler;
-            return () =>
+            return new DisposableAction(() =>
             {
                 OnChange -= onceHandler;
-            };
+            });
         }
 
         public UniTask<TValue> WaitUntilValueIs(Func<TValue, bool> validator,

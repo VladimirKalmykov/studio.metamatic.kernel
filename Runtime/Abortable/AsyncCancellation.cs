@@ -139,6 +139,8 @@ namespace Metamatic
         {
             return new AsyncCancellationSource(CancellationSourceImpl.Get());
         }
+        // ReSharper disable once InconsistentNaming
+        public static AsyncCancellationSource Aborted => new AsyncCancellationSource(null);
         public void TryCancelSync()
         {
             GetImpl()?.TryCancelSync();
@@ -203,6 +205,23 @@ namespace Metamatic
                 return impl.AddAbortedListenerOnce(action);
             } else {
                 action();
+                return DisposableAction.Empty;
+            }
+        }
+        
+        public DisposableAction AddDisposedListenerOnce(Action<bool> action)
+        {
+            var impl = GetImpl();
+            if (impl != null)
+            {
+                impl.OnCancel += action;
+                
+                return DisposableAction.Create(() =>
+                {
+                    impl.OnCancel -= action;
+                });
+            } else {
+                action(false);
                 return DisposableAction.Empty;
             }
         }
@@ -289,9 +308,9 @@ namespace Metamatic
             {
                 case AsyncCancellation.State.Idle:
                     state = AsyncCancellation.State.CancelledAsync;
+                    m_AbortSignalSource = SignalSource.Create();
                     OnCancel?.Invoke(true);
                     m_SignalSource.TryRaise();
-                    m_AbortSignalSource = SignalSource.Create();
                     break;
                 case AsyncCancellation.State.CancelledSync:
                     // Already cancelled sync. Unable to cancel async.

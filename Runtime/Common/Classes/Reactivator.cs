@@ -6,15 +6,15 @@ namespace Metamatic
     /// <summary>
     /// Tool allows to activate async operation when the reactivator is enabled. If async operation is completed, the reactivator will reactivate the async operation if it is enabled.
     /// </summary>
-    public struct Reactivator: IDisposable
+    public readonly struct Reactivator: IDisposable
     {
-        public static Reactivator Create(Func<Observable<bool>, Signal, UniTask> handler, bool enabled = false)
+        public static Reactivator Create(Func<Reactivation, Signal, UniTask> handler, bool enabled = false)
         {
             var instance = InternalTaskReactivator.Create(handler, enabled);
             return new Reactivator(instance);
         }
-        private InternalTaskReactivator m_Source;
-        private int m_Version;
+        private readonly InternalTaskReactivator m_Source;
+        private readonly int m_Version;
         private InternalTaskReactivator source => m_Source == null || m_Source.version != m_Version ? null : m_Source;
         
         public Reactivator(InternalTaskReactivator source)
@@ -42,10 +42,44 @@ namespace Metamatic
             }
         }
     }
+
+    public readonly struct Reactivation
+    {
+        private readonly InternalTaskReactivator m_Reactivator;
+        private readonly int m_Version;
+        public bool enabled => GetReactivator()?.oEnabled.Value ?? false;
+        public Reactivation(InternalTaskReactivator reactivator)
+        {
+            m_Reactivator = reactivator;
+            m_Version = reactivator.version;
+        }
+        
+        public DisposableAction WatchEnabled(Action<bool> action)
+        {
+            var reactivator = GetReactivator();
+            if (reactivator == null)
+            {
+                return DisposableAction.Empty;
+            }
+            var disposeWatch = reactivator.oEnabled.Watch(action);
+            var disposeListenSignal = reactivator.resetSignal.Register(disposeWatch.Dispose);
+            
+            return new DisposableAction(() =>
+            {
+                disposeWatch.Dispose();
+                disposeListenSignal.Dispose();
+            });
+        }
+        
+        private InternalTaskReactivator GetReactivator()
+        {
+            return m_Reactivator.version == m_Version ? m_Reactivator : null;
+        }
+    }
     public class InternalTaskReactivator: IResettable, IDisposable
     {
         public static readonly ParamLessPool<InternalTaskReactivator> Pool = new ();
-        public static InternalTaskReactivator Create(Func<Observable<bool>, Signal, UniTask> handler, bool enabled = false)
+        public static InternalTaskReactivator Create(Func<Reactivation, Signal, UniTask> handler, bool enabled = false)
         {
             var instance = Pool.Get();
             instance.Initialize(handler, enabled);
@@ -55,17 +89,18 @@ namespace Metamatic
         {
             Pool.Return(instance);
         }
-        private Func<Observable<bool>, Signal, UniTask> m_OnTurnOn;
+        private Func<Reactivation, Signal, UniTask> m_OnTurnOn;
         private SignalSource m_ResetSignalSource = default;
         private bool m_DefaultEnabled;
         private bool m_IsActivated = false;
-        private Observable<bool> m_EnableObservable = ParamLessPool<Observable<bool>>.GetShared();
+        public Observable<bool> oEnabled { get; private set; } = ParamLessPool<Observable<bool>>.GetShared();
+        public Signal resetSignal => m_ResetSignalSource.Signal;
         public int version { get; private set; }
 
-        private void Initialize(Func<Observable<bool>, Signal, UniTask> onTurnOn, bool enabled = false)
+        private void Initialize(Func<Reactivation, Signal, UniTask> onTurnOn, bool enabled = false)
         {
             m_OnTurnOn = onTurnOn;
-            m_ResetSignalSource = new SignalSource();
+            m_ResetSignalSource = SignalSource.Create();
             m_DefaultEnabled = enabled;
             if (enabled)
             {
@@ -75,7 +110,7 @@ namespace Metamatic
 
         public void Enable()
         {
-            m_EnableObservable.Value = true;
+            oEnabled.Value = true;
             if (!m_IsActivated)
             {
                 Activate().Forget();
@@ -83,7 +118,7 @@ namespace Metamatic
         }
         public void Disable()
         {
-            m_EnableObservable.Value = false;
+            oEnabled.Value = false;
         }
 
         private async UniTaskVoid Activate()
@@ -96,7 +131,7 @@ namespace Metamatic
 
             try
             {
-                await m_OnTurnOn.Invoke(m_EnableObservable, m_ResetSignalSource.Signal);
+                await m_OnTurnOn.Invoke(new Reactivation(this), m_ResetSignalSource.Signal);
             }
             catch (OperationCanceledException)
             {
@@ -117,13 +152,13 @@ namespace Metamatic
             }
             m_ResetSignalSource.TryRaise();
             m_IsActivated = false;
-            m_EnableObservable.Value = m_DefaultEnabled;
+            oEnabled.Value = m_DefaultEnabled;
             m_OnTurnOn = null;
         }
 
         public void Dispose()
         {
-            ParamLessPool<Observable<bool>>.ReturnShared(m_EnableObservable);
+            ParamLessPool<Observable<bool>>.ReturnShared(oEnabled);
         }
     }
 }

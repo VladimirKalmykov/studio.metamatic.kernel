@@ -9,14 +9,14 @@ using Metamatic;
 namespace Tests.EditMode
 {
     [TestFixture]
-    public class AbortableOperationTests
+    public class AbortableAsyncOperationTests
     {
         [UnityTest]
         public IEnumerator AsyncDisposeAndAbort() => UniTask.ToCoroutine(async () =>
         {
             var stages = new List<bool>();
             {
-                var operation = AbortableOperation.Call(async cancellation =>
+                var operation = AbortableAsyncOperation.Call(async cancellation =>
                 {
                     var signal = cancellation.Signal;
                     stages.Add(signal.IsCancellationRequested); // Should be false
@@ -36,7 +36,7 @@ namespace Tests.EditMode
                 await UniTask.Delay(100);
                 operation.DisposeAsync().Forget();
                 await UniTask.Delay(100);
-                operation.Dispose();
+                operation.Abort();
             }
             Assert.AreEqual(new List<bool> { false, true, true, true }, stages);
         });
@@ -50,7 +50,7 @@ namespace Tests.EditMode
             AbortAfter(200, externalCancellation).Forget();
             var withAbort = AbortableObserver.CreateProxy(externalCancellation);
             {
-                await using var operation = withAbort(AbortableOperation.Call(async cancellation =>
+                await using var operation = withAbort(AbortableAsyncOperation.Call(async cancellation =>
                 {
                     try
                     {

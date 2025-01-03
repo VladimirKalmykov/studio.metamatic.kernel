@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Metamatic
 {
@@ -348,17 +350,47 @@ namespace Metamatic
             await UniTask.WaitUntil(() => signal.IsCancellationRequested || predicate(), timing);
             signal.ThrowIfRaised();
         }
-        
+
+        private static Stopwatch m_Stopwatch;
+        private static int m_StopwatchInquiries;
         /// <summary>
         /// Similar to UniTask.Delay but with signal support.
         /// </summary>
-        /// <param name="seconds"></param>
-        /// <param name="timing"></param>
-        /// <param name="signal"></param>
+        /// <param name="seconds">Delay duration in seconds.</param>
+        /// <param name="timing">Player loop timing.</param>
+        /// <param name="signal">Cancellation signal.</param>
         public static async UniTask Delay(float seconds, PlayerLoopTiming timing = PlayerLoopTiming.Update, Signal signal = default)
         {
-            var startTime = Time.time;
-            await UniTask.WaitWhile(() => !signal.IsCancellationRequested && Time.time - startTime < seconds, timing);
+            bool isRealTime = PlayerLoopHelper.IsMainThread && !UnityEditor.EditorApplication.isPlaying;
+
+            if (isRealTime)
+            {
+                m_StopwatchInquiries++;
+                if (m_StopwatchInquiries == 1)
+                {
+                    m_Stopwatch = Stopwatch.StartNew();
+                }
+            }
+
+            // Determine start time based on whether real time is used.
+            float startTime = isRealTime ? (float)m_Stopwatch.Elapsed.TotalSeconds : Time.time;
+
+            await UniTask.WaitWhile(() =>
+            {
+                float currentTime = isRealTime ? (float)m_Stopwatch.Elapsed.TotalSeconds : Time.time;
+                return !signal.IsCancellationRequested && currentTime - startTime < seconds;
+            }, timing);
+            
+            if (isRealTime)
+            {
+                m_StopwatchInquiries--;
+                if (m_StopwatchInquiries == 0)
+                {
+                    m_Stopwatch.Stop();
+                    m_Stopwatch = null;
+                }
+            }
+
             signal.ThrowIfRaised();
         }
         
