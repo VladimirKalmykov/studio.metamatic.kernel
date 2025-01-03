@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public readonly struct Summon<T>: IDisposable where T: MonoBehaviour
+    public readonly struct Summon<T>: IDisposable
     {
         private readonly Summoner<T> m_Summoner;
         private readonly Guid m_InstanceId;
@@ -22,7 +22,7 @@ namespace Metamatic
             m_Summoner.Banish(m_InstanceId);
         }
     }
-    public abstract class Summoner<T> where T: MonoBehaviour
+    public abstract class Summoner<T>
     {
         private readonly Dictionary<Guid, T> m_Instances = new ();
         

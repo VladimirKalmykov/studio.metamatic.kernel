@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    [Obsolete]
     public class MicroPromise: IDisposable, IAsyncDisposableResultable
     {
         #region Static
