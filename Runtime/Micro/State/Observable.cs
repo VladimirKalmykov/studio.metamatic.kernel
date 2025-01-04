@@ -110,51 +110,55 @@ namespace Metamatic
         public UniTask<TValue> WaitUntilValueIs(Func<TValue, bool> validator,
             Signal cancellationSignal)
         {
-            if (cancellationSignal.IsCancellationRequested) return UniTask.FromCanceled<TValue>();
+            if (cancellationSignal.isRaised) return UniTask.FromCanceled<TValue>();
             if (validator(GetValue())) return UniTask.FromResult(GetValue());
             
-            Action FinalizeHandler = null;
+            Action finalizeHandler = null;
             var tcs = SafeUniTaskCompletionSource<TValue>.Create();
 
-            void DisposeHandler()
-            {
-                FinalizeHandler?.Invoke();
-                tcs.TrySetCanceled();
-            }
             OnDisposedOrReset += DisposeHandler;
 
             if (cancellationSignal.CanBeCanceled)
             {
-                FinalizeHandler += cancellationSignal.Register(() =>
+                finalizeHandler += cancellationSignal.Register(() =>
                 {
                     OnDisposedOrReset -= DisposeHandler;
-                    FinalizeHandler?.Invoke();
+                    finalizeHandler?.Invoke();
+                    finalizeHandler = null;
                     tcs.TrySetCanceled();
                 });
             }
+
+            OnChange += Handler;
             
+            return tcs.Task;
+
             void Handler(TValue value)
             {
                 if (validator(value))
                 {
                     OnDisposedOrReset -= DisposeHandler;
-                    FinalizeHandler?.Invoke();
+                    finalizeHandler?.Invoke();
+                    finalizeHandler = null;
                     tcs.TrySetResult(value);
                 }
             }
-            
-            OnChange += Handler;
-            
-            return tcs.Task;
+
+            void DisposeHandler()
+            {
+                finalizeHandler?.Invoke();
+                tcs.TrySetCanceled();
+            }
         }
 
         public UniTask<TValue> WaitUntilValueIs(TValue value, Signal cancellationSignal = default)
         {
+            return WaitUntilValueIs(Validator, cancellationSignal);
+
             bool Validator(TValue nextValue)
             {
                 return nextValue.Equals(value);
             }
-            return WaitUntilValueIs(Validator, cancellationSignal);
         }
         
         public UniTask<TValue> WaitUntilValueIsNotNull(Signal signal = default)

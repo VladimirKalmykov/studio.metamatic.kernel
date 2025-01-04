@@ -96,7 +96,6 @@ namespace Metamatic
             var source = ResolveSource();
             if (source == null)
             {
-                Debug.LogWarning("[SafeTaskCompletionSource] Original completion source is not available."); // TODO: Remove this warning after completing development and testing this struct, because it is normal scenario.
                 return false;
             }
             return source.TrySetResult();

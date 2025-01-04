@@ -89,7 +89,7 @@ namespace Metamatic
             }).Forget();
         }
         
-        private static void OnMetamaticLogReceived(string text, string[] tags, string stackTrace, Console.LogLevel logLevel)
+        private static void OnMetamaticLogReceived(string text, string[] tags, Console.StackSource stackSource, Console.LogLevel logLevel)
         {
             if ((MetamaticConsolePersistentLogLevel & logLevel) != logLevel)
             {

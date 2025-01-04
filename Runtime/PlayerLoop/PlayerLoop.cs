@@ -361,7 +361,11 @@ namespace Metamatic
         /// <param name="signal">Cancellation signal.</param>
         public static async UniTask Delay(float seconds, PlayerLoopTiming timing = PlayerLoopTiming.Update, Signal signal = default)
         {
+            #if UNITY_EDITOR
             bool isRealTime = PlayerLoopHelper.IsMainThread && !UnityEditor.EditorApplication.isPlaying;
+            #else
+            bool isRealTime = false;
+            #endif
 
             if (isRealTime)
             {
@@ -396,8 +400,41 @@ namespace Metamatic
         
         public static async UniTask Delay(TimeSpan timeSpan, PlayerLoopTiming timing = PlayerLoopTiming.Update, Signal signal = default)
         {
-            var startTime = Time.time;
-            await UniTask.WaitWhile(() => !signal.IsCancellationRequested && Time.time - startTime < timeSpan.TotalSeconds, timing);
+            var seconds = (float)timeSpan.TotalSeconds;
+#if UNITY_EDITOR
+            bool isRealTime = PlayerLoopHelper.IsMainThread && !UnityEditor.EditorApplication.isPlaying;
+#else
+            bool isRealTime = false;
+#endif
+
+            if (isRealTime)
+            {
+                m_StopwatchInquiries++;
+                if (m_StopwatchInquiries == 1)
+                {
+                    m_Stopwatch = Stopwatch.StartNew();
+                }
+            }
+
+            // Determine start time based on whether real time is used.
+            float startTime = isRealTime ? (float)m_Stopwatch.Elapsed.TotalSeconds : Time.time;
+
+            await UniTask.WaitWhile(() =>
+            {
+                float currentTime = isRealTime ? (float)m_Stopwatch.Elapsed.TotalSeconds : Time.time;
+                return !signal.IsCancellationRequested && currentTime - startTime < seconds;
+            }, timing);
+            
+            if (isRealTime)
+            {
+                m_StopwatchInquiries--;
+                if (m_StopwatchInquiries == 0)
+                {
+                    m_Stopwatch.Stop();
+                    m_Stopwatch = null;
+                }
+            }
+
             signal.ThrowIfRaised();
         }
     }

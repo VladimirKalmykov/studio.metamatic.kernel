@@ -241,7 +241,7 @@ namespace Metamatic
             
             var icss = GetFromPool();
 #if DEBUG
-            icss.DebugCreateStackTrace = Environment.StackTrace;
+            // icss.DebugCreateStackTrace = Environment.StackTrace; // To heavy even for debug
             icss.DebugId = debugId ?? Guid.NewGuid().ToString();
             DebugSources[icss.DebugId] = icss;
             icss.DebugOnCancel += () =>
@@ -438,11 +438,9 @@ namespace Metamatic
             var commander = new Commander();
             commander.RegisterCommand("List", s =>
             {
-                Console.Log("CancellationSignal", "Total count", SignalSource.DebugSources.Count.ToString(), Console.LogLevel.Interactive, Pool.Count.ToString());
                 foreach (var source in SignalSource.DebugSources)
                 {
                     var createdAgo = Time.realtimeSinceStartup - source.Value.DebugCreateAt;
-                    Console.Log("CancellationSignal", "Source", $"{source.Key} {createdAgo}s", Console.LogLevel.Interactive, source.Value.DebugCreateStackTrace);
                 }
             });
             Console.RegisterCommand("CancellationSignal", commander);

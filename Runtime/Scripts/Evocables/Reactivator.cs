@@ -62,13 +62,28 @@ namespace Metamatic
                 return DisposableAction.Empty;
             }
             var disposeWatch = reactivator.oEnabled.Watch(action);
-            var disposeListenSignal = reactivator.resetSignal.Register(disposeWatch.Dispose);
+            var disposeListenSignal = reactivator.resetSignal.Register(() =>
+            {
+                disposeWatch.Dispose();
+                disposeWatch = default;
+            });
             
             return new DisposableAction(() =>
             {
                 disposeWatch.Dispose();
                 disposeListenSignal.Dispose();
             });
+        }
+
+        public UniTask WhenDisabled(Signal cancellationSignal)
+        {
+            var reactivator = GetReactivator();
+            if (reactivator == null)
+            {
+                return UniTask.CompletedTask;
+            }
+
+            return reactivator.oEnabled.WaitUntilValueIs(false, cancellationSignal);
         }
         
         private InternalTaskReactivator GetReactivator()
@@ -111,6 +126,7 @@ namespace Metamatic
         public void Enable()
         {
             oEnabled.Value = true;
+            Console.Debug("Reactivator", $"Enable (isActivated: {m_IsActivated})");
             if (!m_IsActivated)
             {
                 Activate().Forget();
@@ -123,6 +139,7 @@ namespace Metamatic
 
         private async UniTaskVoid Activate()
         {
+            Console.Debug("Reactivator", "Activate");
             m_IsActivated = true;
             if (m_OnTurnOn == null)
             {
@@ -141,6 +158,7 @@ namespace Metamatic
             {
                 Console.Error("Reactivator", e);
             } finally {
+                Console.Debug("Reactivator", "Deactivate");
                 m_IsActivated = false;
             }
         }

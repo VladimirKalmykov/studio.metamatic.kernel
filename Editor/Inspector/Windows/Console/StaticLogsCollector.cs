@@ -56,9 +56,9 @@ namespace Metamatic.EditorInspector
             Console.OnLog -= OnMetamaticLogReceived;
         }
         
-        private static void OnMetamaticLogReceived(string text, string[] tags, string stackTrace, Console.LogLevel logLevel)
+        private static void OnMetamaticLogReceived(string text, string[] tags, Console.StackSource stackSource, Console.LogLevel logLevel)
         {
-            var logMetadata = new LogMetadata(text, tags, false, stackTrace);
+            var logMetadata = new LogMetadata(text, tags, false, stackSource);
             m_LogHistory.Add(logMetadata);
             OnLogReceived?.Invoke(logMetadata);
         }
@@ -72,7 +72,7 @@ namespace Metamatic.EditorInspector
         private static void OnBuiltInLogReceived(string condition, string stackTrace, LogType type)
         {
             var (extractedTags, text) = ExtractTagsFromText(condition, type.ToString());
-            var logMetadata = new LogMetadata(text, extractedTags, true, stackTrace);
+            var logMetadata = new LogMetadata(text, extractedTags, true, new Console.StackSource(null, stackTrace));
             m_LogHistory.Add(logMetadata);
             OnLogReceived?.Invoke(logMetadata);
         }

@@ -420,7 +420,7 @@ namespace Metamatic.EditorInspector
                 DetailsVisible.value = true;
                 var log = StaticLogsCollector.logHistory.FirstOrDefault(l => l.Id == id);
                 m_Details.Clear();
-                var richText = $"{log.Text}\n{FormatStackTraces(log.StackTrace)}";
+                var richText = $"{log.Text}\n{FormatStackTraces(log.StackSource.GetStackTrace())}";
 
                 Vector2 scrollPos = Vector2.zero;
                 var imguiContainer = new IMGUIContainer(() =>

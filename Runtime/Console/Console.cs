@@ -9,6 +9,28 @@ namespace Metamatic
 {
     public static class Console
     {
+        public readonly struct StackSource
+        {
+            private readonly StackFrame m_StackFrame;
+            private readonly string m_StackTrace;
+            
+            public bool isEmpty => m_StackFrame == null && m_StackTrace == null;
+            
+            public StackSource(StackFrame stackFrame = null, string stackTrace = null)
+            {
+                m_StackFrame = stackFrame;
+                this.m_StackTrace = stackTrace;
+            }
+            
+            public string GetStackTrace()
+            {
+                if (m_StackTrace != null)
+                {
+                    return m_StackTrace;
+                }
+                return m_StackFrame?.ToString() ?? string.Empty;
+            }
+        }
         [Flags]
         public enum LogLevel
         {
@@ -50,89 +72,83 @@ namespace Metamatic
         /// Default log level for Unity console
         /// </summary>
         public static LogLevel LogLevelTranslateToUnityConsole = LogLevel.Error;
-        public static event Action<string, string[], string, LogLevel> OnLog;
+        public static event Action<string, string[], StackSource, LogLevel> OnLog;
         
         [UsedImplicitly]
         [DebuggerHidden]
-        public static void LogWithStackTrance(string message, string[] tags, LogLevel logLevel = LogLevel.Info, StackTrace stackTrace = null)
+        public static void Log(string message, string[] tags, LogLevel logLevel = LogLevel.Info, StackSource stackFrame = default)
         {
             if (logLevel == LogLevel.None)
             {
                 return;
             }
-
-            var finalStackTrace = stackTrace ?? new StackTrace(true);
-            LogOnTheMainThread(message, tags, logLevel, finalStackTrace.ToString()).Forget();
+            var finalStackSource = stackFrame.isEmpty ? new StackSource(new StackFrame(2, true)) : stackFrame;
+            LogOnTheMainThread(message, tags, logLevel, finalStackSource).Forget();
         }
         
         [UsedImplicitly]
         [DebuggerHidden]
-        public static void Log(string message, string[] tags, LogLevel logLevel = LogLevel.Info, string stackTrace = null)
+        public static void Log(string tag1, string message, LogLevel logLevel = LogLevel.Info, StackSource stackFrame = default)
         {
             if (logLevel == LogLevel.None)
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
-            LogOnTheMainThread(message, tags, logLevel, finalStackTrace).Forget();
+            var finalStackSource = stackFrame.isEmpty ? new StackSource(new StackFrame(2, true)) : stackFrame;
+            LogOnTheMainThread(message, new []{ tag1 }, logLevel, finalStackSource).Forget();
         }
         
         [UsedImplicitly]
         [DebuggerHidden]
-        public static void Log(string tag1, string message, LogLevel logLevel = LogLevel.Info, string stackTrace = null)
+        public static void Log(string tag1, string tag2, string message, LogLevel logLevel = LogLevel.Info, StackSource stackFrame = default)
         {
             if (logLevel == LogLevel.None)
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
-            LogOnTheMainThread(message, new []{ tag1 }, logLevel, finalStackTrace).Forget();
+            var finalStackSource = stackFrame.isEmpty ? new StackSource(new StackFrame(2, true)) : stackFrame;
+            LogOnTheMainThread(message, new []{ tag1, tag2 }, logLevel, finalStackSource).Forget();
         }
         
         [UsedImplicitly]
         [DebuggerHidden]
-        public static void Log(string tag1, string tag2, string message, LogLevel logLevel = LogLevel.Info, string stackTrace = null)
+        public static void Log(string tag1, string tag2, string tag3, string message, LogLevel logLevel = LogLevel.Info, StackSource stackFrame = default)
         {
             if (logLevel == LogLevel.None)
             {
                 return;
             }
-            #if !METAMATIC_VERBOSE_LOG
-            if (logLevel == LogLevel.Verbose)
-            {
-                return;
-            }
-            #endif
-            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
-            LogOnTheMainThread(message, new []{ tag1, tag2 }, logLevel, finalStackTrace).Forget();
+            var finalStackSource = stackFrame.isEmpty ? new StackSource(new StackFrame(2, true)) : stackFrame;
+            LogOnTheMainThread(message, new []{ tag1, tag2, tag3 }, logLevel, finalStackSource).Forget();
         }
         
         [UsedImplicitly]
         [DebuggerHidden]
-        public static void Log(string tag1, string tag2, string tag3, string message, LogLevel logLevel = LogLevel.Info, string stackTrace = null)
+        public static void Log(string tag1, string tag2, string tag3, string tag4, string message, LogLevel logLevel = LogLevel.Info, StackSource stackFrame = default)
         {
             if (logLevel == LogLevel.None)
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
-            LogOnTheMainThread(message, new []{ tag1, tag2, tag3 }, logLevel, finalStackTrace).Forget();
+            var finalStackSource = stackFrame.isEmpty ? new StackSource(new StackFrame(2, true)) : stackFrame;
+            LogOnTheMainThread(message, new []{ tag1, tag2, tag3, tag4 }, logLevel, finalStackSource).Forget();
         }
         
         [UsedImplicitly]
         [DebuggerHidden]
-        public static void Log(string tag1, string tag2, string tag3, string tag4, string message, LogLevel logLevel = LogLevel.Info, string stackTrace = null)
+        public static void Log(string tag1, string tag2, string tag3, string tag4, string tag5, string message, LogLevel logLevel = LogLevel.Info, StackSource stackFrame = default)
         {
             if (logLevel == LogLevel.None)
             {
                 return;
             }
-            var finalStackTrace = stackTrace ?? new StackTrace(true).ToString();
-            LogOnTheMainThread(message, new []{ tag1, tag2, tag3, tag4 }, logLevel, finalStackTrace).Forget();
+            var finalStackSource = stackFrame.isEmpty ? new StackSource(new StackFrame(2, true)) : stackFrame;
+            LogOnTheMainThread(message, new []{ tag1, tag2, tag3, tag4, tag5 }, logLevel, finalStackSource).Forget();
         }
         
+        
         [DebuggerHidden]
-        private static async UniTaskVoid LogOnTheMainThread(string message, string[] tags, LogLevel logLevel, string stackTrace)
+        private static async UniTaskVoid LogOnTheMainThread(string message, string[] tags, LogLevel logLevel, StackSource stackSource)
         {
             /* Get current thread */
             var currentThread = System.Threading.Thread.CurrentThread;
@@ -149,7 +165,7 @@ namespace Metamatic
                 {
                     OnSceneInitiallyLoaded += () =>
                     {
-                        LogOnTheMainThread(message, tags, logLevel, stackTrace).Forget();
+                        LogOnTheMainThread(message, tags, logLevel, stackSource).Forget();
                     };
                     return;
                 }
@@ -173,7 +189,7 @@ namespace Metamatic
             }
             else
             {
-                OnLog?.Invoke(message, tags, stackTrace, logLevel);
+                OnLog?.Invoke(message, tags, stackSource, logLevel);
             }
         }
         
@@ -191,14 +207,14 @@ namespace Metamatic
         [UsedImplicitly]
         public static void Exception(string tag1, Exception exception)
         {
-            Log(tag1, exception.ToString(), LogLevel.Exception, exception.StackTrace);
+            Log(tag1, exception.ToString(), LogLevel.Exception, new StackSource(null, exception.StackTrace));
         }
         
         [DebuggerHidden]
         [UsedImplicitly]
         public static void Exception(string tag1, string tag2, Exception exception)
         {
-            Log(tag1, tag2, exception.ToString(), LogLevel.Exception, exception.StackTrace);
+            Log(tag1, tag2, exception.ToString(), LogLevel.Exception, new StackSource(null, exception.StackTrace));
         }
         
         [DebuggerHidden]
@@ -226,14 +242,14 @@ namespace Metamatic
         [UsedImplicitly]
         public static void Error(string tag1, Exception exception)
         {
-            Log(tag1, exception.ToString(), LogLevel.Error, exception.StackTrace);
+            Log(tag1, exception.ToString(), LogLevel.Error, new StackSource(null, exception.StackTrace));
         }
         
         [DebuggerHidden]
         [UsedImplicitly]
         public static void Error(string tag1, string tag2, Exception exception)
         {
-            Log(tag1, exception.ToString(), LogLevel.Error, exception.StackTrace);
+            Log(tag1, exception.ToString(), LogLevel.Error, new StackSource(null, exception.StackTrace));
         }
         
         [DebuggerHidden]
@@ -352,7 +368,7 @@ namespace Metamatic
         [UsedImplicitly]
         public static void Verbose(string message, string[] tags, string stackTrace = null)
         {
-            Log(message, tags, LogLevel.Verbose, stackTrace);
+            Log(message, tags, LogLevel.Verbose, new StackSource(null, stackTrace));
         }
         #endregion
         
