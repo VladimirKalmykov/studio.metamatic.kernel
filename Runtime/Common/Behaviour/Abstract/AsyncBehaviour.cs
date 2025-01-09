@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using DevTools;
 using UnityEngine;
 
 namespace Metamatic
@@ -108,12 +109,19 @@ namespace Metamatic
         {
             try
             {
+#if DEBUG
+                using var stagnationCather = StagnationCatcher.Create(30f, () =>
+                {
+                    Console.Warning("Stagnation", "AsyncBehaviour", $"AsyncBehaviour {this.GetType()} is stuck");
+                });
+#endif
                 if (!AwakeIsReady)
                 {
                     await WaitForAwakeReady(signal);
                 }
-
+                
                 await Run(InternalSetReady, signal);
+                Console.Debug("AsyncBehaviour", $"AsyncBehaviour {this.GetType()} is ready");
             }
             catch (OperationCanceledException)
             {
@@ -126,6 +134,10 @@ namespace Metamatic
                 Terminal.LogError($"AsyncBehaviour {type} failed to run: {e.Message}");
 #endif
                 Console.Error("AsyncBehaviour", e);
+            }
+            finally
+            {
+                
             }
         }
 

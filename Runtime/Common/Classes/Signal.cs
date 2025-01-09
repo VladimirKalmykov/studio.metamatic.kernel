@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
 using UnityEngine;
 using UnityEngine.Serialization;
+using Debug = UnityEngine.Debug;
 
 namespace Metamatic
 {
@@ -223,12 +225,9 @@ namespace Metamatic
 
     public readonly struct SignalSource: IDisposable
     {
-#if DEBUG
-        public static Dictionary<string, InternalCancellationSignalSource> DebugSources = new();
-#endif
         public static InternalCancellationSignalSource GetFromPool()
         {
-            var icss = InternalCancellationSignalSource.Pool.Get();
+            var icss = InternalCancellationSignalSource.Get();
             return icss;
         }
         
@@ -241,13 +240,9 @@ namespace Metamatic
             
             var icss = GetFromPool();
 #if DEBUG
-            // icss.DebugCreateStackTrace = Environment.StackTrace; // To heavy even for debug
-            icss.DebugId = debugId ?? Guid.NewGuid().ToString();
-            DebugSources[icss.DebugId] = icss;
-            icss.DebugOnCancel += () =>
-            {
-                DebugSources.Remove(icss.DebugId);
-            };
+            var stackFrame = new System.Diagnostics.StackFrame(1, true);
+            icss.DebugCreateStackFrame = stackFrame;
+            icss.DebugCreateAt = Time.realtimeSinceStartup;
 #endif
             return new SignalSource(icss);
         }
@@ -274,6 +269,7 @@ namespace Metamatic
             }
             var icss = GetFromPool();
             
+            /*
             #if DEBUG
             icss.DebugCreateStackTrace = Environment.StackTrace;
             if (icss.DebugId == null)
@@ -286,6 +282,7 @@ namespace Metamatic
                 DebugSources.Remove(icss.DebugId);
             };
             #endif
+            */
             
             
             var memoizedVersion = icss.Version;
@@ -329,7 +326,8 @@ namespace Metamatic
                 return Create();
             }
             var icss = GetFromPool();
-            
+       
+/*            
 #if DEBUG
             icss.DebugCreateStackTrace = Environment.StackTrace;
             if (icss.DebugId == null)
@@ -343,6 +341,7 @@ namespace Metamatic
                 DebugSources.Remove(icss.DebugId);
             };
 #endif
+*/
             
             Action actionOnCancel = null;
             var memoizedVersion = icss.Version;
@@ -428,13 +427,23 @@ namespace Metamatic
     
     public class InternalCancellationSignalSource: IDisposable
     {
-        internal static readonly ParamLessPool<InternalCancellationSignalSource> Pool = new(autoShrink: true, capacity: 100);
+        private static readonly ParamLessPool<InternalCancellationSignalSource> Pool = new(autoShrink: true, capacity: 1000);
 
+        public static InternalCancellationSignalSource Get()
+        {
+            return Pool.Get();
+        }
+        
+        public static void Return(InternalCancellationSignalSource source)
+        {
+            Pool.Return(source);
+        }
         #if DEBUG
         static InternalCancellationSignalSource()
         {
             Monitoring.Create("CancellationSignal", "Sources count out of pool", () => Pool.OutOfPoolCount);
-            Monitoring.Create("CancellationSignal", "Sources count in pool", () => Pool.Count);
+            Monitoring.Create("CancellationSignal", "Sources count in pool", () => Pool.InPoolCount);
+            /*
             var commander = new Commander();
             commander.RegisterCommand("List", s =>
             {
@@ -443,13 +452,22 @@ namespace Metamatic
                     var createdAgo = Time.realtimeSinceStartup - source.Value.DebugCreateAt;
                 }
             });
+            
             Console.RegisterCommand("CancellationSignal", commander);
+            */
         }
 
+        public StackFrame DebugCreateStackFrame;
+        public float DebugCreateAt;
+        public readonly string DebugId;
+        [FormerlySerializedAs("LastVersionChangeAt")] public float DebugLastVersionChangeAt;
+
+        /*
         public string DebugCreateStackTrace = "";
         public float DebugCreateAt = Time.realtimeSinceStartup;
         public string DebugId = null;
         public event Action DebugOnCancel;
+        */
         #endif
         
         // ReSharper disable once InconsistentNaming
@@ -461,6 +479,15 @@ namespace Metamatic
         private CancellationTokenSource m_CancellationTokenSource;
         private event Action<int> m_OnCancelled;
         
+        #if DEBUG
+        public InternalCancellationSignalSource()
+        {
+            DebugLastVersionChangeAt = Time.realtimeSinceStartup;
+            DebugId = Guid.NewGuid().ToString();
+            // DebugStartStagnationCheck();
+        }
+        #endif
+        
         ~InternalCancellationSignalSource()
         {
             FinalizeFromMainThread().Forget();
@@ -468,12 +495,14 @@ namespace Metamatic
         
         private async UniTaskVoid FinalizeFromMainThread()
         {
+            /*
             #if DEBUG
             if (DebugId != null)
             {
                 Console.Verbose("CancellationSignalSource", $"Finalize {DebugId}");
             }
             #endif
+            */
             await UniTask.SwitchToMainThread();
             if (Pool.IsBelongsToPool(this))
             {
@@ -493,21 +522,25 @@ namespace Metamatic
         /// <param name="isFinal">Is called from finalizer or dispose</param>
         internal void TryCancel(int versionToCancel, bool isFinal = false)
         {
+            /*
 #if DEBUG
             if (DebugId != null)
             {
                 Console.Verbose("CancellationSignal", "TryCancel", $"Try Cancel {DebugId} Version: {versionToCancel} (current version: {Version})");
             }
 #endif
+*/          
             if (IsCancellationRequested || versionToCancel != Version) return;
-#if DEBUG
-            Console.Verbose("CancellationSignal", "Return", $"Id: {DebugId}, Version: {Version}");
-#endif
             var cancelledVersion = Version;
             unchecked
             {
                 Version++;
             }
+            
+            #if DEBUG
+            DebugLastVersionChangeAt = Time.realtimeSinceStartup;
+            // DebugStartStagnationCheck();
+            #endif
            
             IsCancellationRequested = true;
             
@@ -530,15 +563,44 @@ namespace Metamatic
             if (!isFinal)
             {
                 IsCancellationRequested = false;
-                Pool.Return(this);
+                Return(this);
             }
             #if DEBUG
+            /*
             DebugOnCancel?.Invoke();
             DebugOnCancel = null;
+            */
             #endif
         }
         
+        #if DEBUG
+        /*
+        private bool DebugCheckStagnation()
+        {
+            if (Time.realtimeSinceStartup - DebugLastVersionChangeAt > 290f)
+            {
+                Console.Debug("SignalSource", "Stagnation", $"{DebugId} is stagnated. Stack trace: {DebugCreateStackFrame}");
+                return true;
+            }
 
+            return false;
+        }
+        
+        private void DebugStartStagnationCheck()
+        {
+            UniTask.Delay(TimeSpan.FromSeconds(300), ignoreTimeScale: true).ContinueWith(() =>
+            {
+                if (m_IsDisposed || Pool.IsInPool(this)) return;
+                if (!DebugCheckStagnation())
+                {
+                    DebugStartStagnationCheck();
+                }
+                
+            }).Forget();
+        }
+        */
+        #endif
+            
         internal CancellationToken GetCancellationToken()
         {
             if (m_CancellationTokenSource == null)
@@ -592,14 +654,11 @@ namespace Metamatic
             });
         }
 
+        private bool m_IsDisposed;
         public void Dispose()
         {
-#if DEBUG
-            if (DebugId != null)
-            {
-                Console.Info("CancellationSignalSource", $"CancellationSignalSource] Dispose {DebugId}");
-            }
-#endif
+            if (m_IsDisposed) return;
+            m_IsDisposed = true;
             TryCancel(Version, true);
             #if DEBUG
             if (Pool.IsBelongsToPool(this))

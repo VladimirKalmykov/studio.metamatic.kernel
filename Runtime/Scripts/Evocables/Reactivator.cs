@@ -126,7 +126,6 @@ namespace Metamatic
         public void Enable()
         {
             oEnabled.Value = true;
-            Console.Debug("Reactivator", $"Enable (isActivated: {m_IsActivated})");
             if (!m_IsActivated)
             {
                 Activate().Forget();
@@ -139,7 +138,6 @@ namespace Metamatic
 
         private async UniTaskVoid Activate()
         {
-            Console.Debug("Reactivator", "Activate");
             m_IsActivated = true;
             if (m_OnTurnOn == null)
             {
@@ -158,7 +156,6 @@ namespace Metamatic
             {
                 Console.Error("Reactivator", e);
             } finally {
-                Console.Debug("Reactivator", "Deactivate");
                 m_IsActivated = false;
             }
         }

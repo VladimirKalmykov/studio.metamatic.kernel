@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
@@ -7,17 +8,37 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class ConfigurablePool
+    public abstract class ConfigurablePool: IDevPool
     {
 #if DEBUG
         public static int PoolsCount;
         public static int SharedPoolsCount;
+        public static readonly List<ConfigurablePool> Pools = new();
+        public static event Action<ConfigurablePool> OnPoolAdded;
+        public static event Action<ConfigurablePool> OnPoolRemoved;
+        
+        public static void RegisterPool(ConfigurablePool pool)
+        {
+            Pools.Add(pool);
+            PoolsCount++;
+            OnPoolAdded?.Invoke(pool);
+        }
+        
+        public static void UnregisterPool(ConfigurablePool pool)
+        {
+            Pools.Remove(pool);
+            PoolsCount--;
+            OnPoolRemoved?.Invoke(pool);
+        }
 
         static ConfigurablePool()
         {
             Monitoring.Create("ConfigurablePool", "Total count", () => PoolsCount, PlayerLoopTiming.FixedUpdate);
             Monitoring.Create("ConfigurablePool", "Shared count", () => SharedPoolsCount, PlayerLoopTiming.FixedUpdate);
         }
+        public abstract string displayName { get; }
+        public abstract int countInPool { get; }
+        public abstract int countOutPool { get; }
 #endif
     }
 
@@ -33,7 +54,7 @@ namespace Metamatic
 
         private static readonly Dictionary<object, ConfigurablePool<T>> _SharedPools = new();
         private static readonly Dictionary<object, ConfigurablePool<T>> _InstanceToPool = new();
-
+        
         /// <summary>
         /// Get object from global pool. The pool will be created if it doesn't exist. Do not use shared pool for objects loaded from resources and addressable.
         /// </summary>
@@ -88,7 +109,7 @@ namespace Metamatic
             var key = config.GetKey();
             if (_SharedPools.TryGetValue(key, out var pool))
             {
-                return pool.Count;
+                return pool.InPoolCount;
             }
             return 0;
         }
@@ -248,7 +269,8 @@ namespace Metamatic
 
         #endregion
 
-        private readonly Queue<T> m_ObjectsInPool = new();
+        private readonly List<T> m_ObjectsInPoolList = new();
+        private readonly HashSet<T> m_ObjectsInPoolSet = new();
         private readonly HashSet<T> m_OutOfPool = new();
 
         private readonly IPoolConfig<T> m_Config;
@@ -261,7 +283,7 @@ namespace Metamatic
         /// <summary>
         /// Count of objects in pool (available for get)
         /// </summary>
-        public int Count => m_ObjectsInPool.Count;
+        public int InPoolCount => m_ObjectsInPoolList.Count;
 
         /// <summary>
         /// Count of objects out of pool (not available for get, but still belongs to pool)
@@ -291,10 +313,10 @@ namespace Metamatic
         {
             m_Config = config;
 #if DEBUG
-            ConfigurablePool.PoolsCount++;
+            RegisterPool(this);
             m_OnDisposeHandler += () =>
             {
-                ConfigurablePool.PoolsCount--;
+                UnregisterPool(this);
             };
             if (config == null)
             {
@@ -309,7 +331,8 @@ namespace Metamatic
             for (int i = 0; i < capacity; i++)
             {
                 var instance = CreateInstance();
-                m_ObjectsInPool.Enqueue(instance);
+                m_ObjectsInPoolList.Add(instance);
+                m_ObjectsInPoolSet.Add(instance);
                 m_Config.OnReturn(instance);
             }
 
@@ -346,15 +369,15 @@ namespace Metamatic
                 case ShrinkTimestampType.Analysis:
                     m_FruitBasket.SetCount(OutOfPoolCount, Time.time);
 #if DEBUG
-                    Console.Verbose("ConfigurablePool", $"ConfigurablePool<{typeof(T)}> analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
+                    Console.Verbose("ConfigurablePool", $"ConfigurablePool<{typeof(T)}> analysis event. Current in pool: {m_ObjectsInPoolList.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
 #endif
                     break;
                 case ShrinkTimestampType.Shrinking:
                     var maxCount = m_FruitBasket.GetMaxCount();
 #if DEBUG
-                    Console.Verbose("ConfigurablePool", $"ConfigurablePool<{typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount})");
+                    Console.Verbose("ConfigurablePool", $"ConfigurablePool<{typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPoolList.Count}, Current out of pool: {OutOfPoolCount})");
 #endif
-                    var countInPool = m_ObjectsInPool.Count;
+                    var countInPool = m_ObjectsInPoolList.Count;
                     var countToRemove = (countInPool + OutOfPoolCount) - maxCount;
                     if (countToRemove > 0 && countToRemove >= countInPool)
                     {
@@ -363,9 +386,13 @@ namespace Metamatic
 #endif
                         for (var i = 0; i < countToRemove; i++)
                         {
-                            if (m_ObjectsInPool.Count > 0)
+                            if (m_ObjectsInPoolList.Count > 0)
                             {
-                                var obj = m_ObjectsInPool.Dequeue();
+                                var lastIndex = m_ObjectsInPoolList.Count - 1;
+                                var obj = m_ObjectsInPoolList[lastIndex];
+                                m_ObjectsInPoolList.RemoveAt(lastIndex);
+                                m_ObjectsInPoolSet.Remove(obj);
+                                
                                 if (_InstanceToPool.ContainsKey(obj))
                                 {
                                     _InstanceToPool.Remove(obj);
@@ -375,7 +402,7 @@ namespace Metamatic
                         }
                     }
 
-                    if (maxCount == 0 && m_ObjectsInPool.Count == 0 && OutOfPoolCount == 0)
+                    if (maxCount == 0 && m_ObjectsInPoolList.Count == 0 && OutOfPoolCount == 0)
                     {
 #if DEBUG
                         Console.Verbose("ConfigurablePool", $"ConfigurablePool<{typeof(T)}> is useless. Triggering OnPoolIsUseless event");
@@ -393,13 +420,16 @@ namespace Metamatic
         public T Get(bool forceCreate = false)
         {
             T obj;
-            if (m_ObjectsInPool.Count == 0 || forceCreate)
+            if (m_ObjectsInPoolList.Count == 0 || forceCreate)
             {
                 obj = CreateInstance();
             }
             else
             {
-                obj = m_ObjectsInPool.Dequeue();
+                var lastIndex = m_ObjectsInPoolList.Count - 1;
+                obj = m_ObjectsInPoolList[lastIndex];
+                m_ObjectsInPoolList.RemoveAt(lastIndex);
+                m_ObjectsInPoolSet.Remove(obj);
             }
             m_OutOfPool.Add(obj);
             m_Config.OnGet(obj);
@@ -411,24 +441,22 @@ namespace Metamatic
         /// </summary>
         public void Return(T obj)
         {
-            if (m_ObjectsInPool.Contains(obj))
+            if (m_ObjectsInPoolSet.Contains(obj))
             {
                 Console.Error("ConfigurablePool", "Object is already in pool");
                 return;
             }
-#if DEBUG
-            /* Check that returned object is contained in out of pool list */
-            if (!m_OutOfPool.Contains(obj))
+            if (!m_OutOfPool.Remove(obj))
             {
                 Console.Error("ConfigurablePool", "Object does not belong to this pool");
                 return;
             }
-#endif
-            m_OutOfPool.Remove(obj);
-            if (m_ObjectsInPool.Count < m_Limit)
+            
+            if (m_ObjectsInPoolList.Count < m_Limit)
             {
                 m_Config.OnReturn(obj);
-                m_ObjectsInPool.Enqueue(obj);
+                m_ObjectsInPoolList.Add(obj);
+                m_ObjectsInPoolSet.Add(obj);
             }
             else
             {
@@ -444,7 +472,7 @@ namespace Metamatic
         /// </summary>
         public bool IsBelongsToPool(T obj)
         {
-            return m_OutOfPool.Contains(obj) || m_ObjectsInPool.Contains(obj);
+            return m_OutOfPool.Contains(obj) || m_ObjectsInPoolSet.Contains(obj);
         }
 
         /// <summary>
@@ -452,7 +480,7 @@ namespace Metamatic
         /// </summary>
         public bool IsInPool(T obj)
         {
-            return m_ObjectsInPool.Contains(obj);
+            return m_ObjectsInPoolSet.Contains(obj);
         }
 
         /// <summary>
@@ -462,7 +490,7 @@ namespace Metamatic
         {
 #if DEBUG
             /* Check released object is not present in pool */
-            if (m_ObjectsInPool.Contains(obj))
+            if (m_ObjectsInPoolSet.Contains(obj))
             {
                 Debug.LogError("Object is in pool, you cannot release. Get it from pool first.");
                 return;
@@ -492,17 +520,12 @@ namespace Metamatic
             {
                 m_OutOfPool.Remove(obj);
             }
-            else if (m_ObjectsInPool.Contains(obj))
+            else if (m_ObjectsInPoolSet.Contains(obj))
             {
                 /* Remove the object from the pool */
-                var queueCopy = new Queue<T>(m_ObjectsInPool);
-                m_ObjectsInPool.Clear();
-                foreach (var item in queueCopy)
+                if (m_ObjectsInPoolSet.Remove(obj))
                 {
-                    if (!item.Equals(obj))
-                    {
-                        m_ObjectsInPool.Enqueue(item);
-                    }
+                    m_ObjectsInPoolList.Remove(obj);
                 }
             }
             if (_InstanceToPool.ContainsKey(obj))
@@ -520,7 +543,7 @@ namespace Metamatic
         public void Dispose()
         {
             /* Dispose all objects in pool */
-            foreach (var obj in m_ObjectsInPool)
+            foreach (var obj in m_ObjectsInPoolList)
             {
                 m_Config.OnDestroy(obj);
             }
@@ -533,10 +556,17 @@ namespace Metamatic
                 }
                 m_Config.OnDestroy(obj);
             }
-            m_ObjectsInPool.Clear();
+            m_ObjectsInPoolList.Clear();
+            m_ObjectsInPoolSet.Clear();
             m_OutOfPool.Clear();
             m_OnDisposeHandler?.Invoke();
             GC.SuppressFinalize(this);
         }
+        
+        #if DEBUG
+        public override string displayName => $"ConfigurablePool<{typeof(T).Name}> {m_Config.GetKey()}";
+        public override int countInPool => m_ObjectsInPoolList.Count;
+        public override int countOutPool => m_OutOfPool.Count;
+        #endif
     }
 }

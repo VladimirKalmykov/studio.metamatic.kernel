@@ -74,65 +74,69 @@ namespace Metamatic
         
         public static void WriteLog(string message)
         {
-            if (logFileWriter == null)
+            var finalMessage = $"{DateTime.Now:dd-MM-yyyy HH:mm:ss} {message}";
+            lock (lockObj)
             {
-                Debug.LogError("Log file writer is null");
-                return;
+                logFileWriter.WriteLine(finalMessage);
             }
-            UniTask.RunOnThreadPool(() => 
-            {
-                var finalMessage = $"{DateTime.Now:dd-MM-yyyy HH:mm:ss} {message}";
-                lock (lockObj)
-                {
-                    logFileWriter.WriteLine(finalMessage);
-                }
-            }).Forget();
         }
         
         private static void OnMetamaticLogReceived(string text, string[] tags, Console.StackSource stackSource, Console.LogLevel logLevel)
         {
-            if ((MetamaticConsolePersistentLogLevel & logLevel) != logLevel)
+            UniTask.RunOnThreadPool(() =>
             {
-                return;
-            }
-            WriteLog($"[${logLevel.ToString()}]{Console.CompileMessageWithTags(tags, text)}");
+                if (logFileWriter == null || (MetamaticConsolePersistentLogLevel & logLevel) != logLevel)
+                {
+                    return;
+                }
+                var message = $"[${logLevel.ToString()}]{Console.CompileMessageWithTags(tags, text)}";
+                WriteLog(message);
+            }).Forget();
         }
         
         private static void OnBuiltInLogReceived(string condition, string stackTrace, LogType type)
         {
-            switch (type)
+            UniTask.RunOnThreadPool(() =>
             {
-                case LogType.Error:
-                    if ((UnityApplicationLogLevelWriteToFile & LogLevel.Error) == LogLevel.Error)
-                    {
-                        WriteLog($"[ERROR] {condition}");
-                    }
-                    break;
-                case LogType.Assert:
-                    if ((UnityApplicationLogLevelWriteToFile & LogLevel.Error) == LogLevel.Error)
-                    {
-                        WriteLog($"[ASSERT] {condition}");
-                    }
-                    break;
-                case LogType.Warning:
-                    if ((UnityApplicationLogLevelWriteToFile & LogLevel.Warning) == LogLevel.Warning)
-                    {
-                        WriteLog($"[WARNING] {condition}");
-                    }
-                    break;
-                case LogType.Log:
-                    if ((UnityApplicationLogLevelWriteToFile & LogLevel.Info) == LogLevel.Info)
-                    {
-                        WriteLog($"[INFO] {condition}");
-                    }
-                    break;
-                case LogType.Exception:
-                    if ((UnityApplicationLogLevelWriteToFile & LogLevel.Error) == LogLevel.Error)
-                    {
-                        WriteLog($"[EXCEPTION] {condition}");
-                    }
-                    break;
-            }
+                switch (type)
+                {
+                    case LogType.Error:
+                        if ((UnityApplicationLogLevelWriteToFile & LogLevel.Error) == LogLevel.Error)
+                        {
+                            WriteLog($"[ERROR] {condition}");
+                        }
+
+                        break;
+                    case LogType.Assert:
+                        if ((UnityApplicationLogLevelWriteToFile & LogLevel.Error) == LogLevel.Error)
+                        {
+                            WriteLog($"[ASSERT] {condition}");
+                        }
+
+                        break;
+                    case LogType.Warning:
+                        if ((UnityApplicationLogLevelWriteToFile & LogLevel.Warning) == LogLevel.Warning)
+                        {
+                            WriteLog($"[WARNING] {condition}");
+                        }
+
+                        break;
+                    case LogType.Log:
+                        if ((UnityApplicationLogLevelWriteToFile & LogLevel.Info) == LogLevel.Info)
+                        {
+                            WriteLog($"[INFO] {condition}");
+                        }
+
+                        break;
+                    case LogType.Exception:
+                        if ((UnityApplicationLogLevelWriteToFile & LogLevel.Error) == LogLevel.Error)
+                        {
+                            WriteLog($"[EXCEPTION] {condition}");
+                        }
+
+                        break;
+                }
+            }).Forget();
         }
 #endif
     }

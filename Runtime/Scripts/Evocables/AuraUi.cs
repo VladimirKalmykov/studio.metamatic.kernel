@@ -9,23 +9,31 @@ namespace ClickTower2024
 {
     public readonly struct Positioning
     {
-        private readonly Func<(Vector3, Vector3)> m_GetPosition;
+        private readonly IVersioned m_VersionSource;
+        private readonly int m_Version;
+        private readonly Func<AnchoredPosition> m_GetAnchoredPosition;
         
-        public Positioning(Func<(Vector3, Vector3)> getPosition)
+        public Positioning(IVersioned versionSource, Func<AnchoredPosition> getAnchoredPosition)
         {
-            m_GetPosition = getPosition;
+            m_VersionSource = versionSource;
+            m_Version = versionSource.version;
+            m_GetAnchoredPosition = getAnchoredPosition;
         }
         
-        public (Vector3 position, Vector3 anchor) GetPlacement()
+        public AnchoredPosition GetAnchoredPosition()
         {
-            return m_GetPosition();
+            if (m_VersionSource == null || m_VersionSource.version != m_Version)
+            {
+                return AnchoredPosition.zero;
+            }
+            return m_GetAnchoredPosition();
         }
     }
 
     public readonly struct AuraUi<T>: IAsyncDisposableAbortable where T: Enum
     {
         private static readonly ParamLessPool<AuraUiImpl<T>> Pool = new ParamLessPool<AuraUiImpl<T>>();
-        public static AuraUi<T> Create(AuraUiImpl<T>.GetPositioning getPositioning)
+        public static AuraUi<T> Create(System.Func<T,Metamatic.AnchoredPosition> getPositioning)
         {
             var impl = Pool.Get();
             impl.Initialize(getPositioning);
@@ -86,14 +94,13 @@ namespace ClickTower2024
             return impl?.AddAbortedListenerOnce(action) ?? DisposableAction.Empty;
         }
     }
-    public class AuraUiImpl<T>: IAsyncDisposableAbortable, IResettable where T: Enum
+    public class AuraUiImpl<T>: IAsyncDisposableAbortable, IResettable, IVersioned where T: Enum
     {
-        public delegate (Vector3 worldPosition, Vector3 anchor) GetPositioning(T placeType);
-        private GetPositioning m_GetPositioning;
+        private System.Func<T,Metamatic.AnchoredPosition> m_GetPositioning;
         private LiteMotel<T> m_Motel;
         public int version { get; private set; }
         
-        public void Initialize(GetPositioning getPositioning)
+        public void Initialize(System.Func<T,Metamatic.AnchoredPosition> getPositioning)
         {
             m_GetPositioning = getPositioning;
             m_Motel = LiteMotel<T>.Create();
@@ -129,7 +136,12 @@ namespace ClickTower2024
         {
             return m_Motel.Book(placeType, alternativePlaceType, (bookedPlaceType, cancellation) =>
             {
-                return onReserve(bookedPlaceType, new Positioning(() => m_GetPositioning(bookedPlaceType)), cancellation);
+                var positioning = new Positioning(this, () => m_GetPositioning(bookedPlaceType));
+                return onReserve(
+                    bookedPlaceType,
+                    positioning, 
+                    cancellation
+                );
             });
         }
 

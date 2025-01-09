@@ -24,7 +24,6 @@ namespace Metamatic.Inspector
 
         protected override void OnCreateGUI()
         {
-            Console.Debug("MonitoringEditorWindow", "CreateGUI");
             var asset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Monitoring.uxml");
             m_RowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Row.uxml");
             m_PanelTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/Inspector/Windows/Monitoring/Panel.uxml");
@@ -40,12 +39,10 @@ namespace Metamatic.Inspector
 
         protected override async UniTaskVoid EnableAsync(Func<UniTask> ready, Signal signal)
         {
-            Console.Debug("MonitoringEditorWindow", "EnableAsync");
             /* Listen for monitoring data */
             using var observeGroups = Monitoring.ObserveGroups(OnGroupAdded);
             
             await ready();
-            Console.Debug("MonitoringEditorWindow", "DisableAsync");
         }
         
         private void Update()
@@ -55,7 +52,6 @@ namespace Metamatic.Inspector
 
         private async UniTaskVoid OnGroupAdded(Monitoring.Group group, Signal signal)
         {
-            Console.Debug("MonitoringEditorWindow", $"Group added: {group.Name}");
             /* Add panel */
             m_PanelTemplate.CloneTree(m_RowElement);
             var panel = m_RowElement.Query<VisualElement>("Panel").Last();
@@ -68,7 +64,6 @@ namespace Metamatic.Inspector
         
         private async UniTaskVoid OnItemAdded(VisualElement panel, Monitoring.MonitoringItem item, Signal signal)
         {
-            Console.Debug("MonitoringEditorWindow", $"Item added: {item.Key}");
             /* Add key value */
             var panelContent = panel.Q<VisualElement>("Content");
             m_KeyValueTemplate.CloneTree(panelContent);

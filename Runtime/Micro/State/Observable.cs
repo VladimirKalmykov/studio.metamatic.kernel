@@ -53,6 +53,12 @@ namespace Metamatic
 
         ~ObservableReadOnly()
         {
+            DisposeOnTheMainThread().Forget();
+        }
+        
+        private async UniTaskVoid DisposeOnTheMainThread()
+        {
+            await UniTask.SwitchToMainThread();
             Dispose();
         }
 

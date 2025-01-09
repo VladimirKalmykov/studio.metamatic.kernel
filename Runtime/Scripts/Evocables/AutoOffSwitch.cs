@@ -27,10 +27,10 @@ namespace Metamatic
                 onTurnOn(asyncCancellationSource.Cancellation).Forget();
             }, () =>
             {
-                asyncCancellationSource.TryCancelAsync();
+                asyncCancellationSource.TryCancelAsync(20f);
             }, () =>
             {
-                asyncCancellationSource.TryCancelSync();
+                asyncCancellationSource.Dispose();
             });
         }
         
@@ -125,6 +125,7 @@ namespace Metamatic
         
         private async UniTaskVoid StartTurnOffTimer()
         {
+            var timerId = unchecked((int)DateTime.Now.Ticks);
             m_BreakTimerSignalSource = SignalSource.Create();
             try
             {
@@ -135,9 +136,14 @@ namespace Metamatic
             catch (OperationCanceledException)
             {
                 // Skip
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 Console.Error("AutoOffSwitch", e);
+            }
+            finally
+            {
+                Console.Log("AutoOffSwitch", $"Stop timer {timerId}");
             }
         }
 

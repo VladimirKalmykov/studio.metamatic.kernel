@@ -43,7 +43,6 @@ namespace Metamatic.EditorTools
 
         public sealed override VisualElement CreateInspectorGUI()
         {
-            Console.Debug("AsyncEditor", "CreateInspectorGUI");
             var root =  CreateInspectorGUIAsync();
             m_InspectorGUIIsCreated.Value = true;
             return root;

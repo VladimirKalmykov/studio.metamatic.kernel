@@ -93,7 +93,8 @@ namespace Metamatic
         /// <returns></returns>
         public UniTask WaitForDismissal(Signal cancellationSignal)
         {
-            return UniTask.WhenAny(completeDismissSignal.ToUniTask(), cancellationSignal.ToUniTask());
+            return PlayerLoop.Delay(1f, PlayerLoopTiming.Update, cancellationSignal);
+            //return UniTask.WhenAny(completeDismissSignal.ToUniTask(), cancellationSignal.ToUniTask());
         }
 
         private async UniTask AsyncHide()
@@ -101,6 +102,7 @@ namespace Metamatic
             state = State.Dismissing;
             m_StepCancellationSignalSource.TryRaise();
             m_StepCancellationSignalSource = SignalSource.Create();
+            await UniTask.NextFrame();
             try
             {
                 await OnDismiss(m_StepCancellationSignalSource.Signal);

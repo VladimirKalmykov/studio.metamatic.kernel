@@ -7,11 +7,32 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class ParamLessPool
+    public abstract class ParamLessPool: IDevPool
     {
         #if DEBUG
         public static int PoolsCount;
         public static int SharedPoolsCount;
+        public static List<ParamLessPool> Pools = new();
+        public static event Action<ParamLessPool> OnPoolAdded;
+        public static event Action<ParamLessPool> OnPoolRemoved;
+        
+        public static void RegisterPool(ParamLessPool pool)
+        {
+            Pools.Add(pool);
+            PoolsCount++;
+            OnPoolAdded?.Invoke(pool);
+        }
+        
+        public static void UnregisterPool(ParamLessPool pool)
+        {
+            Pools.Remove(pool);
+            PoolsCount--;
+            OnPoolRemoved?.Invoke(pool);
+        }
+        
+        public abstract string displayName { get; }
+        public abstract int countInPool { get; }
+        public abstract int countOutPool { get; }
 
         static ParamLessPool()
         {
@@ -86,7 +107,7 @@ namespace Metamatic
                 return 0;
             }
 
-            return _SharedPool.Count;
+            return _SharedPool.InPoolCount;
         }
         
         public static int DebugGetCountOutOfSharedPool()
@@ -169,12 +190,12 @@ namespace Metamatic
         // ReSharper disable once FieldCanBeMadeReadOnly.Global
         // ReSharper disable once StaticMemberInGenericType
         // ReSharper disable once MemberCanBePrivate.Global
-        public static float DefaultShrinkingPeriod = 20f;
+        public static float DefaultShrinkingPeriod = 60f;
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Global
         // ReSharper disable once StaticMemberInGenericType
         // ReSharper disable once MemberCanBePrivate.Global
-        public static float DefaultAnalysisPeriod = 5f;
+        public static float DefaultAnalysisPeriod = 30f;
 #else
         public const float DefaultShrinkingPeriod = 600;
         public const float DefaultAnalysisPeriod = 60;
@@ -254,7 +275,8 @@ namespace Metamatic
         #endregion
 
 
-        private readonly Queue<T> m_ObjectsInPool = new();
+        private readonly List<T> m_ObjectsInPoolList = new();
+        private readonly HashSet<T> m_ObjectsInPoolSet = new();
         private HashSet<T> m_OutOfPool = new();
 
         private int m_Capacity;
@@ -267,7 +289,7 @@ namespace Metamatic
         /// Count of objects in pool (available for get)
         /// </summary>
         // ReSharper disable once InconsistentNaming
-        public int Count => m_ObjectsInPool.Count;
+        public int InPoolCount => m_ObjectsInPoolList.Count;
 
         /// <summary>
         /// Count of objects out of pool (not available for get, but still belongs to pool)
@@ -299,10 +321,11 @@ namespace Metamatic
         public ParamLessPool()
         {
 #if DEBUG
-            ParamLessPool.PoolsCount++;
+            RegisterPool(this);
+            var thisPool = this;
             m_OnDisposeHandler += () =>
             {
-                ParamLessPool.PoolsCount--;
+                UnregisterPool(thisPool);
             };
 #endif
         }
@@ -321,7 +344,8 @@ namespace Metamatic
             m_AutoShrink = autoShrink;
             for (int i = 0; i < capacity; i++)
             {
-                m_ObjectsInPool.Enqueue(CreateInstance());
+                m_ObjectsInPoolList.Add(CreateInstance());
+                m_ObjectsInPoolSet.Add(m_ObjectsInPoolList[i]);
             }
 
             if (autoShrink)
@@ -358,15 +382,15 @@ namespace Metamatic
                 case ShrinkTimestampType.Analysis:
                     m_FruitBasket.SetCount(OutOfPoolCount, Time.time);
                     #if DEBUG
-                    Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> analysis event. Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
+                    Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> analysis event. Current in pool: {m_ObjectsInPoolList.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
                     #endif
                     break;
                 case ShrinkTimestampType.Shrinking:
                     var maxCount = m_FruitBasket.GetMaxCount();
                     #if DEBUG
-                    Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPool.Count}, Current out of pool: {OutOfPoolCount})");
+                    Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPoolList.Count}, Current out of pool: {OutOfPoolCount})");
                     #endif
-                    var countInPool = m_ObjectsInPool.Count;
+                    var countInPool = m_ObjectsInPoolList.Count;
                     var countToRemove = (countInPool + OutOfPoolCount) - maxCount;
                     if (countToRemove > 0 && countToRemove >= countInPool)
                     {
@@ -375,18 +399,21 @@ namespace Metamatic
                         #endif
                         for (var i = 0; i < countToRemove; i++)
                         {
-                            if (m_ObjectsInPool.Count > 0)
+                            if (m_ObjectsInPoolList.Count > 0)
                             {
-                                var obj = m_ObjectsInPool.Dequeue();
+                                var lastIndex = m_ObjectsInPoolList.Count - 1;
+                                var obj = m_ObjectsInPoolList[lastIndex];
                                 if (obj is IDisposable disposable)
                                 {
                                     disposable.Dispose();
                                 }
+                                m_ObjectsInPoolList.RemoveAt(lastIndex);
+                                m_ObjectsInPoolSet.Remove(obj);
                             }
                         }
                     }
 
-                    if (maxCount == 0 && m_ObjectsInPool.Count == 0 && OutOfPoolCount == 0)
+                    if (maxCount == 0 && m_ObjectsInPoolList.Count == 0 && OutOfPoolCount == 0)
                     {
                         #if DEBUG
                         Console.Verbose("ParamLessPool", "AutoShrink", $"ParamLessPool<${typeof(T)}> is useless. Triggering OnPoolIsEmpty event");
@@ -404,13 +431,22 @@ namespace Metamatic
         /// <returns></returns>
         public T Get(bool forceCreate = false)
         {
-            var outOfPool = m_ObjectsInPool.Count == 0 || forceCreate ? CreateInstance() : m_ObjectsInPool.Dequeue();
+            var outOfPool = m_ObjectsInPoolList.Count == 0 || forceCreate ? CreateInstance() : Dequeue();
             m_OutOfPool.Add(outOfPool);
             if (outOfPool is IInitializable initializable)
             {
                 initializable.Initialize();
             }
             return outOfPool;
+        }
+        
+        private T Dequeue()
+        {
+            var listIndex = m_ObjectsInPoolList.Count - 1;
+            var obj = m_ObjectsInPoolList[listIndex];
+            m_ObjectsInPoolList.RemoveAt(listIndex);
+            m_ObjectsInPoolSet.Remove(obj);
+            return obj;
         }
 
         /// <summary>
@@ -420,7 +456,7 @@ namespace Metamatic
         /// <exception cref="Exception"></exception>
         public void Return(T obj)
         {
-            if (m_ObjectsInPool.Contains(obj))
+            if (m_ObjectsInPoolSet.Contains(obj))
             {
                 global::Metamatic.Console.Error("ParamLessPool", "Object is already in pool");
                 return;
@@ -434,14 +470,15 @@ namespace Metamatic
             }
 #endif
             m_OutOfPool.Remove(obj);
-            if (m_ObjectsInPool.Count < m_Limit)
+            if (m_ObjectsInPoolList.Count < m_Limit)
             {
                 // Auto reset object if it is resettable
                 if (obj is IResettable resettable)
                 {
                     resettable.Reset();
                 }
-                m_ObjectsInPool.Enqueue(obj);
+                m_ObjectsInPoolList.Add(obj);
+                m_ObjectsInPoolSet.Add(obj);
             }
             else
             {
@@ -462,7 +499,7 @@ namespace Metamatic
         /// <returns></returns>
         public bool IsBelongsToPool(T obj)
         {
-            return m_OutOfPool.Contains(obj) || m_ObjectsInPool.Contains(obj);
+            return m_OutOfPool.Contains(obj) || m_ObjectsInPoolSet.Contains(obj);
         }
         
         /// <summary>
@@ -472,7 +509,7 @@ namespace Metamatic
         /// <returns></returns>
         public bool IsInPool(T obj)
         {
-            return m_ObjectsInPool.Contains(obj);
+            return m_ObjectsInPoolSet.Contains(obj);
         }
 
         /// <summary>
@@ -484,7 +521,7 @@ namespace Metamatic
         {
 #if DEBUG
             /* Check released object is not present in pool */
-            if (m_ObjectsInPool.Contains(obj))
+            if (m_ObjectsInPoolSet.Contains(obj))
             {
                 global::Metamatic.Console.Error("ParamLessPool", "Object is in pool, you can not release. Get it from pool first.");
                 return;
@@ -513,17 +550,14 @@ namespace Metamatic
             {
                 m_OutOfPool.Remove(obj);
             }
-            else if (m_ObjectsInPool.Contains(obj))
+            else if (m_ObjectsInPoolSet.Contains(obj))
             {
                 /* Create copy of queue */
-                var queueCopy = new Queue<T>(m_ObjectsInPool);
-                m_ObjectsInPool.Clear();
-                foreach (var item in queueCopy)
+                
+                /* Remove the object from the pool */
+                if (m_ObjectsInPoolSet.Remove(obj))
                 {
-                    if (!item.Equals(obj))
-                    {
-                        m_ObjectsInPool.Enqueue(item);
-                    }
+                    m_ObjectsInPoolList.Remove(obj);
                 }
             }
         }
@@ -537,14 +571,15 @@ namespace Metamatic
         public void Dispose()
         {
             /* Dispose all objects in pool */
-            foreach (var obj in m_ObjectsInPool)
+            foreach (var obj in m_ObjectsInPoolList)
             {
                 if (obj is IDisposable disposable)
                 {
                     disposable.Dispose();
                 }
             }
-            m_ObjectsInPool.Clear();
+            m_ObjectsInPoolList.Clear();
+            m_ObjectsInPoolSet.Clear();
             /* Dispose all objects out of pool */
             foreach (var obj in m_OutOfPool)
             {
@@ -557,5 +592,11 @@ namespace Metamatic
             m_OnDisposeHandler?.Invoke();
             GC.SuppressFinalize(this);
         }
+        
+        #if DEBUG
+        public override string displayName => $"ParamLessPool<{typeof(T).Name}>";
+        public override int countInPool => InPoolCount;
+        public override int countOutPool => OutOfPoolCount;
+        #endif
     }
 }

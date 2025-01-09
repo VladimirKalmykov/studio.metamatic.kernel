@@ -1,4 +1,5 @@
 using System;
+using Cysharp.Threading.Tasks;
 using Metamatic;
 
 namespace Metamatic
@@ -50,6 +51,14 @@ namespace Metamatic
             {
                 var impl = GetImpl();
                 return impl is { state: State.CancelledAsync };
+            }
+        }
+        
+        public void ThrowIfCancellationRequested()
+        {
+            if (isCancellationRequested)
+            {
+                throw new OperationCanceledException();
             }
         }
         
@@ -137,7 +146,12 @@ namespace Metamatic
         public bool isAlive => GetImpl() != null;
         public static AsyncCancellationSource Create()
         {
-            return new AsyncCancellationSource(CancellationSourceImpl.Get());
+            var impl = CancellationSourceImpl.Get();
+            #if DEBUG
+            var stackFrame = new System.Diagnostics.StackFrame(1, true);
+            impl.DebugCreateStackFrame = stackFrame;
+            #endif
+            return new AsyncCancellationSource(impl);
         }
         // ReSharper disable once InconsistentNaming
         public static AsyncCancellationSource Aborted => new AsyncCancellationSource(null);
@@ -146,9 +160,9 @@ namespace Metamatic
             GetImpl()?.TryCancelSync();
         }
         
-        public void TryCancelAsync()
+        public DisposableAction TryCancelAsync(float timeout = 10f)
         {
-            GetImpl()?.TryCancelAsync();
+            return GetImpl()?.TryCancelAsync(timeout) ?? DisposableAction.Empty;
         }
         
         // ReSharper disable once InconsistentNaming
@@ -188,6 +202,14 @@ namespace Metamatic
             } else {
                 action();
                 return DisposableAction.Empty;
+            }
+        }
+        
+        public void ThrowIfCancellationRequested()
+        {
+            if (GetImpl()?.state != AsyncCancellation.State.Idle)
+            {
+                throw new OperationCanceledException();
             }
         }
 
@@ -230,10 +252,21 @@ namespace Metamatic
 
     public class CancellationSourceImpl: IResettable, IInitializable, IDisposable, IAbortable
     {
+        #if DEBUG
+        public static readonly ObservableList<CancellationSourceImpl> Instances = new ObservableList<CancellationSourceImpl>();
+        public System.Diagnostics.StackFrame DebugCreateStackFrame;
+        #endif
         private static ParamLessPool<CancellationSourceImpl> _Pool = new(10); // TODO: Decide how many instances to keep in the pool
         internal static CancellationSourceImpl Get()
         {
             return _Pool.Get();
+        }
+        
+        public CancellationSourceImpl()
+        {
+            #if DEBUG
+            Instances.Add(this);
+            #endif
         }
         
         public AsyncCancellation.State state { get; private set; } = AsyncCancellation.State.Idle;
@@ -302,7 +335,11 @@ namespace Metamatic
             }
         }
         
-        public void TryCancelAsync()
+        /// <summary>
+        /// Raise the async cancellation signal. This method is used to cancel the async operation.
+        /// </summary>
+        /// <param name="timeout">Determines the timout of automatically sync dispose. It is required because any async cancelled signal should be returned to the pool.</param>
+        public DisposableAction TryCancelAsync(float timeout = 10f)
         {
             switch (state)
             {
@@ -311,6 +348,14 @@ namespace Metamatic
                     m_AbortSignalSource = SignalSource.Create();
                     OnCancel?.Invoke(true);
                     m_SignalSource.TryRaise();
+                    if (timeout > 0f)
+                    {
+                        StartAutoCancelSyncTimer(timeout);
+                    }
+                    else
+                    {
+                        return DisposableAction.Create(Abort);
+                    }
                     break;
                 case AsyncCancellation.State.CancelledSync:
                     // Already cancelled sync. Unable to cancel async.
@@ -319,13 +364,38 @@ namespace Metamatic
                     // Already cancelled async. Ignore.
                     break;
             }
+            return DisposableAction.Empty;
+        }
+        
+        private void StartAutoCancelSyncTimer(float timeout)
+        {
+            if (timeout > 0f)
+            {
+                var currentVersion = version;
+                UniTask.Delay(TimeSpan.FromSeconds(timeout)).ContinueWith(() =>
+                {
+                    if (version == currentVersion)
+                    {
+                        Abort();
+                    }
+                }).Forget();
+            }
         }
 
+        private bool m_IsDisposed;
         /// <summary>
         /// Dispose is called only from the pool. You should not call it manually.
         /// </summary>
         public void Dispose()
         {
+            if (m_IsDisposed)
+            {
+                return;
+            }
+            m_IsDisposed = true;
+            #if DEBUG
+            Instances.Remove(this);
+            #endif
             Reset();
         }
 

@@ -6,6 +6,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks.Internal;
+using UnityEngine;
 
 namespace Cysharp.Threading.Tasks
 {
@@ -693,6 +694,8 @@ namespace Cysharp.Threading.Tasks
 
         public static async UniTask ContinueWith<T>(this UniTask<T> task, Action<T> continuationFunction)
         {
+            var stackTrace = Environment.StackTrace;
+            Debug.Log($"[UniTask][ContinueWith] Call. StackTrace:{stackTrace}");
             continuationFunction(await task);
         }
 

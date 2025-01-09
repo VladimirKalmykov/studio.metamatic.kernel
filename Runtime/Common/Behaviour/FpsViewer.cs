@@ -6,16 +6,32 @@ namespace  Metamatic
 
     public class FpsViewer : MonoBehaviour
     {
-        public Color color = Color.black;
-        float m_DeltaTime;
+        [Tooltip("Интервал пересчёта FPS в секундах")]
+        public float updateInterval = 1.0f;
 
-        void Update()
+        private int m_Frames;
+        private float m_AccumulatedTime;
+        private float m_CurrentFps;
+
+        private void Update()
         {
-            m_DeltaTime += (Time.unscaledDeltaTime - m_DeltaTime) * 0.1f;
-            float msec = m_DeltaTime * 1000.0f;
-            float fps = 1.0f / m_DeltaTime;
-            string text = string.Format("{0:0.0} ms ({1:0.} fps)", msec, fps);
-            UILog.Add("FPS", text);
+            m_AccumulatedTime += Time.deltaTime;
+            m_Frames++;
+
+            // Раз в updateInterval секунд пересчитываем fps
+            if (m_AccumulatedTime >= updateInterval)
+            {
+                m_CurrentFps = m_Frames / m_AccumulatedTime;
+                m_Frames = 0;
+                m_AccumulatedTime = 0f;
+            }
+        }
+
+        private void OnGUI()
+        {
+            // Ширина текста ~80, высота ~20, смещаемся от правого края экрана
+            Rect rect = new Rect(Screen.width - 80, 10, 70, 20);
+            GUI.Label(rect, m_CurrentFps.ToString("F1"));
         }
     }
 }

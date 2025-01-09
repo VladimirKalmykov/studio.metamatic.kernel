@@ -49,7 +49,6 @@ namespace Metamatic
         
         public void Update()
         {
-            Console.Debug("CompetitiveWeightsCollection", "Update");
             var best = default(T);
             var bestWeight = float.MinValue;
             foreach (var (item, getWeight) in m_Items.Values)

@@ -77,11 +77,11 @@ namespace Metamatic
             return new DisposableAction(() => OnDispose -= action);
         }
     }
-    public abstract class AsyncPresenter<TProperty>: AsyncPresenterLegacy
+    public abstract class AsyncPresenterLegacy<TProperty>: AsyncPresenterLegacy
     {
          private TProperty m_Property;
          
-         ~AsyncPresenter()
+         ~AsyncPresenterLegacy()
          {
              Console.Error("AsyncPresenter", "Is not disposed");
              Dispose();
@@ -96,11 +96,9 @@ namespace Metamatic
                  {
                      DisableCompletionSource = SafeUniTaskCompletionSource.Create();
                  }
-                 Console.Debug("AsyncPresenter", "Ready");
                  using var watchEnabled = EnabledObservable.WatchAsync(AsyncEnablingChanged);
                  await DisableCompletionSource.Task;
                  IsBeingActivated = false;
-                 Console.Debug("AsyncPresenter", "Released");
              } catch (Exception e)
              {
                  Console.Error("AsyncPresenter", e);
@@ -109,7 +107,6 @@ namespace Metamatic
      
          private async UniTaskVoid AsyncEnablingChanged(bool enabled, Signal signal)
          {
-             Console.Debug("AsyncPresenter", $"Enabling changed: {enabled}");
              if (enabled)
              {
                  if (!EnablingCancellationSignalSource.CanBeCancelled)
@@ -122,21 +119,12 @@ namespace Metamatic
              }
              else
              {
-                 using var registration = signal.Register(() =>
-                 {
-                        Console.Debug("AsyncPresenter", "Disabled just has been cancelled");
-                 });
                  try
                  {
                      await OnDisable(m_Property, signal);
                      if (!signal.IsCancellationRequested)
                      {
-                         Console.Debug("AsyncPresenter", "Disable completed");
                          DisableCompletionSource.TrySetResult();
-                     }
-                     else
-                     {
-                         Console.Debug("AsyncPresenter", "Disable not completed, because hb cancelled");
                      }
                  }
                  finally

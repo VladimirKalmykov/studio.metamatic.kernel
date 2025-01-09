@@ -221,3 +221,48 @@
     background-color: var(--MetamaticUIKit_PanelBackgroundColor);
 }
 
+/* Table */
+.MetamaticUIKit_Table {
+    flex-direction: column;
+    padding: 0;
+}
+
+.MetamaticUIKit_Table .MetamaticUIKit_Table_Header {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+}
+
+.MetamaticUIKit_Table .MetamaticUIKit_Table_Header .MetamaticUIKit_Table_HeaderCell {
+    flex-grow: 0;
+    flex-shrink: 0;
+    padding: 6px 0;
+    color: var(--MetamaticUIKit_TextColor);
+    overflow: hidden;
+}
+
+.MetamaticUIKit_Table .MetamaticUIKit_Table_BodyContainer {
+    flex-grow: 1;
+}
+
+.MetamaticUIKit_Table .MetamaticUIKit_Table_Body {
+    flex-grow: 1;
+    flex-direction: column;
+    padding: 0;
+}
+
+.MetamaticUIKit_Table .MetamaticUIKit_Table_Row {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+}
+
+.MetamaticUIKit_Table .MetamaticUIKit_Table_Row .MetamaticUIKit_Table_Cell {
+    flex-grow: 0;
+    flex-shrink: 0;
+    padding: 6px 0;
+    color: var(--MetamaticUIKit_TextColor);
+    overflow: hidden;
+}

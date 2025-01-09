@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Metamatic
@@ -27,8 +28,16 @@ namespace Metamatic
         private void SetAlpha(float nextAlpha)
         {
             m_Alpha = nextAlpha;
-            m_SharedMaterialPropertyBlock.Value.SetFloat(Alpha, nextAlpha);
-            m_SharedMaterialPropertyBlock.SetPropertyBlock();
+            if (m_SharedMaterialPropertyBlock != null)
+            {
+                m_SharedMaterialPropertyBlock.Value.SetFloat(Alpha, nextAlpha);
+                m_SharedMaterialPropertyBlock.SetPropertyBlock();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            m_SharedMaterialPropertyBlock = null;
         }
     }
 }

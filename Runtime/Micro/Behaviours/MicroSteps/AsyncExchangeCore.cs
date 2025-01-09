@@ -385,7 +385,6 @@ namespace Metamatic
             {
                 registrationExternal = signal.Register(() =>
                 {
-                    Console.Debug("Eating", "Cancelled by cancellation signal");
                     outputCompletionSource.TrySetCanceled();
                 });
                 var value = await outputCompletionSource.Task;

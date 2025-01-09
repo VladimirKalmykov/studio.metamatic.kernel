@@ -1,7 +1,3 @@
-using System;
-using Metamatic;
-using Object = UnityEngine.Object;
-
 namespace Metamatic.Framework.Workshop
 {
     [Spell("Damage", "Deals damage to the target")]

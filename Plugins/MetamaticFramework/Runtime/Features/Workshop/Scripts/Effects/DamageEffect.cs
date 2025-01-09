@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Metamatic.Framework.Workshop
 {
     /// <summary>

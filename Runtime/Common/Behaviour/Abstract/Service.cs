@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using DevTools;
 using UnityEngine;
 
 namespace Metamatic
@@ -131,6 +132,10 @@ namespace Metamatic
         public static async UniTask<T> Resolve<T>(Signal signal = default, float timeout = 10f)
             where T : Service
         {
+            using var stagnationCheck = StagnationCatcher.Create(50f, () =>
+            {
+                Console.Warning("Stagnation", "Service", $"Service {typeof(T)} resolving is stuck");
+            });
             var service = await ResolveInternal<T>(signal, timeout);
             await service.Demand(signal);
             return service;

@@ -14,11 +14,14 @@ namespace Metamatic
         {
             private readonly AbortableAsyncOperation m_Operation;
             private readonly Observable<(long preferredRooms, long alternativeRooms)> m_Config;
+            private readonly Observable<long> m_ObservableBookedRooms;
+            public T bookedRoom => (T)Enum.ToObject(typeof(T), m_ObservableBookedRooms.value);
             
-            public Reservation(AbortableAsyncOperation operation, Observable<(long preferredRooms, long alternativeRooms)> config)
+            public Reservation(AbortableAsyncOperation operation, Observable<(long preferredRooms, long alternativeRooms)> config, Observable<long> observableBookedRooms)
             {
                 m_Operation = operation;
                 m_Config = config;
+                m_ObservableBookedRooms = observableBookedRooms;
             }
             
             public void SetPreferredRooms(T preferredRooms)
@@ -181,15 +184,17 @@ namespace Metamatic
         public LiteMotel<T>.Reservation Book(T preferredRooms, T alternativeRooms, Func<T, AsyncCancellation, UniTask> onRoomBooked)
         {
             Observable<(long preferredRooms, long alternativeRooms)> observableConfig = ParamLessPool<Observable<(long prefferedRooms, long alternativeRooms)>>.GetShared();
+            Observable<long> observableBookedRoom = ParamLessPool<Observable<long>>.GetShared();
             var operation = AbortableAsyncOperation.Call(async (operationCancellation) =>
             {
+                await UniTask.NextFrame();
+                operationCancellation.ThrowIfCancellationRequested();
                 m_TotalGuests.Value++;
                 var preferredRoomsValue = Convert.ToInt64(preferredRooms);
                 var alternativeRoomsValue = Convert.ToInt64(alternativeRooms);
                 observableConfig.Value = (preferredRoomsValue, alternativeRoomsValue);
                 var bookingCancellationSource = AsyncCancellationSource.Create();
                 
-                long bookedRoom = 0;
                 UniTask currentBookingTask = UniTask.CompletedTask;
                 UniTask bookOutInTransitionTask = UniTask.CompletedTask;
                 try
@@ -198,11 +203,11 @@ namespace Metamatic
                         nextRoom =>
                         {
 
-                            bookingCancellationSource.TryCancelAsync();
+                            var abortPreviousBookingAsyncCancellation = bookingCancellationSource.TryCancelAsync(0f);
                             bookingCancellationSource = AsyncCancellationSource.Create();
                             bookOutInTransitionTask.Forget();
-                            bookOutInTransitionTask = OnBookOutInTransition(currentBookingTask, bookedRoom, nextRoom);
-                            bookedRoom = nextRoom;
+                            bookOutInTransitionTask = OnBookOutInTransition(currentBookingTask, observableBookedRoom.value, nextRoom, abortPreviousBookingAsyncCancellation);
+                            observableBookedRoom.value = nextRoom;
                             currentBookingTask = nextRoom != 0
                                 ? onRoomBooked.Invoke((T)Enum.ToObject(typeof(T), nextRoom),
                                     bookingCancellationSource.Cancellation)
@@ -212,13 +217,13 @@ namespace Metamatic
                     bookingInSubscription.Dispose();
                     if (operationCancellation.isCancelledAsync)
                     {
-                        bookingCancellationSource.TryCancelAsync();
-                        operationCancellation.AbortSignal.Register(bookingCancellationSource.TryCancelSync);
+                        using var abortAsyncCancellation = bookingCancellationSource.TryCancelAsync(0f);
+                        operationCancellation.AbortSignal.Register(bookingCancellationSource.Dispose);
                         await bookOutInTransitionTask;
                         
-                        if (bookedRoom != 0)
+                        if (observableBookedRoom.value != 0)
                         {
-                            await OnBookOutInTransition(currentBookingTask, bookedRoom, 0);
+                            await OnBookOutInTransition(currentBookingTask, observableBookedRoom.value, 0);
                         }
                         else
                         {
@@ -230,9 +235,9 @@ namespace Metamatic
                         bookingCancellationSource.TryCancelSync();
                         /* Forget currently processed booking out/in task */
                         bookOutInTransitionTask.Forget();
-                        if (bookedRoom != 0)
+                        if (observableBookedRoom.value != 0)
                         {
-                            OnBookOutInTransition(currentBookingTask, bookedRoom, 0).Forget();
+                            OnBookOutInTransition(currentBookingTask, observableBookedRoom.value, 0).Forget();
                         }
                         else
                         {
@@ -242,6 +247,7 @@ namespace Metamatic
                 }
                 finally
                 {
+                    bookingCancellationSource.Dispose();
                     m_TotalGuests.Value--;
                 }
             });
@@ -249,16 +255,24 @@ namespace Metamatic
             operation.AddDisposeListenerOnce((bool disposedAsync) =>
             {
                 ParamLessPool<Observable<(long, long)>>.ReturnShared(observableConfig);
+                ParamLessPool<Observable<long>>.ReturnShared(observableBookedRoom);
                 m_GuestOperations.Remove(operation);
                 if (m_GuestOperations.Count == 0)
                 {
                     OnEmpty?.Invoke();
                 }
             });
-            return new LiteMotel<T>.Reservation(operation, observableConfig);
+            return new LiteMotel<T>.Reservation(operation, observableConfig, observableBookedRoom);
         }
 
-        private async UniTask OnBookOutInTransition(UniTask currentBookingTask, long prevRoom, long nextRoom)
+        /// <summary>
+        /// Async handle the book out/in transition.
+        /// </summary>
+        /// <param name="currentBookingTask"></param>
+        /// <param name="prevRoom"></param>
+        /// <param name="nextRoom"></param>
+        /// <param name="onFinally">Callback that will be called after the transition is completed.</param>
+        private async UniTask OnBookOutInTransition(UniTask currentBookingTask, long prevRoom, long nextRoom, Action onFinally = default)
         {
             try
             {
@@ -274,6 +288,7 @@ namespace Metamatic
                 {
                     m_BookedRooms.Value = m_BookedRooms.value & ~prevRoom;
                 }
+                onFinally?.Invoke();
             }
         }
 
@@ -285,6 +300,8 @@ namespace Metamatic
 
             return config.WatchAsync(async (configData, signal) =>
             {
+                await UniTask.NextFrame();
+                if (signal.isRaised) return;
                 var result = TryBookIn(bookedRooms & ~bookedRoom, configData.preferredRooms, configData.alternativeRooms);
                 
                 satisfied = result.satisfied;
@@ -299,7 +316,7 @@ namespace Metamatic
                 if (!satisfied || !altSatisfied)
                 {
                     // Subscribe to free rooms
-                    subscription = m_BookedRooms.Watch(nextBookedRooms =>
+                    subscription = m_BookedRooms.Watch(PlayerLoop.CreateNextFrameAction<long>(nextBookedRooms =>
                     {
                         /*
                          * Use directly m_BookedRooms.Value instead of nextBookedRooms, because the value of nextBookedRooms can be changed by other subscribers.
@@ -316,7 +333,7 @@ namespace Metamatic
                             }
                             onRoomBooked.Invoke(checkIn.bookedRoom);
                         }
-                    }, true);
+                    }), true);
                 }
 
                 await signal;

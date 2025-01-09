@@ -28,11 +28,11 @@ namespace Tests.EditMode
             var obj1 = pool.Get();
             Assert.AreEqual(0, obj1.Version);
             Assert.AreEqual(1, pool.OutOfPoolCount);
-            Assert.AreEqual(0, pool.Count);
+            Assert.AreEqual(0, pool.InPoolCount);
             pool.Return(obj1);
             Assert.AreEqual(1, obj1.Version);
             Assert.AreEqual(0, pool.OutOfPoolCount);
-            Assert.AreEqual(1, pool.Count);
+            Assert.AreEqual(1, pool.InPoolCount);
             return UniTask.CompletedTask;
         });
         
@@ -53,17 +53,17 @@ namespace Tests.EditMode
             ParamLessPool<MyClass>.ReturnShared(c);
             
             /* After return pool should contain 3 items */
-            Assert.AreEqual(3, pool.Count);
+            Assert.AreEqual(3, pool.InPoolCount);
             
             await UniTask.Delay(1200);
             
             /* After first shrinking period pool should contain still 3 items (because it is max value in the latest second ) */
-            Assert.AreEqual(3, pool.Count);
+            Assert.AreEqual(3, pool.InPoolCount);
 
             await UniTask.Delay(2000);
             /* But after second shrinking period pool should contain 0 items */
             
-            Assert.AreEqual(0, pool.Count);
+            Assert.AreEqual(0, pool.InPoolCount);
         });
     }
 }

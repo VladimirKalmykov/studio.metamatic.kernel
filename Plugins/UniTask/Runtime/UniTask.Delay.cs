@@ -607,6 +607,8 @@ namespace Cysharp.Threading.Tasks
 
             DelayIgnoreTimeScalePromise()
             {
+                var stackTrace = Environment.StackTrace;
+                Debug.Log($"[UniTask][DelayIgnoreTimeScalePromise] Instantiate. StackTrace:{stackTrace}");
             }
 
             public static IUniTaskSource Create(TimeSpan delayFrameTimeSpan, PlayerLoopTiming timing, CancellationToken cancellationToken, out short token)

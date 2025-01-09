@@ -437,5 +437,26 @@ namespace Metamatic
 
             signal.ThrowIfRaised();
         }
+        
+        public static Action<T> CreateNextFrameAction<T>(Action<T> action, Signal cancellationSignal = default)
+        {
+            return (T value) =>
+            {
+                NextFrame(value).Forget();
+            };
+
+            async UniTaskVoid NextFrame(T prop)
+            {
+                await UniTask.Yield(PlayerLoopTiming.Update);
+                if (cancellationSignal.isRaised) return;
+                action(prop);
+            }
+        }
+        
+        public static async UniTask WaitNextFrame(Signal signal = default, PlayerLoopTiming timing = PlayerLoopTiming.Update)
+        {
+            await UniTask.NextFrame(timing);
+            signal.ThrowIfRaised();
+        }
     }
 }
