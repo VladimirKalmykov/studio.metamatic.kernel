@@ -139,13 +139,12 @@ namespace Metamatic
         private async UniTaskVoid Activate()
         {
             m_IsActivated = true;
-            if (m_OnTurnOn == null)
-            {
-                return;
-            }
-
             try
             {
+                if (m_OnTurnOn == null)
+                {
+                    return;
+                }
                 await m_OnTurnOn.Invoke(new Reactivation(this), m_ResetSignalSource.Signal);
             }
             catch (OperationCanceledException)

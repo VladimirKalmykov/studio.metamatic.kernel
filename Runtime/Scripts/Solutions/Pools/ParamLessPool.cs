@@ -403,12 +403,12 @@ namespace Metamatic
                             {
                                 var lastIndex = m_ObjectsInPoolList.Count - 1;
                                 var obj = m_ObjectsInPoolList[lastIndex];
+                                m_ObjectsInPoolList.RemoveAt(lastIndex);
+                                m_ObjectsInPoolSet.Remove(obj);
                                 if (obj is IDisposable disposable)
                                 {
                                     disposable.Dispose();
                                 }
-                                m_ObjectsInPoolList.RemoveAt(lastIndex);
-                                m_ObjectsInPoolSet.Remove(obj);
                             }
                         }
                     }
@@ -537,6 +537,11 @@ namespace Metamatic
             if (m_OutOfPool.Contains(obj))
             {
                 m_OutOfPool.Remove(obj);
+            }
+            
+            if (obj is IDisposable disposable)
+            {
+                disposable.Dispose();
             }
         }
 

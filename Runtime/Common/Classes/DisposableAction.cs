@@ -12,6 +12,7 @@ namespace Metamatic
             return new DisposableAction(action);
         }
         public static readonly DisposableAction Empty = new DisposableAction(null);
+        public bool isEmpty => _action == null;
         private readonly Action _action;
 
         public DisposableAction(Action action)

@@ -128,7 +128,6 @@ namespace Metamatic
             }
         }
         
-        // TODO: Replace CancellationToken with CancellationSignal
         public static async UniTask<T> Resolve<T>(Signal signal = default, float timeout = 10f)
             where T : Service
         {

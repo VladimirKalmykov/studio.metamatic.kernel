@@ -30,7 +30,11 @@ namespace ClickTower2024
         }
     }
 
-    public readonly struct AuraUi<T>: IAsyncDisposableAbortable where T: Enum
+    /// <summary>
+    /// Allows to create aura ui - a place where you can reserve a place for your ui elements around the specific target.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public readonly struct AuraUi<T>: IDisposableAbortable where T: Enum
     {
         private static readonly ParamLessPool<AuraUiImpl<T>> Pool = new ParamLessPool<AuraUiImpl<T>>();
         public static AuraUi<T> Create(System.Func<T,Metamatic.AnchoredPosition> getPositioning)
@@ -55,7 +59,7 @@ namespace ClickTower2024
             m_Version = impl.version;
         }
         
-        public LiteMotel<T>.Reservation ReservePlace(T placeType, T alternativePlaceType, Func<T, Positioning, AsyncCancellation, UniTask> onReserve)
+        public MotelReservation<T> ReservePlace(T placeType, T alternativePlaceType, Func<T, Positioning, AsyncCancellation, UniTask> onReserve)
         {
             if (impl == null)
             {
@@ -70,18 +74,6 @@ namespace ClickTower2024
             return impl?.SubscribeEmptyOnce(action) ?? DisposableAction.Empty;
         }
 
-        public async UniTask DisposeAsync()
-        {
-            try
-            {
-                await impl.DisposeAsync();
-            }
-            finally
-            {
-                Return(impl);
-            }
-        }
-
         public bool isAborted => impl?.isAborted ?? false;
         public void Abort()
         {
@@ -93,17 +85,22 @@ namespace ClickTower2024
         {
             return impl?.AddAbortedListenerOnce(action) ?? DisposableAction.Empty;
         }
+
+        public void Dispose()
+        {
+            Abort();
+        }
     }
-    public class AuraUiImpl<T>: IAsyncDisposableAbortable, IResettable, IVersioned where T: Enum
+    public class AuraUiImpl<T>: IDisposableAbortable, IResettable, IVersioned where T: Enum
     {
         private System.Func<T,Metamatic.AnchoredPosition> m_GetPositioning;
-        private LiteMotel<T> m_Motel;
+        private Motel<T> m_Motel;
         public int version { get; private set; }
         
         public void Initialize(System.Func<T,Metamatic.AnchoredPosition> getPositioning)
         {
             m_GetPositioning = getPositioning;
-            m_Motel = LiteMotel<T>.Create();
+            m_Motel = Motel<T>.Create();
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -112,17 +109,13 @@ namespace ClickTower2024
             return m_Motel.SubscribeEmptyOnce(action);
         }
 
-        public async UniTask DisposeAsync()
-        {
-            await m_Motel.DisposeAsync();
-        }
-
         private event Action OnAborted;
         public bool isAborted { get; private set; }
         public void Abort()
         {
             isAborted = true;
             OnAborted?.Invoke();
+            Reset();
         }
         
         /// <summary>
@@ -132,7 +125,7 @@ namespace ClickTower2024
         /// <param name="alternativePlaceType"></param>
         /// <param name="onReserve"></param>
         /// <returns></returns>
-        public LiteMotel<T>.Reservation ReservePlace(T placeType, T alternativePlaceType, Func<T, Positioning, AsyncCancellation, UniTask> onReserve)
+        public MotelReservation<T> ReservePlace(T placeType, T alternativePlaceType, Func<T, Positioning, AsyncCancellation, UniTask> onReserve)
         {
             return m_Motel.Book(placeType, alternativePlaceType, (bookedPlaceType, cancellation) =>
             {
@@ -161,6 +154,11 @@ namespace ClickTower2024
             isAborted = false;
             OnAborted = null;
             m_Motel.Abort();
+        }
+
+        public void Dispose()
+        {
+            Reset();
         }
     }
 }

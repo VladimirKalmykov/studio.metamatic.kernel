@@ -141,10 +141,6 @@ namespace Metamatic
             {
                 Console.Error("AutoOffSwitch", e);
             }
-            finally
-            {
-                Console.Log("AutoOffSwitch", $"Stop timer {timerId}");
-            }
         }
 
         public void Reset()

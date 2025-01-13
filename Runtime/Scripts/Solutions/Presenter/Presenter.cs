@@ -93,8 +93,7 @@ namespace Metamatic
         /// <returns></returns>
         public UniTask WaitForDismissal(Signal cancellationSignal)
         {
-            return PlayerLoop.Delay(1f, PlayerLoopTiming.Update, cancellationSignal);
-            //return UniTask.WhenAny(completeDismissSignal.ToUniTask(), cancellationSignal.ToUniTask());
+            return UniTask.WhenAny(completeDismissSignal.ToUniTask(), cancellationSignal.ToUniTask());
         }
 
         private async UniTask AsyncHide()

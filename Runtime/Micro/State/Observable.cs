@@ -16,12 +16,17 @@ namespace Metamatic
     interface IObservableValue<TValue>
     {
         public TValue value { get; }
-        public DisposableAction Watch(Action<TValue> handler, bool skipInitial = false);
+        public DisposableAction Watch(Action<TValue> handler, bool skipInitial = false, Func<TValue, bool> validator = null);
     }
     public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>, IResettable
     {
+        private static bool DefaultValidator(TValue value)
+        {
+            return true;
+        }
         private event Action<TValue> OnChange;
         private event Action OnDisposedOrReset;
+        public int version { get; protected set; }
 
         public TValue value
         {
@@ -62,19 +67,28 @@ namespace Metamatic
             Dispose();
         }
 
-        public abstract DisposableAction Watch(Action<TValue> handler, bool skipInitial = false);
+        public abstract DisposableAction Watch(Action<TValue> handler, bool skipInitial, Func<TValue, bool> validator = null);
+
+        public DisposableAction Watch(Action<TValue> handler)
+        {
+            return Watch(handler, false);
+        }
         
-        public abstract DisposableAction Watch(Action<TValue> handler);
-        
+        public DisposableAction WatchChange(Action handler, bool skipInitial = false, Func<TValue, bool> validator = null)
+        {
+            return Watch(_ => handler(), skipInitial, validator);
+        }
+
         /// <summary>
         /// Watch lifecycle of the value. Every time value changed, cancellation signal will be called
         /// </summary>
         /// <param name="handler"></param>
+        /// <param name="validator"></param>
         /// <returns></returns>
-        public DisposableAction WatchAsync(Func<TValue, Signal, UniTaskVoid> handler)
+        public DisposableAction WatchAsync(Func<TValue, Signal, UniTaskVoid> handler, Func<TValue, bool> validator = null)
         {
             SignalSource valueChangeSignalSource = default;
-            var unwatch = Watch(Watcher);
+            var unwatch = Watch(Watcher, false, validator);
             void DisposeHandler()
             {
                 unwatch.Dispose();
@@ -227,14 +241,13 @@ namespace Metamatic
         {
             return true;
         }
-        
-        public override DisposableAction Watch(Action<TValue> handler)
-        {
-            return Watch(handler, false);
-        }
 
-        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial)
+        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial, Func<TValue, bool> validator = null)
         {
+            if (validator != null)
+            {
+                return WatchWithValidator(handler, validator, skipInitial);
+            }
             AddListener(handler);
             if (!skipInitial)
             {
@@ -244,6 +257,26 @@ namespace Metamatic
             {
                 RemoveListener(handler);
             });
+        }
+        
+        private DisposableAction WatchWithValidator(Action<TValue> handler, Func<TValue, bool> validator, bool skipInitial)
+        {
+            AddListener(Handler);
+            if (!skipInitial && validator(GetValue()))
+            {
+                handler(GetValue());
+            }
+            return new DisposableAction(() =>
+            {
+                RemoveListener(Handler);
+            });
+            void Handler(TValue value)
+            {
+                if (validator(value))
+                {
+                    handler(value);
+                }
+            }
         }
         
         /// <summary>
@@ -294,6 +327,10 @@ namespace Metamatic
         public override void SetValue(TValue value)
         {
             m_Value = value;
+            unchecked
+            {
+                version++;
+            }
             EmitValue(value);
         }
         
@@ -307,51 +344,6 @@ namespace Metamatic
         public void Mutate(MutateHandler mutationHandler)
         {
             mutationHandler(ref m_Value);
-        }
-    }
-
-    public class ObservableGetter<TValue> : ObservableReadOnly<TValue>
-    {
-        private Func<TValue> m_Getter;
-        public ObservableGetter(Func<TValue> getter) : base()
-        {
-            m_Getter = getter;
-        }
-
-        public override bool HasValue()
-        {
-            return m_Getter != null;
-        }
-
-        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override DisposableAction Watch(Action<TValue> handler)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override TValue GetValue()
-        {
-            return m_Getter != null ? m_Getter.Invoke() : default;
-        }
-
-        public override ref TValue GetRef()
-        {
-            /* Get by reference is not supported for this type of state */
-            throw new Exception("Not supported");
-        }
-
-        public override void SetValue(TValue value)
-        {
-            throw new Exception("Set value of ObservableGettableValue is out of concept");
-        }
-
-        public void EmitUpdate()
-        {
-            EmitValue(value);
         }
     }
 
@@ -373,21 +365,21 @@ namespace Metamatic
             Dispose();
         }
 
-        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial = false)
+        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial, Func<TValue, bool> validator = null)
         {
             Action releaseValueListener = default;
-            var releaseProxyListener = m_Proxy.Watch((ObservableReadOnly<TValue> value) =>
+            var releaseProxyListener = m_Proxy.Watch((ObservableReadOnly<TValue> val) =>
             {
                 releaseValueListener?.Invoke();
-                if (value != null)
+                if (val != null)
                 {
-                    releaseValueListener = value.Watch(handler);
+                    releaseValueListener = val.Watch(handler, skipInitial, validator);
                 }
                 else
                 {
                     handler(default);
                 }
-            }, skipInitial);
+            });
             DisposableAction commonDisposable = default;
             commonDisposable = new DisposableAction(() =>
             {
@@ -398,11 +390,6 @@ namespace Metamatic
             OnDisposed += commonDisposable.Dispose;
 
             return commonDisposable;
-        }
-
-        public override DisposableAction Watch(Action<TValue> handler)
-        {
-            return Watch(handler, false);
         }
 
         public override bool HasValue()

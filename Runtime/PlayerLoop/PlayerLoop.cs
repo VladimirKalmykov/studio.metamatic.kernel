@@ -339,6 +339,34 @@ namespace Metamatic
         }
         
         /// <summary>
+        /// Subscribe to the loop with delay. Action will be called every `seconds` seconds provided by the `getSeconds` function.
+        /// Each time delay is reached, the `getSeconds` function will be called to get the next delay.
+        /// </summary>
+        /// <param name="seconds"></param>
+        /// <param name="action"></param>
+        /// <param name="timing"></param>
+        /// <returns></returns>
+        public static DisposableAction LoopDelay(Func<float> getSeconds, Action action, PlayerLoopTiming timing = PlayerLoopTiming.Update)
+        {
+            var currentTime = Time.time;
+            var isActive = true;
+            var nextSeconds = getSeconds();
+            UniTask.WaitUntil(() =>
+            {
+                if (Time.time - currentTime >= nextSeconds)
+                {
+                    currentTime = Time.time;
+                    nextSeconds = getSeconds();
+                    action();
+                    return !isActive;
+                }
+                return false;
+            }, timing);
+            
+            return new DisposableAction(() => isActive = false);
+        }
+        
+        /// <summary>
         /// Similar to UniTask.WaitUntil but with signal support.
         /// </summary>
         /// <param name="predicate"></param>
@@ -440,6 +468,10 @@ namespace Metamatic
         
         public static Action<T> CreateNextFrameAction<T>(Action<T> action, Signal cancellationSignal = default)
         {
+            if (!Application.isPlaying)
+            {
+                return action;
+            }
             return (T value) =>
             {
                 NextFrame(value).Forget();

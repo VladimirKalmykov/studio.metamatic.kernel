@@ -10,7 +10,7 @@ namespace Metamatic.Tests
 {
     
     [TestFixture]
-    public class LiteMotelTests
+    public class MotelTests
     {
         [Flags]
         public enum Rooms
@@ -42,12 +42,14 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator SimpleBookIn() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<Rooms>();
+            using var motel = Motel<Rooms>.Create();
             var bookedRoom = Rooms.None;
             await using var disposable = motel.Book(Rooms.Room1 | Rooms.Room2, Rooms.None, async (room, cancellation) =>
             {
+                Console.Debug("Motel", "Test", "Booking", $"Start (Room: {room})");
                 bookedRoom = room;
                 await cancellation.Signal;
+                Console.Debug("Motel", "Test", "Booking", "End");
             });
             await UniTask.Delay(100);
             Assert.AreEqual(Rooms.Room1, bookedRoom, "After 100ms, the booked room passed to handler should be Room1.");
@@ -57,10 +59,12 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator SimpleBookOut() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<Rooms>();
+            using var motel = Motel<Rooms>.Create();
             var disposable = motel.Book(Rooms.Room1 | Rooms.Room2, Rooms.None, async (room, cancellation) =>
             {
+                
                 await cancellation.Signal;
+                
             });
             await UniTask.Delay(100);
             Assert.AreEqual(Rooms.Room1, motel.bookedRooms, "After 100ms, the booked room should be Room1.");
@@ -72,7 +76,7 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator AsyncBookOut() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<Rooms>();
+            using var motel = Motel<Rooms>.Create();
             var disposable = motel.Book(Rooms.Room1 | Rooms.Room2, Rooms.None, async (room, cancellation) =>
             {
                 await cancellation.Signal;
@@ -90,7 +94,7 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator BoolBooked() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<Rooms>();
+            using var motel = Motel<Rooms>.Create();
             var room1 = Rooms.None;
             var room2 = Rooms.None;
             await using var book1 = motel.Book(Rooms.Room1 | Rooms.Room2, Rooms.None, async (room, cancellation) =>
@@ -111,7 +115,7 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator BoolPreferredAfterAlternative() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<Rooms>();
+            using var motel = Motel<Rooms>.Create();
             var room1 = Rooms.None;
             var room2 = Rooms.None;
             var book1 = motel.Book(Rooms.Room1, Rooms.None, async (room, cancellation) =>
@@ -138,7 +142,7 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator AsyncCompetitiveRebookIn() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<SmRooms>();
+            using var motel = Motel<SmRooms>.Create();
             var room1 = SmRooms.None;
             var room2 = SmRooms.None;
             var room3 = SmRooms.None;
@@ -167,13 +171,13 @@ namespace Metamatic.Tests
             await book1.DisposeAsync();
             Assert.AreEqual(SmRooms.None, room1, "The room1 should be None.");
             Assert.AreEqual(SmRooms.Room1, room2, "The room2 should be Room1.");
-            Assert.AreEqual(SmRooms.Room3, room3, "The room3 should be Room3.");
+            Assert.AreEqual(SmRooms.Room2, room3, "The room3 should be Room2.");
         });
         
         [UnityTest]
         public IEnumerator AsyncDisposeMotel() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<Rooms>();
+            var motel = Motel<Rooms>.Create();
             var room1 = Rooms.None;
             var room2 = Rooms.None;
             var room1DisposedAsync = false;
@@ -199,7 +203,7 @@ namespace Metamatic.Tests
                 Assert.AreEqual(Rooms.Room2, room2, "The room2 should be Room2.");
             }
             // Dispose async the motel
-            await motel.DisposeAsync();
+            motel.Dispose();
             Assert.AreEqual(Rooms.None, motel.bookedRooms, "The booked room should be None.");
             Assert.AreEqual(Rooms.None, room1, "The booked room 1 passed to handler should be None.");
             Assert.AreEqual(Rooms.None, room2, "The booked room 2 passed to handler should be None.");
@@ -210,7 +214,7 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator BookAndImmediatelyDispose() => UniTask.ToCoroutine(async () =>
         {
-            var motel = new LiteMotelInternal<Rooms>();
+            using var motel = Motel<Rooms>.Create();
             var steps = new List<int>();
             var book1 = motel.Book(Rooms.Room1, Rooms.None, async (room, cancellation) =>
             {
@@ -241,7 +245,7 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator GetFromPool() => UniTask.ToCoroutine(async () =>
         {
-            var motel1 = LiteMotel<Rooms>.Create();
+            var motel1 = Motel<Rooms>.Create();
 
             {
                 await using var book1 = motel1.Book(Rooms.Room1, Rooms.None, async (room, cancellation) =>
@@ -249,17 +253,17 @@ namespace Metamatic.Tests
                     await cancellation.Signal;
                 });
             
-                Assert.AreEqual(Rooms.Room1, motel1.bookedRooms, "The booked room should be Room1.");
+                Assert.AreEqual(Rooms.Room1, motel1.bookedRooms, "The booked room of motel1 should be Room1.");
             
                 // Dispose the motel
-                await motel1.DisposeAsync();
+                motel1.Dispose();
             
-                Assert.AreEqual(Rooms.None, motel1.bookedRooms, "The booked room should be None");
+                Assert.AreEqual(Rooms.None, motel1.bookedRooms, "The booked room of motel1 should be None");
             }
             
-            await using var motel2 = LiteMotel<Rooms>.Create();
+            using var motel2 = Motel<Rooms>.Create();
             
-            Assert.AreEqual(Rooms.None, motel2.bookedRooms, "The booked room should be None");
+            Assert.AreEqual(Rooms.None, motel2.bookedRooms, "The booked room of motel2 should be None");
 
             {
                 await using var book2 = motel2.Book(Rooms.Room2, Rooms.None, async (room, cancellation) =>
@@ -267,15 +271,15 @@ namespace Metamatic.Tests
                     await cancellation.Signal;
                 });
                 
-                Assert.AreEqual(Rooms.Room2, motel2.bookedRooms, "The booked room should be Room2.");
-                Assert.AreEqual(Rooms.None, motel1.bookedRooms, "The booked room should be None.");
+                Assert.AreEqual(Rooms.Room2, motel2.bookedRooms, "The booked room of motel2 should be Room2.");
+                Assert.AreEqual(Rooms.None, motel1.bookedRooms, "The booked room of motel2 should be None.");
             }
         });
 
         [UnityTest]
         public IEnumerator ChangePreferredRoomsDynamically() => UniTask.ToCoroutine(async () =>
         {
-            var motel1 = LiteMotel<Rooms>.Create();
+            var motel1 = Motel<Rooms>.Create();
             var bookedRoom = Rooms.None;
             await using var book1 = motel1.Book(Rooms.Room1, Rooms.None, async (room, cancellation) =>
             {
@@ -293,7 +297,7 @@ namespace Metamatic.Tests
         [UnityTest]
         public IEnumerator ChangeCompetitivePreferredRoomsDynamically() => UniTask.ToCoroutine(async () =>
         {
-            var motel1 = LiteMotel<Rooms>.Create();
+            var motel1 = Motel<Rooms>.Create();
             var bookedRoom1 = Rooms.None;
             var bookedRoom2 = Rooms.None;
             await using var book1 = motel1.Book(Rooms.Room1, Rooms.None, async (room, cancellation) =>

@@ -8,6 +8,7 @@ namespace Metamatic
     using UnityEngine;
     using UnityEngine.InputSystem;
 
+    [RequireService(typeof(CameraService))]
     public class InputService : Service
     {
         public class ActionMap
