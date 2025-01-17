@@ -2,7 +2,6 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    using System.Threading;
     using UnityEngine;
 
     public class CameraAnchor : AsyncBehaviour

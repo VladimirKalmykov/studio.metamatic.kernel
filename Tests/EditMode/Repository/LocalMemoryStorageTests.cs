@@ -2,14 +2,11 @@ using System;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Metamatic.Storages;
 using NUnit.Framework;
 using UnityEngine;
 using System.Collections;
 using Metamatic;
-using NUnit.Framework.Internal;
 using UnityEngine.TestTools;
-using Console = System.Console;
 using LocalMemoryStorage = Metamatic.Storages.LocalMemoryStorage;
 
 public class LocalMemoryStorageTests

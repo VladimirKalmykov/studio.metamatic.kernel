@@ -3,7 +3,6 @@ using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
 using Metamatic.EditorTools;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Inspector

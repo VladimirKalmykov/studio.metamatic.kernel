@@ -5,7 +5,6 @@ namespace Metamatic
     using System.Linq;
     using System.Threading;
     using Cysharp.Threading.Tasks;
-    using Metamatic;
     using UnityEngine;
 
     public partial class Dispatcher

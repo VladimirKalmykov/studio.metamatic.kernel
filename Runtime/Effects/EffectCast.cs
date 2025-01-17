@@ -1,5 +1,4 @@
 using System;
-using Metamatic;
 
 namespace Metamatic
 {

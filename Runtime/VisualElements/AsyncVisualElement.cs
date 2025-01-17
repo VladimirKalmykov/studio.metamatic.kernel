@@ -2,8 +2,6 @@ using UnityEngine.UIElements;
 
 using System;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace Metamatic.UIElements
 {

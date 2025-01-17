@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
@@ -36,12 +35,15 @@ namespace Metamatic
 
         protected virtual void Awake()
         {
+            Debug.Log("[AsyncBehaviour] " + GetType().Name + " is awake");
             m_DestroyCancellationSignalSource = SignalSource.Create();
             RunUntilDestroy(m_DestroyCancellationSignalSource.Signal).Forget();
         }
         
         protected virtual void OnEnable()
         {
+            var displayName = GetType().Name;
+            Debug.Log("[AsyncBehaviour] " + displayName + " is enabled");
             m_IsDisabled = false;
             m_DisableCancellationSignalSource = SignalSource.Create();
             RunAsync(componentDisableSignal).Forget();

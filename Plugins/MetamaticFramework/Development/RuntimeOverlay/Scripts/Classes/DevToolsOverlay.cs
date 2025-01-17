@@ -1,16 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using Extensions;
-using Metamatic.Framework.CursorTools;
 using Metamatic.Framework.Workshop;
 using Metamatic.UIToolKit;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
-using UnityEngine.InputSystem.Utilities;
-using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 namespace Metamatic.Framework
 {

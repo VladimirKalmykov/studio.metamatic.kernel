@@ -1,10 +1,8 @@
 using Cysharp.Threading.Tasks;
-using Unity.Cinemachine;
 
 namespace Metamatic
 {
     using System;
-    using System.Threading;
     using Unity.Cinemachine;
     using UnityEngine;
 

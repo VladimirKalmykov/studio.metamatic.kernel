@@ -7,9 +7,7 @@ using NUnit.Framework;
 using UnityEngine;
 using System.Collections;
 using Metamatic;
-using NUnit.Framework.Internal;
 using UnityEngine.TestTools;
-using Console = System.Console;
 
 public class FileSystemStorageTests
 {

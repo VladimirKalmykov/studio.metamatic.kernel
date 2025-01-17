@@ -2,21 +2,43 @@ namespace Metamatic
 {
     using UnityEngine;
 
-    public class AnchoredPositionHelper : MonoBehaviour, IAnchoredPositionReceiver
+    public class AnchoredPositionByRenderersHelper : MonoBehaviour, IAnchoredPositionReceiver
     {
+        private Renderer[] m_Renderers;
+
+        void Awake()
+        {
+            m_Renderers = GetComponentsInChildren<Renderer>();
+        }
+        
         public AnchoredPosition anchoredPosition
         {
             set => ApplyAnchoredPosition(value);
         }
+        
+        private Bounds GetCombinedBounds()
+        {
+            if (m_Renderers.Length == 0)
+            {
+                return new Bounds(transform.position, Vector3.zero);
+            }
+
+            // Инициализируем Bounds первым Renderer
+            Bounds combinedBounds = m_Renderers[0].bounds;
+
+            // Объединяем остальные Bounds
+            foreach (Renderer renderer in m_Renderers)
+            {
+                if (!renderer.gameObject.activeInHierarchy) continue;
+                combinedBounds.Encapsulate(renderer.bounds);
+            }
+
+            return combinedBounds;
+        }
 
         private void ApplyAnchoredPosition(AnchoredPosition anchoredPos)
         {
-            // 1. Считываем границы меша/спрайта. 
-            //    Renderer.bounds даёт мировые координаты.
-            Renderer rend = GetComponent<Renderer>();
-            if (rend == null) return;
-
-            Bounds worldBounds = rend.bounds;
+            Bounds worldBounds = GetCombinedBounds();
             Vector3 worldSize = worldBounds.size; // размеры (ширина, высота, глубина) в мировом пространстве
             Vector3 boundCenter = worldBounds.center; // центр bounding-box'а в мире
 

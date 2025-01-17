@@ -2,7 +2,6 @@ using Sirenix.OdinInspector;
 
 namespace Metamatic
 {
-    using Cysharp.Threading.Tasks;
     using UnityEngine;
 
     public class SharedMaterialPropertyBlock : MonoBehaviour

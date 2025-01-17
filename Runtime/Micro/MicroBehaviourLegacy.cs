@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
@@ -17,7 +16,7 @@ namespace Metamatic
         private bool m_IsRunning;
         ~MicroBehaviourLegacy()
         {
-            Dispose(true);
+            DisposeFromTheMainThread(true).Forget();
         }
         public async UniTask DisposeAsync()
         {
@@ -27,6 +26,17 @@ namespace Metamatic
             }
             Dispose(false);
             await m_UniTaskCompletionSource.Task;
+        }
+        
+        private async UniTaskVoid DisposeFromTheMainThread(bool isFromFinalizer)
+        {
+            if (m_Disposed)
+            {
+                return;
+            }
+
+            await UniTask.SwitchToMainThread();
+            Dispose(isFromFinalizer);
         }
 
         public void Dispose()

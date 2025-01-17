@@ -3,8 +3,6 @@ using TMPro;
 
 namespace Metamatic
 {
-    using System.Threading;
-
     public class DispatcherVariableToTextMeshProTextUI : AsyncBehaviour
     {
         public string variableName;

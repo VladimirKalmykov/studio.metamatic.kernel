@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 
@@ -54,16 +53,24 @@ namespace Metamatic
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Loop.YieldAwaitable Yield(T eventType)
+        public Loop.YieldAwaitable Yield(T eventType, Signal cancellationSignal = default)
         {
-            return GetLoop(eventType).Yield();
+            return GetLoop(eventType).Yield(cancellationSignal);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Loop.YieldAwaitable Yield(Signal cancellationSignal)
+        {
+            return Yield(default, cancellationSignal);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UniTask Delay(T eventType, float seconds, Signal cancellationSignal = default)
         {
             return GetLoop(eventType).Delay(seconds, cancellationSignal);
         }
         
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UniTask Delay(T eventType, TimeSpan timeSpan, Signal cancellationSignal = default)
         {
             return GetLoop(eventType).Delay(timeSpan, cancellationSignal);

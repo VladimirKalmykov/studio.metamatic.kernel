@@ -1,7 +1,6 @@
 namespace Metamatic
 {
     using UnityEngine;
-    using System;
 
     /// <summary>
     /// The value moves towards an endpoint, with the initial speed determined by the distance from the endpoint. As it approaches the endpoint, the speed decreases, tending towards zero but not dropping below a minimum threshold.

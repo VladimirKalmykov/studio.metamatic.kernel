@@ -1,12 +1,8 @@
-using Metamatic;
 using NUnit.Framework;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
 using Cysharp.Threading.Tasks;
-using UnityEditor.VersionControl;
-using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace Metamatic.Tests

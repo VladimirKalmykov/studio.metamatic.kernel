@@ -7,7 +7,6 @@ namespace Metamatic
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Threading;
 
     public class ObservableList<T> : IList<T>, IDisposable
     {

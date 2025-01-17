@@ -9,7 +9,8 @@ namespace Metamatic
         public UniTask WaitUntil(T eventType, Func<bool> action, Signal cancellationSignal);
         public UniTask WaitWhile(T eventType, Func<bool> action, Signal cancellationSignal);
         public DisposableAction AddAction(T eventType, Action action);
-        public Loop.YieldAwaitable Yield(T eventType);
+        public Loop.YieldAwaitable Yield(T eventType, Signal cancellationSignal = default);
+        public Loop.YieldAwaitable Yield(Signal cancellationSignal);
         public UniTask Delay(T eventType, float seconds, Signal cancellationSignal = default);
         public UniTask Delay(T eventType, TimeSpan timeSpan, Signal cancellationSignal = default);
         // ReSharper disable once InconsistentNaming

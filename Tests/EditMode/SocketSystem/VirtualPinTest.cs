@@ -2,9 +2,8 @@
 {
     using NUnit.Framework;
 using UnityEngine;
-using Metamatic;
 
-public class VirtualPinTests : MonoBehaviour
+    public class VirtualPinTests : MonoBehaviour
 {
     [Test]
     public void ConnectPins_CorrectlyEstablishesConnections()

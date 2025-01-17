@@ -1,12 +1,16 @@
 using System;
+using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public struct UniTaskEventLoop: IEventLoop<PlayerLoopTiming>
+    public class UniTaskEventLoop: IEventLoop<PlayerLoopTiming>
     {
+        public static readonly UniTaskEventLoop Shared = new UniTaskEventLoop();
         public UniTask WaitUntil(PlayerLoopTiming eventType, Func<bool> action, Signal cancellationSignal)
         {
+            return UniTask.WaitUntil(CancellationValidation);
+
             bool CancellationValidation()
             {
                 if (cancellationSignal.IsCancellationRequested)
@@ -16,16 +20,16 @@ namespace Metamatic
 
                 return action();
             }
-            return UniTask.WaitUntil(CancellationValidation);
         }
 
         public UniTask WaitWhile(PlayerLoopTiming eventType, Func<bool> action, Signal cancellationSignal)
         {
+            return UniTask.WaitWhile(CancellationValidation);
+
             bool CancellationValidation()
             {
                 return !cancellationSignal.IsCancellationRequested && action();
             }
-            return UniTask.WaitWhile(CancellationValidation);
         }
 
         public DisposableAction AddAction(PlayerLoopTiming eventType, Action action)
@@ -35,16 +39,25 @@ namespace Metamatic
             return new DisposableAction(() => disposed = true);
         }
 
-        public Loop.YieldAwaitable Yield(PlayerLoopTiming eventType)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Loop.YieldAwaitable Yield(PlayerLoopTiming eventType, Signal cancellationSignal = default)
         {
-            return new Loop.YieldAwaitable(UniTask.Yield().GetAwaiter());
+            return new Loop.YieldAwaitable(UniTask.Yield(eventType).GetAwaiter(), cancellationSignal);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Loop.YieldAwaitable Yield(Signal cancellationSignal)
+        {
+            return new Loop.YieldAwaitable(UniTask.Yield(PlayerLoopTiming.Update).GetAwaiter(), cancellationSignal);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UniTask Delay(PlayerLoopTiming eventType, float seconds, Signal cancellationSignal = default)
         {
             return UniTask.Delay(TimeSpan.FromSeconds(seconds), false, PlayerLoopTiming.Update, cancellationSignal);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UniTask Delay(PlayerLoopTiming eventType, TimeSpan timeSpan, Signal cancellationSignal = default)
         {
             return UniTask.Delay(timeSpan, false, PlayerLoopTiming.Update, cancellationSignal);

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
@@ -58,12 +57,20 @@ namespace Metamatic
         /// <summary>
         /// Get object from global pool. The pool will be created if it doesn't exist. Do not use shared pool for objects loaded from resources and addressable.
         /// </summary>
-        public static T GetShared(IPoolConfig<T> config, bool forceCreate = false)
+        public static T GetSharedLegacy(IPoolConfig<T> config, bool forceCreate = false)
         {
             var pool = GetSharedPool(config);
             var instance = pool.Get(forceCreate);
             _InstanceToPool[instance] = pool;
             return instance;
+        }
+        
+        public static PoolProperty<T> GetShared(IPoolConfig<T> config, bool forceCreate = false)
+        {
+            var pool = GetSharedPool(config);
+            var instance = pool.Get(forceCreate);
+            _InstanceToPool[instance] = pool;
+            return new PoolProperty<T>(instance, pool.Return, pool.IsInPool);
         }
 
         private static ConfigurablePool<T> GetSharedPool(IPoolConfig<T> config)
@@ -157,6 +164,34 @@ namespace Metamatic
                 }
             }
         }
+        
+        /// <summary>
+        /// Create in shared pool specified count of objects and keep them in the pool until dispose
+        /// </summary>
+        public static DisposableAction HardPreWarmShared(IPoolConfig<T> config, int count, bool lazy = false)
+        {
+            var pool = GetSharedPool(config);
+
+            /* Set count of objects in pool to the fruit basket to keep them until dispose */
+            var freezer = pool.m_FruitBasket?.AddFrozenCount(count);
+
+            if (Application.isPlaying && lazy)
+            {
+                LazyPreWarmPool(pool, count).Forget();
+            }
+            else
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    pool.Return(pool.Get(true));
+                }
+            }
+
+            return new DisposableAction(() =>
+            {
+                freezer?.Dispose();
+            });
+        }
 
         public static async UniTaskVoid LazyPreWarmPool(ConfigurablePool<T> pool, int count)
         {
@@ -164,7 +199,7 @@ namespace Metamatic
             for (int i = 0; i < count; i++)
             {
                 preWarmedItems.Add(pool.Get(true));
-                await UniTask.Yield();
+                await UniTask.NextFrame();
             }
 
             foreach (var item in preWarmedItems)

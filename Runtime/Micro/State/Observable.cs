@@ -1,6 +1,5 @@
  using System;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
@@ -142,6 +141,7 @@ namespace Metamatic
             {
                 finalizeHandler += cancellationSignal.Register(() =>
                 {
+                    OnChange -= Handler;
                     OnDisposedOrReset -= DisposeHandler;
                     finalizeHandler?.Invoke();
                     finalizeHandler = null;
@@ -157,6 +157,7 @@ namespace Metamatic
             {
                 if (validator(value))
                 {
+                    OnChange -= Handler;
                     OnDisposedOrReset -= DisposeHandler;
                     finalizeHandler?.Invoke();
                     finalizeHandler = null;

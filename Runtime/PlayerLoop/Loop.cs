@@ -47,6 +47,13 @@ namespace Metamatic
                 m_CustomAwaiter = customAwaiter;
             }
             
+            public YieldAwaitable(ICriticalNotifyCompletion customAwaiter, Signal signal)
+            {
+                m_Queue = null;
+                m_Signal = signal;
+                m_CustomAwaiter = customAwaiter;
+            }
+            
             public Awaiter GetAwaiter()
             {
                 return m_CustomAwaiter != null ? new Awaiter(GetCustomAwaiterResult, OnCustomAwaiterCompleted) : new Awaiter(GetContinuationQueueResult, OnContinuationQueueCompleted);
@@ -259,7 +266,7 @@ namespace Metamatic
             m_IsProcessing = false;
         }
         
-        public UniTask WaitUntil(System.Func<bool> action, Signal cancellationSignal = default)
+        public UniTask WaitUntil(System.Func<bool> predicate, Signal cancellationSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
 
@@ -276,7 +283,7 @@ namespace Metamatic
                     tsc.TrySetCanceled();
                     return true;
                 }
-                if (action())
+                if (predicate())
                 {
                     OnDisposed -= HandleDispose;
                     tsc.TrySetResult();

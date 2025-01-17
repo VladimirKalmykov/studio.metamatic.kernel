@@ -2,8 +2,6 @@ using System;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using Metamatic;
-using UnityEngine;
-using UnityEngine.PlayerLoop;
 
 namespace ClickTower2024
 {

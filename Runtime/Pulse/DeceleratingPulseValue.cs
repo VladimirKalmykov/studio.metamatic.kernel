@@ -1,7 +1,6 @@
 namespace Metamatic
 {
     using UnityEngine;
-    using System;
 
     /// <summary>
     /// The value decelerates over time, starting from an initial speed, with the rate of change decreasing indefinitely—similar to an object slowing down due to friction.

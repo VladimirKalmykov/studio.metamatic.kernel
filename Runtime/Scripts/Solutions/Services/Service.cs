@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using DevTools;
 using UnityEngine;
@@ -111,7 +110,8 @@ namespace Metamatic
                     m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
                     await m_DemandCompletionSource.Task;
                 }
-
+                
+                Debug.Log($"[Service] {type} is running");
                 await RunService(InternalServiceReady, signal);
             }
             catch (OperationCanceledException)

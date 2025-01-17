@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Metamatic
 {
     using System;
@@ -10,6 +8,10 @@ namespace Metamatic
         private readonly float m_BurningTime;
         private readonly Queue<(int count, float time)> m_Records = new Queue<(int count, float time)>();
         private int m_TotalFruits = 0;
+        /// <summary>
+        /// The count of fruits that are frozen in the basket and can not be removed by inspiration date.
+        /// </summary>
+        private int m_FreezedFruits = 0;
         
         /// <summary>
         /// 
@@ -18,6 +20,16 @@ namespace Metamatic
         public AverageFruitBasket(float burningTime)
         {
             this.m_BurningTime = burningTime;
+        }
+        
+        public DisposableAction AddFrozenCount(int count)
+        {
+            m_FreezedFruits += count;
+            
+            return new DisposableAction(() =>
+            {
+                m_FreezedFruits -= count;
+            });
         }
 
         public void SetCount(int count, float time)
@@ -46,7 +58,7 @@ namespace Metamatic
             }
 
             // Возвращаем среднее значение за последние burningTime минут
-            return m_TotalFruits / (float)m_Records.Count;
+            return (m_TotalFruits / (float)m_Records.Count) + m_FreezedFruits;
         }
 
         /// <summary>
@@ -57,7 +69,7 @@ namespace Metamatic
         {
             if (m_Records.Count == 0)
             {
-                return 0;
+                return 0 + m_FreezedFruits;
             }
 
             // Возвращаем максимальное значение за последние burningTime минут
@@ -67,7 +79,7 @@ namespace Metamatic
                 maxCount = Math.Max(maxCount, record.count);
             }
 
-            return maxCount;
+            return maxCount + m_FreezedFruits;
         }
     }
 }

@@ -6,9 +6,9 @@ namespace Metamatic
     /// <summary>
     /// Tool allows to activate async operation when the reactivator is enabled. If async operation is completed, the reactivator will reactivate the async operation if it is enabled.
     /// </summary>
-    public readonly struct Reactivator: IDisposable
+    public readonly struct Reactivator: IAsyncDisposableAbortable
     {
-        public static Reactivator Create(Func<Reactivation, Signal, UniTask> handler, bool enabled = false)
+        public static Reactivator Create(Func<Reactivation, AsyncCancellation, UniTask> handler, bool enabled = false)
         {
             var instance = InternalTaskReactivator.Create(handler, enabled);
             return new Reactivator(instance);
@@ -40,6 +40,28 @@ namespace Metamatic
             {
                 InternalTaskReactivator.Return(currentSource);
             }
+        }
+
+        public UniTask DisposeAsync()
+        {
+            var currentSource = source;
+            if (currentSource != null)
+            {
+                return currentSource.ReturnAsync();
+            }
+
+            return UniTask.CompletedTask;
+        }
+
+        public bool isAborted => source?.isAborted ?? true;
+        public void Abort()
+        {
+            source?.Abort();
+        }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            return source?.AddAbortedListenerOnce(action) ?? DisposableAction.Empty;
         }
     }
 
@@ -91,10 +113,10 @@ namespace Metamatic
             return m_Reactivator.version == m_Version ? m_Reactivator : null;
         }
     }
-    public class InternalTaskReactivator: IResettable, IDisposable
+    public class InternalTaskReactivator: IResettable, IAsyncReturnable
     {
         public static readonly ParamLessPool<InternalTaskReactivator> Pool = new ();
-        public static InternalTaskReactivator Create(Func<Reactivation, Signal, UniTask> handler, bool enabled = false)
+        public static InternalTaskReactivator Create(Func<Reactivation, AsyncCancellation, UniTask> handler, bool enabled = false)
         {
             var instance = Pool.Get();
             instance.Initialize(handler, enabled);
@@ -104,18 +126,19 @@ namespace Metamatic
         {
             Pool.Return(instance);
         }
-        private Func<Reactivation, Signal, UniTask> m_OnTurnOn;
-        private SignalSource m_ResetSignalSource = default;
+        private Func<Reactivation, AsyncCancellation, UniTask> m_OnTurnOn;
+        private AsyncCancellationSource m_CancellationSource = default;
         private bool m_DefaultEnabled;
         private bool m_IsActivated = false;
+        private UniTask m_ActivationTask = UniTask.CompletedTask;
         public Observable<bool> oEnabled { get; private set; } = ParamLessPool<Observable<bool>>.GetShared();
-        public Signal resetSignal => m_ResetSignalSource.Signal;
+        public Signal resetSignal => m_CancellationSource.Signal;
         public int version { get; private set; }
 
-        private void Initialize(Func<Reactivation, Signal, UniTask> onTurnOn, bool enabled = false)
+        private void Initialize(Func<Reactivation, AsyncCancellation, UniTask> onTurnOn, bool enabled = false)
         {
             m_OnTurnOn = onTurnOn;
-            m_ResetSignalSource = SignalSource.Create();
+            m_CancellationSource = AsyncCancellationSource.Create();
             m_DefaultEnabled = enabled;
             if (enabled)
             {
@@ -128,7 +151,7 @@ namespace Metamatic
             oEnabled.Value = true;
             if (!m_IsActivated)
             {
-                Activate().Forget();
+                m_ActivationTask = Activate();
             }
         }
         public void Disable()
@@ -136,7 +159,7 @@ namespace Metamatic
             oEnabled.Value = false;
         }
 
-        private async UniTaskVoid Activate()
+        private async UniTask Activate()
         {
             m_IsActivated = true;
             try
@@ -145,7 +168,7 @@ namespace Metamatic
                 {
                     return;
                 }
-                await m_OnTurnOn.Invoke(new Reactivation(this), m_ResetSignalSource.Signal);
+                await m_OnTurnOn.Invoke(new Reactivation(this), m_CancellationSource.Cancellation);
             }
             catch (OperationCanceledException)
             {
@@ -164,15 +187,49 @@ namespace Metamatic
             {
                 version++;
             }
-            m_ResetSignalSource.TryRaise();
+
+            m_CancellationSource.Abort();
             m_IsActivated = false;
             oEnabled.Value = m_DefaultEnabled;
             m_OnTurnOn = null;
+            OnAborted = null;
+            isAborted = false;
         }
 
-        public void Dispose()
+        private event Action OnAborted;
+        public bool isAborted { get; private set; }
+        public void Abort()
         {
+            if (isAborted)
+            {
+                Console.Debug("Reactivator", "Already aborted (should debug stack trace)");
+                return;
+            }
+            isAborted = true;
+            OnAborted?.Invoke();
             ParamLessPool<Observable<bool>>.ReturnShared(oEnabled);
+        }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            OnAborted += action;
+            return new DisposableAction(() => OnAborted -= action);
+        }
+
+        public bool isReturning { get; private set; }
+        public async UniTask ReturnAsync()
+        {
+            isReturning = true;
+            try
+            {
+                using var asyncCancellation = m_CancellationSource.TryCancelAsync();
+                await m_ActivationTask;
+            }
+            finally
+            {
+                isReturning = false;
+                Abort();
+            }
         }
     }
 }

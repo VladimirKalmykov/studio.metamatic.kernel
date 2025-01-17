@@ -16,5 +16,10 @@ namespace Metamatic
             Position = position;
             Anchor = anchor;
         }
+        
+        public override string ToString()
+        {
+            return $"[{Position}, {Anchor}]";
+        }
     }
 }

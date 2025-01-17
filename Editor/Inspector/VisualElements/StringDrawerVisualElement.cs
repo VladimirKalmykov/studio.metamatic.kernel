@@ -1,7 +1,5 @@
 using System;
-using System.Threading;
 using Cysharp.Threading.Tasks;
-using Metamatic;
 using UnityEngine.UIElements;
 
 namespace Metamatic.Inspector

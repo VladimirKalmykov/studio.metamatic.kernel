@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using JetBrains.Annotations;
-using PlasticPipe.PlasticProtocol.Client;
 using UnityEngine;
 
 namespace Metamatic
@@ -455,11 +454,6 @@ namespace Metamatic
         
         public DisposableAction SubscribeToEmptyOnce(Action action)
         {
-            if (m_Reservations.Count == 0)
-            {
-                action();
-                return DisposableAction.Empty;
-            }
             OnEmpty += action;
             return DisposableAction.Create(() => OnEmpty -= action);
         }

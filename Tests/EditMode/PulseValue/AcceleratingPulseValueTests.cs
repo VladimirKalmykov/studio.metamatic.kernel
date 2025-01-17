@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using UnityEngine;
 using Metamatic;
 
 public class AcceleratingPulseValueTests

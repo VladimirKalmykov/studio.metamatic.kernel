@@ -1,6 +1,3 @@
-using Metamatic;
-using UnityEngine;
-
 namespace Metamatic
 {
     public static class MacroEvent<T>

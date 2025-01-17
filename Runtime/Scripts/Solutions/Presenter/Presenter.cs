@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
@@ -19,7 +19,16 @@ namespace Metamatic
 
         private SignalSource m_StepCancellationSignalSource = default;
         private SignalSource m_CompleteDismissSignalSource = default;
+        private List<Presenter> m_ChildPresenters = new List<Presenter>();
         public State state { get; private set; }
+
+        protected virtual void Awake()
+        {
+            if (Application.isPlaying)
+            {
+                m_ChildPresenters.AddRange(GetComponentsInChildren<Presenter>(true));
+            }
+        }
 
         /// <summary>
         /// This signal is raised when the presenter is completely dismissed.
@@ -38,22 +47,25 @@ namespace Metamatic
         
         public void Reset()
         {
-            state = State.Idle;
-            m_CompleteDismissSignalSource.Dispose();
-            m_CompleteDismissSignalSource = SignalSource.Create();
-            OnReset();
+            if (Application.isPlaying)
+            {
+                state = State.Idle;
+                m_CompleteDismissSignalSource.Dispose();
+                m_CompleteDismissSignalSource = SignalSource.Create();
+                OnReset();
+            }
         }
         
         /// <summary>
         /// Call this method to show the presenter.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
-        public void Present()
+        public void Present(bool ignoreChildren = false)
         {
             /*
              * If the presenter is already presenting, do nothing.
              */
-            if (state == State.Presenting)
+            if (enabled == false || state == State.Presenting)
             {
                 return;
             }
@@ -61,18 +73,43 @@ namespace Metamatic
             m_StepCancellationSignalSource.TryRaise();
             m_StepCancellationSignalSource = SignalSource.Create();
             OnPresent(m_StepCancellationSignalSource.Signal);
+            if (ignoreChildren)
+            {
+                return;
+            }
+            /*
+             * If the presenter has child presenters, show them as well.
+             */
+            foreach (var childPresenter in m_ChildPresenters)
+            {
+                childPresenter.Present(true);
+            }
         }
         
         /// <summary>
         /// Call this method to hide the presenter.
         /// </summary>
-        public void Dismiss()
+        public void Dismiss(bool ignoreChildren = false)
         {
-            if (state == State.Dismissing)
+            if (enabled == false || state == State.Dismissing)
             {
                 return;
             }
             AsyncHide().Forget();
+            if (ignoreChildren)
+            {
+                return;
+            }
+            foreach (var childPresenter in m_ChildPresenters)
+            {
+                childPresenter.Dismiss(true);
+            }
+        }
+
+        public UniTask Dismiss(Signal cancellationSignal)
+        {
+            Dismiss();
+            return WaitForDismissal(cancellationSignal);
         }
         
         public void Set(bool isPresented)

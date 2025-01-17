@@ -1,6 +1,3 @@
-using Cysharp.Threading.Tasks;
-using UnityEngine;
-
 namespace Metamatic
 {
     public class ComponentPrefabPoolConfig<T>: IPoolConfig<T>

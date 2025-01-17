@@ -5,7 +5,7 @@ namespace Metamatic
 {
     public interface ILoop : IDisposable
     {
-        UniTask WaitUntil(Func<bool> action, Signal cancellationSignal = default);
+        UniTask WaitUntil(Func<bool> predicate, Signal cancellationSignal = default);
 
         UniTask WaitWhile(Func<bool> action, Signal cancellationSignal = default);
 

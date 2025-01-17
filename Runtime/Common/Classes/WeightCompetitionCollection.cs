@@ -11,26 +11,35 @@ namespace Metamatic
     /// Don't be misled by the word "competitive". It's not about multi threads competition, it's about the best item selection by dynamic weight. Collection is not thread safe.
     /// </note>
     /// <typeparam name="T"></typeparam>
-    public class CompetitiveWeightsCollection<T>: IDisposable
+    public class WeightCompetitionCollection<T>: IDisposable
     {
         private readonly Dictionary<string, (T, Func<float>)> m_Items = new();
         private Observable<T> m_Best = new();
-        private Loop m_Loop;
+        private ILoop m_Loop;
         public int count => m_Items.Count;
         private event Action OnDisposed;
 
-        public CompetitiveWeightsCollection()
+        public WeightCompetitionCollection()
         {
             
         }
         
-        public CompetitiveWeightsCollection(Loop loop)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="loop">Custom loop (if null it uses default UniTaskLoop) </param>
+        public WeightCompetitionCollection(Func<T, Signal, UniTaskVoid> action = null, Loop loop = null)
         {
-            m_Loop = loop;
+            m_Loop = loop == null ? new UniTaskLoop() : loop;
             OnDisposed += m_Loop.AddAction(Update);
+            if (action != null)
+            {
+                OnDisposed += m_Best.WatchAsync(action);
+            }
         }
         
-        ~CompetitiveWeightsCollection()
+        ~WeightCompetitionCollection()
         {
             Console.Error("CompetitiveWeightsCollection", "Was not disposed");
         }

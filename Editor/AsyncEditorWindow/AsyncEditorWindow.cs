@@ -1,8 +1,6 @@
 using System;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEditor;
-using UnityEngine;
 
 namespace Metamatic.EditorTools
 {

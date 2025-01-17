@@ -1,7 +1,6 @@
 using System;
 using Cysharp.Threading.Tasks;
 using Metamatic.EditorTools;
-using Metamatic.Inspector.Windows.PoolsInspector;
 using Metamatic.UIToolKit;
 using UnityEditor;
 using UnityEngine.UIElements;

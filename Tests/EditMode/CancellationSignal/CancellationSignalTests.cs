@@ -1,6 +1,5 @@
 using Metamatic;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 namespace Tests.EditMode
 {

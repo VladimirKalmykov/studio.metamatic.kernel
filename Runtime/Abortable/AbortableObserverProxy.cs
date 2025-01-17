@@ -66,7 +66,7 @@ namespace Metamatic
     /// var withAbortable = AbortableObserver.CreateWrapper(abortable1, abortable2, abortable3);
     /// await using var operation = withAbortable(AsyncOperation());
     /// </example>
-    public readonly struct AbortableObserverProxy: IDisposable, IUniTaskAsyncDisposable
+    public readonly struct AbortableObserverProxy: IAsyncDisposableAbortable
     {
         private readonly IAsyncDisposableAbortable m_TargetDisposable;
         private readonly Action m_ReleaseFinalizer;
@@ -126,6 +126,17 @@ namespace Metamatic
             {
                 m_ReleaseFinalizer?.Invoke();
             }
+        }
+
+        public bool isAborted => m_TargetDisposable.isAborted;
+        public void Abort()
+        {
+            m_TargetDisposable.Abort();
+        }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            return m_TargetDisposable.AddAbortedListenerOnce(action);
         }
     }
 }

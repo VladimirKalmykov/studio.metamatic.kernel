@@ -1,5 +1,4 @@
 using Cysharp.Threading.Tasks;
-using Metamatic;
 using Metamatic.EditorTools;
 using UnityEditor;
 using UnityEngine;
