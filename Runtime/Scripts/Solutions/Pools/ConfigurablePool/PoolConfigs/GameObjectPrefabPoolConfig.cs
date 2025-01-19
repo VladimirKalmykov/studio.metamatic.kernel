@@ -2,21 +2,21 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public class GameObjectConfigurablePoolConfig: IPoolConfig<GameObject>
+    public readonly struct GameObjectConfigurablePoolConfig: IPoolConfig<GameObject>
     {
-        public readonly GameObject Prefab;
+        private readonly GameObject m_Prefab;
         public GameObjectConfigurablePoolConfig(GameObject prefab)
         {
-            Prefab = prefab;
+            m_Prefab = prefab;
         }
         public object GetKey()
         {
-            return (Prefab, GetType());
+            return (m_Prefab, GetType());
         }
 
         public GameObject OnCreate()
         {
-            return UnityEngine.Object.Instantiate(Prefab);
+            return UnityEngine.Object.Instantiate(m_Prefab);
         }
 
         public void OnGet(GameObject instance)

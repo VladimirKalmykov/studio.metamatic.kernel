@@ -17,8 +17,9 @@ namespace Metamatic.Presenters
         private static readonly int AlphaTransitionDuration = Shader.PropertyToID("_AlphaTransitionDuration");
         private static readonly int AlphaTransitionStartTime = Shader.PropertyToID("_AlphaTransitionStartTime");
 
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             m_SharedMaterialPropertyBlock = this.GetOrAddComponent<SharedMaterialPropertyBlock>();
         }
 

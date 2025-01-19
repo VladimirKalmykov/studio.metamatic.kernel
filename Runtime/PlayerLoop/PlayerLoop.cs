@@ -324,6 +324,7 @@ namespace Metamatic
         {
             var currentTime = Time.time;
             var isActive = true;
+            action();
             UniTask.WaitUntil(() =>
             {
                 if (Time.time - currentTime >= seconds)

@@ -238,6 +238,29 @@ namespace Metamatic
                 return null;
             return m_PlayerInputs[playerIndex].currentControlScheme;
         }
+
+        /// <summary>
+        /// Resolve input device key binding for the specific action.
+        /// </summary>
+        /// <param name="actionName"></param>
+        /// <param name="cancelllationSignal"></param>
+        /// <returns></returns>
+        public async UniTask<string> ResolveKeyBindingForAction(string actionName, Signal cancelllationSignal)
+        {
+            /* Wait until player joined */
+            await WaitUntilPlayerJoined(0, cancelllationSignal);
+            var currentInputAsset = GetPlayerInputActionAsset(0);
+            Debug.Assert(!currentInputAsset.Equals(null), "currentInputAsset should not be null.");
+            var controlScheme = GetPlayerInputControlScheme(0);
+            var actionMap = currentInputAsset.FindActionMap("Player");
+            var action = actionMap.FindAction(actionName);
+            if (action == null)
+            {
+                Debug.LogError($"Action {actionName} not found in the input asset.");
+            }
+
+            return action.GetBindingDisplayString(group: controlScheme);
+        }
         
         #region Debug
         /// <summary>

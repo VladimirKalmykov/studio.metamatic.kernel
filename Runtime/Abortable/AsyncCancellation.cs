@@ -171,7 +171,7 @@ namespace Metamatic
         public AsyncCancellationSource(CancellationSourceImpl impl)
         {
             m_Impl = impl;
-            m_Version = impl.version;
+            m_Version = impl?.version ?? -1;
         }
 
         private CancellationSourceImpl GetImpl()

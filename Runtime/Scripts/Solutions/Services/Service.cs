@@ -8,12 +8,11 @@ namespace Metamatic
 {
     public abstract class Service: AsyncBehaviourBase
     {
+        private static readonly Dictionary<Type, Service> _AwakedServices = new ();
         private static readonly Dictionary<Type, Service> _Services = new ();
-        private static event Action<Service> _HandleServiceAdded;
-        private static event Action<Service> _HandleServiceRemoved;
+        private static event Action<Service> HandleServiceAdded;
+        private static event Action<Service> HandleServiceRemoved;
         
-        
-        /* Static errors and susbcriptions */
         public static event Action<Type, Exception> OnErrorInService;
         public DisposableAction SubscribeErrorInService(Action<Type, Exception> action)
         {
@@ -22,7 +21,7 @@ namespace Metamatic
         }
         
         private event Action OnReady;
-        private bool _IsReady;
+        private bool m_IsReady;
         
         #region Fields
         [Tooltip("If true, service will be initialized only on demand")]
@@ -31,7 +30,7 @@ namespace Metamatic
         
         protected UniTask InternalServiceReady()
         {
-            _IsReady = true;
+            m_IsReady = true;
             OnReady?.Invoke();
             return componentDisableCancellationToken.ToUniTask();
         }
@@ -57,7 +56,7 @@ namespace Metamatic
         
         public DisposableAction SubscribeReady(Action action)
         {
-            if (_IsReady)
+            if (m_IsReady)
             {
                 action();
                 return DisposableAction.Empty;
@@ -95,13 +94,13 @@ namespace Metamatic
                 throw new InvalidOperationException($"Service {type} already added");
             }
             _Services.Add(type, this);
-            _HandleServiceAdded?.Invoke(this);
+            HandleServiceAdded?.Invoke(this);
             signal.Register(() =>
             {
                 m_DemandCompletionSource?.TrySetCanceled();
                 m_DemandCompletionSource = null;
                 _Services.Remove(this.GetType());
-                _HandleServiceRemoved?.Invoke(this);
+                HandleServiceRemoved?.Invoke(this);
             });
             try
             {
@@ -163,14 +162,14 @@ namespace Metamatic
                         tcs.TrySetCanceled();
                         return;
                     }
-                    _HandleServiceAdded -= handler;
+                    HandleServiceAdded -= handler;
                     tcs.TrySetResult((T) s);
                 }
             };
-            _HandleServiceAdded += handler;
+            HandleServiceAdded += handler;
             var cancellationTokenRegistration = signal.Register(() =>
             {
-                _HandleServiceAdded -= handler;
+                HandleServiceAdded -= handler;
                 tcs.TrySetCanceled();
             });
             
@@ -204,8 +203,8 @@ namespace Metamatic
                     service((T)s);
                 }
             };
-            _HandleServiceAdded += handler;
-            return new DisposableAction(() => _HandleServiceAdded -= handler);
+            HandleServiceAdded += handler;
+            return new DisposableAction(() => HandleServiceAdded -= handler);
         }
         
         protected delegate UniTask Ready();
@@ -213,9 +212,18 @@ namespace Metamatic
 
         protected abstract UniTask RunService(Ready ready, Signal signal);
         
-        protected override UniTaskVoid RunUntilDestroy(Signal signal)
+        protected override async UniTaskVoid RunUntilDestroy(Signal signal)
         {
-            return new UniTaskVoid();
+            #if DEBUG
+            var type = this.GetType();
+            if (_AwakedServices.ContainsKey(type))
+            {
+                throw new InvalidOperationException($"Service {type} already added");
+            }
+            _AwakedServices.Add(type, this);
+            await signal;
+            _AwakedServices.Remove(type);
+            #endif
         }
     }
 }

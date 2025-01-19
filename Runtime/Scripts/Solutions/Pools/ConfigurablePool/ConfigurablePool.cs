@@ -65,12 +65,12 @@ namespace Metamatic
             return instance;
         }
         
-        public static PoolProperty<T> GetShared(IPoolConfig<T> config, bool forceCreate = false)
+        public static LeasedResource<T> GetShared(IPoolConfig<T> config, bool forceCreate = false)
         {
             var pool = GetSharedPool(config);
             var instance = pool.Get(forceCreate);
             _InstanceToPool[instance] = pool;
-            return new PoolProperty<T>(instance, pool.Return, pool.IsInPool);
+            return new LeasedResource<T>(instance, pool.Return, pool.IsInPool);
         }
 
         private static ConfigurablePool<T> GetSharedPool(IPoolConfig<T> config)
@@ -226,8 +226,8 @@ namespace Metamatic
         private event Action OnBackgroundTrack;
 
 #if DEBUG
-        public static float DefaultShrinkingPeriod = 20f;
-        public static float DefaultAnalysisPeriod = 5f;
+        public static float DefaultShrinkingPeriod = 60f;
+        public static float DefaultAnalysisPeriod = 10f;
 #else
         public const float DefaultShrinkingPeriod = 600;
         public const float DefaultAnalysisPeriod = 60;
@@ -403,9 +403,6 @@ namespace Metamatic
             {
                 case ShrinkTimestampType.Analysis:
                     m_FruitBasket.SetCount(OutOfPoolCount, Time.time);
-#if DEBUG
-                    Console.Verbose("ConfigurablePool", $"ConfigurablePool<{typeof(T)}> analysis event. Current in pool: {m_ObjectsInPoolList.Count}, Current out of pool: {OutOfPoolCount}, Max count: {m_FruitBasket.GetMaxCount()}");
-#endif
                     break;
                 case ShrinkTimestampType.Shrinking:
                     var maxCount = m_FruitBasket.GetMaxCount();

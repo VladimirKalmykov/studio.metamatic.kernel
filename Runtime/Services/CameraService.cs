@@ -104,10 +104,6 @@ namespace Metamatic
 
         protected override async UniTask RunService(Ready ready, Signal signal)
         {
-            using var cameraAnnounceSubscription =
-                Dispatcher.global.SubscribeAnnouncementsLegacy<CameraController>(HandlerCamerasAnnounce);
-            using var cameraRetractSubscription =
-                Dispatcher.global.SubscribeRetractionsLegacy<CameraController>(HandlerCamerasRetract);
 #if DEBUG
             using var monitoringShakeAmplitude = Monitoring.Create("ImpactService.Shake", "amplidute", () => shakeAmplitude);
             using var monitoringShakeFrequency = Monitoring.Create("ImpactService.Shake", "frequency", () => shakeFrequency);
@@ -125,6 +121,20 @@ namespace Metamatic
         public DisposableAction SubscribeToMainCamera(Action<CameraController> action)
         {
             return m_CameraController.Watch(action);
+        }
+
+        public DisposableAction AnnounceCameraController(CameraController cameraController)
+        {
+            if (m_CameraController.value != null)
+            {
+                Console.Warning("CameraService", "Do not announce camera controller when there is already one announced.");
+            }
+            m_CameraController.SetValue(cameraController);
+
+            return DisposableAction.Create(() =>
+            {
+                m_CameraController.SetValue(null);
+            });
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -205,46 +215,6 @@ namespace Metamatic
                 });
                 css.TryRaise();
             }
-        }
-
-        private void HandlerCamerasAnnounce(CameraController[] announcedCameras)
-        {
-            foreach (var cam in announcedCameras)
-            {
-                m_CameraWeightSubscriptions[cam] = cam.SubscribeToWeightChanged(HandlerCameraWeightChanged);
-            }
-
-            RecalculateMainCamera();
-        }
-
-        private void HandlerCamerasRetract(CameraController retractedCamera)
-        {
-            if (m_CameraController.value == retractedCamera)
-            {
-                m_CameraController.value = null;
-            }
-
-            RecalculateMainCamera();
-        }
-
-        private void RecalculateMainCamera()
-        {
-            CameraController mainCamera = null;
-            foreach (var cam in m_CameraWeightSubscriptions.Keys)
-            {
-                if (mainCamera == null || cam.weight > mainCamera.weight)
-                {
-                    mainCamera = cam;
-                }
-            }
-
-            m_CameraController.value = mainCamera;
-        }
-
-        private void HandlerCameraWeightChanged(CameraController camera, float weight)
-        {
-            if (camera == m_CameraController.value && m_CameraWeightSubscriptions.Count == 1) return;
-            RecalculateMainCamera();
         }
     }
 }

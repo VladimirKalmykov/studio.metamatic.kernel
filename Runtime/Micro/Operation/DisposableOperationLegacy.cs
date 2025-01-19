@@ -3,20 +3,20 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    public readonly struct DisposableOperation: IDisposable
+    public readonly struct DisposableOperationLegacy: IDisposable
     {
-        public static DisposableOperation Create(Func<Signal, UniTask> operationAction)
+        public static DisposableOperationLegacy Create(Func<Signal, UniTask> operationAction)
         {
             var instance = DisposableOperationImpl.Get(operationAction);
-            return new DisposableOperation(instance);
+            return new DisposableOperationLegacy(instance);
         }
         // ReSharper disable once InconsistentNaming
-        public static DisposableOperation Empty => default;
+        public static DisposableOperationLegacy Empty => default;
         
         private readonly DisposableOperationImpl m_Impl;
         private readonly int m_Version;
 
-        public DisposableOperation(DisposableOperationImpl impl)
+        public DisposableOperationLegacy(DisposableOperationImpl impl)
         {
             m_Impl = impl;
             m_Version = impl.version;
