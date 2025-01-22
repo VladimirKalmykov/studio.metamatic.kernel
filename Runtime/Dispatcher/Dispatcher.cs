@@ -56,8 +56,7 @@ namespace Metamatic
         }
        
         private readonly Dictionary<Type, LockedList<Delegate>> m_EventListeners = new();
-        private readonly Dictionary<(object id, Type type), (object value, bool isActive, LockedList<Action<object>> handlers)> m_Registry = new();
-        private readonly Dictionary<object, (object value, bool isActive, LockedList<Action<object>> handlers)> m_RegistryLite = new();
+        private readonly Dictionary<(object id, Type type), (object value, bool isActive, SignalSource cancellationSignalSource, LockedList<Func<object, Signal, UniTaskVoid>> handlers)> m_Registry = new();
         private bool m_IsRegistrationProcessing = false;
         private DeferLock m_RegistrationLock = new();
         #endregion
@@ -171,7 +170,7 @@ namespace Metamatic
             var valueType = typeof(TValue);
             if (!m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                registry = (source, true, new LockedList<Action<object>>());
+                registry = (source, true, default, new LockedList<Func<object, Signal, UniTaskVoid>>());
             }
             else
             {
@@ -183,17 +182,19 @@ namespace Metamatic
                 }
                 if (registry.isActive)
                 {
-                    throw new System.Exception($"Registry {id} of type {typeof(TValue).Name} already registered");
+                    throw new System.Exception($"Registry {id} of type {typeof(TValue).Name} already registered. Unregister old value first.");
                 }
                 registry.value = source;
                 registry.isActive = true;
+                registry.cancellationSignalSource.Dispose();
+                registry.cancellationSignalSource = registry.handlers.Count > 0 ? SignalSource.Create() : default;
             }
             
             using (registry.handlers.Lock())
             {
                 foreach (var handler in registry.handlers)
                 {
-                    handler(source);
+                    handler(source, registry.cancellationSignalSource.Signal).Forget();
                 }
                 m_Registry[(id, valueType)] = registry;
             }
@@ -204,7 +205,7 @@ namespace Metamatic
             });
         }
         
-        private async void Register_Deferred<TValue>(LockedList<Action<object>> handlers, object id, TValue source, CancellationToken token) where TValue : notnull
+        private async void Register_Deferred<TValue>(LockedList<Func<object, Signal, UniTaskVoid>> handlers, object id, TValue source, CancellationToken token) where TValue : notnull
         {
             await handlers;
             if (token.IsCancellationRequested) return;
@@ -223,6 +224,7 @@ namespace Metamatic
                 }
                 reg.value = default;
                 reg.isActive = false;
+                reg.cancellationSignalSource.TryRaise();
                 if (reg.handlers.Count == 0)
                 {
                     m_Registry.Remove((id, valueType));
@@ -240,7 +242,7 @@ namespace Metamatic
 #endif
         }
         
-        private async void Unregister_Deferred<TValue>(LockedList<Action<object>> handlers, object id, TValue source) where TValue : notnull
+        private async void Unregister_Deferred<TValue>(LockedList<Func<object, Signal, UniTaskVoid>> handlers, object id, TValue source) where TValue : notnull
         {
             await handlers;
             Unregister(id, source);
@@ -253,23 +255,26 @@ namespace Metamatic
 
         
 
-        public DisposableAction SubscribeRegistry<TValue>(object id, Action<TValue> handler, bool skipInitial = false)
+        public DisposableAction SubscribeRegistry<TValue>(object id, Func<TValue, Signal, UniTaskVoid> handler, bool skipInitial = false)
         {
             var valueType = typeof(TValue);
             if (!m_Registry.TryGetValue((id, valueType), out var registry))
             {
-                registry = (default, false, new LockedList<Action<object>>());
+                registry = (default, false, default, new LockedList<Func<object, Signal, UniTaskVoid>>());
                 m_Registry[(id, valueType)] = registry;
             }
 
-            Action<object> handlerWrapper = (source) =>
-            {
-                handler(source == null ? default : (TValue)source);
-            };
+            Func<object, Signal, UniTaskVoid> handlerWrapper = (source, signal) => handler((TValue)source, signal);
 
-            if (!skipInitial)
+            if (registry is { isActive: true, cancellationSignalSource: { isAlive: false } })
             {
-                handler(registry.value == null ? default : (TValue)registry.value);
+                registry.cancellationSignalSource = SignalSource.Create();
+                m_Registry[(id, valueType)] = registry;
+            }
+            
+            if (!skipInitial && registry.isActive)
+            {
+                handler((TValue)registry.value, registry.cancellationSignalSource.Signal).Forget();
             }
                 
             if (registry.handlers.isLocked)
@@ -291,7 +296,7 @@ namespace Metamatic
             });
         }
         
-        private void UnsubscribeRegistry<TValue>(object id, Action<object> handlerWrapper)
+        private void UnsubscribeRegistry<TValue>(object id, Func<object, Signal, UniTaskVoid> handlerWrapper)
         {
             var valueType = typeof(TValue);
             if (m_Registry.TryGetValue((id, valueType), out var reg))
@@ -315,13 +320,13 @@ namespace Metamatic
 #endif
         }
         
-        private async void UnsubscribeRegistry_Deferred<TValue>(LockedList<Action<object>> handlers, object id, Action<object> handlerWrapper)
+        private async void UnsubscribeRegistry_Deferred<TValue>(LockedList<Func<object, Signal, UniTaskVoid>> handlers, object id, Func<object, Signal, UniTaskVoid> handlerWrapper)
         {
             await handlers;
             UnsubscribeRegistry<TValue>(id, handlerWrapper);
         }
         
-        private async void SubscribeRegistry_Deferred<TValue>(LockedList<Action<object>> handlers, Action<TValue> handler, CancellationToken token)
+        private async void SubscribeRegistry_Deferred<TValue>(LockedList<Func<object, Signal, UniTaskVoid>> handlers, Func<TValue, Signal, UniTaskVoid> handler, CancellationToken token)
         {
             await handlers;
             if (token.IsCancellationRequested) return;
@@ -334,7 +339,7 @@ namespace Metamatic
             return m_Registry.Count;
         }
 
-        public DisposableAction SubscribeRegistry<TValue>(Action<TValue> handler, bool skipInitial = false) where TValue : notnull
+        public DisposableAction SubscribeRegistry<TValue>(Func<TValue, Signal, UniTaskVoid> handler, bool skipInitial = false) where TValue : notnull
         {
             return SubscribeRegistry(this, handler, skipInitial);
         }
@@ -357,11 +362,12 @@ namespace Metamatic
                 releaseSubscription?.Invoke();
                 tcs.TrySetCanceled(cancellationToken);
             });
-            releaseSubscription = SubscribeRegistry<TValue>(id, source =>
+            releaseSubscription = SubscribeRegistry<TValue>(id, (source, signal) =>
             {
                 releaseSubscription?.Invoke();
                 cancellationTokenRegistration.Dispose();
                 tcs.TrySetResult(source);
+                return new UniTaskVoid();
             }, true);
             return task;
         }
@@ -387,16 +393,17 @@ namespace Metamatic
                 tcs.TrySetCanceled(cancellationToken);
             });
 
-            releaseSubscription = SubscribeRegistry<TValue>(id, source =>
+            releaseSubscription = SubscribeRegistry<TValue>(id, (source, signal) =>
             {
                 timeoutCancellationTokenSource?.Cancel();
                 if (cancellationToken.IsCancellationRequested || source == null)
                 {
-                    return;
+                    return new UniTaskVoid();
                 }
                 releaseSubscription?.Invoke();
                 cancellationTokenRegistration.Dispose();
                 tcs.TrySetResult(source);
+                return new UniTaskVoid();
             });
 
             // Добавляем таймаут

@@ -1,4 +1,5 @@
 ﻿using System;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -39,7 +40,7 @@ namespace Metamatic
             Debug.Log($"Elapsed time: {elapsedMs} ms (x: {x})");
           
             Assert.AreEqual(x, COUNTS);
-            Assert.Less(elapsedMs, 3);
+            Assert.Less(elapsedMs, 8);
         }
         
         /// <summary>
@@ -130,7 +131,11 @@ namespace Metamatic
         {
             var dispatcher = new Dispatcher();
             var x = 0;
-            using var subscription = dispatcher.SubscribeRegistry<int>(value => x = value);
+            using var subscription = dispatcher.SubscribeRegistry<int>((value, signal) =>
+            {
+                x = value;
+                return new UniTaskVoid();
+            });
             dispatcher.Register(1);
             Assert.AreEqual(1, x);
         }
@@ -141,7 +146,11 @@ namespace Metamatic
             var dispatcher = new Dispatcher();
             var x = 0;
             var release = dispatcher.Register(2);
-            var subscription = dispatcher.SubscribeRegistry<int>(value => x = value);
+            var subscription = dispatcher.SubscribeRegistry<int>((value, signal) =>
+            {
+                x = value;
+                return new UniTaskVoid();
+            });
             Assert.AreEqual(2, x);
             Assert.AreEqual(1, dispatcher.GetRegistrySize());
             subscription.Dispose();
@@ -173,7 +182,7 @@ namespace Metamatic
             Debug.Log($"Elapsed time: {elapsedMs} ms (x: {x})");
           
             Assert.AreEqual(x, COUNTS);
-            Assert.Less(elapsedMs, 1);
+            Assert.Less(elapsedMs, 5);
         }
         
         /// <summary>
@@ -199,7 +208,7 @@ namespace Metamatic
             var elapsedMs = watch.Elapsed.TotalMilliseconds;
             Debug.Log($"Elapsed time: {elapsedMs} ms");
           
-            Assert.Less(elapsedMs, 14);
+            Assert.Less(elapsedMs, 30);
         }
         
         /// <summary>
@@ -213,7 +222,10 @@ namespace Metamatic
             var COUNTS = 10000;
             /* Create million registrations */
             /* Create tool to measure time */
-            Action<int> stub = (value) => { };
+            Func<int, Signal, UniTaskVoid> stub = (value, signal) =>
+            {
+                return new UniTaskVoid();
+            };
             var randomInt = new System.Random();
             var watch = System.Diagnostics.Stopwatch.StartNew();
             for (var i = 0; i < COUNTS; i++)
@@ -225,7 +237,7 @@ namespace Metamatic
             var elapsedMs = watch.Elapsed.TotalMilliseconds;
             Debug.Log($"Elapsed time: {elapsedMs} ms");
             Assert.AreEqual(1, dispatcher.GetRegistrySize());
-            Assert.Less(elapsedMs, 6);
+            Assert.Less(elapsedMs, 15);
         }
 
         

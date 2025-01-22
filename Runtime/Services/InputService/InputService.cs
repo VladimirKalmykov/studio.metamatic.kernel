@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 
 namespace Metamatic
@@ -21,6 +22,7 @@ namespace Metamatic
         private ObservableList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
         private event Action<int, InputAction.CallbackContext> m_OnPlayerActionTriggered;
+        
         
         #region Events
         public event Action<PlayerInput> OnPlayerJoined;
@@ -59,12 +61,52 @@ namespace Metamatic
             Action<InputAction.CallbackContext> handler = (InputAction.CallbackContext ctx) =>
             {
                 m_OnPlayerActionTriggered?.Invoke(playerInput.playerIndex, ctx);
+                if (m_ActionBound.TryGetValue(ctx.action.name, out var action))
+                {
+                    foreach (var act in action)
+                    {
+                        if (!act(ctx)) return;
+                    }
+                }
             };
             playerInput.onActionTriggered += handler;
             await cancellationSignal;
             playerInput.onActionTriggered -= handler;
         }
         
+        public DisposableAction WatchPlayerAsync(int playerIndex, Func<PlayerInput, Signal, UniTaskVoid> action)
+        {
+            SignalSource signalSource = default;
+            OnPlayerJoined += JoinHandler;
+            OnPlayerLeft += LeftHandler;
+            
+            return DisposableAction.Create(() =>
+            {
+                OnPlayerJoined -= JoinHandler;
+                OnPlayerLeft -= LeftHandler;
+                signalSource.Dispose();
+            });
+            
+            void LeftHandler(PlayerInput playerInput)
+            {
+                if (playerInput.playerIndex == playerIndex)
+                {
+                    signalSource.TryRaise();
+                }
+            }
+            
+            void JoinHandler(PlayerInput playerInput)
+            {
+                if (playerInput.playerIndex == playerIndex)
+                {
+                    signalSource.TryRaise();
+                    signalSource = SignalSource.Create();
+                    action(playerInput, signalSource.Signal).Forget();
+                }
+            }
+        }
+        
+        [Obsolete("Use WatchPlayerAsync instead.")]
         public DisposableAction SubscribePlayerJoined(int playerIndex, Action<PlayerInput> action)
         {
             Action<PlayerInput> handler = (PlayerInput playerInput) =>
@@ -86,6 +128,7 @@ namespace Metamatic
             return new DisposableAction(() => OnPlayerJoined -= handler);
         }
         
+        [Obsolete("Use WatchPlayerAsync instead.")]
         public DisposableAction SubscribePlayerLeft(int playerIndex, Action<PlayerInput> action)
         {
             Action<PlayerInput> handler = (PlayerInput playerInput) =>
@@ -261,6 +304,152 @@ namespace Metamatic
 
             return action.GetBindingDisplayString(group: controlScheme);
         }
+        
+        #region Bind actions
+        private readonly Dictionary<string, List<Func<InputAction.CallbackContext, bool>>> m_ActionBound = new();
+        private event Action<string> OnBindingReleased;
+        /// <summary>
+        /// Allows to bind an action to the input event. The action will be called when the input event is triggered.
+        /// The function accepts a boolean value that indicates if the action is started or ended.
+        /// And it should return true if the action should be processed further or false if it should be ignored.
+        /// </summary>
+        /// <param name="actionName"></param>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public DisposableAction BindAction(string actionName, Func<InputAction.CallbackContext, bool> action)
+        {
+            if (!m_ActionBound.TryGetValue(actionName, out var actions))
+            {
+                actions = new List<Func<InputAction.CallbackContext, bool>>();
+                m_ActionBound[actionName] = actions;
+            }
+            actions.Add(action);
+            return new DisposableAction(() =>
+            {
+                actions.Remove(action);
+                if (actions.Count == 0)
+                {
+                    OnBindingReleased?.Invoke(actionName);
+                    m_ActionBound.Remove(actionName);
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Bind an action to the input event. The action will be called when the input event is triggered.
+        /// Action will be called with the signal that can will be used to cancel the action.
+        /// </summary>
+        /// <param name="actionName"></param>
+        /// <param name="action"></param>
+        /// <param name="allowOtherActions"></param>
+        /// <returns></returns>
+        public DisposableAction BindAsyncAction(string actionName, Func<Signal, UniTaskVoid> action, bool allowOtherActions = false)
+        {
+            if (!m_ActionBound.TryGetValue(actionName, out var actions))
+            {
+                actions = new List<Func<InputAction.CallbackContext, bool>>();
+                m_ActionBound[actionName] = actions;
+            }
+
+            SignalSource cancellationSignalSource = default;
+            bool Reaction(InputAction.CallbackContext ctx)
+            {
+                if (ctx.phase == InputActionPhase.Started)
+                {
+                    cancellationSignalSource.Dispose();
+                    cancellationSignalSource = new SignalSource();
+                    action(cancellationSignalSource.Signal).Forget();
+                }
+                else if (ctx.phase == InputActionPhase.Canceled)
+                {
+                    cancellationSignalSource.TryRaise();
+                }
+
+                return allowOtherActions;
+            }
+            
+            actions.Add(Reaction);
+            
+            return new DisposableAction(() =>
+            {
+                actions.Remove(Reaction);
+                if (actions.Count == 0)
+                {
+                    OnBindingReleased?.Invoke(actionName);
+                    m_ActionBound.Remove(actionName);
+                }
+                cancellationSignalSource.Dispose();
+            });
+        }
+        
+        /// <summary>
+        /// Return true if the action is bound to the input event.
+        /// </summary>
+        /// <param name="actionName"></param>
+        /// <returns></returns>
+        public bool IsActionBound(string actionName)
+        {
+            return m_ActionBound.ContainsKey(actionName);
+        }
+        
+        public DisposableAction SubscribeToBindingReleasedOnce(Action<string> action)
+        {
+            if (IsActionBound(action.Method.Name))
+            {
+                action(action.Method.Name);
+                return DisposableAction.Empty;
+            }
+            OnBindingReleased += action;
+            return new DisposableAction(() => OnBindingReleased -= action);
+        }
+        
+        public UniTask<string> WaitForActionBindingReleased(string actionName, CancellationToken cancellationToken)
+        {
+            if (!IsActionBound(actionName))
+            {
+                return UniTask.FromResult(actionName);
+            }
+            var tcs = new UniTaskCompletionSource<string>();
+            var disposable = SubscribeToBindingReleasedOnce(action =>
+            {
+                if (action == actionName)
+                {
+                    tcs.TrySetResult(action);
+                }
+            });
+            cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                disposable.Dispose();
+            });
+            return tcs.Task;
+        }
+        
+        public UniTask<string> WaitForActionBindingReleased(string[] actionNames, CancellationToken cancellationToken)
+        {
+            foreach (var actionName in actionNames)
+            {
+                if (!IsActionBound(actionName))
+                {
+                    return UniTask.FromResult(actionName);
+                }
+            }
+            var tcs = new UniTaskCompletionSource<string>();
+            var disposable = SubscribeToBindingReleasedOnce(action =>
+            {
+                if (Array.IndexOf(actionNames, action) != -1)
+                {
+                    tcs.TrySetResult(action);
+                }
+            });
+            cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                disposable.Dispose();
+            });
+            return tcs.Task;
+        }
+        #endregion
         
         #region Debug
         /// <summary>

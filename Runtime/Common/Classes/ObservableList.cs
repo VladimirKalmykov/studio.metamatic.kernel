@@ -251,6 +251,11 @@ namespace Metamatic
             m_CancellationTokens.Clear();
             m_Disposed = true;
         }
+        
+        public T Find(Predicate<T> match)
+        {
+            return m_List.Find(match);
+        }
 
         #region IList<T> Implementation
 

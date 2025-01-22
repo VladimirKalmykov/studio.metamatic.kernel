@@ -19,13 +19,13 @@ public class FOV2DService : Service
     public CameraFOVTracker2d cameraFovTracker2d => m_CameraFovTracker2d;
     private List<DisposableAction> m_Trackers = new List<DisposableAction>(100);
 
-    protected async override UniTask RunService(Ready ready, Signal signal)
+    protected override async UniTask RunService(Ready ready, Signal signal)
     {
         /* Subscribe to camera controller */
         var cameraService = await Resolve<CameraService>();
         /* Wait for camera */
         await cameraService.WaitForCamera(signal);
-        await using var dispsableCameraFOVTracker2d = m_CameraFovTracker2d = new CameraFOVTracker2d(cameraService.camera, m_InnerBuffer, m_OuterBuffer, transform.position.z);
+        await using var disposableCameraFovTracker = m_CameraFovTracker2d = new CameraFOVTracker2d(cameraService.camera, m_InnerBuffer, m_OuterBuffer, transform.position.z);
         using var cameraListener = cameraService.SubscribeToMainCamera(cameraController =>
         {
             if (cameraController == null || cameraController.camera == null)
@@ -46,16 +46,21 @@ public class FOV2DService : Service
         using var drawGizmosListener = SubscribeDrawGizmos(m_CameraFovTracker2d.DrawGizmos);
 #endif
         using var cameraControllerSubscription = Dispatcher.global.SubscribeRegistry<CameraAnchor>(
-            cameraController =>
+            (cameraController, signal) =>
             {
+                // TODO: This handler need to be refactored according to the new dispatcher register logic (that uses cancellation signal instead of passing default value)
                 if (cameraController == null || cameraController.camera == null)
                 {
-                    dispsableCameraFOVTracker2d.Pause();
-                    dispsableCameraFOVTracker2d.camera = null;
-                    return;
+                    disposableCameraFovTracker.Pause();
+                    disposableCameraFovTracker.camera = null;
                 }
-                dispsableCameraFOVTracker2d.Resume();
-                dispsableCameraFOVTracker2d.camera = cameraController.camera;
+                else
+                {
+                    disposableCameraFovTracker.Resume();
+                    disposableCameraFovTracker.camera = cameraController.camera;
+                }
+
+                return new UniTaskVoid();
             });
         /* Check for already registered */
         if (Dispatcher.global.HasRegistry<FOV2DService>())

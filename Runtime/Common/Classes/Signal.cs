@@ -425,7 +425,7 @@ namespace Metamatic
     
     public class InternalCancellationSignalSource: IDisposable
     {
-        private static readonly ParamLessPool<InternalCancellationSignalSource> Pool = new(autoShrink: true, capacity: 1000);
+        private static readonly ParamLessPool<InternalCancellationSignalSource> Pool = new(autoShrink: true, capacity: 10000);
 
         public static InternalCancellationSignalSource Get()
         {
