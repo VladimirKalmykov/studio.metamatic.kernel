@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
+using UnityEngine.InputSystem.Utilities;
+using UnityEngine.Serialization;
 
 namespace Metamatic
 {
@@ -17,16 +19,21 @@ namespace Metamatic
             public string Name;
             public InputActionMap InputActionMap;
         }
-        
+
+        [SerializeField] private InputActionAsset m_InputActionAsset;
         [SerializeField] private PlayerInput m_PlayerInputPrefab;
+        [SerializeField] private bool m_SiglePlayer;
         private ObservableList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
+        private PlayerInputManager m_PlayerInputManager;
         private event Action<int, InputAction.CallbackContext> m_OnPlayerActionTriggered;
+        private HashSet<InputDevice> m_AssignedDevices = new HashSet<InputDevice>();
         
         
         #region Events
         public event Action<PlayerInput> OnPlayerJoined;
         public event Action<PlayerInput> OnPlayerLeft;
+        public event Action<int, string> OnControlSchemeChanged;
         #endregion
 
         protected override async UniTask RunService(Ready ready, Signal signal)
@@ -37,22 +44,55 @@ namespace Metamatic
             /* Subscribe to main camera */
             using var mainCameraSubscription = cameraService.SubscribeToMainCamera(HandleMainCamera);
 
+            
+            
             /* Make a deal with the player manager */
-            var playerInputManager = gameObject.AddComponent<PlayerInputManager>();
-            playerInputManager.joinBehavior = PlayerJoinBehavior.JoinPlayersWhenButtonIsPressed;
-            playerInputManager.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
-            playerInputManager.playerPrefab = m_PlayerInputPrefab.gameObject;
-            playerInputManager.onPlayerJoined += InternalOnPlayerJoined;
-            playerInputManager.onPlayerLeft += InternalOnPlayerLeft;
+            if (!m_SiglePlayer)
+            {
+                m_PlayerInputPrefab.actions = m_InputActionAsset;
+                var playerInputManager = m_PlayerInputManager = gameObject.AddComponent<PlayerInputManager>();
+                playerInputManager.joinBehavior = PlayerJoinBehavior.JoinPlayersWhenButtonIsPressed;
+                playerInputManager.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
+                playerInputManager.playerPrefab = m_PlayerInputPrefab.gameObject;
+                playerInputManager.onPlayerJoined += InternalOnPlayerJoined;
+                playerInputManager.onPlayerLeft += InternalOnPlayerLeft;
+            }
+            else
+            {
+                /* Single player mode */
+                var playerInput = Instantiate(m_PlayerInputPrefab);
+                playerInput.actions = m_InputActionAsset;
+                InternalOnPlayerJoined(playerInput);
+            }
+           
+
+            // using var anyButtonPressListener = InputSystem.onAnyButtonPress.Call(OnAnyButtonPressed);
+            InputSystem.onDeviceChange += OnDeviceChange;
 
             await ready();
-            playerInputManager.onPlayerJoined -= InternalOnPlayerJoined;
-            playerInputManager.onPlayerLeft -= InternalOnPlayerLeft;
+            if (m_SiglePlayer)
+            {
+                InternalOnPlayerLeft(m_PlayerInputs[0]);
+            }
+            InputSystem.onDeviceChange -= OnDeviceChange;
+            if (m_PlayerInputManager != null)
+            {
+                m_PlayerInputManager.onPlayerJoined -= InternalOnPlayerJoined;
+                m_PlayerInputManager.onPlayerLeft -= InternalOnPlayerLeft;
+            }
         }
         
-        public DisposableAction CheckoutActionMap(string actionMapName, Action<PlayerInput> action)
+        private void OnDeviceChange(InputDevice device, InputDeviceChange change)
         {
-            throw new NotImplementedException();
+            Console.Info("InputService", $"Device change: {device}, {change}");
+            if (change == InputDeviceChange.Added)
+            {
+                m_AssignedDevices.Add(device);
+            }
+            else if (change == InputDeviceChange.Removed)
+            {
+                m_AssignedDevices.Remove(device);
+            }
         }
 
         private async UniTask HandlePlayerInput(PlayerInput playerInput, Signal cancellationSignal)
@@ -70,8 +110,37 @@ namespace Metamatic
                 }
             };
             playerInput.onActionTriggered += handler;
+            playerInput.onControlsChanged += HandleControlSchemeChanged;
             await cancellationSignal;
+            playerInput.onControlsChanged -= HandleControlSchemeChanged;
             playerInput.onActionTriggered -= handler;
+        }
+        
+        private void HandleControlSchemeChanged(PlayerInput playerInput)
+        {
+            OnControlSchemeChanged?.Invoke(playerInput.playerIndex, playerInput.currentControlScheme);
+        }
+        
+        public DisposableAction WatchPlayerScheme(int playerIndex, Action<string> action)
+        {
+            foreach (var playerInput in m_PlayerInputs)
+            {
+                if (playerInput.playerIndex == playerIndex)
+                {
+                    action(playerInput.currentControlScheme);
+                }
+            }
+            OnControlSchemeChanged += Handler;
+            
+            return DisposableAction.Create(() => OnControlSchemeChanged -= Handler);
+
+            void Handler(int schemePlayerIndex, string scheme)
+            {
+                if (playerIndex == schemePlayerIndex)
+                {
+                    action(scheme);
+                }
+            }
         }
         
         public DisposableAction WatchPlayerAsync(int playerIndex, Func<PlayerInput, Signal, UniTaskVoid> action)
@@ -79,6 +148,16 @@ namespace Metamatic
             SignalSource signalSource = default;
             OnPlayerJoined += JoinHandler;
             OnPlayerLeft += LeftHandler;
+            
+            // Resolve player input if it's already joined
+            foreach (var playerInput in m_PlayerInputs)
+            {
+                if (playerInput.playerIndex == playerIndex)
+                {
+                    signalSource = SignalSource.Create();
+                    action(playerInput, signalSource.Signal).Forget();
+                }
+            }
             
             return DisposableAction.Create(() =>
             {
