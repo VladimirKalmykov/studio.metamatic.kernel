@@ -11,49 +11,38 @@ namespace Metamatic
     /// Don't be misled by the word "competitive". It's not about multi threads competition, it's about the best item selection by dynamic weight. Collection is not thread safe.
     /// </note>
     /// <typeparam name="T"></typeparam>
-    public class WeightCompetitionCollection<T>: IDisposable
+    public class PassiveWeightCompetitionCollection<T>: IDisposable
     {
         private readonly Dictionary<string, (T, Func<float>)> m_Items = new();
-        private Observable<T> m_Best = new();
-        private ILoop m_Loop;
+        private readonly Observable<T> m_Best = new();
         public int count => m_Items.Count;
-        private event Action OnDisposed;
-
-        public WeightCompetitionCollection()
-        {
-            
-        }
-        
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="loop">Custom loop (if null it uses default UniTaskLoop) </param>
-        public WeightCompetitionCollection(Func<T, Signal, UniTaskVoid> action = null, Loop loop = null)
-        {
-            m_Loop = loop == null ? new UniTaskLoop() : loop;
-            OnDisposed += m_Loop.AddAction(Update);
-            if (action != null)
-            {
-                OnDisposed += m_Best.WatchAsync(action);
-            }
-        }
-        
-        ~WeightCompetitionCollection()
-        {
-            Console.Error("CompetitiveWeightsCollection", "Was not disposed");
-        }
+        private event Action m_OnEmpty;
+        private event Action m_OnPopulated;
 
         public DisposableAction Add(T item, Func<float> getWeight)
         {
             var id = item.GetHashCode().ToString();
             m_Items.Add(id, (item, getWeight));
             Update();
+            if (m_Items.Count == 1)
+            {
+                m_OnPopulated?.Invoke();
+            }
             return new DisposableAction(() =>
             {
                 m_Items.Remove(id);
                 Update();
+                if (m_Items.Count == 0)
+                {
+                    m_OnEmpty?.Invoke();
+                }
             });
+        }
+        
+        public T GetBest()
+        {
+            Update();
+            return m_Best.Value;
         }
         
         public void Update()
@@ -71,20 +60,39 @@ namespace Metamatic
             }
             m_Best.SetUniqValue(best);
         }
-        
-        public DisposableAction WatchBest(Action<T> action)
+
+        /// <summary>
+        /// Watches the population of the collection. It triggers the action when the collection is populated and raise signal when it is empty.
+        /// </summary>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public DisposableAction WatchPopulationAsync(Func<Signal, UniTaskVoid> action)
         {
-            return m_Best.Watch(action);
+            var signalSource = SignalSource.Create();
+            m_OnPopulated += OnPopulated;
+            m_OnEmpty += OnEmpty;
+            
+            return new DisposableAction(() =>
+            {
+                m_OnPopulated -= OnPopulated;
+                m_OnEmpty -= OnEmpty;
+                signalSource.Dispose();
+            });
+            
+            void OnPopulated()
+            {
+                action(signalSource.Signal).Forget();
+            }
+            
+            void OnEmpty()
+            {
+                signalSource.TryRaise();
+            }
         }
         
-        public DisposableAction WatchAsyncBest(Func<T, Signal, UniTaskVoid> action)
-        {
-            return m_Best.WatchAsync(action);
-        }
 
         public void Dispose()
         {
-            OnDisposed?.Invoke();
             GC.SuppressFinalize(this);
         }
     }

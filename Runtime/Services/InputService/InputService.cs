@@ -364,16 +364,16 @@ namespace Metamatic
         /// <summary>
         /// Resolve input device key binding for the specific action.
         /// </summary>
+        /// <param name="playerIndex"></param>
         /// <param name="actionName"></param>
         /// <param name="cancelllationSignal"></param>
         /// <returns></returns>
-        public async UniTask<string> ResolveKeyBindingForAction(string actionName, Signal cancelllationSignal)
+        public string ResolveKeyBindingForAction(int playerIndex, string actionName, Signal cancelllationSignal)
         {
             /* Wait until player joined */
-            await WaitUntilPlayerJoined(0, cancelllationSignal);
-            var currentInputAsset = GetPlayerInputActionAsset(0);
-            Debug.Assert(!currentInputAsset.Equals(null), "currentInputAsset should not be null.");
-            var controlScheme = GetPlayerInputControlScheme(0);
+            var currentInputAsset = GetPlayerInputActionAsset(playerIndex);
+            if (currentInputAsset == null) return "";
+            var controlScheme = GetPlayerInputControlScheme(playerIndex);
             var actionMap = currentInputAsset.FindActionMap("Player");
             var action = actionMap.FindAction(actionName);
             if (action == null)
