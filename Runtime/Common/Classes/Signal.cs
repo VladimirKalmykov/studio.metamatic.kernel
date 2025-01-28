@@ -223,6 +223,7 @@ namespace Metamatic
 
     public readonly struct SignalSource: IDisposable
     {
+        public static readonly SignalSource Empty = new SignalSource();
         public static InternalCancellationSignalSource GetFromPool()
         {
             var icss = InternalCancellationSignalSource.Get();

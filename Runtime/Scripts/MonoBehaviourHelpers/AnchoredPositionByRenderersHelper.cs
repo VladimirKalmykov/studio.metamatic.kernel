@@ -1,14 +1,37 @@
+using System;
+using UnityEngine.Serialization;
+
 namespace Metamatic
 {
     using UnityEngine;
 
     public class AnchoredPositionByRenderersHelper : MonoBehaviour, IAnchoredPositionReceiver
     {
+        [SerializeField] private bool useOnlyRootRenderer = false;
+        [Tooltip("Multiplier for the anchor")] [SerializeField]
+        private float multiplier = 1f;
         private Renderer[] m_Renderers;
+        private Transform m_TargetTransform;
 
         void Awake()
         {
-            m_Renderers = GetComponentsInChildren<Renderer>();
+            m_Renderers = useOnlyRootRenderer ? new [] { GetComponent<Renderer>() }: GetComponentsInChildren<Renderer>();
+            if (m_Renderers[0] == null) m_Renderers = Array.Empty<Renderer>();
+            if (m_TargetTransform == null)
+            {
+                m_TargetTransform = transform;
+            }
+        }
+        
+        /// <summary>
+        /// Allows to substitute the target transform. In this case all resulting positions will be applied to the target transform instead of the current one.
+        /// Ensure that the local position of this transform is zero to avoid unexpected results.
+        /// You can use this method to ignore some renderers in the hierarchy. E.g. if you have a parent object with a renderer that should not be taken into account but should be transformed.
+        /// </summary>
+        /// <param name="targetTransform"></param>
+        public void SetTargetTransform(Transform targetTransform)
+        {
+            m_TargetTransform = targetTransform;
         }
         
         public AnchoredPosition anchoredPosition
@@ -38,6 +61,7 @@ namespace Metamatic
 
         private void ApplyAnchoredPosition(AnchoredPosition anchoredPos)
         {
+            Vector3 finalAnchor = anchoredPos.Anchor * multiplier;
             Bounds worldBounds = GetCombinedBounds();
             Vector3 worldSize = worldBounds.size; // размеры (ширина, высота, глубина) в мировом пространстве
             Vector3 boundCenter = worldBounds.center; // центр bounding-box'а в мире
@@ -61,9 +85,9 @@ namespace Metamatic
             //    Для anchor = 1: anchorOffset = +0.5 * size => итоговое смещение будет -0.5*size.
             Vector3 anchorOffset = new Vector3
             (
-                anchoredPos.Anchor.x * (worldSize.x * 0.5f),
-                anchoredPos.Anchor.y * (worldSize.y * 0.5f),
-                anchoredPos.Anchor.z * (worldSize.z * 0.5f)
+                finalAnchor.x * (worldSize.x * 0.5f),
+                finalAnchor.y * (worldSize.y * 0.5f),
+                finalAnchor.z * (worldSize.z * 0.5f)
             );
 
             // 4. Рассчитываем итоговую позицию:
@@ -75,7 +99,7 @@ namespace Metamatic
                                - anchorOffset
                                + pivotOffset;
 
-            thisTransform.position = finalPos;
+            m_TargetTransform.position = finalPos;
         }
     }
 }

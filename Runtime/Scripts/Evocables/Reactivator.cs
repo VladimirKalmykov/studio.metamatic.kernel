@@ -23,6 +23,16 @@ namespace Metamatic
             m_Version = source.version;
         }
         
+        public void VoteEnable()
+        {
+            source?.VoteEnable();
+        }
+        
+        public void VoteDisable()
+        {
+            source?.VoteDisable();
+        }
+        
         public void Enable()
         {
             source?.Enable();
@@ -40,6 +50,20 @@ namespace Metamatic
             {
                 InternalTaskReactivator.Return(currentSource);
             }
+        }
+        
+        public DisposableAction AddDeactivatedListenerOnce(Action action)
+        {
+            var currentSource = source;
+            if (currentSource == null)
+            {
+                action();
+                return DisposableAction.Empty;
+            }
+            
+            currentSource.OnDeactivated += action;
+            
+            return new DisposableAction(() => currentSource.OnDeactivated -= action);
         }
 
         public UniTask DisposeAsync()
@@ -63,6 +87,8 @@ namespace Metamatic
         {
             return source?.AddAbortedListenerOnce(action) ?? DisposableAction.Empty;
         }
+
+        public bool isDisposedAsync => source?.isReturning ?? true;
     }
 
     public readonly struct Reactivation
@@ -134,6 +160,8 @@ namespace Metamatic
         public Observable<bool> oEnabled { get; private set; } = ParamLessPool<Observable<bool>>.GetShared();
         public Signal resetSignal => m_CancellationSource.Signal;
         public int version { get; private set; }
+        public event Action OnDeactivated;
+        private int m_EnableVotes = 0;
 
         private void Initialize(Func<Reactivation, AsyncCancellation, UniTask> onTurnOn, bool enabled = false)
         {
@@ -143,6 +171,24 @@ namespace Metamatic
             if (enabled)
             {
                 Enable();
+            }
+        }
+        
+        public void VoteEnable()
+        {
+            m_EnableVotes++;
+            if (m_EnableVotes == 1)
+            {
+                Enable();
+            }
+        }
+        
+        public void VoteDisable()
+        {
+            m_EnableVotes--;
+            if (m_EnableVotes == 0)
+            {
+                Disable();
             }
         }
 
@@ -179,6 +225,7 @@ namespace Metamatic
                 Console.Error("Reactivator", e);
             } finally {
                 m_IsActivated = false;
+                OnDeactivated?.Invoke();
             }
         }
         public void Reset()
@@ -190,6 +237,8 @@ namespace Metamatic
 
             m_CancellationSource.Abort();
             m_IsActivated = false;
+            OnDeactivated?.Invoke();
+            OnDeactivated = null;
             oEnabled.Value = m_DefaultEnabled;
             m_OnTurnOn = null;
             OnAborted = null;

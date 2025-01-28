@@ -18,10 +18,11 @@ namespace Metamatic
         public int count => m_Items.Count;
         private event Action m_OnEmpty;
         private event Action m_OnPopulated;
+        public int Count => m_Items.Count;
 
         public DisposableAction Add(T item, Func<float> getWeight)
         {
-            var id = item.GetHashCode().ToString();
+            var id = Guid.NewGuid().ToString();
             m_Items.Add(id, (item, getWeight));
             Update();
             if (m_Items.Count == 1)
@@ -66,9 +67,9 @@ namespace Metamatic
         /// </summary>
         /// <param name="action"></param>
         /// <returns></returns>
-        public DisposableAction WatchPopulationAsync(Func<Signal, UniTaskVoid> action)
+        public DisposableAction WatchPopulationAsync(Func<PassiveWeightCompetitionCollection<T>, Signal, UniTaskVoid> action)
         {
-            var signalSource = SignalSource.Create();
+            SignalSource signalSource = default;
             m_OnPopulated += OnPopulated;
             m_OnEmpty += OnEmpty;
             
@@ -81,7 +82,8 @@ namespace Metamatic
             
             void OnPopulated()
             {
-                action(signalSource.Signal).Forget();
+                signalSource = SignalSource.Create();
+                action(this, signalSource.Signal).Forget();
             }
             
             void OnEmpty()

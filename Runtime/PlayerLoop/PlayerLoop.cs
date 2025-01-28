@@ -327,13 +327,12 @@ namespace Metamatic
             action();
             UniTask.WaitUntil(() =>
             {
-                if (Time.time - currentTime >= seconds)
+                if (isActive && Time.time - currentTime >= seconds)
                 {
                     currentTime = Time.time;
                     action();
-                    return !isActive;
                 }
-                return false;
+                return !isActive;
             }, timing);
             
             return new DisposableAction(() => isActive = false);
@@ -358,10 +357,16 @@ namespace Metamatic
                 {
                     currentTime = Time.time;
                     nextSeconds = getSeconds();
-                    action();
-                    return !isActive;
+                    try
+                    {
+                        action();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error("PlayerLoop", e);
+                    }
                 }
-                return false;
+                return !isActive;
             }, timing);
             
             return new DisposableAction(() => isActive = false);
@@ -390,6 +395,10 @@ namespace Metamatic
         /// <param name="signal">Cancellation signal.</param>
         public static async UniTask Delay(float seconds, PlayerLoopTiming timing = PlayerLoopTiming.Update, Signal signal = default)
         {
+            if (seconds <= 0f)
+            {
+                return;
+            }
             #if UNITY_EDITOR
             bool isRealTime = PlayerLoopHelper.IsMainThread && !UnityEditor.EditorApplication.isPlaying;
             #else

@@ -12,6 +12,22 @@ namespace Metamatic
     /// </summary>
     public readonly struct AbortableAsyncOperation: IAsyncDisposableAbortable
     {
+        /// <summary>
+        /// Try to dispose the async operation and forget about the result. Abort it if abort signal is triggered.
+        /// </summary>
+        /// <param name="abortable"></param>
+        /// <param name="abortSignal"></param>
+        public static void SoftLandingOperation(IAsyncDisposableAbortable abortable, Signal abortSignal)
+        {
+            if (abortable == null || abortable.isDisposedAsync) return;
+            if (abortSignal.isRaised)
+            {
+                abortable.Abort();
+                return;
+            }
+            abortable.DisposeAsync().Forget();
+            abortSignal.Register(abortable.Abort);
+        }
         public delegate UniTask AsyncAction(AsyncCancellation cancellation);
         public static AbortableAsyncOperation Call(AsyncAction action)
         {

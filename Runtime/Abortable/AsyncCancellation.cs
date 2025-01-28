@@ -288,11 +288,7 @@ namespace Metamatic
                 switch (state)
                 {
                     case AsyncCancellation.State.Idle:
-                        /*
-                         * The signal is not raised yet, because the cancellation is not requested yet.
-                         * There's no point to get an abort signal if the cancellation is not requested.
-                         */
-                        return Signal.None;
+                        return m_AbortSignalSource.Signal;
                     case AsyncCancellation.State.CancelledSync:
                         /*
                          * The signal is raised, because the cancellation is already cancelled synchronously.
@@ -321,6 +317,7 @@ namespace Metamatic
                     state = AsyncCancellation.State.CancelledSync;
                     OnCancel?.Invoke(false);
                     m_SignalSource.TryRaise();
+                    m_AbortSignalSource.TryRaise();
                     Return(); // After sync cancel, we can return the instance to the pool, because it is not needed anymore.
                     break;
                 case AsyncCancellation.State.CancelledSync:
@@ -404,6 +401,7 @@ namespace Metamatic
         public void Initialize()
         {
             m_SignalSource = SignalSource.Create();
+            m_AbortSignalSource = SignalSource.Create();
         }
 
         public event Action OnReset;

@@ -138,5 +138,7 @@ namespace Metamatic
         {
             return m_TargetDisposable.AddAbortedListenerOnce(action);
         }
+
+        public bool isDisposedAsync => m_TargetDisposable.isDisposedAsync;
     }
 }

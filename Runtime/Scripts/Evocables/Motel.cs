@@ -35,6 +35,48 @@ namespace Metamatic
             source?.Abort();
         }
 
+        public DisposableAction AddBookedOutListener(Action action)
+        {
+            var thisSource = source;
+            if (thisSource == null)
+            {
+                action();
+                return DisposableAction.Empty;
+            }
+            thisSource.OnBookedOut += action;
+            
+            return DisposableAction.Create(() => thisSource.OnBookedOut -= action);
+        }
+
+        public UniTask WhenBookedOutMoment(Func<bool> predicate, Signal abortSignal)
+        {
+            var thisSource = source;
+            if (thisSource == null)
+            {
+                return UniTask.CompletedTask;
+            }
+            
+            var cts = SafeUniTaskCompletionSource.Create();
+            
+            void Handler()
+            {
+                if (predicate())
+                {
+                    cts.TrySetResult();
+                }
+            }
+            
+            thisSource.OnBookedOut += Handler;
+            var registration = abortSignal.Register(() => cts.TrySetCanceled());
+            
+            return cts.Task
+                .ContinueWith(() =>
+                {
+                    registration.Dispose();
+                    thisSource.OnBookedOut -= Handler;
+                });
+        }
+
         public DisposableAction AddAbortedListenerOnce(Action action)
         {
             var thisSource = source;
@@ -45,6 +87,8 @@ namespace Metamatic
             }
             return source.AddAbortedListenerOnce(action);
         }
+
+        public bool isDisposedAsync => source == null || source.isReturning;
     }
 
     public class MotelReservationInternal<T>: IDisposable, IAsyncReturnable, IResettable where T: Enum
@@ -100,6 +144,11 @@ namespace Metamatic
         private int m_HereCommitedBookedRoomsVersion = -1;
         
         public int version { get; private set; }
+        
+        /// <summary>
+        /// This event is called when the guest is booked out from the room.
+        /// </summary>
+        public event Action OnBookedOut;
         
         public void Initialize(MotelInternal<T> motel, T preferredRooms, T alternativeRooms,
             Func<T, AsyncCancellation, UniTask> onRoomBooked)
@@ -262,6 +311,8 @@ namespace Metamatic
                 finally
                 {
                     m_Motel.bookedRooms &= ~nextRoom;
+                    bookedRoom = 0;
+                    OnBookedOut?.Invoke();
                     m_Motel.CommitBookedRooms();
                 }
             }
@@ -301,6 +352,10 @@ namespace Metamatic
             isAborted = true;
             m_BookedRoomsWatcher.Dispose();
             m_BookingCancellationSource.Abort();
+            if (bookedRoom != 0)
+            {
+                OnBookedOut?.Invoke();
+            }
             OnAborted?.Invoke();
             OnAborted = null;
             ReturnToPool(this);

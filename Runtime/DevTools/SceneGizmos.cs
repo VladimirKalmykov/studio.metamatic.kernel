@@ -8,22 +8,32 @@ namespace Metamatic.DevTools
     public class SceneGizmos : MonoBehaviour
     {
         private static SceneGizmos m_Instance;
+        private static bool m_IsInstantiated;
 
         public static SceneGizmos instance
         {
             get
             {
-                if (m_Instance == null)
+                if (!m_IsInstantiated)
                 {
-                    m_Instance = Instantiate();
+                    Instantiate();
                 }
 
                 return m_Instance;
             }
         }
-        private static SceneGizmos Instantiate() {
+        private static void Instantiate() {
+            if (!Application.isPlaying)
+            {
+                Console.Error("SceneGizmos", "Can only be instantiated in play mode");
+                return;
+            }
             var go = new GameObject("__GIZMOS__");
-            return go.AddComponent<SceneGizmos>();  
+            m_Instance = go.AddComponent<SceneGizmos>();
+            m_IsInstantiated = true;
+            
+            /* DontDestroyOnLoad is needed for this component */
+            DontDestroyOnLoad(go);
         }
 
         public class Gizmo

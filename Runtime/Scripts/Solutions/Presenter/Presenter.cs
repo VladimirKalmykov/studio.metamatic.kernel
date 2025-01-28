@@ -20,6 +20,7 @@ namespace Metamatic
         private SignalSource m_StepCancellationSignalSource = default;
         private SignalSource m_CompleteDismissSignalSource = default;
         private List<Presenter> m_ChildPresenters = new List<Presenter>();
+        private bool m_IsStarted = false;
         public State state { get; private set; }
 
         protected virtual void Awake()
@@ -27,6 +28,18 @@ namespace Metamatic
             if (Application.isPlaying)
             {
                 m_ChildPresenters.AddRange(GetComponentsInChildren<Presenter>(true));
+            }
+        }
+
+        protected virtual void Start()
+        {
+            m_IsStarted = true;
+            if (state == State.Presenting)
+            {
+                /*
+                 * If the presenter is already presenting, continue the presentation.
+                 */
+                ContinuePreset();
             }
         }
 
@@ -70,20 +83,25 @@ namespace Metamatic
                 return;
             }
             state = State.Presenting;
+            if (!ignoreChildren)
+            {
+                /*
+                 * If the presenter has child presenters, show them as well.
+                 */
+                foreach (var childPresenter in m_ChildPresenters)
+                {
+                    childPresenter.Present(true);
+                }
+            }
+            if (!m_IsStarted) return; // Return if the presenter is not started yet.
+            ContinuePreset();
+        }
+        
+        private void ContinuePreset()
+        {
             m_StepCancellationSignalSource.TryRaise();
             m_StepCancellationSignalSource = SignalSource.Create();
             OnPresent(m_StepCancellationSignalSource.Signal);
-            if (ignoreChildren)
-            {
-                return;
-            }
-            /*
-             * If the presenter has child presenters, show them as well.
-             */
-            foreach (var childPresenter in m_ChildPresenters)
-            {
-                childPresenter.Present(true);
-            }
         }
         
         /// <summary>

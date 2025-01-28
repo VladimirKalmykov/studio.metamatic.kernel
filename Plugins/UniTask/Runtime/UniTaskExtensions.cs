@@ -695,7 +695,6 @@ namespace Cysharp.Threading.Tasks
         public static async UniTask ContinueWith<T>(this UniTask<T> task, Action<T> continuationFunction)
         {
             var stackTrace = Environment.StackTrace;
-            Debug.Log($"[UniTask][ContinueWith] Call. StackTrace:{stackTrace}");
             continuationFunction(await task);
         }
 
