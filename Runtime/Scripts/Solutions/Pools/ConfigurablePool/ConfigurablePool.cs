@@ -68,9 +68,9 @@ namespace Metamatic
         public static LeasedResource<T> GetShared(IPoolConfig<T> config, bool forceCreate = false)
         {
             var pool = GetSharedPool(config);
-            var instance = pool.Get(forceCreate);
+            var (instance, isNew) = pool.GetDetailed(forceCreate);
             _InstanceToPool[instance] = pool;
-            return new LeasedResource<T>(instance, pool.Return, pool.IsInPool);
+            return new LeasedResource<T>(instance, pool.Return, pool.IsInPool, isNew);
         }
 
         private static ConfigurablePool<T> GetSharedPool(IPoolConfig<T> config)
@@ -466,6 +466,30 @@ namespace Metamatic
             m_OutOfPool.Add(obj);
             m_Config.OnGet(obj);
             return obj;
+        }
+        
+        /// <summary>
+        /// Get object from pool. If pool is empty or forceCreate is true, new object will be created
+        /// </summary>
+        public (T instance, bool isNew) GetDetailed(bool forceCreate = false)
+        {
+            T obj;
+            bool isNew = false;
+            if (m_ObjectsInPoolList.Count == 0 || forceCreate)
+            {
+                obj = CreateInstance();
+                isNew = true;
+            }
+            else
+            {
+                var lastIndex = m_ObjectsInPoolList.Count - 1;
+                obj = m_ObjectsInPoolList[lastIndex];
+                m_ObjectsInPoolList.RemoveAt(lastIndex);
+                m_ObjectsInPoolSet.Remove(obj);
+            }
+            m_OutOfPool.Add(obj);
+            m_Config.OnGet(obj);
+            return (obj, isNew);
         }
 
         /// <summary>

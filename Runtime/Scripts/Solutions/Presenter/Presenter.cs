@@ -34,12 +34,17 @@ namespace Metamatic
         protected virtual void Start()
         {
             m_IsStarted = true;
+            OnReset();
             if (state == State.Presenting)
             {
                 /*
                  * If the presenter is already presenting, continue the presentation.
                  */
                 ContinuePreset();
+            }
+            else
+            {
+                OnReset();
             }
         }
 
@@ -82,6 +87,7 @@ namespace Metamatic
             {
                 return;
             }
+
             state = State.Presenting;
             if (!ignoreChildren)
             {
