@@ -1,6 +1,8 @@
  using System;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
+using Action = System.Action;
 
 namespace Metamatic
 {
@@ -53,17 +55,6 @@ namespace Metamatic
 
         public ObservableReadOnly()
         {
-        }
-
-        ~ObservableReadOnly()
-        {
-            DisposeOnTheMainThread().Forget();
-        }
-        
-        private async UniTaskVoid DisposeOnTheMainThread()
-        {
-            await UniTask.SwitchToMainThread();
-            Dispose();
         }
 
         public abstract DisposableAction Watch(Action<TValue> handler, bool skipInitial, Func<TValue, bool> validator = null);

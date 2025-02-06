@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace Metamatic
 {
@@ -13,6 +14,15 @@ namespace Metamatic
              * Ensure that serviceType is derived from Service
              */
             if (!serviceType.IsSubclassOf(typeof(Service))) throw new ArgumentException($"serviceType must be derived from Service");
+        }
+        
+        public static Type[] GetRequiredServices(Type target)
+        {
+            return target
+                .GetCustomAttributes(typeof(RequireServiceAttribute), false)
+                .Cast<RequireServiceAttribute>()
+                .Select(attr => attr.serviceType)
+                .ToArray();
         }
 
         public Type serviceType { get; }

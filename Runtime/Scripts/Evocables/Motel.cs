@@ -19,6 +19,8 @@ namespace Metamatic
         }
         
         private MotelReservationInternal<T> source => m_Source != null && m_Source.version == m_Version ? m_Source : null;
+        public T preferredRooms => (T)Enum.ToObject(typeof(T), source?.preferredRooms ?? 0);
+        public T alternativeRooms => (T)Enum.ToObject(typeof(T), source?.alternativeRooms ?? 0);
 
         public void SetPreferredRooms(T preferredRooms) => source?.SetPreferredRooms(preferredRooms);
         public void SetAlternativeRooms(T alternativeRooms) => source?.SetAlternativeRooms(alternativeRooms);
@@ -106,8 +108,8 @@ namespace Metamatic
         #endregion
         
         private MotelInternal<T> m_Motel;
-        private long m_PreferredRooms;
-        private long m_AlternativeRooms;
+        public long preferredRooms { get; private set; }
+        public long alternativeRooms { get; private set; }
         private Func<T, AsyncCancellation, UniTask> m_OnRoomBookedHandler;
         /// <summary>
         /// The reservation is satisfied if current booked room is equal to one of the preferred room.
@@ -154,8 +156,8 @@ namespace Metamatic
             Func<T, AsyncCancellation, UniTask> onRoomBooked)
         {
             m_Motel = motel;
-            m_PreferredRooms = Convert.ToInt64(preferredRooms);
-            m_AlternativeRooms = Convert.ToInt64(alternativeRooms);
+            this.preferredRooms = Convert.ToInt64(preferredRooms);
+            this.alternativeRooms = Convert.ToInt64(alternativeRooms);
             m_OnRoomBookedHandler = onRoomBooked;
             m_Motel.InternalRegisterReservation(this);
             m_BookingCancellationSource = AsyncCancellationSource.Create();
@@ -164,20 +166,38 @@ namespace Metamatic
         
         public void SetPreferredRooms(T preferredRooms)
         {
-            m_PreferredRooms = Convert.ToInt64(preferredRooms);
+            var nextPreferredRooms = Convert.ToInt64(preferredRooms);
+            if (this.preferredRooms == nextPreferredRooms)
+            {
+                return;
+            }
+            this.preferredRooms = nextPreferredRooms;
             InternalTryToBookIn();
         }
         
         public void SetAlternativeRooms(T alternativeRooms)
         {
-            m_AlternativeRooms = Convert.ToInt64(alternativeRooms);
+            var nextAlternativeRooms = Convert.ToInt64(alternativeRooms);
+            if (this.alternativeRooms == nextAlternativeRooms)
+            {
+                return;
+            }
+            this.alternativeRooms = nextAlternativeRooms;
             InternalTryToBookIn();
         }
         
         public void SetPreferredAndAlternativeRooms(T preferredRooms, T alternativeRooms)
         {
-            m_PreferredRooms = Convert.ToInt64(preferredRooms);
-            m_AlternativeRooms = Convert.ToInt64(alternativeRooms);
+            var nextPreferredRooms = Convert.ToInt64(preferredRooms);
+            var nextAlternativeRooms = Convert.ToInt64(alternativeRooms);
+            
+            if (this.preferredRooms == nextPreferredRooms && this.alternativeRooms == nextAlternativeRooms)
+            {
+                return;
+            }
+            
+            this.preferredRooms = nextPreferredRooms;
+            this.alternativeRooms = nextAlternativeRooms;
             InternalTryToBookIn();
         }
         
@@ -188,14 +208,14 @@ namespace Metamatic
         private (long roomToBookIn, bool satisfied, bool altSatisfied) FindRoomToBookIn()
         {
             var currentBookedRooms = m_Motel.bookedRooms & ~bookedRoom;
-            var freeRooms = m_PreferredRooms & ~currentBookedRooms;
+            var freeRooms = preferredRooms & ~currentBookedRooms;
             var nextBookedRoom = 0L;
             var satisfied = true;
             var altSatisfied = true;
             if (freeRooms == 0)
             {
                 satisfied = false;
-                freeRooms = m_AlternativeRooms & ~currentBookedRooms;
+                freeRooms = alternativeRooms & ~currentBookedRooms;
             }
             
             if (freeRooms == 0)

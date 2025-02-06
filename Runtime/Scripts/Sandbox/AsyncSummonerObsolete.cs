@@ -5,34 +5,34 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public readonly struct AsyncSummon<T>: IPolyDisposable where T: MonoBehaviour
+    public readonly struct AsyncSummonObsolete<T>: IPolyDisposable where T: MonoBehaviour
     {
         private readonly Guid m_InstanceId;
-        private readonly AsyncSummoner<T> m_AsyncSummoner;
+        private readonly AsyncSummonerObsolete<T> m_AsyncSummonerObsolete;
         
-        public UniTask<T> instance => m_AsyncSummoner.GetInstance(m_InstanceId);
+        public UniTask<T> instance => m_AsyncSummonerObsolete.GetInstance(m_InstanceId);
         
-        public AsyncSummon(AsyncSummoner<T> asyncSummoner, Guid instanceId)
+        public AsyncSummonObsolete(AsyncSummonerObsolete<T> asyncSummonerObsolete, Guid instanceId)
         {
-            m_AsyncSummoner = asyncSummoner;
+            m_AsyncSummonerObsolete = asyncSummonerObsolete;
             m_InstanceId = instanceId;
         }
 
         public void Dispose()
         {
-            m_AsyncSummoner.Banish(m_InstanceId, true).Forget();
+            m_AsyncSummonerObsolete.Banish(m_InstanceId, true).Forget();
         }
 
         public UniTask DisposeAsync()
         {
-            return m_AsyncSummoner.Banish(m_InstanceId);
+            return m_AsyncSummonerObsolete.Banish(m_InstanceId);
         }
     }
-    public abstract class AsyncSummoner<T> where T: MonoBehaviour
+    public abstract class AsyncSummonerObsolete<T> where T: MonoBehaviour
     {
         private readonly Dictionary<Guid, (SignalSource cancellationSignalSource, SignalSource completeSignal, T instance, Exception exception)> m_Instances = new ();
         private readonly Dictionary<Guid, SignalSource> m_AbortSignalSources = new ();
-        public AsyncSummon<T> Summon()
+        public AsyncSummonObsolete<T> Summon()
         {
             var cancellationSignalSource = SignalSource.Create();
             var completeSignalSource = SignalSource.Create();
@@ -40,7 +40,7 @@ namespace Metamatic
             var instanceId = Guid.NewGuid();
             m_Instances.Add(instanceId, (cancellationSignalSource, completeSignalSource, default, null));
             InternalAwaitInstance(instanceId, task, cancellationSignalSource, completeSignalSource).Forget();
-            return new AsyncSummon<T>(this, instanceId);
+            return new AsyncSummonObsolete<T>(this, instanceId);
         }
 
         public async UniTask Banish(Guid guid, bool sync = false)

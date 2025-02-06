@@ -6,21 +6,26 @@ namespace Metamatic.Summoners
     /// Simple instantiate mono behaviour summoner.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class InstantiateMonoBehaviourSummoner<T> : Summoner<T> where T : MonoBehaviour
+    public class InstantiateMonoBehaviourSummoner<T> : SummonerLegacy<T> where T : MonoBehaviour
     {
         private T m_Prefab;
+        private IndexedPool<T> m_Instances;
         public InstantiateMonoBehaviourSummoner(T prefab) : base()
         {
             m_Prefab = prefab;
         }
-        protected override T OnSummon()
+        protected override (T, int) OnSummon()
         {
-            return UnityEngine.Object.Instantiate(m_Prefab);
+            var instance =  UnityEngine.Object.Instantiate(m_Prefab);
+            return (instance, m_Instances.Add(instance));
         }
 
-        protected override void OnBanish(T instance)
+        protected override void OnBanish(int id)
         {
-            UnityEngine.Object.Destroy(instance.gameObject);
+            if (m_Instances.Remove(id, out var instance))
+            {
+                UnityEngine.Object.Destroy(instance);
+            }
         }
     }
 }

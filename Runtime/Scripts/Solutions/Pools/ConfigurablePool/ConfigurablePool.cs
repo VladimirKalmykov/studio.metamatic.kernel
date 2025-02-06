@@ -53,24 +53,19 @@ namespace Metamatic
 
         private static readonly Dictionary<object, ConfigurablePool<T>> _SharedPools = new();
         private static readonly Dictionary<object, ConfigurablePool<T>> _InstanceToPool = new();
-        
-        /// <summary>
-        /// Get object from global pool. The pool will be created if it doesn't exist. Do not use shared pool for objects loaded from resources and addressable.
-        /// </summary>
-        public static T GetSharedLegacy(IPoolConfig<T> config, bool forceCreate = false)
+
+        public static Summoner<T> GetSharedSummoner(IPoolConfig<T> config)
         {
             var pool = GetSharedPool(config);
-            var instance = pool.Get(forceCreate);
-            _InstanceToPool[instance] = pool;
-            return instance;
+            return new Summoner<T>(pool.Summon, pool.GetHashCode());
         }
         
-        public static LeasedResource<T> GetShared(IPoolConfig<T> config, bool forceCreate = false)
+        public static Summon<T> GetShared(IPoolConfig<T> config, bool forceCreate = false)
         {
             var pool = GetSharedPool(config);
-            var (instance, isNew) = pool.GetDetailed(forceCreate);
+            var (instance, isNew, id) = pool.GetDetailed(forceCreate);
             _InstanceToPool[instance] = pool;
-            return new LeasedResource<T>(instance, pool.Return, pool.IsInPool, isNew);
+            return new Summon<T>(id, instance, pool.Return);
         }
 
         private static ConfigurablePool<T> GetSharedPool(IPoolConfig<T> config)
@@ -95,19 +90,6 @@ namespace Metamatic
                 };
             }
             return pool;
-        }
-
-        public static void ReturnShared(T obj)
-        {
-            if (_InstanceToPool.TryGetValue(obj, out var pool))
-            {
-                _InstanceToPool.Remove(obj);
-                pool.Return(obj);
-            }
-            else
-            {
-                Debug.LogError( "[ConfigurablePool] Trying to return object to non-existent global pool. Object will be destroyed");
-            }
         }
 
 #if DEBUG
@@ -160,7 +142,8 @@ namespace Metamatic
             {
                 for (int i = 0; i < count; i++)
                 {
-                    pool.Return(pool.Get(true));
+                    var (instance, isNew, id) = pool.GetDetailed(true);
+                    pool.Return(id);
                 }
             }
         }
@@ -183,7 +166,8 @@ namespace Metamatic
             {
                 for (int i = 0; i < count; i++)
                 {
-                    pool.Return(pool.Get(true));
+                    var (instance, isNew, id) = pool.GetDetailed(true);
+                    pool.Return(id);
                 }
             }
 
@@ -195,18 +179,12 @@ namespace Metamatic
 
         public static async UniTaskVoid LazyPreWarmPool(ConfigurablePool<T> pool, int count)
         {
-            var preWarmedItems = new List<T>();
             for (int i = 0; i < count; i++)
             {
-                preWarmedItems.Add(pool.Get(true));
+                var (instance, isNew, id) = pool.GetDetailed(true);
+                pool.Return(id);
                 await UniTask.NextFrame();
             }
-
-            foreach (var item in preWarmedItems)
-            {
-                pool.Return(item);
-            }
-            preWarmedItems.Clear();
         }
 
         #endregion
@@ -307,6 +285,7 @@ namespace Metamatic
         private readonly List<T> m_ObjectsInPoolList = new();
         private readonly HashSet<T> m_ObjectsInPoolSet = new();
         private readonly HashSet<T> m_OutOfPool = new();
+        private readonly IndexedPool<T> m_OutOfPoolIndexed = new(1000); // TODO: Are you sure about 1000?
 
         private readonly IPoolConfig<T> m_Config;
         private int m_Capacity;
@@ -323,21 +302,7 @@ namespace Metamatic
         /// <summary>
         /// Count of objects out of pool (not available for get, but still belongs to pool)
         /// </summary>
-        public int OutOfPoolCount => m_OutOfPool.Count;
-
-#if DEBUG
-        public int[] DebugGetOutOfPoolHashes()
-        {
-            var hashes = new int[m_OutOfPool.Count];
-            var i = 0;
-            foreach (var obj in m_OutOfPool)
-            {
-                hashes[i] = obj.GetHashCode();
-                i++;
-            }
-            return hashes;
-        }
-#endif
+        public int OutOfPoolCount => m_OutOfPoolIndexed.Count;
 
         /// <summary>
         /// The event is called when the pool has no objects in it and there's no objects out of pool
@@ -449,7 +414,7 @@ namespace Metamatic
         /// <summary>
         /// Get object from pool. If pool is empty or forceCreate is true, new object will be created
         /// </summary>
-        public T Get(bool forceCreate = false)
+        public (T instance, int id) Get(bool forceCreate = false)
         {
             T obj;
             if (m_ObjectsInPoolList.Count == 0 || forceCreate)
@@ -465,13 +430,20 @@ namespace Metamatic
             }
             m_OutOfPool.Add(obj);
             m_Config.OnGet(obj);
-            return obj;
+            var id = m_OutOfPoolIndexed.Add(obj);
+            return (obj, id);
+        }
+        
+        public Summon<T> Summon()
+        {
+            var (instance, id) = Get();
+            return new Summon<T>(id, instance, Return);
         }
         
         /// <summary>
         /// Get object from pool. If pool is empty or forceCreate is true, new object will be created
         /// </summary>
-        public (T instance, bool isNew) GetDetailed(bool forceCreate = false)
+        public (T instance, bool isNew, int id) GetDetailed(bool forceCreate = false)
         {
             T obj;
             bool isNew = false;
@@ -489,37 +461,33 @@ namespace Metamatic
             }
             m_OutOfPool.Add(obj);
             m_Config.OnGet(obj);
-            return (obj, isNew);
+            var id = m_OutOfPoolIndexed.Add(obj);
+            return (obj, isNew, id);
         }
 
-        /// <summary>
-        /// Return object back to pool
-        /// </summary>
-        public void Return(T obj)
+        public void Return(int id)
         {
-            if (m_ObjectsInPoolSet.Contains(obj))
+            if (m_OutOfPoolIndexed.TryGet(id, out var obj))
             {
-                Console.Error("ConfigurablePool", "Object is already in pool");
-                return;
-            }
-            if (!m_OutOfPool.Remove(obj))
-            {
-                Console.Error("ConfigurablePool", "Object does not belong to this pool");
-                return;
-            }
-            
-            if (m_ObjectsInPoolList.Count < m_Limit)
-            {
-                m_Config.OnReturn(obj);
-                m_ObjectsInPoolList.Add(obj);
-                m_ObjectsInPoolSet.Add(obj);
+                m_OutOfPoolIndexed.Remove(id);
+                m_OutOfPool.Remove(obj);
+                if (m_ObjectsInPoolList.Count < m_Limit)
+                {
+                    m_Config.OnReturn(obj);
+                    m_ObjectsInPoolList.Add(obj);
+                    m_ObjectsInPoolSet.Add(obj);
+                }
+                else
+                {
+#if DEBUG
+                    Debug.LogWarning("Pool limit reached. Object will be destroyed");
+#endif
+                    m_Config.OnDestroy(obj);
+                }
             }
             else
             {
-#if DEBUG
-                Debug.LogWarning("Pool limit reached. Object will be destroyed");
-#endif
-                m_Config.OnDestroy(obj);
+                Console.Error("ConfigurablePool", "Object does not belong to this pool");
             }
         }
 

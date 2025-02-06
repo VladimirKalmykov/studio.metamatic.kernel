@@ -167,8 +167,8 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public Signal Signal => GetImpl()?.signal ?? Signal.Raised;
         public Signal abortDisposingAsyncSignal => GetImpl()?.abortSignal ?? Signal.Raised;
-        
-        public AsyncCancellationSource(CancellationSourceImpl impl)
+
+        private AsyncCancellationSource(CancellationSourceImpl impl)
         {
             m_Impl = impl;
             m_Version = impl?.version ?? -1;

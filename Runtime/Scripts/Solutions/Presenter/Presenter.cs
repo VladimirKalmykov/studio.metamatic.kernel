@@ -19,6 +19,7 @@ namespace Metamatic
 
         private SignalSource m_StepCancellationSignalSource = default;
         private SignalSource m_CompleteDismissSignalSource = default;
+        private AsyncCancellationSource m_ActiveCancellationSource = default;
         private List<Presenter> m_ChildPresenters = new List<Presenter>();
         private bool m_IsStarted = false;
         public State state { get; private set; }
@@ -68,6 +69,7 @@ namespace Metamatic
             if (Application.isPlaying)
             {
                 state = State.Idle;
+                m_ActiveCancellationSource.Dispose();
                 m_CompleteDismissSignalSource.Dispose();
                 m_CompleteDismissSignalSource = SignalSource.Create();
                 OnReset();
@@ -88,7 +90,19 @@ namespace Metamatic
                 return;
             }
 
-            state = State.Presenting;
+            if (state == State.Idle)
+            {
+                state = State.Presenting;
+                // First presentation
+                m_ActiveCancellationSource.Dispose();
+                m_ActiveCancellationSource = AsyncCancellationSource.Create();
+                OnActive(m_ActiveCancellationSource.Cancellation).Forget();
+            }
+            else
+            {
+                state = State.Presenting;
+            }
+            
             if (!ignoreChildren)
             {
                 /*
@@ -106,8 +120,8 @@ namespace Metamatic
         private void ContinuePreset()
         {
             m_StepCancellationSignalSource.TryRaise();
-            m_StepCancellationSignalSource = SignalSource.Create();
-            OnPresent(m_StepCancellationSignalSource.Signal);
+            var presentCancellationSource = m_StepCancellationSignalSource = SignalSource.Create();
+            OnPresent(presentCancellationSource.Signal);
         }
         
         /// <summary>
@@ -161,17 +175,19 @@ namespace Metamatic
         {
             state = State.Dismissing;
             m_StepCancellationSignalSource.TryRaise();
-            m_StepCancellationSignalSource = SignalSource.Create();
+            var dismissStepCancellationSource = m_StepCancellationSignalSource = SignalSource.Create();
             await UniTask.NextFrame();
+            if (dismissStepCancellationSource.IsRaised) return;
             try
             {
-                await OnDismiss(m_StepCancellationSignalSource.Signal);
+                await OnDismiss(dismissStepCancellationSource.Signal);
                 Reset();
             }
             catch (OperationCanceledException)
             {
                 // ignored
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 Console.Error("Presenter", e);
             }
@@ -182,6 +198,7 @@ namespace Metamatic
         public void Abort()
         {
             isAborted = true;
+            m_ActiveCancellationSource.Abort();
             /*
              * Call step cancellation signal source to cancel the current step. It cancels both the presentation operation and the dismissal operation. 
              */
@@ -219,5 +236,14 @@ namespace Metamatic
         /// Called when the presenter is aborted or manually reset. Should immediately stop all animations and hide the UI element.
         /// </summary>
         protected abstract void OnReset();
+        /// <summary>
+        /// Override this method if you need to perform some async actions while the presenter is active.
+        /// </summary>
+        /// <param name="cancellation"></param>
+        /// <returns></returns>
+        protected virtual UniTaskVoid OnActive(AsyncCancellation cancellation)
+        {
+            return new UniTaskVoid();
+        }
     }
 }

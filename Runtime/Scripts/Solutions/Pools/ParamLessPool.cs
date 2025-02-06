@@ -465,7 +465,7 @@ namespace Metamatic
             /* Check that returned object is contained in out of pool list */
             if (!m_OutOfPool.Contains(obj))
             {
-                Console.Error("ParamLessPool", "Object is not belong to this pool");
+                Console.Error("ParamLessPool", $"Object ${obj} is not belong to this pool");
                 return;
             }
 #endif
