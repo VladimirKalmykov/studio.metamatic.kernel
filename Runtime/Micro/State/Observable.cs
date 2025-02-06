@@ -1,5 +1,6 @@
  using System;
-using System.Runtime.CompilerServices;
+ using System.Data;
+ using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Action = System.Action;
@@ -212,6 +213,44 @@ namespace Metamatic
             OnDisposedOrReset?.Invoke();
             OnChange = null;
             GC.SuppressFinalize(this);
+        }
+    }
+    
+    public class ObservableNever<TValue>: ObservableReadOnly<TValue>
+    {
+        private readonly TValue m_Value;
+        
+        public ObservableNever(TValue value)
+        {
+            m_Value = value;
+        }
+        public override bool HasValue()
+        {
+            return true;
+        }
+
+        public override DisposableAction Watch(Action<TValue> handler, bool skipInitial, Func<TValue, bool> validator = null)
+        {
+            if (validator != null && validator(m_Value))
+            {
+                handler(m_Value);
+            }
+            return DisposableAction.Empty;
+        }
+
+        public override TValue GetValue()
+        {
+            return m_Value;
+        }
+
+        public override ref TValue GetRef()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void SetValue(TValue value)
+        {
+            throw new ConstraintException("ObservableNever is read-only");
         }
     }
 

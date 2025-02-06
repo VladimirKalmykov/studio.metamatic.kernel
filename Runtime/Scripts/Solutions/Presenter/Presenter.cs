@@ -180,8 +180,12 @@ namespace Metamatic
             if (dismissStepCancellationSource.IsRaised) return;
             try
             {
-                await OnDismiss(dismissStepCancellationSource.Signal);
-                Reset();
+                var dismissCancellationSignal = dismissStepCancellationSource.Signal;
+                await OnDismiss(dismissCancellationSignal);
+                if (!dismissCancellationSignal.isRaised)
+                {
+                    Reset();
+                }
             }
             catch (OperationCanceledException)
             {

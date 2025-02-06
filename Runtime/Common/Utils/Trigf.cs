@@ -1319,6 +1319,32 @@ namespace Metamatic
 
             return radius;
         }
+        
+        /// <summary>
+        /// A most efficient way to get a swing offset for the object. It can be used for swinging objects, like a pendulum, or a tail of a character.
+        /// </summary>
+        /// <param name="angle"></param>
+        /// <param name="amplitude"></param>
+        /// <param name="frequency"></param>
+        /// <param name="salt">Random value</param>
+        /// <returns></returns>
+        public static Vector2 GetSwingOffset(float angle, float amplitude, float frequency, float salt)
+        {
+            float offset = amplitude * Mathf.Sin((Time.time + salt) * frequency);
+            float rad = angle * Mathf.Deg2Rad;
+            return new Vector2(offset * Mathf.Cos(rad), offset * Mathf.Sin(rad));
+        }
 
+        /// <summary>
+        /// A most efficient way to get a swing offset for the object. It can be used for swinging objects, like a pendulum, or a tail of a character.
+        /// </summary>
+        /// <param name="amplitude"></param>
+        /// <param name="frequency"></param>
+        /// <param name="salt">Random value</param>
+        /// <returns></returns>
+        public static float GetSwingOffset(float amplitude, float frequency, float salt)
+        {
+            return amplitude * Mathf.Sin((Time.time + salt) * frequency);
+        }
     }
 }
