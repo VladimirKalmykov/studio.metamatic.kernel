@@ -44,7 +44,14 @@ namespace Metamatic
         private Observable<IMindThread> m_ActiveChildThread;
         private Observable<IMindThread> activeChildThread => m_ActiveChildThread ??= ParamLessPool<Observable<IMindThread>>.GetShared();
         public IMindThread activeThread => activeChildThread.value;
-        public IMindThread topThread { get; private set; }
+        private Observable<IMindThread> m_TopThread;
+        private Observable<IMindThread> topThreadObservable => m_TopThread ??= ParamLessPool<Observable<IMindThread>>.GetShared();
+
+        public IMindThread topThread
+        {
+            get => m_TopThread.value;
+            set => m_TopThread.SetUniqValue(value);
+        }
         public IEnumerable<IMindThread> children => childThreads;
         public float currentWeight => m_MemoizedWeight;
 
@@ -328,7 +335,12 @@ namespace Metamatic
                 OnLoopEnd -= action;
             });
         }
-        
+
+        public DisposableAction WatchTopThreadLifecycle(Func<IMindThread, Signal, UniTaskVoid> action)
+        {
+            return topThreadObservable.WatchAsync(action);
+        }
+
         public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, Signal, UniTaskVoid> action)
         {
             return activeChildThread.WatchAsync(action);
@@ -375,6 +387,12 @@ namespace Metamatic
             {
                 // Return the observable to the pool
                 ParamLessPool<Observable<IMindThread>>.ReturnShared(m_ActiveChildThread);
+            }
+            
+            if (m_TopThread != null)
+            {
+                // Return the observable to the pool
+                ParamLessPool<Observable<IMindThread>>.ReturnShared(m_TopThread);
             }
             
             

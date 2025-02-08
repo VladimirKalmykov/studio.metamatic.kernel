@@ -60,7 +60,7 @@ namespace Metamatic
             return new Summoner<T>(pool.Summon, pool.GetHashCode());
         }
         
-        public static Summon<T> GetShared(IPoolConfig<T> config, bool forceCreate = false)
+        public static Summon<T> SummonShared(IPoolConfig<T> config, bool forceCreate = false)
         {
             var pool = GetSharedPool(config);
             var (instance, isNew, id) = pool.GetDetailed(forceCreate);

@@ -16,7 +16,7 @@ namespace Metamatic
         
         public bool isEmpty => m_Dispose == null;
         
-        public T instance { get; }
+        public T resource { get; }
         
         public Summon(int id, T instance, Action<int> dispose)
         {
@@ -24,7 +24,7 @@ namespace Metamatic
             m_IsDisposed = new Container<bool>(false);            
             #endif
             this.m_ID = id;
-            this.instance = instance;
+            this.resource = instance;
             m_Dispose = dispose;
         }
 
@@ -42,12 +42,12 @@ namespace Metamatic
         
         public static implicit operator T(Summon<T> summon)
         {
-            return summon.instance;
+            return summon.resource;
         }
 
         public static implicit operator AsyncSummon<T>(Summon<T> syncSummon)
         {
-            return new AsyncSummon<T>(syncSummon.m_ID, UniTask.FromResult(syncSummon.instance), syncSummon.m_Dispose);
+            return new AsyncSummon<T>(syncSummon.m_ID, UniTask.FromResult(syncSummon.resource), syncSummon.m_Dispose);
         }
     }
 

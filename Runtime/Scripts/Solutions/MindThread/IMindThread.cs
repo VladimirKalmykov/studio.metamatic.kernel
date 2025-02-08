@@ -38,6 +38,7 @@ namespace Metamatic
         public void LoopEnd(IMindThread topThread);
         public UniTask WaitLoopEnd(Signal cancellationSignal);
         public DisposableAction WatchLoopEnd(Action<IMindThread> action);
+        public DisposableAction WatchTopThreadLifecycle(Func<IMindThread, Signal, UniTaskVoid> action);
         public DisposableAction WatchActiveThreadLifecycle(Func<IMindThread, Signal, UniTaskVoid> action);
     }
 }

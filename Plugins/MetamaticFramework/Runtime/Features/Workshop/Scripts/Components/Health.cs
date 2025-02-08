@@ -28,11 +28,12 @@ namespace Metamatic.Framework.Workshop
             get => State.maxHealth;
             set => State.maxHealth = value;
         }
-        [ShowInInspector, ReadOnly]
+        [ShowInInspector]
         public float health {
             get => State.health;
             set => State.health = value;
         }
+        public float healthRatio => health / maxHealth;
         /// <summary>
         /// Determine if the entity is alive (not killed)
         /// </summary>

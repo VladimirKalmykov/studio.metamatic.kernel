@@ -25,6 +25,7 @@ namespace Metamatic
         /// <param name="obj"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
+        [Obsolete("Use ConfigurablePool instance", true)]
         public static IUnityObjectPool<T> GetOrganicComponentPool<T>(T obj) where T: Component
         {
             if (obj == null) throw new ArgumentNullException(nameof(obj));
