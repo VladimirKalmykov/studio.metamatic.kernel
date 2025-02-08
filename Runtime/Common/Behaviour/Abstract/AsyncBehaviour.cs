@@ -108,12 +108,10 @@ namespace Metamatic
         {
             try
             {
-#if DEBUG
                 using var stagnationCather = StagnationCatcher.Create(30f, () =>
                 {
                     Console.Warning("Stagnation", "AsyncBehaviour", $"AsyncBehaviour {this.GetType()} is stuck");
                 });
-#endif
                 if (!AwakeIsReady)
                 {
                     await WaitForAwakeReady(signal);
