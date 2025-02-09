@@ -49,8 +49,8 @@ namespace Metamatic
 
         public IMindThread topThread
         {
-            get => m_TopThread.value;
-            set => m_TopThread.SetUniqValue(value);
+            get => topThreadObservable.value;
+            set => topThreadObservable.SetUniqValue(value);
         }
         public IEnumerable<IMindThread> children => childThreads;
         public float currentWeight => m_MemoizedWeight;

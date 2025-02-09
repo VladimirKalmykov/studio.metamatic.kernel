@@ -60,6 +60,7 @@ namespace Metamatic.Framework
                 m_SelectedObjects.Synchronize(Selection.gameObjects);
                 OnSelectedObjectsChanged?.Invoke();
             };
+            Console.Debug("RuntimeCore", $"Selected objects: {Selection.gameObjects.Length}");
             // Check currently selected object
             m_SelectedObjects.Synchronize(Selection.gameObjects);
             #endif

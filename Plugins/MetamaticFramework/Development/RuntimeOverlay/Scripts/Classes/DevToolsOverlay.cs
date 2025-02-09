@@ -269,7 +269,7 @@ namespace Metamatic.Framework
                 }
                 
                 // Watch active cursor tool
-                SequentialHandler<string>.Subscribe(m_ActiveCursorTool.Watch, InternalActivateCursorTool);
+                using var watchCursorTool = m_ActiveCursorTool.WatchAsync(InternalActivateCursorTool);
 
                 // Build menu tree and widgets
                 BuildMenuTreeAndWidgets();
@@ -697,11 +697,8 @@ namespace Metamatic.Framework
 
             var instance = cursorTool.Instance;
             instance.OnActivate(this, cancellationSignal).Forget();
-            using (PlayerLoop.EachFrame(() => TrackPointer(instance)))
-            {
-                await cancellationSignal;
-            }
-
+            using var watchPointerEvents = PlayerLoop.EachFrame(() => TrackPointer(instance));
+            await cancellationSignal;
             EnhancedTouchSupport
                 .Disable(); // TODO: Maybe we should use some singleton service for doing this, because it's not a good idea to enable/disable EnhancedTouchSupport in different places.
         }

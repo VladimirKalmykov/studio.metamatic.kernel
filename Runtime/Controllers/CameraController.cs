@@ -8,9 +8,9 @@ namespace Metamatic
     using UnityEngine;
 
     [RequireService(typeof(CameraService))]
+    [RequireComponent(typeof(Camera))]
     public class CameraController : AsyncBehaviour
     {
-        public event Action<CameraController, float> onWeightChanged;
         private CinemachineBrain m_CinemachineBrain;
 
         public CinemachineBrain cinemachineBrain
@@ -27,6 +27,7 @@ namespace Metamatic
 
         protected override async UniTask Run(Ready ready, Signal signal)
         {
+            camera = GetComponent<Camera>();
             var cameraService = await Service.Resolve<CameraService>(signal);
             using var announcing = cameraService.AnnounceCameraController(this);
             await ready();
