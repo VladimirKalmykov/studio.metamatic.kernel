@@ -844,6 +844,16 @@ namespace Metamatic
         {
             return activeId == id || m_StatesQueue.Any(x => x.id == id);
         }
+        
+        /**
+         * Get state observer for the state with specified id. This structure can be used to wait for the state with specified id.
+         * Unlike UniTask, this structure doest not create new tasks in advance. Thus, it is not mandatory to wait.
+         * This is a safe way to provide the option to wait for the transition to complete when waiting may be optional.
+         */
+        public LowCouplingTask GetStateObserver(ulong id)
+        {
+            return new LowCouplingTask(id, WaitState);
+        }
 
         /// <summary>
         /// Wait for the state with specified id
@@ -851,10 +861,15 @@ namespace Metamatic
         /// <param name="id"></param>
         /// <param name="throwIfNotFound"></param>
         /// <returns></returns>
-        public UniTask WaitState(ulong id, bool throwIfNotFound = false)
+        public UniTask WaitState(ulong id, bool throwIfNotFound = false, Signal cancellationSignal = default)
         {
             if (activeId == id)
             {
+                if (cancellationSignal.CanBeCanceled)
+                {
+                    var cancellationTask = cancellationSignal.ToUniTask(true);
+                    return UniTask.WhenAny(completeTransitionFromPrevStateTask, cancellationTask);
+                }
                 return completeTransitionFromPrevStateTask;
             }
 
@@ -863,6 +878,11 @@ namespace Metamatic
             {
                 if (stateId == id)
                 {
+                    if (cancellationSignal.CanBeCanceled)
+                    {
+                        var cancellationTask = cancellationSignal.ToUniTask(true);
+                        return UniTask.WhenAny(tcs.Task, cancellationTask);
+                    }
                     return tcs.Task;
                 }
             }
