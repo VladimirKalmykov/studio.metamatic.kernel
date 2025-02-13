@@ -9,7 +9,6 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    [ExecuteAlways]
     public abstract class Service: MonoBehaviour
     {
         private static readonly Dictionary<Type, Service> _AwakedServices = new ();
@@ -128,6 +127,7 @@ namespace Metamatic
             {
                 throw new InvalidOperationException($"Service {type} already added");
             }
+            Console.Log("Service", "Register", $"{type} by ${name}");
             _AwakedServices.Add(type, this);
             OnServiceRegistered?.Invoke(type, this);
         }
