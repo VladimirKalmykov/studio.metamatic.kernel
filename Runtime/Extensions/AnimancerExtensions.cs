@@ -57,6 +57,7 @@ namespace Metamatic
             {
                 await UniTask.WaitWhile(() => state.IsPlaying && !cancellationSignal.IsCancellationRequested);
                 cancellationSignal.ThrowIfRaised();
+                return;
             }
 
             if (isReversed && state.NormalizedTime <= 0f)
@@ -71,6 +72,35 @@ namespace Metamatic
             var checkFn = isReversed
                 ? new Func<bool>(() => state.NormalizedTime > 0f && !cancellationSignal.IsCancellationRequested)
                 : new Func<bool>(() => state.NormalizedTime < 1f && !cancellationSignal.IsCancellationRequested);
+            await UniTask.WaitWhile(checkFn);
+            cancellationSignal.ThrowIfRaised();
+        }
+        
+        public static async UniTask WhenConditionOrEnds(this AnimancerState state, Func<AnimancerState, bool> condititon, Signal cancellationSignal = default)
+        {
+            cancellationSignal.ThrowIfRaised();
+            var isReversed = state.Speed < 0;
+            var isLooping = state.Clip.isLooping;
+
+            if (isLooping)
+            {
+                await UniTask.WaitWhile(() => state.IsPlaying && !cancellationSignal.IsCancellationRequested && !condititon(state));
+                cancellationSignal.ThrowIfRaised();
+                return;
+            }
+
+            if (isReversed && state.NormalizedTime <= 0f)
+            {
+                return;
+            }
+            else if (!isReversed && state.NormalizedTime >= 1f)
+            {
+                return;
+            }
+
+            var checkFn = isReversed
+                ? new Func<bool>(() => state.NormalizedTime > 0f && !cancellationSignal.IsCancellationRequested && !condititon(state))
+                : new Func<bool>(() => state.NormalizedTime < 1f && !cancellationSignal.IsCancellationRequested && !condititon(state));
             await UniTask.WaitWhile(checkFn);
             cancellationSignal.ThrowIfRaised();
         }

@@ -720,8 +720,8 @@ namespace Metamatic
         {
 #if DEBUG
             if (m_SettingDebug)
-                Console.Verbose("AsyncStateMachine", "Push",
-                    $"Validate attempt to add state {newState} (id #{id}) (Curren status is {m_Status})");
+                Console.Verbose("AsyncStateMachine", id  == 0 ? "Push" : "Dequeue",
+                    $"Attempt to add state {newState} | (id #{id}) (Curren status is {m_Status}). Stack trace: {Environment.StackTrace}");
 #endif
             /* Invalidate state */
             if (m_Disposed || !m_NextStateValidator.Validate(currentState, newState))
@@ -944,8 +944,11 @@ namespace Metamatic
 #else
             SetStatus(TransitionStatus.FromPrevToCurrentProcessing);
 #endif
+                
+                #if !DEBUG
                 // Wait next frame to ensure that next state are set correctly from the m_StatesQueue)
                 await UniTask.Yield();
+                #endif
                 OnTransitionStep?.Invoke(prevState, currentState);
                 await m_Handler(new Transition(this, id));
                 if (m_SettingDebug)
