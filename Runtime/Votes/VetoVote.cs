@@ -1,3 +1,5 @@
+using System;
+
 namespace Metamatic
 {
     /// <summary>
@@ -11,6 +13,7 @@ namespace Metamatic
         
         private int m_Cons;
         public bool result { get; private set; }
+        private event Action OnResultChange;
         
         public VetoVote(bool @default)
         {
@@ -41,9 +44,32 @@ namespace Metamatic
             });
         }
         
+        public DisposableAction Watch(Action<bool> action)
+        {
+            action(result);
+            
+            OnResultChange += ChangeHandler;
+            
+            return new DisposableAction(() =>
+            {
+                OnResultChange -= ChangeHandler;
+            });
+
+            void ChangeHandler()
+            {
+                action(result);
+            }
+        }
+        
         private void SummingUp()
         {
-            result = m_Cons > 0 ? !m_Default : m_Default;
+            var nextResult = m_Cons > 0 ? !m_Default : m_Default;
+            var resultChanged = result != nextResult;
+            result = nextResult;
+            if (resultChanged)
+            {
+                OnResultChange?.Invoke();
+            }
         }
     }
 }
