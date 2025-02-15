@@ -10,6 +10,7 @@ namespace Metamatic
     /// Organic pool has to public constructor, to create organic pool, use Pool.GetComponentPool or Pool.GetGameObjectPool.
     /// </summary>
     /// <typeparam name="T"></typeparam>
+    [Obsolete("Use ConfigurablePool instance of a Blueprint", true)]
     public class OrganicPool<T>: UnityObjectPool<T> where T: UnityEngine.Object {
         
         private CancellationTokenSource m_LifetimeCancellationTokenSource = new ();

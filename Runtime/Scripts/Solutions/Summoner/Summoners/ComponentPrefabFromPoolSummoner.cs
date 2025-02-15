@@ -6,6 +6,7 @@ namespace Metamatic.Summoners
     /// Allows to summon specified prefab's instance from a pool.
     /// </summary>
     /// <typeparam name="T"></typeparam>
+    [Obsolete("Use ConfigurablePool<T>.GetSummoner instead.")]
     public class ComponentPrefabFromPoolSummoner<T>: SummonerLegacy<T>, IDisposable where T: UnityEngine.Component
     {
         private readonly ConfigurablePool<T> m_Pool;
@@ -15,14 +16,14 @@ namespace Metamatic.Summoners
             m_Pool = new ConfigurablePool<T>(new ComponentPrefabPoolConfig<T>(prefab), initialCapacity, maxCapacity);
         }
         
-        protected override (T, int) OnSummon()
+        protected override (T, Token96Bit) OnSummon()
         {
             return m_Pool.Get();
         }
 
-        protected override void OnBanish(int id)
+        protected override void OnBanish(Token96Bit token)
         {
-            m_Pool.Return(id);
+            m_Pool.Return(token);
         }
 
         public void Dispose()

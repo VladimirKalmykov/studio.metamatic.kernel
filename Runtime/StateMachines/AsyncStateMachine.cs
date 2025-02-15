@@ -55,7 +55,7 @@ namespace Metamatic
         {
             private readonly AsyncStateMachine<TState> m_StateMachine;
             public readonly Signal cancellationSignal; // TODO: rename to CapitalCase
-            public readonly ulong ID;
+            public readonly short ID;
 
             public TransitionStatus status => m_StateMachine.m_Status;
             public Signal externalCancellationSignal => m_StateMachine.m_ExternalCancellationSignal;
@@ -82,7 +82,7 @@ namespace Metamatic
                 return m_StateMachine.AddNextStateValidator(validator);
             }
 
-            internal Transition(AsyncStateMachine<TState> stateMachine, ulong id)
+            internal Transition(AsyncStateMachine<TState> stateMachine, short id)
             {
                 m_StateMachine = stateMachine;
                 cancellationSignal = stateMachine.cancellationSignal;
@@ -169,12 +169,12 @@ namespace Metamatic
         /// <summary>
         /// Last generated id
         /// </summary>
-        private ulong m_LastId;
+        private short m_LastId;
 
         /// <summary>
         /// State ID that is currently active
         /// </summary>
-        private ulong activeId { get; set; }
+        private short activeId { get; set; }
 
         /// <summary>
         /// Determines that external cancellation token is canceled (thus SetState should throw OperationCanceledException)
@@ -472,7 +472,7 @@ namespace Metamatic
             prevState = newPrevState;
         }
 
-        private void TrySetTransitionFromPrevStateCompleted(ulong transitionId)
+        private void TrySetTransitionFromPrevStateCompleted(short transitionId)
         {
             if (!m_TransitionFromPrevStateResolved)
             {
@@ -488,7 +488,7 @@ namespace Metamatic
             }
         }
 
-        private void SetTransitionToNextStateCompleted(ulong transitionId)
+        private void SetTransitionToNextStateCompleted(short transitionId)
         {
             if (!m_TransitionToNextStateResolved)
             {
@@ -551,9 +551,9 @@ namespace Metamatic
         /// <summary>
         /// Determines that state machine is autocompleted with default state (according to m_SettingAutoCompleteWithDefaultState). This property is needed to avoid adding default state to the queue when it is already added that can cause infinite loop
         /// </summary>
-        private ulong m_LatestTransitionId;
+        private short m_LatestTransitionId;
 
-        private ulong m_AutocompleteTransitionId;
+        private short m_AutocompleteTransitionId;
 
         #region Events
 
@@ -620,12 +620,12 @@ namespace Metamatic
             Console.Exception("AsyncStateMachine", "AsyncStateMachine should be disposed manually");
         }
 
-        private ulong GenerateId()
+        private short GenerateId()
         {
-            return ++m_LastId == ulong.MaxValue ? m_LastId = 1 : m_LastId;
+            return ++m_LastId == short.MaxValue ? m_LastId = 1 : m_LastId;
         }
 
-        private Queue<(ulong id, TState state, Signal cancellationToken, ReusableUniTaskCompletionSource tcs)>
+        private Queue<(short id, TState state, Signal cancellationToken, ReusableUniTaskCompletionSource tcs)>
             m_StatesQueue =
                 new();
 
@@ -636,7 +636,7 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns>Uni task for transition between prev task to this task</returns>
-        public UniTask PushLegacy(TState stateToPush, Signal externalCancellationSignal = default, ulong id = 0)
+        public UniTask PushLegacy(TState stateToPush, Signal externalCancellationSignal = default, short id = 0)
         {
             return PushStateAsync(stateToPush, externalCancellationSignal, id).task;
         }
@@ -684,7 +684,7 @@ namespace Metamatic
         /// <param name="newNextState"></param>
         /// <param name="signal"></param>
         /// <returns></returns>
-        public ulong TryPushNextState(ulong id, TState newNextState, Signal signal = default)
+        public short TryPushNextState(short id, TState newNextState, Signal signal = default)
         {
             if (IsLatest(id))
             {
@@ -702,7 +702,7 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public ulong PushState(TState newState, Signal externalCancellationSignal = default, ulong id = 0)
+        public short PushState(TState newState, Signal externalCancellationSignal = default, short id = 0)
         {
             return PushStateAsync(newState, externalCancellationSignal, id).id;
         }
@@ -714,9 +714,9 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public (UniTask task, ulong id) PushStateAsync(TState newState,
+        public (UniTask task, short id) PushStateAsync(TState newState,
             Signal externalCancellationSignal = default,
-            ulong id = 0)
+            short id = 0)
         {
 #if DEBUG
             if (m_SettingDebug)
@@ -830,7 +830,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public bool IsLatest(ulong id)
+        public bool IsLatest(short id)
         {
             return activeId == id && !m_HasNextState;
         }
@@ -840,7 +840,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public bool HasState(ulong id)
+        public bool HasState(short id)
         {
             return activeId == id || m_StatesQueue.Any(x => x.id == id);
         }
@@ -850,9 +850,9 @@ namespace Metamatic
          * Unlike UniTask, this structure doest not create new tasks in advance. Thus, it is not mandatory to wait.
          * This is a safe way to provide the option to wait for the transition to complete when waiting may be optional.
          */
-        public LowCouplingTask GetStateObserver(ulong id)
+        public LowCouplingTask GetStateObserver(short id)
         {
-            return new LowCouplingTask(id, WaitState);
+            return new LowCouplingTask(new Token96Bit(id, -1), WaitState);
         }
 
         /// <summary>
@@ -861,7 +861,7 @@ namespace Metamatic
         /// <param name="id"></param>
         /// <param name="throwIfNotFound"></param>
         /// <returns></returns>
-        public UniTask WaitState(ulong id, bool throwIfNotFound = false, Signal cancellationSignal = default)
+        public UniTask WaitState(short id, bool throwIfNotFound = false, Signal cancellationSignal = default)
         {
             if (activeId == id)
             {
@@ -895,8 +895,13 @@ namespace Metamatic
             /* Not found */
             return UniTask.CompletedTask;
         }
+        
+        public UniTask WaitState(Token96Bit token, bool throwIfNotFound = false, Signal cancellationSignal = default)
+        {
+            return WaitState((short)token.ID, throwIfNotFound, cancellationSignal);
+        }
 
-        private void EnqueueState(ulong id, TState stateToEnqueue, Signal externalCancellationSignal,
+        private void EnqueueState(short id, TState stateToEnqueue, Signal externalCancellationSignal,
             ReusableUniTaskCompletionSource tcs)
         {
             if (m_SettingKeepOnlyLatestState && m_StatesQueue.Count > 1)
@@ -931,7 +936,7 @@ namespace Metamatic
             m_StatesQueue.Enqueue((id, stateToEnqueue, externalCancellationSignal, tcs));
         }
 
-        private async UniTaskVoid PerformTransition(ulong id)
+        private async UniTaskVoid PerformTransition(short id)
         {
             activeId = id;
             try

@@ -23,18 +23,5 @@ namespace Metamatic.Framework.Workshop
             }
             await ready();
         }
-        
-        public static async UniTask<(T, IObjectBlueprint)> Spawn<T>(IObjectBlueprint<T> blueprint, Vector3 position = default, Quaternion rotation = default, Signal cancellationSignal = default) where T: Behaviour
-        {
-            var instance = await blueprint.ProduceObject(cancellationSignal: cancellationSignal);
-            var origin = instance.gameObject.TryAddComponent<BlueprintOrigin>();
-            origin.blueprint = blueprint;
-            return (instance, blueprint);
-        }
-        
-        public static void Return<T>(T instance, IObjectBlueprint<T> blueprint) where T: Behaviour
-        {
-            blueprint.ReturnObject(instance);
-        }
     }
 }

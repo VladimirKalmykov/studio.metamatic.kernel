@@ -285,7 +285,7 @@ namespace Metamatic
         private readonly List<T> m_ObjectsInPoolList = new();
         private readonly HashSet<T> m_ObjectsInPoolSet = new();
         private readonly HashSet<T> m_OutOfPool = new();
-        private readonly IndexedPool<T> m_OutOfPoolIndexed = new(1000); // TODO: Are you sure about 1000?
+        private readonly SignedIndexedPool<T> m_OutOfPoolIndexed = new(1000); // TODO: Are you sure about 1000?
 
         private readonly IPoolConfig<T> m_Config;
         private int m_Capacity;
@@ -414,7 +414,7 @@ namespace Metamatic
         /// <summary>
         /// Get object from pool. If pool is empty or forceCreate is true, new object will be created
         /// </summary>
-        public (T instance, int id) Get(bool forceCreate = false)
+        public (T instance, Token96Bit token) Get(bool forceCreate = false)
         {
             T obj;
             if (m_ObjectsInPoolList.Count == 0 || forceCreate)
@@ -440,10 +440,15 @@ namespace Metamatic
             return new Summon<T>(id, instance, Return);
         }
         
+        public Summoner<T> GetSummoner()
+        {
+            return new Summoner<T>(Summon, GetHashCode());
+        }
+        
         /// <summary>
         /// Get object from pool. If pool is empty or forceCreate is true, new object will be created
         /// </summary>
-        public (T instance, bool isNew, int id) GetDetailed(bool forceCreate = false)
+        public (T instance, bool isNew, Token96Bit token) GetDetailed(bool forceCreate = false)
         {
             T obj;
             bool isNew = false;
@@ -465,11 +470,11 @@ namespace Metamatic
             return (obj, isNew, id);
         }
 
-        public void Return(int id)
+        public void Return(Token96Bit token)
         {
-            if (m_OutOfPoolIndexed.TryGet(id, out var obj))
+            if (m_OutOfPoolIndexed.TryGet(token, out var obj))
             {
-                m_OutOfPoolIndexed.Remove(id);
+                m_OutOfPoolIndexed.Remove(token);
                 m_OutOfPool.Remove(obj);
                 if (m_ObjectsInPoolList.Count < m_Limit)
                 {

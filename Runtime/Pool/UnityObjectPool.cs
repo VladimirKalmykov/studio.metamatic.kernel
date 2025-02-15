@@ -8,6 +8,7 @@ namespace Metamatic
     /// Pool for unity objects
     /// </summary>
     /// <typeparam name="T"></typeparam>
+    [Obsolete("Use ConfigurablePool instance of a Blueprint", true)]
     public class UnityObjectPool<T>: Pool, IUnityObjectPool<T>
     where T: UnityEngine.Object
     {

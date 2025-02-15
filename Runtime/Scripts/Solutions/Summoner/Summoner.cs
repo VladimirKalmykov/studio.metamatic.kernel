@@ -7,9 +7,9 @@ namespace Metamatic
     public readonly struct Summon<T>: IDisposable
     {
         // ReSharper disable once InconsistentNaming
-        public static Summon<T> Empty => new Summon<T>(-1, default, null);
-        private readonly Action<int> m_Dispose;
-        private readonly int m_ID;
+        public static Summon<T> Empty => new Summon<T>(Token96Bit.Empty, default, null);
+        private readonly Action<Token96Bit> m_Dispose;
+        private readonly Token96Bit m_Token;
         #if DEBUG
         private readonly Container<bool> m_IsDisposed;
         #endif
@@ -18,12 +18,12 @@ namespace Metamatic
         
         public T resource { get; }
         
-        public Summon(int id, T instance, Action<int> dispose)
+        public Summon(Token96Bit token, T instance, Action<Token96Bit> dispose)
         {
             #if DEBUG
             m_IsDisposed = new Container<bool>(false);            
             #endif
-            this.m_ID = id;
+            m_Token = token;
             this.resource = instance;
             m_Dispose = dispose;
         }
@@ -37,7 +37,7 @@ namespace Metamatic
             }
             m_IsDisposed.value = true;
             #endif
-            m_Dispose?.Invoke(m_ID);
+            m_Dispose?.Invoke(m_Token);
         }
         
         public static implicit operator T(Summon<T> summon)
@@ -47,16 +47,16 @@ namespace Metamatic
 
         public static implicit operator AsyncSummon<T>(Summon<T> syncSummon)
         {
-            return new AsyncSummon<T>(syncSummon.m_ID, UniTask.FromResult(syncSummon.resource), syncSummon.m_Dispose);
+            return new AsyncSummon<T>(syncSummon.m_Token, UniTask.FromResult(syncSummon.resource), syncSummon.m_Dispose);
         }
     }
 
     public readonly struct AsyncSummon<T> : IDisposable
     {
         // ReSharper disable once InconsistentNaming
-        public static AsyncSummon<T> Empty => new AsyncSummon<T>(-1, UniTask.FromResult<T>(default), null);
-        private readonly Action<int> m_Dispose;
-        private readonly int m_Id;
+        public static AsyncSummon<T> Empty => new AsyncSummon<T>(Token96Bit.Empty, UniTask.FromResult<T>(default), null);
+        private readonly Action<Token96Bit> m_Dispose;
+        private readonly Token96Bit m_Token;
 #if DEBUG
         private readonly Container<bool> m_IsDisposed;
 #endif
@@ -65,12 +65,12 @@ namespace Metamatic
         
         public UniTask<T> task { get; }
 
-        public AsyncSummon(int id, UniTask<T> task, Action<int> dispose)
+        public AsyncSummon(Token96Bit token, UniTask<T> task, Action<Token96Bit> dispose)
         {
             #if DEBUG
             m_IsDisposed = new Container<bool>(false);
             #endif
-            m_Id = id;
+            m_Token = token;
             this.task = task;
             m_Dispose = dispose;
         }
@@ -84,7 +84,7 @@ namespace Metamatic
             }
             m_IsDisposed.value = true;
             #endif
-            m_Dispose?.Invoke(m_Id);
+            m_Dispose?.Invoke(m_Token);
         }
     }
 
@@ -137,16 +137,16 @@ namespace Metamatic
         public Summon<T> Summon()
         {
             
-            var (instance, id) = OnSummon();
-            return new Summon<T>(id, instance, Banish);
+            var (instance, token) = OnSummon();
+            return new Summon<T>(token, instance, Banish);
         }
 
-        private void Banish(int id)
+        private void Banish(Token96Bit token)
         {
-            OnBanish(id);
+            OnBanish(token);
         }
         
-        protected abstract (T instance, int id) OnSummon();
-        protected abstract void OnBanish(int id);
+        protected abstract (T instance, Token96Bit token) OnSummon();
+        protected abstract void OnBanish(Token96Bit token);
     }
 }
