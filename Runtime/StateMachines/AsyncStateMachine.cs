@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
 using Metamatic.Exceptions;
-using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Metamatic
 {
@@ -412,13 +413,18 @@ namespace Metamatic
 
             return tsc.Task;
         }
+        
+        #if DEBUG
+        private StackTrace m_PreviousSetNextStateStackTrace;
+        #endif
 
         private bool SetNextState(TState newNextState, bool skipValidationCheck = false)
         {
             #if DEBUG
-            if (m_HasNextState) Debug.LogError("Already has next state");
+            if (m_HasNextState) Debug.LogError($"Already has next state. Current state: {currentState}, next state: {nextState}. Attempt to set next state: {newNextState}. Previous call stack trace: {m_PreviousSetNextStateStackTrace}");
             if (m_SettingDebug) Console.Verbose("AsyncStateMachine", $"Set next state: {newNextState}");
             #endif
+            m_PreviousSetNextStateStackTrace = new StackTrace();
             /* Invalidate state */
             if (!skipValidationCheck && !m_NextStateValidator.Validate(state, newNextState))
             {
@@ -638,7 +644,8 @@ namespace Metamatic
         /// <returns>Uni task for transition between prev task to this task</returns>
         public UniTask PushLegacy(TState stateToPush, Signal externalCancellationSignal = default, short id = 0)
         {
-            return PushStateAsync(stateToPush, externalCancellationSignal, id).task;
+            var transitionId = PushState(stateToPush, externalCancellationSignal, id);
+            return WaitState(transitionId);
         }
 
         /// <summary>
@@ -669,7 +676,7 @@ namespace Metamatic
         {
             if (!currentState.Equals(newNextState))
             {
-                PushState(newNextState, externalCancellationSignal);
+                PushStateLegacy(newNextState, externalCancellationSignal);
                 return true;
             }
 
@@ -688,7 +695,7 @@ namespace Metamatic
         {
             if (IsLatest(id))
             {
-                return PushState(newNextState, signal);
+                return PushStateLegacy(newNextState, signal);
             }
 
             return 0;
@@ -702,9 +709,14 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public short PushState(TState newState, Signal externalCancellationSignal = default, short id = 0)
+        public short PushStateLegacy(TState newState, Signal externalCancellationSignal = default, short id = 0)
         {
-            return PushStateAsync(newState, externalCancellationSignal, id).id;
+            return PushState(newState, externalCancellationSignal, id);
+        }
+        
+        public UniTask PushStateAsync(TState newState, Signal externalCancellationSignal = default, short id = 0)
+        {
+            return WaitState(PushState(newState, externalCancellationSignal, id));
         }
 
         /// <summary>
@@ -714,7 +726,7 @@ namespace Metamatic
         /// <param name="externalCancellationSignal"></param>
         /// <param name="id"></param>
         /// <returns></returns>
-        public (UniTask task, short id) PushStateAsync(TState newState,
+        public short PushState(TState newState,
             Signal externalCancellationSignal = default,
             short id = 0)
         {
@@ -738,10 +750,7 @@ namespace Metamatic
                         Console.Exception("AsyncStateMachine", e.Message, e.StackTrace);
                     }
                 }
-                var resultTask = m_Disposed
-                    ? UniTask.FromException(new OperationCanceledException("State machine is disposed"))
-                    : UniTask.CompletedTask;
-                return (resultTask, 0);
+                return 0;
             }
 #if DEBUG
             if (m_SettingDebug)
@@ -772,7 +781,7 @@ namespace Metamatic
                             SetNextState(newState, true);
                         }
 
-                        return (tcs.Task, nextId);
+                        return nextId;
                     }
                     case TransitionStatus.FromCurrentToNextProcessing:
                     case TransitionStatus.FromCurrentToNextCompleted:
@@ -785,7 +794,7 @@ namespace Metamatic
                             Console.Verbose("AsyncStateMachine", "Task", $"Init task completion source #{tcs.debugVersion} for {newState}(id #{id}) (Curren status is {m_Status})");
 #endif
                         EnqueueState(nextId, newState, externalCancellationSignal, tcs);
-                        return (tcs.Task, nextId);
+                        return nextId;
                     }
                         /* No transition is in progress, therefore we can set next state immediately */
                     case TransitionStatus.Idle:
@@ -821,7 +830,7 @@ namespace Metamatic
                 }
             }
 
-            return (completeTransitionFromPrevStateTask, nextId);
+            return nextId;
         }
 
         /// <summary>
@@ -1059,7 +1068,7 @@ namespace Metamatic
                 {
                     if (m_SettingDebug) Console.Verbose("AsyncStateMachine", $"Auto push default state");
                     m_AutocompleteTransitionId = GenerateId();
-                    PushStateAsync(m_DefaultState, id: m_AutocompleteTransitionId);
+                    PushState(m_DefaultState, id: m_AutocompleteTransitionId);
                 }
 
                 return;
@@ -1084,7 +1093,7 @@ namespace Metamatic
 
             try
             {
-                var taskToWait = PushStateAsync(newNextState, externalCancellationSignal, id).task;
+                var taskToWait = WaitState(PushState(newNextState, externalCancellationSignal, id));
                 await taskToWait;
                 tcs.TrySetResult();
             }
