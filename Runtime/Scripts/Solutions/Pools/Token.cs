@@ -1,3 +1,5 @@
+using System;
+
 namespace Metamatic
 {
     public readonly struct Token64Bit
@@ -26,7 +28,7 @@ namespace Metamatic
             return false;
         }
     }
-
+    
     public readonly struct Token96Bit
     {
         public static Token96Bit Empty => new Token96Bit(-1, -1);

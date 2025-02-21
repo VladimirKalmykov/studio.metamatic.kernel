@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Metamatic {
@@ -43,6 +44,13 @@ namespace Metamatic {
                 component = behaviour.gameObject.AddComponent<T>();
             }
             return component;
+        }
+        
+        public static T GetOrAddComponent<T>(this GameObject gameObject, Type type) where T: MonoBehaviour {
+            if (!gameObject.TryGetComponent(type, out var component)) {
+                component = (Component)gameObject.AddComponent(type);
+            }
+            return (T)component;
         }
     }
 }

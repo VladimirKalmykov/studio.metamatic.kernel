@@ -7,9 +7,16 @@ namespace Metamatic
     {
         public enum TypeVersionControl
         {
-            Disabled,
-            Enabled,
-            Auto
+            None,
+            /// <deprecated>Use Orchard instead</deprecated>
+            /// <summary>
+            /// Uses legacy metadata container that collect type version. Works only for single type and non-suitable for multi-type serialization.
+            /// </summary>
+            LegacyMetadataContainer,
+            /// <summary>
+            /// Use NewtonSoft.Json converter to control serialization version. Suitable for multi-type serialization. And contains mechanism to make final json very compact.
+            /// </summary>
+            Orchard
         }
         public delegate T DataFactory<out T>();
         // Свойства

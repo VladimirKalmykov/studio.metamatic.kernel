@@ -181,7 +181,7 @@ public class LocalMemoryStorageTests
             await storage.Get<TestData>(address, CancellationToken.None);
             Assert.Fail("Ожидалось исключение NotFoundException");
         }
-        catch (Storage.NotFoundException)
+        catch (SimpleStorage.NotFoundException)
         {
             // Файл не найден, всё корректно
         }
@@ -202,7 +202,7 @@ public class LocalMemoryStorageTests
             await storage.Set<TestData>(address, data, CancellationToken.None);
             Assert.Fail("Ожидалось исключение DisabledException");
         }
-        catch (Storage.DisabledException)
+        catch (SimpleStorage.DisabledException)
         {
             // Хранилище отключено, всё корректно
         }

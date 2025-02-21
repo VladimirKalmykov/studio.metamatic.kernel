@@ -100,6 +100,12 @@ namespace Metamatic
             }
             return source.TrySetResult();
         }
+        
+        [DebuggerHidden]
+        public void TrySetResultSilently()
+        {
+            TrySetResult();
+        }
 
         [DebuggerHidden]
         public bool TrySetCanceled(CancellationToken cancellationToken = default)
@@ -111,6 +117,12 @@ namespace Metamatic
                 return false;
             }
             return source.TrySetCanceled(cancellationToken);
+        }
+        
+        [DebuggerHidden]
+        public void TrySetCanceledSilently()
+        {
+            TrySetCanceled();
         }
 
         [DebuggerHidden]

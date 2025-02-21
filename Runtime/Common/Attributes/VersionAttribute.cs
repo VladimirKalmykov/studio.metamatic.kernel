@@ -46,6 +46,14 @@ namespace Metamatic
             return latestVersion != null ? latestVersion.value : byDefault;
         }
         
+        public static string GetVersion(Type type, string byDefault = "0")
+        {
+            var versionAttributes = type.GetCustomAttributes<VersionAttribute>();
+            var latestVersion = versionAttributes.FirstOrDefault(x => x.latest);
+            
+            return latestVersion != null ? latestVersion.value : byDefault;
+        }
+        
         /// <summary>
         /// Return type for the specific version
         /// </summary>
@@ -66,6 +74,14 @@ namespace Metamatic
             var relatedVersion = versionAttributes.FirstOrDefault(x => x.value == version);
             
             return relatedVersion?.relatedType;
+        }
+        
+        public static Type GetTypeForSpecifiedVersion(Type type, string version)
+        {
+            var versionAttributes = type.GetCustomAttributes<VersionAttribute>();
+            var relatedVersion = versionAttributes.FirstOrDefault(x => x.value == version);
+            
+            return relatedVersion?.relatedType ?? null;
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Metamatic.Storages
 {
     [PlatformCompatible(RuntimePlatform.WindowsPlayer)]
     [PlatformCompatible(RuntimePlatform.WindowsEditor)]
-    public class FileSystemStorage : Storage
+    public class FileSystemStorage : SimpleStorage
     {
         #region Static
 

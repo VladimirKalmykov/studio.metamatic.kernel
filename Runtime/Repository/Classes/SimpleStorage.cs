@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class Storage: IStorage
+    public abstract class SimpleStorage: IStorage
     {
         #region Static
 
@@ -69,12 +69,6 @@ namespace Metamatic
         }
 
         #endregion
-        
-        private static bool AutoDetectTypeVersionControlPossibleForType<TData>()
-        {
-            var version = VersionAttribute.GetVersion<TData>();
-            return version != "0";
-        }
 
         #endregion
         
@@ -82,7 +76,7 @@ namespace Metamatic
         public bool enabled { get; set; } = true;
         public IStorage.TypeVersionControl typeVersionControl { get; private set; }
 
-        public Storage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Auto)
+        public SimpleStorage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Orchard)
         {
             this.typeVersionControl = typeVersionControl;
         }
@@ -94,12 +88,16 @@ namespace Metamatic
                 throw new DisabledException();
             }
             var fullAddress = GetAddress<TData>(address);
-            var typeVersionControlIsEnabled = typeVersionControl == IStorage.TypeVersionControl.Auto ? AutoDetectTypeVersionControlPossibleForType<TData>() : typeVersionControl == IStorage.TypeVersionControl.Enabled;
-            if (typeVersionControlIsEnabled)
+            
+            if (typeVersionControl == IStorage.TypeVersionControl.LegacyMetadataContainer)
             {
                 var wrappedJson = await ReadFile(fullAddress, token);
                 var (data, metadata, customMetadata) = VersionedDataTypeContainer.DeserializeJson<TData, object>(wrappedJson);
                 return data;
+            } else if (typeVersionControl == IStorage.TypeVersionControl.Orchard)
+            {
+                var multijson = await ReadFile(fullAddress, token);
+                return SerializationUtils.DeserializeObjectWithVersionControl<TData>(json, null, null);
             }
             var json = await ReadFile(fullAddress, token);
             return JsonUtility.FromJson<TData>(json);

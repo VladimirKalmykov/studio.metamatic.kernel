@@ -4,7 +4,7 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic.Storages
 {
-    public class LocalMemoryStorage : Storage
+    public class LocalMemoryStorage : SimpleStorage
     {
         // Статический словарь для хранения данных в памяти
         private static readonly ConcurrentDictionary<string, string> _storage = new ConcurrentDictionary<string, string>();
