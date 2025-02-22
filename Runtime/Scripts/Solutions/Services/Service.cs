@@ -11,25 +11,6 @@ namespace Metamatic
 {
     public abstract class Service: MonoBehaviour
     {
-        [DerivedVersionControl]
-        [Serializable]
-        public abstract class SaveBundle
-        {
-            public string serviceName;
-        }
-        
-        [Version("0.0.1")]
-        public class SaveBundle<T> : SaveBundle
-        {
-            public T Data;
-        
-            public SaveBundle(string serviceName, T data)
-            {
-                this.serviceName = serviceName;
-                this.Data = data;
-            }
-        }
-        
         private static readonly Dictionary<Type, Service> _AwakedServices = new ();
         private static readonly Dictionary<Type, Service> _Services = new ();
         private static event Action<Type, Service> OnServiceRegistered; 

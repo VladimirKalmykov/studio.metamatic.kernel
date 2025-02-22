@@ -4,13 +4,13 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic.Storages
 {
-    public class LocalMemoryStorage : SimpleStorage
+    public class LocalMemoryStorage : Storage
     {
         // Статический словарь для хранения данных в памяти
         private static readonly ConcurrentDictionary<string, string> _storage = new ConcurrentDictionary<string, string>();
 
         // Конструктор
-        public LocalMemoryStorage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Auto)
+        public LocalMemoryStorage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Orchard)
             : base(typeVersionControl)
         {
         }

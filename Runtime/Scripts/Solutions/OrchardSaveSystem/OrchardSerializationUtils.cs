@@ -21,7 +21,8 @@ namespace Metamatic.SaveSystem
         {
             // 1) Создаём экземпляр конвертера, передавая наши списки
             var versionControlConverter = new SerializationVersionControlConverter(types, glossary);
-            var typeControlConverter = new TypeConverter(types);
+            var typeConverter = new TypeConverter(types);
+            var assetReferenceConverter = new AssetReferenceJsonConverter(types, glossary);
 
             // 2) Настраиваем JsonSerializerSettings
             var settings = new JsonSerializerSettings
@@ -30,7 +31,9 @@ namespace Metamatic.SaveSystem
                 // Можно убрать/изменить на None, если не хотите \"красивый\" JSON
                 Converters = new List<JsonConverter>
                 {
-                    versionControlConverter
+                    versionControlConverter,
+                    typeConverter,
+                    assetReferenceConverter
                 }
             };
 
@@ -85,6 +88,39 @@ namespace Metamatic.SaveSystem
             }
 
             return result;
+        }
+
+        public static string PackOrchardV1(List<Type> types, List<string> glossary, string data)
+        {
+            var typesJson = JsonConvert.SerializeObject(ConvertTypesToAssemblyQualifiedNames(types));
+            var glossaryJson = JsonConvert.SerializeObject(glossary);
+            
+            return $"v.1\n--\n{typesJson}\n--\n{glossaryJson}\n--\n{data}";
+        }
+        
+        public static (List<Type> types, List<string> glossary, string data) UnpackOrchardV1(string packedData)
+        {
+            var parts = packedData.Split(new[] {"\n--\n"}, StringSplitOptions.None);
+            if (parts.Length != 4)
+            {
+                throw new ArgumentException("Invalid packed data");
+            }
+
+            var types = JsonConvert.DeserializeObject<List<string>>(parts[1]);
+            var glossary = JsonConvert.DeserializeObject<List<string>>(parts[2]);
+            var data = parts[3];
+            
+            var typesList = new List<Type>();
+            foreach (var typeName in types)
+            {
+                var type = Type.GetType(typeName);
+                if (type != null)
+                {
+                    typesList.Add(type);
+                }
+            }
+
+            return (typesList, glossary, data);
         }
 
         /// <summary>

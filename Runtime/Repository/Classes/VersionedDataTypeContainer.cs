@@ -59,7 +59,7 @@ namespace Metamatic
 
             if (data.metadata == null || data.metadata.typeVersion == null)
             {
-                throw new SimpleStorage.NotFoundException("Data is corrupted or does not contain metadata");
+                throw new Storage.NotFoundException("Data is corrupted or does not contain metadata");
             }
             
             if (data.metadata.typeVersion != VersionAttribute.GetVersion<T>())

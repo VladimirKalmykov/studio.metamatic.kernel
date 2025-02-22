@@ -4,10 +4,10 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic.Storages
 {
-    public class WebLocalStorage : SimpleStorage
+    public class WebLocalStorage : Storage
     {
         // Конструктор
-        public WebLocalStorage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Auto)
+        public WebLocalStorage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Orchard)
             : base(typeVersionControl)
         {
         }

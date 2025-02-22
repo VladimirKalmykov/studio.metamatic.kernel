@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Metamatic.SaveSystem;
 using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class SimpleStorage: IStorage
+    public abstract class Storage: IStorage
     {
         #region Static
 
@@ -72,13 +74,15 @@ namespace Metamatic
 
         #endregion
         
-
+        public const string Separator = "/";
         public bool enabled { get; set; } = true;
         public IStorage.TypeVersionControl typeVersionControl { get; private set; }
+        public string nameSpace { get; private set; }
 
-        public SimpleStorage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Orchard)
+        public Storage(IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Orchard, string nameSpace = null)
         {
             this.typeVersionControl = typeVersionControl;
+            this.nameSpace = nameSpace;
         }
 
         public virtual async UniTask<TData> Get<TData>(string address, CancellationToken token)
@@ -97,7 +101,8 @@ namespace Metamatic
             } else if (typeVersionControl == IStorage.TypeVersionControl.Orchard)
             {
                 var multijson = await ReadFile(fullAddress, token);
-                return SerializationUtils.DeserializeObjectWithVersionControl<TData>(json, null, null);
+                var (types, glossary, dataJson) = OrchardSerializationUtils.UnpackOrchardV1(multijson);
+                return OrchardSerializationUtils.DeserializeObjectWithVersionControl<TData>(dataJson, types, glossary);
             }
             var json = await ReadFile(fullAddress, token);
             return JsonUtility.FromJson<TData>(json);
@@ -111,12 +116,8 @@ namespace Metamatic
             } catch (NotFoundException)
             {
                 return getDefault();
-            } catch (Exception e)
-            {
-                throw e; // rethrow
             }
         }
-       // OO
         public virtual UniTask Set<TData>(string address, TData value, CancellationToken token)
         {
             if (!enabled)
@@ -125,11 +126,18 @@ namespace Metamatic
             }
             var fullAddress = GetAddress<TData>(address);
             Console.Info("Storage", this.GetType().Name, "Set", fullAddress);
-            var typeVersionControlIsEnabled = typeVersionControl == IStorage.TypeVersionControl.Auto ? AutoDetectTypeVersionControlPossibleForType<TData>() : typeVersionControl == IStorage.TypeVersionControl.Enabled;
-            if (typeVersionControlIsEnabled)
+            if (typeVersionControl == IStorage.TypeVersionControl.LegacyMetadataContainer)
             {
                 /* Wrap data with version */
                 return WriteFile(fullAddress, VersionedDataTypeContainer.SerializeJson<TData, object>(value, null), token);
+            } else if (typeVersionControl == IStorage.TypeVersionControl.Orchard)
+            {
+                var types = new List<Type>();
+                var glossary = new List<string>();
+                var dataJson = OrchardSerializationUtils.SerializeObjectWithVersionControl(value, types, glossary);
+                var content = OrchardSerializationUtils.PackOrchardV1(types, glossary, dataJson);
+                
+                return WriteFile(fullAddress, content, token);
             }
 
             var json = JsonUtility.ToJson(value);
@@ -159,7 +167,7 @@ namespace Metamatic
 
         protected virtual string GetAddress<TData>(string address)
         {
-            return $"{address}/{typeof(TData).Name}";
+            return nameSpace != null ? $"{nameSpace}{Separator}{address}" : address;
         }
         
         protected abstract UniTask<string> ReadFile(string address, CancellationToken token);

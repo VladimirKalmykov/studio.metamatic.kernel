@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using Metamatic.SaveSystem;
 using UnityEngine;
 using UnityEngine.Serialization;
+using UnityEngine.AddressableAssets;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -16,13 +17,13 @@ namespace Metamatic.Framework.Workshop
         [Version("1.0.0")]
         public struct SaveData
         {
-            public EntityBlueprint blueprint;
+            public AssetReferenceT<EntityBlueprint> blueprint;
             public string id;
             public Vector3 position;
             public Quaternion rotation;
             public EntityComponent.SaveData[] ComponentsData;
             
-            public SaveData(EntityBlueprint blueprint, string id, Vector3 position, Quaternion rotation)
+            public SaveData(AssetReferenceT<EntityBlueprint> blueprint, string id, Vector3 position, Quaternion rotation)
             {
                 this.blueprint = blueprint;
                 this.id = id;
@@ -31,7 +32,7 @@ namespace Metamatic.Framework.Workshop
                 ComponentsData = Array.Empty<EntityComponent.SaveData>();
             }
         }
-        public EntityBlueprint blueprint { get; private set; }
+        public AssetReferenceT<EntityBlueprint> blueprint { get; private set; }
         public string id { get; private set; }
         private event Action OnEntityResetEvent;
         private event Action OnEntityUpdateEvent;
@@ -39,7 +40,7 @@ namespace Metamatic.Framework.Workshop
         private readonly Dictionary<Type, EntityComponent> m_RegisteredComponents = new Dictionary<Type, EntityComponent>();
         private readonly Dictionary<Type, EntityAbility> m_RegisteredAbilities = new Dictionary<Type, EntityAbility>();
         
-        public string Initialize(EntityBlueprint blueprint, string id)
+        public string Initialize(AssetReferenceT<EntityBlueprint> blueprint, string id)
         {
             if (id == null)
             {

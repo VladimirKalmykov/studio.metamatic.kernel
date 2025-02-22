@@ -580,7 +580,7 @@ namespace Metamatic.Framework
 
         public async UniTask LoadPersistentState(Signal signal)
         {
-            var localStorage = Repository.LocalStorage;
+            var localStorage = Repository.localStorageLegacy;
             var state = await localStorage.TryGet("metamatic-framework/overlay", () => new PersistentState(),
                 signal);
             if (state != null)
@@ -595,8 +595,7 @@ namespace Metamatic.Framework
 
         public void SavePersistentState()
         {
-            var localStorage = Repository.LocalStorage;
-            localStorage.Set("metamatic-framework/overlay", m_PersistentState.Value, CancellationToken.None).Forget();
+            Repository.localStorageLegacy.Set("metamatic-framework/overlay", m_PersistentState.Value, CancellationToken.None).Forget();
         }
 
         public DisposableAction RegisterCursorTool(CursorToolBlueprint cursorTool)

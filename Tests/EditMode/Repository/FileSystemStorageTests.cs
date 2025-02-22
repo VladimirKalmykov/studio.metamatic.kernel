@@ -63,7 +63,7 @@ public class FileSystemStorageTests
         Debug.Log($"testDirectory: {testDirectory}");
 
         // Создаём экземпляр FileSystemStorage с использованием временной директории
-        storage = new FileSystemStorage(testDirectory);
+        storage = new FileSystemStorage(testDirectory, typeVersionControl: IStorage.TypeVersionControl.LegacyMetadataContainer);
     }
 
     [TearDown]
@@ -181,7 +181,7 @@ public class FileSystemStorageTests
             await storage.Get<TestData>(address, CancellationToken.None);
             Assert.Fail("Ожидалось исключение NotFoundException");
         }
-        catch (SimpleStorage.NotFoundException)
+        catch (Storage.NotFoundException)
         {
             // Файл не найден, всё корректно
         }
@@ -202,7 +202,7 @@ public class FileSystemStorageTests
             await storage.Set<TestData>(address, data, CancellationToken.None);
             Assert.Fail("Ожидалось исключение DisabledException");
         }
-        catch (SimpleStorage.DisabledException)
+        catch (Storage.DisabledException)
         {
             // Хранилище отключено, всё корректно
         }

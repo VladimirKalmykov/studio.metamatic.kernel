@@ -9,7 +9,7 @@ namespace Metamatic.Storages
 {
     [PlatformCompatible(RuntimePlatform.WindowsPlayer)]
     [PlatformCompatible(RuntimePlatform.WindowsEditor)]
-    public class FileSystemStorage : SimpleStorage
+    public class FileSystemStorage : Storage
     {
         #region Static
 
@@ -22,7 +22,7 @@ namespace Metamatic.Storages
         public readonly string PersistencePath;
 
         public FileSystemStorage(string persistencePath = null,
-            IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Auto) : base(
+            IStorage.TypeVersionControl typeVersionControl = IStorage.TypeVersionControl.Orchard) : base(
             typeVersionControl)
         {
             PersistencePath = persistencePath ?? Application.persistentDataPath;
@@ -30,7 +30,8 @@ namespace Metamatic.Storages
 
         protected override UniTask<string> ReadFile(string address, CancellationToken token)
         {
-            string fullPath = Path.Combine(PersistencePath, $"{address}.json");
+            var fileName = typeVersionControl == IStorage.TypeVersionControl.Orchard ? $"{address}.ord" : $"{address}.json";
+            string fullPath = Path.Combine(PersistencePath, fileName);
 #if METAMATIC_VERBOSE_LOG
             Console.Verbose("FileSystemStorage", "ReadFile", fullPath);
 #endif
@@ -79,7 +80,8 @@ namespace Metamatic.Storages
 
         protected override UniTask WriteFile(string address, string value, CancellationToken token)
         {
-            string fullPath = Path.Combine(PersistencePath, $"{address}.json");
+            var fileName = typeVersionControl == IStorage.TypeVersionControl.Orchard ? $"{address}.ord" : $"{address}.json";
+            string fullPath = Path.Combine(PersistencePath, fileName);
             #if METAMATIC_VERBOSE_LOG
             Console.Verbose("FileSystemStorage", "WriteFile", fullPath);
             #endif
@@ -124,14 +126,17 @@ namespace Metamatic.Storages
 
         protected override UniTask DeleteFile(string address, CancellationToken token)
         {
-            string fullPath = Path.Combine(PersistencePath, $"{address}.json");
+            var fileName = typeVersionControl == IStorage.TypeVersionControl.Orchard ? $"{address}.ord" : $"{address}.json";
+            string fullPath = Path.Combine(PersistencePath, fileName);
 #if METAMATIC_VERBOSE_LOG
             Console.Verbose("FileSystemStorage", "DeleteFile", fullPath);
 #endif
             // Получаем семафор для данного файла
             var semaphore = m_FileSemaphores.GetOrAdd(fullPath, new SemaphoreSlim(1, 1));
 
-            async UniTask DeleteFile()
+            return UniTask.RunOnThreadPool(SafeDeleteFile, true, token);
+
+            async UniTask SafeDeleteFile()
             {
                 await semaphore.WaitAsync(token); // Ожидаем освобождения семафора
                 try
@@ -155,13 +160,12 @@ namespace Metamatic.Storages
                     }
                 }
             }
-
-            return UniTask.RunOnThreadPool(DeleteFile, true, token);
         }
 
         protected override UniTask<bool> FileExists(string address, CancellationToken token)
         {
-            string fullPath = Path.Combine(PersistencePath, $"{address}.json");
+            var fileName = typeVersionControl == IStorage.TypeVersionControl.Orchard ? $"{address}.ord" : $"{address}.json";
+            string fullPath = Path.Combine(PersistencePath, fileName);
 
             // Получаем семафор для данного файла
             var semaphore = m_FileSemaphores.GetOrAdd(fullPath, new SemaphoreSlim(1, 1));
@@ -189,7 +193,5 @@ namespace Metamatic.Storages
 
             return UniTask.RunOnThreadPool(CheckFileExists, cancellationToken: token, configureAwait: true);
         }
-        
-        
     }
 }
