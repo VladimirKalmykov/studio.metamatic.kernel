@@ -31,6 +31,7 @@ namespace Metamatic
     
     public readonly struct Token96Bit
     {
+        // ReSharper disable once InconsistentNaming
         public static Token96Bit Empty => new Token96Bit(-1, -1);
         public readonly int ID;
         public readonly long Signature;

@@ -1,27 +1,23 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Metamatic.Systems;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Metamatic.Framework.Workshop
 {
     public class BlueprintsService: Service
     {
-        [SerializeField] private ScriptableBlueprint[] m_Blueprints;
-        
-        private Dictionary<string, IObjectBlueprint> m_BlueprintMap = new ();
-        protected override async UniTask RunService(Ready ready, Signal signal)
+        protected override UniTask RunService(Ready ready, Signal signal)
         {
-            foreach (var blueprint in m_Blueprints)
-            {
-                #if DEBUG
-                if (m_BlueprintMap.ContainsKey(blueprint.blueprintName))
-                {
-                    Console.Exception("SpawnService", $"Blueprint with name {blueprint.blueprintName} already exists.");
-                }
-                #endif
-                m_BlueprintMap[blueprint.blueprintName] = blueprint;
-            }
-            await ready();
+            throw new System.NotImplementedException();
+        }
+
+        public async UniTaskVoid CreateBlueprintPool(AssetReferenceT<ScriptableBlueprint> assetReference, Signal cancellationSignal = default)
+        {
+            var blueprintSummon = ResourcesSystem.Summon<ScriptableBlueprint>(assetReference);
+            var blueprint = await blueprintSummon.Wait(cancellationSignal);
+            var pool = new ConfigurablePool<GameObject>(new GameObjectConfigurablePoolConfig());
         }
     }
 }

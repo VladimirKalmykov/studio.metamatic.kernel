@@ -16,30 +16,30 @@
     [Serializable]
     public class ComponentReference<TComponent> : AssetReference
     {
-        /// <inheritdoc />
+        
         public ComponentReference(string guid) : base(guid)
         {
         }
 
-        /// <inheritdoc />
+        
         public new AsyncOperationHandle<TComponent> InstantiateAsync(Vector3 position, Quaternion rotation, Transform parent = null)
         {
             return Addressables.ResourceManager.CreateChainOperation<TComponent, GameObject>(base.InstantiateAsync(position, Quaternion.identity, parent), GameObjectReady);
         }
 
-        /// <inheritdoc />
+        
         public new AsyncOperationHandle<TComponent> InstantiateAsync(Transform parent = null, bool instantiateInWorldSpace = false)
         {
             return Addressables.ResourceManager.CreateChainOperation<TComponent, GameObject>(base.InstantiateAsync(parent, instantiateInWorldSpace), GameObjectReady);
         }
 
-        /// <inheritdoc />
+        
         public AsyncOperationHandle<TComponent> LoadAssetAsync()
         {
             return Addressables.ResourceManager.CreateChainOperation<TComponent, GameObject>(base.LoadAssetAsync<GameObject>(), GameObjectReady);
         }
 
-        /// <inheritdoc />
+        
         AsyncOperationHandle<TComponent> GameObjectReady(AsyncOperationHandle<GameObject> arg)
         {
             var comp = arg.Result.GetComponent<TComponent>();

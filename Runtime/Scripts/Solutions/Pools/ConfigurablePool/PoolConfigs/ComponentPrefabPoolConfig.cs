@@ -4,9 +4,16 @@ namespace Metamatic
         where T: UnityEngine.Component
     {
         public readonly T Prefab;
-        public ComponentPrefabPoolConfig(T prefab)
+        private readonly bool m_KeepInactive;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="prefab"></param>
+        /// <param name="keepInactive">Do not activate object on get from pool</param>
+        public ComponentPrefabPoolConfig(T prefab, bool keepInactive = false)
         {
             Prefab = prefab;
+            m_KeepInactive = keepInactive;
         }
         public T OnCreate()
         {
@@ -15,7 +22,10 @@ namespace Metamatic
 
         public virtual void OnGet(T instance)
         {
-            instance.gameObject.SetActive(true);
+            if (!m_KeepInactive)
+            {
+                instance.gameObject.SetActive(true);
+            }
         }
 
         public virtual void OnReturn(T instance)

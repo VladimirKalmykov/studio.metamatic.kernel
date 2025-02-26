@@ -14,10 +14,14 @@ namespace Metamatic
     {
         // TODO: Cleanup instances on unload
         public static Dictionary<int, string> mapInstanceIDToAssetGUID = new Dictionary<int, string>();
-        public static DisposableOperation<TObject> LoadAssetAsync<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken = default, float releaseDelay = 0f) where TObject : UnityEngine.Object
+        
+        public static DisposableOperation<TObject> LoadAssetAsyncLegacy<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken = default, float releaseDelay = 0f) where TObject : UnityEngine.Object
         {
             return new DisposableOperation<TObject>((resolve, reject, token) =>
             {
+                Addressables.LoadAssetAsync<TObject>(assetReference);
+                assetReference.LoadAssetAsync<GameObject>();
+                Addressables.Release(handle);
                 if (!assetReference.RuntimeKeyIsValid())
                 {
                     throw new Exception("Asset reference is invalid");

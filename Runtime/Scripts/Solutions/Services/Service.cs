@@ -13,6 +13,7 @@ namespace Metamatic
     {
         private static readonly Dictionary<Type, Service> _AwakedServices = new ();
         private static readonly Dictionary<Type, Service> _Services = new ();
+        public static IReadOnlyDictionary<Type, Service> Services => _Services;
         private static event Action<Type, Service> OnServiceRegistered; 
         private static event Action<Type, Service> OnServiceUnregistered;
         private static event Action<Service> HandleServiceAdded;

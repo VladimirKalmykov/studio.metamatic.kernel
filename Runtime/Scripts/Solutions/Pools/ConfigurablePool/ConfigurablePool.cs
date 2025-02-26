@@ -345,6 +345,38 @@ namespace Metamatic
                 #endif
             }
         }
+        
+        public void AddCapacity(int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var instance = CreateInstance();
+                m_ObjectsInPoolList.Add(instance);
+                m_ObjectsInPoolSet.Add(instance);
+                m_Config.OnReturn(instance);
+            }
+            m_Capacity += count;
+        }
+
+        public void WithdrawCapacity(int count)
+        {
+            var countToRemove = Math.Min(count, m_ObjectsInPoolList.Count);
+            for (int i = 0; i < countToRemove; i++)
+            {
+                var lastIndex = m_ObjectsInPoolList.Count - 1;
+                var obj = m_ObjectsInPoolList[lastIndex];
+                m_ObjectsInPoolList.RemoveAt(lastIndex);
+                m_ObjectsInPoolSet.Remove(obj);
+                m_Config.OnDestroy(obj);
+            }
+
+            m_Capacity = Mathf.Max(m_Capacity - count, 0);
+
+            if (m_Capacity == 0 && InPoolCount == 0 && m_OutOfPool.Count == 0)
+            {
+                OnPoolIsUseless?.Invoke();
+            }
+        }
 
         private T CreateInstance()
         {
@@ -370,7 +402,7 @@ namespace Metamatic
                     m_FruitBasket.SetCount(OutOfPoolCount, Time.time);
                     break;
                 case ShrinkTimestampType.Shrinking:
-                    var maxCount = m_FruitBasket.GetMaxCount();
+                    var maxCount = Mathf.Max(m_Capacity, m_FruitBasket.GetMaxCount());
 #if DEBUG
                     Console.Verbose("ConfigurablePool", $"ConfigurablePool<{typeof(T)}> shrinking. Max count for the period is {maxCount} (Current in pool: {m_ObjectsInPoolList.Count}, Current out of pool: {OutOfPoolCount})");
 #endif
@@ -472,9 +504,8 @@ namespace Metamatic
 
         public void Return(Token96Bit token)
         {
-            if (m_OutOfPoolIndexed.TryGet(token, out var obj))
+            if (m_OutOfPoolIndexed.Remove(token, out var obj))
             {
-                m_OutOfPoolIndexed.Remove(token);
                 m_OutOfPool.Remove(obj);
                 if (m_ObjectsInPoolList.Count < m_Limit)
                 {

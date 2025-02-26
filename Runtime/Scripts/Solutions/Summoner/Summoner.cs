@@ -75,6 +75,16 @@ namespace Metamatic
             m_Dispose = dispose;
         }
 
+        public async UniTask<T> Wait(Signal cancellationSignal)
+        {
+            var (isLeft, result) = await UniTask.WhenAny(this.task, cancellationSignal.ToUniTask());
+            if (!isLeft)
+            {
+                throw new OperationCanceledException();
+            }
+            return result;
+        }
+
         public void Dispose()
         {
             #if DEBUG
@@ -84,6 +94,7 @@ namespace Metamatic
             }
             m_IsDisposed.value = true;
             #endif
+            this.task.Forget();
             m_Dispose?.Invoke(m_Token);
         }
     }

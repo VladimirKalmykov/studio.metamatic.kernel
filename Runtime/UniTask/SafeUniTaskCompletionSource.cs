@@ -136,6 +136,12 @@ namespace Metamatic
             }
             return source.TrySetException(exception);
         }
+        
+        [DebuggerHidden]
+        public void TrySetExceptionSilently(Exception exception)
+        {
+            TrySetException(exception);
+        }
     }
     
     /// <summary>
@@ -198,7 +204,12 @@ namespace Metamatic
 
         public void GetResult(short token)
         {
-            ResolveSource().GetResult(token);
+            var source = ResolveSource();
+            if (source == null)
+            {
+                return;
+            }
+            source.GetResult(token);
         }
 
         T IUniTaskSource<T>.GetResult(short token)
@@ -254,6 +265,18 @@ namespace Metamatic
                 return false;
             }
             return source.TrySetCanceled(cancellationToken);
+        }
+        
+        [DebuggerHidden]
+        public void TrySetCanceledAndForget()
+        {
+            var source = ResolveSource();
+            if (source == null)
+            {
+                Debug.LogError("Original completion source is not available.");
+                return;
+            }
+            source.TrySetCanceled();
         }
 
         [DebuggerHidden]

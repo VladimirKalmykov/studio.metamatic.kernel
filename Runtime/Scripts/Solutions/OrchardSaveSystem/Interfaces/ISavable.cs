@@ -6,5 +6,6 @@ namespace Metamatic.SaveSystem
     {
         public object Save();
         public UniTask Load(object data);
+        public UniTask Bootstrap();
     }
 }

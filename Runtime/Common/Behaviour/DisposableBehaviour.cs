@@ -10,10 +10,21 @@ namespace Metamatic
     /// This class gives you the ability to add async disposal actions and dispose listeners to a MonoBehaviour.
     /// Important: this class do not dispose by itself, you need to call DisposeAsync or Dispose manually, thus it is not suitable for using as a disable/destroy listener.
     /// </summary>
-    public class DisposableBehaviour: MonoBehaviour, IUniTaskAsyncDisposable, IDisposable, IExposedDisposedSync
+    public class DisposableBehaviour: MonoBehaviour, IAsyncDisposableAbortable, IExposedDisposedAsync
     {
         private int m_Version;
         private readonly List<Func<UniTask>> m_AsyncDisposalActions = new List<Func<UniTask>>();
+        public event Action OnDestroyEvent;
+        
+        #region Mono
+
+        private void OnDestroy()
+        {
+            OnDestroyEvent?.Invoke();
+            OnDestroyEvent = null;
+        }
+
+        #endregion
         
         public DisposableAction AddAsyncDisposalActionOnce(Func<UniTask> action)
         {
@@ -42,26 +53,26 @@ namespace Metamatic
             });
         }
 
-        public DisposableAction AddDisposeListenerOnce(Action action)
+        public DisposableAction AddAbortListenerOnce(Action action)
         {
             var version = m_Version;
 
             void Handler()
             {
-                OnDisposedSync -= Handler;
+                OnAbort -= Handler;
                 action();
             }
-            OnDisposedSync += Handler;
+            OnAbort += Handler;
             return new DisposableAction(() =>
             {
                 if (this.Equals(null) || m_Version != version) return;
-                OnDisposedSync -= Handler;
+                OnAbort -= Handler;
             });
         }
         
         public async UniTask DisposeAsync()
         {
-            Dispose(true);
+            Dispose(false);
 
             try
             {
@@ -70,39 +81,34 @@ namespace Metamatic
             catch (Exception e)
             {
                 Debug.LogError(e);
-                isAsyncDisposed = true;
+                isDisposedAsync = true;
                 OnAsyncDisposed?.Invoke(e);
                 OnAsyncDisposed = null;
             }
             finally
             {
-                if (!isAsyncDisposed)
+                if (!isDisposedAsync)
                 {
                     OnAsyncDisposed?.Invoke(null);
+                    OnAsyncDisposed = null;
                 }
+                isAborted = true;
+                OnAbort?.Invoke();
+                OnAbort = null;
             }
-        }
-        
-        [Button]
-        public void Dispose()
-        {
-            Dispose(false);
         }
 
-        private void Dispose(bool isFromAsync)
+        private void Dispose(bool isAbort)
         {
-            if (isDisposedSync)
+            if (isAborted)
             {
                 return;
             }
-            isDisposedSync = true;
-            OnDisposedSync?.Invoke();
-            OnDisposedSync = null;
             
-            if (!isFromAsync)
+            if (isAbort)
             {
                 DisposeAsync().Forget();
-                return;
+                Abort();
             }
         }
 
@@ -112,15 +118,39 @@ namespace Metamatic
             {
                 m_Version++;
             }
-            isDisposedSync = false;
-            isAsyncDisposed = false;
-            OnDisposedSync = null;
+            isAborted = false;
+            isDisposedAsync = false;
+            OnAbort = null;
             OnAsyncDisposed = null;
         }
 
-        public bool isDisposedSync { get; private set; }
-        public bool isAsyncDisposed { get; private set; }
-        public event Action OnDisposedSync;
+        public bool isAborted { get; private set; }
+        public bool isDisposedAsync { get; private set; }
+        public event Action OnAbort;
         public event Action<Exception> OnAsyncDisposed;
+        public void Abort()
+        {
+            OnAbort?.Invoke();
+            OnAbort = null;
+            Dispose(true);
+        }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            var version = m_Version;
+            void Handler()
+            {
+                OnAbort -= Handler;
+                action();
+            }
+            OnAbort += Handler;
+            return new DisposableAction(() =>
+            {
+                if (this.Equals(null) || m_Version != version) return;
+                OnAbort -= Handler;
+            });
+        }
+        
+        public event Action<Exception> OnDisposedAsync;
     }
 }
