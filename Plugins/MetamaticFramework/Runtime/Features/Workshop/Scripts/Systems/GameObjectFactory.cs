@@ -103,16 +103,22 @@ namespace Metamatic.Framework
             var cts = SignalSource.Create();
             var typedContainer = GetOrAddPoolContainer(assetReference);
             #if DEBUG
-            if (typedContainer == null)
+            if (!typedContainer.isAlive)
             {
-                throw new Exception("Failed to cast pool container to the correct type.");
+                throw new Exception("Failed to get container.");
             }
             #endif
             ConfigurablePool<UnityEngine.Component> resolvedPool = null;
             typedContainer.GetContent(cts.Signal).ContinueWith(pool =>
             {
-                resolvedPool = pool;
-                resolvedPool?.AddCapacity(capacity);
+                try
+                {
+                    resolvedPool = pool;
+                    resolvedPool?.AddCapacity(capacity);
+                } catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
             }).Forget();
 
             return DisposableAction.Create(() =>
@@ -132,30 +138,29 @@ namespace Metamatic.Framework
             }
         }
         
-        private static AsyncDisposableContainer<AssetReference, ConfigurablePool<UnityEngine.Component>> GetOrAddPoolContainer(AssetReference assetReference)
+        private static AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>> GetOrAddPoolContainer(AssetReference assetReference)
         {
-            if (!Pools.TryGetValue(assetReference.RuntimeKey.ToString(), out var poolContainer))
+            if (!Pools.TryGetValue(assetReference.AssetGUID, out var poolContainer))
             {
-                var newContainer = new AsyncDisposableContainer<AssetReference, ConfigurablePool<UnityEngine.Component>>();
-                newContainer.Initialize(InitializePoolForAsset, assetReference).Forget();
-                Pools.Add(assetReference.RuntimeKey.ToString(), newContainer);
+                var newContainer = AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, assetReference);
+                Pools.Add(assetReference.AssetGUID, newContainer);
                 return newContainer;
             }
-            return poolContainer as AsyncDisposableContainer<AssetReference, ConfigurablePool<UnityEngine.Component>>;
+            return poolContainer;
         }
 
         private static async UniTask InitializePoolForAsset(Action<ConfigurablePool<UnityEngine.Component>> resolve, AssetReference assetReference, Signal cancellationSignal)
         {
             using var directResourceResourceSummon = ResourcesSystem.Summon(assetReference);
             var directResource = await directResourceResourceSummon.Wait(cancellationSignal);
-            var assetReferenceRuntimeKey = assetReference.RuntimeKey.ToString();
+            var assetReferenceRuntimeKey = assetReference.AssetGUID;
             switch (directResource)
             {
                 case UnityEngine.Component component:
-                    await InitializePoolForComponent(resolve, assetReferenceRuntimeKey, component, cancellationSignal);
+                    await InitializePoolForComponent(ResolveHandler, assetReferenceRuntimeKey, component, cancellationSignal);
                     break;
                 case ScriptableBlueprint blueprint:
-                    await InitializePoolForBlueprint(resolve, assetReferenceRuntimeKey, blueprint, cancellationSignal);
+                    await InitializePoolForBlueprint(ResolveHandler, assetReferenceRuntimeKey, blueprint, cancellationSignal);
                     break;
                 default:
                     throw new Exception($"Failed to initialize pool for asset {assetReference}");
