@@ -98,6 +98,14 @@ namespace Metamatic.Framework
             return (T)instance;
         } 
         
+        /// <summary>
+        /// Increases the capacity of the pool by the specified amount. As the result of this operation, the pool will have at least the specified capacity available (spawned, but disabled).
+        /// You can call this method multiple times to increase the capacity of the pool by the specified amount, but you must call <see cref="IDisposable.Dispose"/> on the returned object to decrease the capacity of the pool.
+        /// </summary>
+        /// <param name="assetReference"></param>
+        /// <param name="capacity"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public static IDisposable ReservePoolCapacity(AssetReference assetReference, int capacity)
         {
             var cts = SignalSource.Create();
