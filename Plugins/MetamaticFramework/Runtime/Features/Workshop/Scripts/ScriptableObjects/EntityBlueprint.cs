@@ -28,14 +28,9 @@ namespace Metamatic.Framework.Workshop
         }
 
         public override string blueprintName => m_BlueprintName;
-        public override AsyncSummon<GameObject> SummonPrefab(Signal cancellationSignal = default)
+        public override AsyncSummon<UnityEngine.Component> SummonPrefab(Signal cancellationSignal = default)
         {
-            return ResourcesSystem.SummonConverted(m_Prefab, prefab => prefab.gameObject);
-        }
-        
-        public override AsyncSummon<Entity> SummonPrefabT(Signal cancellationSignal = default)
-        {
-            return ResourcesSystem.Summon(m_Prefab);
+            return ResourcesSystem.SummonConverted(m_Prefab, prefab => (UnityEngine.Component)prefab);
         }
 
         public override UniTask<string> GetDisplayName(Signal cancellationSignal = default)

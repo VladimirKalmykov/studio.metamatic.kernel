@@ -111,6 +111,11 @@ namespace Metamatic.Framework.Workshop
         public abstract object Save();
 
         public abstract UniTask Load(object data);
+        public UniTask Bootstrap()
+        {
+            OnInitializeStateWithDefaultValues();
+            return UniTask.CompletedTask;
+        }
     }
     
     public abstract class EntityComponent<T>: EntityComponent

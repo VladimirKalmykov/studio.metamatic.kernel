@@ -10,6 +10,7 @@ using UnityEngine.SceneManagement;
 
 namespace Metamatic
 {
+    [Obsolete("Use ResourcesSystem instead")]
     public class AddressablesManager
     {
         // TODO: Cleanup instances on unload
@@ -17,81 +18,7 @@ namespace Metamatic
         
         public static DisposableOperation<TObject> LoadAssetAsyncLegacy<TObject>(AssetReferenceT<TObject> assetReference, CancellationToken cancellationToken = default, float releaseDelay = 0f) where TObject : UnityEngine.Object
         {
-            return new DisposableOperation<TObject>((resolve, reject, token) =>
-            {
-                Addressables.LoadAssetAsync<TObject>(assetReference);
-                assetReference.LoadAssetAsync<GameObject>();
-                Addressables.Release(handle);
-                if (!assetReference.RuntimeKeyIsValid())
-                {
-                    throw new Exception("Asset reference is invalid");
-                }
-                if (assetReference.OperationHandle.IsValid())
-                {
-                    Addressables.ResourceManager.Acquire(assetReference.OperationHandle);
-                }
-    
-                var aoh = assetReference.OperationHandle.IsValid() ? (assetReference.OperationHandle.Convert<TObject>()) : assetReference.LoadAssetAsync<TObject>();
-        
-                // Обработка отмены
-                if (token.IsCancellationRequested)
-                {
-                    Debug.Log($"Immediately Cancel asset reference {assetReference}");
-                    // Если токен уже отменен, отменяем загрузку и выгружаем ассет
-                    Action<AsyncOperationHandle<TObject>> completeHandler = null;
-                    completeHandler = handle => { aoh.Completed -= completeHandler; /* Release with delay */
-                        AsyncUtils.ExecuteDelayed(() =>
-                        {
-                            Addressables.Release(aoh);
-                        }, releaseDelay); };
-                    aoh.Completed += completeHandler;
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-                else
-                {
-                    // Регистрируем обработку отмены
-                    token.Register(() =>
-                    {
-                        if (aoh.IsDone)
-                        {
-                            /* Release with delay */
-                            AsyncUtils.ExecuteDelayed(() =>
-                            {
-                                Addressables.Release(aoh);
-                            }, releaseDelay);
-                        }
-                        else
-                        {
-                            reject(new OperationCanceledException());
-                            // Выгружаем ассет по готовности
-                            aoh.Completed += handle =>
-                            {
-                                /* Release with delay */
-                                AsyncUtils.ExecuteDelayed(() =>
-                                {
-                                    Addressables.Release(aoh);
-                                }, releaseDelay);
-                            };
-                        }
-                    });
-                }
-
-                aoh.Completed += handle =>
-                {
-                    if (token.IsCancellationRequested)
-                    {
-                        reject(new OperationCanceledException());
-                    } else if (handle.Status == AsyncOperationStatus.Succeeded)
-                    {
-                        mapInstanceIDToAssetGUID[handle.Result.GetInstanceID()] = assetReference.AssetGUID;
-                        resolve(handle.Result);
-                    }
-                    else
-                    {
-                        reject(handle.OperationException);
-                    }
-                };
-            });
+            throw new NotImplementedException();
         }
         
         public static DisposableAsyncOperationT<GameObject> InstantiatePrefab(AssetReference assetReference, CancellationToken token, Transform transform = null)

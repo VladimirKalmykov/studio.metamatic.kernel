@@ -12,8 +12,6 @@ namespace Metamatic.Framework.Workshop
     public interface IObjectBlueprint<T>: IObjectBlueprint
     where T: Component
     {
-        public AsyncSummon<T> SummonPrefab(Signal cancellationSignal = default);
-       
         public UniTask<string> GetDisplayName(Signal cancellationSignal = default);
         /// <summary>
         /// Get the preview of the object.

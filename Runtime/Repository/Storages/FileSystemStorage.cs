@@ -26,6 +26,7 @@ namespace Metamatic.Storages
             typeVersionControl)
         {
             PersistencePath = persistencePath ?? Application.persistentDataPath;
+            Console.Verbose("FileSystemStorage", "PersistencePath", PersistencePath);
         }
 
         protected override UniTask<string> ReadFile(string address, CancellationToken token)

@@ -35,7 +35,6 @@ namespace Metamatic.Framework.Workshop
     public abstract class ScriptableBlueprint<T>: ScriptableBlueprint
     where T: Component
     {
-        public abstract AsyncSummon<T> SummonPrefabT(Signal cancellationSignal = default);
         public abstract UniTask<string> GetDisplayName(Signal cancellationSignal = default);
 
         public abstract UniTask<Texture2D> GetPreview(Signal cancellationSignal = default);

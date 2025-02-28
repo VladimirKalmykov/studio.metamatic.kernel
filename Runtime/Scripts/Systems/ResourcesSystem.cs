@@ -39,21 +39,21 @@ namespace Metamatic.Systems
             }
         }
         
-        public static AsyncSummon<object> Summon(AssetReference assetReference) where T : UnityEngine.Object
+        public static AsyncSummon<T> Summon<T>(AssetReference assetReference) where T : UnityEngine.Object
         {
-            var tcs = SafeUniTaskCompletionSource<object>.Create();
-            var handle = Addressables.LoadAssetAsync(assetReference);
+            var tcs = SafeUniTaskCompletionSource<T>.Create();
+            var handle = Addressables.LoadAssetAsync<UnityEngine.Object>(assetReference);
             var token = HandleReleaseActions.Add(() => Addressables.Release(handle));
             
             handle.Completed += HandleCompleted;
             
             return new AsyncSummon<T>(token, tcs.Task, ReleaseSummon);
             
-            void HandleCompleted(AsyncOperationHandle<T> operationHandle)
+            void HandleCompleted(AsyncOperationHandle<UnityEngine.Object> operationHandle)
             {
                 if (operationHandle.Status == AsyncOperationStatus.Succeeded)
                 {
-                    tcs.TrySetResult(operationHandle.Result);
+                    tcs.TrySetResult((T)operationHandle.Result);
                 }
                 else
                 {

@@ -159,7 +159,7 @@ namespace Metamatic.Framework
 
         private static async UniTask InitializePoolForAsset(Action<ConfigurablePool<UnityEngine.Component>> resolve, AssetReference assetReference, Signal cancellationSignal)
         {
-            using var directResourceResourceSummon = ResourcesSystem.Summon(assetReference);
+            using var directResourceResourceSummon = ResourcesSystem.Summon<UnityEngine.Object>(assetReference);
             var directResource = await directResourceResourceSummon.Wait(cancellationSignal);
             var assetReferenceRuntimeKey = assetReference.AssetGUID;
             switch (directResource)

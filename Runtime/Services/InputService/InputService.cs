@@ -22,7 +22,7 @@ namespace Metamatic
 
         [SerializeField] private InputActionAsset m_InputActionAsset;
         [SerializeField] private PlayerInput m_PlayerInputPrefab;
-        [SerializeField] private bool m_SiglePlayer;
+        [SerializeField] private bool m_SinglePlayer;
         private ObservableList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
         private PlayerInputManager m_PlayerInputManager;
@@ -47,7 +47,7 @@ namespace Metamatic
             
             
             /* Make a deal with the player manager */
-            if (!m_SiglePlayer)
+            if (!m_SinglePlayer)
             {
                 m_PlayerInputPrefab.actions = m_InputActionAsset;
                 var playerInputManager = m_PlayerInputManager = gameObject.AddComponent<PlayerInputManager>();
@@ -70,7 +70,7 @@ namespace Metamatic
             InputSystem.onDeviceChange += OnDeviceChange;
 
             await ready();
-            if (m_SiglePlayer)
+            if (m_SinglePlayer)
             {
                 InternalOnPlayerLeft(m_PlayerInputs[0]);
             }

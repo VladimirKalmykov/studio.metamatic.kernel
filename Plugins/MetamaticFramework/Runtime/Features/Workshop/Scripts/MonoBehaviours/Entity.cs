@@ -14,7 +14,7 @@ namespace Metamatic.Framework.Workshop
     /// <summary>
     /// Base class for all game entities
     /// </summary>
-    public abstract class Entity : AsyncBehaviour, ISavable
+    public class Entity : AsyncBehaviour, ISavable
     {
         [Serializable]
         [Version("1.0.0")]
@@ -46,12 +46,9 @@ namespace Metamatic.Framework.Workshop
 
         #endregion
 
-        private void GenerateUniqueId()
+        private void GenerateUniqueId(bool force = false)
         {
-            if (id == null)
-            {
-                id = Guid.NewGuid().ToString();
-            }
+            id = Guid.NewGuid().ToString();
         }
 
         public AssetReferenceT<EntityBlueprint> blueprint { get; private set; }
@@ -79,6 +76,19 @@ namespace Metamatic.Framework.Workshop
         
         protected override void Awake()
         {
+            base.Awake();
+            Debug.Log("Объект находится в сцене: " + gameObject.scene.name);
+
+#if UNITY_EDITOR
+            if (EditorUtility.IsPersistent(gameObject))
+            {
+                Debug.Log("Это префаб-ассет (не инстанцированный объект в сцене)");
+            }
+            else
+            {
+                Debug.Log("Это экземпляр, находящийся в сцене");
+            }
+#endif
         }
 
         // TODO: Update entity according to its LOD level
@@ -91,7 +101,13 @@ namespace Metamatic.Framework.Workshop
         // Метод вызывается при изменениях в редакторе
         protected override void OnValidate()
         {
-            if (string.IsNullOrEmpty(id))
+            // EditorUtility.IsPersistent(gameObject)
+            if (PrefabUtility.IsPartOfPrefabAsset(gameObject))
+            {
+                /* Erase Id for prefab assets */
+                id = null;
+                EditorUtility.SetDirty(this);
+            } else if (string.IsNullOrEmpty(id))
             {
                 GenerateUniqueId();
                 // Отмечаем объект как изменённый, чтобы изменения сохранились
@@ -170,7 +186,10 @@ namespace Metamatic.Framework.Workshop
             await OnEntityRun(ready, signal);
         }
 
-        protected abstract UniTask OnEntityRun(Ready ready, Signal signal);
+        protected virtual UniTask OnEntityRun(Ready ready, Signal signal)
+        {
+            return ready();
+        }
 
         public void RegisterComponent(EntityComponent component)
         {
@@ -253,6 +272,20 @@ namespace Metamatic.Framework.Workshop
             }
 
             return UniTask.CompletedTask;
+        }
+
+        public UniTask Bootstrap()
+        {
+            var tasks = new List<UniTask>();
+            foreach (var component in Components)
+            {
+                if (component is ISavable savableComponent)
+                {
+                    tasks.Add(savableComponent.Bootstrap());
+                }
+            }
+            
+            return UniTask.WhenAll(tasks);
         }
     }
 }
