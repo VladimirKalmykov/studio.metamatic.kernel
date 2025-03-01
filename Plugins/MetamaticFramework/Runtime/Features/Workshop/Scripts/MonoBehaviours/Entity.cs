@@ -117,6 +117,21 @@ namespace Metamatic.Framework.Workshop
 #endif
 
         #endregion
+        
+        #region Mono
+
+        private Token96Bit m_RegistrationToken;
+        protected void Start()
+        {
+            m_RegistrationToken = EntitiesService.TryRegisterEntity(this);
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            EntitiesService.TryUnregisterEntity(m_RegistrationToken);
+        }
+        #endregion
 
         public string Initialize(AssetReferenceT<EntityBlueprint> blueprint, string id, bool isStatic = false)
         {

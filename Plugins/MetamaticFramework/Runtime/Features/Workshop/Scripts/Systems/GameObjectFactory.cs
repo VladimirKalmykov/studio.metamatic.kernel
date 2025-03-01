@@ -6,6 +6,7 @@ using Metamatic.Framework.Workshop;
 using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.SceneManagement;
 
 namespace Metamatic.Framework
 {
@@ -56,7 +57,8 @@ namespace Metamatic.Framework
             {
                 var summon = pool.Summon();
                 cancellationSignal.Register(summon.Dispose);
-                return (T)summon.resource;
+                var instance = (T)summon.resource;
+                return instance;
             });
             return new AsyncSummon<T>(token, task, CancelSummon);
         }
@@ -81,7 +83,9 @@ namespace Metamatic.Framework
             {
                 var summon = pool.Summon();
                 cancellationSignal.Register(summon.Dispose);
-                return (T)summon.resource;
+                var instance = (T)summon.resource;
+                UnityEngine.Object.DontDestroyOnLoad(instance.gameObject);
+                return instance;
             });
             return new AsyncSummon<T>(token, task, CancelSummon);
         }
@@ -190,7 +194,7 @@ namespace Metamatic.Framework
         
         private static async UniTask InitializePoolForComponent(Action<ConfigurablePool<UnityEngine.Component>> resolve, string runtimeKey, UnityEngine.Component component, Signal cancellationSignal)
         {
-            var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>(component), autoShrink: true);
+            var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>(component, keepInactive: true, dontDestroyOnLoad: true), autoShrink: true);
             resolve(pool);
             await cancellationSignal;
             pool.Dispose();
@@ -200,7 +204,7 @@ namespace Metamatic.Framework
         {
             using var prefabSummon = blueprint.SummonPrefab(cancellationSignal);
             var prefab = await prefabSummon.Wait(cancellationSignal);
-            var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>((UnityEngine.Component)prefab), autoShrink: true);
+            var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>((UnityEngine.Component)prefab, keepInactive: true, dontDestroyOnLoad: true), autoShrink: true);
             resolve(pool);
             await cancellationSignal;
             pool.Dispose();

@@ -23,17 +23,26 @@ namespace Metamatic.SaveSystem
             var versionControlConverter = new SerializationVersionControlConverter(types, glossary);
             var typeConverter = new TypeConverter(types);
             var assetReferenceConverter = new AssetReferenceJsonConverter(types, glossary);
+            var vector2Converter = new Vector2JsonConverter();
+            var vector3Converter = new Vector3JsonConverter();
+            var quaternionConverter = new QuaternionJsonConverter();
 
+            // Resolvers
+            
             // 2) Настраиваем JsonSerializerSettings
             var settings = new JsonSerializerSettings
             {
                 Formatting = Formatting.Indented,
+                ContractResolver = new IgnoreTypeReferenceLoopContractResolver(),
                 // Можно убрать/изменить на None, если не хотите \"красивый\" JSON
                 Converters = new List<JsonConverter>
                 {
                     versionControlConverter,
                     typeConverter,
-                    assetReferenceConverter
+                    assetReferenceConverter,
+                    vector2Converter,
+                    vector3Converter,
+                    quaternionConverter
                 }
             };
 
@@ -56,12 +65,26 @@ namespace Metamatic.SaveSystem
             List<string> glossary)
         {
             // 1) Создаём конвертер
-            var converter = new SerializationVersionControlConverter(types, glossary);
+            var versionControlConverter = new SerializationVersionControlConverter(types, glossary);
+            var typeConverter = new TypeConverter(types);
+            var assetReferenceConverter = new AssetReferenceJsonConverter(types, glossary);
+            var vector2Converter = new Vector2JsonConverter();
+            var vector3Converter = new Vector3JsonConverter();
+            var quaternionConverter = new QuaternionJsonConverter();
 
             // 2) Настраиваем JsonSerializerSettings
             var settings = new JsonSerializerSettings
             {
-                Converters = new List<JsonConverter> { converter }
+                ContractResolver = new IgnoreTypeReferenceLoopContractResolver(),
+                Converters = new List<JsonConverter>
+                {
+                    versionControlConverter,
+                    typeConverter,
+                    assetReferenceConverter,
+                    vector2Converter,
+                    vector3Converter,
+                    quaternionConverter
+                }
                 // Можно добавить и другие настройки: TypeNameHandling, MissingMemberHandling и т. п.
             };
 

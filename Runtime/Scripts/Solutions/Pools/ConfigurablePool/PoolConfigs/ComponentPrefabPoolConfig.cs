@@ -5,19 +5,28 @@ namespace Metamatic
     {
         public readonly T Prefab;
         private readonly bool m_KeepInactive;
+        private readonly bool m_DontDestroyOnLoad;
         /// <summary>
         /// 
         /// </summary>
         /// <param name="prefab"></param>
         /// <param name="keepInactive">Do not activate object on get from pool</param>
-        public ComponentPrefabPoolConfig(T prefab, bool keepInactive = false)
+        public ComponentPrefabPoolConfig(T prefab, bool keepInactive = false, bool dontDestroyOnLoad = false)
         {
             Prefab = prefab;
             m_KeepInactive = keepInactive;
+            m_DontDestroyOnLoad = dontDestroyOnLoad;
         }
         public T OnCreate()
         {
-            return UnityEngine.Object.Instantiate(Prefab);
+            var instance = UnityEngine.Object.Instantiate(Prefab);
+            if (m_DontDestroyOnLoad)
+            {
+                // Make sure the instance is not destroyed when the scene is changed
+                // Because its lifecycle is managed by the pool
+                UnityEngine.Object.DontDestroyOnLoad(instance.gameObject);
+            }
+            return instance;
         }
 
         public virtual void OnGet(T instance)

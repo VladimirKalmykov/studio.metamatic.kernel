@@ -158,13 +158,19 @@ namespace Metamatic
         /// </summary>
         public bool TryGet(int index, long signature, out T item)
         {
-            if (index < 0 || index >= m_Count || !m_Items[index].Used || m_Items[index].Signature != signature)
+            if (index < 0 || index >= m_Count)
+            {
+                item = default!;
+                return false;
+            }
+            var itemData = m_Items[index];
+            if (!itemData.Used || itemData.Signature != signature)
             {
                 item = default!;
                 return false;
             }
 
-            item = m_Items[index].Value;
+            item = itemData.Value;
             return true;
         }
         

@@ -1,8 +1,8 @@
+using System;
 using Metamatic.SaveSystem;
 
 namespace Metamatic.Framework.Workshop
 {
-    using System;
     using System.Collections.Generic;
     using System.Linq;
     using Cysharp.Threading.Tasks;
@@ -18,16 +18,17 @@ namespace Metamatic.Framework.Workshop
         [Version("1.0.0")]
         public struct SaveServiceData
         {
-            [JsonProperty("st")] public Type serviceType;
-            [JsonProperty("dt")] public Type dataType;
-            [JsonProperty("d")] public object data;
+            public Type serviceType;
+            public Type dataType;
+            public object data;
         }
 
         [Serializable]
+        [Version("1.0.0")]
         public struct SaveData
         {
-            [JsonProperty("dt")] public string dateTime;
-            [JsonProperty("s")] public SaveServiceData[] services;
+            public string dateTime;
+            public SaveServiceData[] services;
         }
 
         protected override UniTask RunService(Ready ready, Signal signal)
@@ -35,7 +36,7 @@ namespace Metamatic.Framework.Workshop
             return ready();
         }
 
-        public async UniTask Save(Signal cancellationSignal)
+        public async UniTask Save(string address = "latest", Signal cancellationSignal = default)
         {
             var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
             await UniTask.WhenAll(servicesReadyTasks);
@@ -65,13 +66,14 @@ namespace Metamatic.Framework.Workshop
                 services = dataList.ToArray()
             };
 
-            await Repository.LocalStorage.Set("latest", saveData, cancellationSignal);
+            Console.Debug("Launcher", $"Saving game data: {saveData}");
+            await Repository.LocalStorage.Set(address, saveData, cancellationSignal);
         }
 
         public async UniTask Load(string saveAddress = "latest", Signal signal = default)
         {
             var saveData = await Repository.LocalStorage.Get<SaveData>(saveAddress, signal);
-            global::Metamatic.Console.Debug("Launcher", $"Loaded save data: {saveData}");
+            Console.Debug("Launcher", $"Loaded save data: {saveData}");
         }
 
         /// <summary>

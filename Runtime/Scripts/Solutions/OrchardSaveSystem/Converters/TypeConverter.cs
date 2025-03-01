@@ -28,7 +28,7 @@ namespace Metamatic.SaveSystem
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            var typeIndex = (int) reader.Value;
+            var typeIndex = Convert.ToInt32(reader.Value);
             if (m_Types.Count <= typeIndex)
             {
                 Console.Error("TypeConverter", $"Type index is out of range. Type index: {typeIndex}");
@@ -39,7 +39,7 @@ namespace Metamatic.SaveSystem
 
         public override bool CanConvert(Type objectType)
         {
-            return objectType == typeof(Type);
+            return objectType == typeof(Type) || objectType.IsSubclassOf(typeof(Type));
         }
     }
 }

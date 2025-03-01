@@ -80,8 +80,12 @@ namespace Metamatic
         {
             var versionAttributes = type.GetCustomAttributes<VersionAttribute>();
             var relatedVersion = versionAttributes.FirstOrDefault(x => x.value == version);
+            if (relatedVersion == null)
+            {
+                return null;
+            }
             
-            return relatedVersion?.relatedType ?? null;
+            return relatedVersion.latest ? type : relatedVersion?.relatedType ?? null;
         }
     }
 }
