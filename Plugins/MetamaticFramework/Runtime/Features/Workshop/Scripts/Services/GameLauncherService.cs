@@ -16,7 +16,7 @@ namespace Metamatic.Framework.Workshop
     {
         [Serializable]
         [Version("1.0.0")]
-        public struct SaveServiceData
+        public class SaveServiceData
         {
             public Type serviceType;
             public Type dataType;
@@ -73,7 +73,23 @@ namespace Metamatic.Framework.Workshop
         public async UniTask Load(string saveAddress = "latest", Signal signal = default)
         {
             var saveData = await Repository.LocalStorage.Get<SaveData>(saveAddress, signal);
-            Console.Debug("Launcher", $"Loaded save data: {saveData}");
+            Console.Debug("Launcher", $"Loaded game data: {saveData}");
+            
+            var tasks = new List<UniTask>();
+            foreach (var serviceData in saveData.services)
+            {
+                if (Service.Services.TryGetValue(serviceData.serviceType, out var service))
+                {
+                    if (service is ISavable savable)
+                    {
+                        tasks.Add(savable.Load(serviceData.data));
+                    }
+                }
+                else
+                {
+                    Console.Error("Launcher", $"Service not found: {serviceData.serviceType}");
+                }
+            }
         }
 
         /// <summary>

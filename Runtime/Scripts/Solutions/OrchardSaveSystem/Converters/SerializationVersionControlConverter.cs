@@ -159,8 +159,8 @@ namespace Metamatic.SaveSystem
 
         public override bool CanConvert(Type objectType)
         {
-            return (VersionAttribute.GetVersion(objectType, "0") != "0" ||
-                    DerivedVersionControlAttribute.IsDerivedVersionControl(objectType));
+            return objectType == typeof(object) || (VersionAttribute.GetVersion(objectType, "0") != "0" ||
+                              DerivedVersionControlAttribute.IsDerivedVersionControl(objectType));
         }
 
         private static object Migrate(Type type, string version, object data)

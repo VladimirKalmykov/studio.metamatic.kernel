@@ -56,6 +56,11 @@ public class AssetReferenceJsonConverter : JsonConverter
 
     public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
     {
+        // Если в JSON записан null, то сразу возвращаем null
+        if (reader.TokenType == JsonToken.Null)
+        {
+            return null;
+        }
         var jRoot = JObject.Load(reader);
         var assetGuidIndex = jRoot["guid"]?.ToObject<int>() ?? -1;
         var typeIndex = jRoot["t"]?.ToObject<int>() ?? -1;

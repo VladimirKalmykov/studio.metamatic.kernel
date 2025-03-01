@@ -13,24 +13,24 @@ namespace Metamatic.Framework.Workshop
     [RequireComponent(typeof(Entity))]
     public abstract class EntityComponent: MonoBehaviour, ISavable
     {
-        [DerivedVersionControl]
-        [Serializable]
+        [Version("1.0.0")]
         public class SaveData
         {
-            [JsonProperty("t")]
             public Type ComponentType;
-        }
-        [Serializable]
-        [Version("1.0.0")]
-        public class SaveData<T>: SaveData
-        {
-            [JsonProperty("d")]
-            public T data;
-            
-            public SaveData(EntityComponent component, T data)
+            public object Data;
+
+            /// <summary>
+            /// Serialization constructor
+            /// </summary>
+            public SaveData()
             {
-                this.data = data;
+                
+            }
+            
+            public SaveData(EntityComponent component, object data)
+            {
                 ComponentType = component.GetType();
+                this.Data = data;
             }
         }
         
@@ -58,10 +58,11 @@ namespace Metamatic.Framework.Workshop
         
         #region Mono
 
-        private void Start()
+        protected virtual void Start()
         {
             m_LastTimeUpdate = Time.time;
         }
+
         protected virtual void Awake()
         {
             m_Entity = GetComponent<Entity>();
@@ -165,13 +166,26 @@ namespace Metamatic.Framework.Workshop
         
         public override object Save()
         {
-            return new SaveData<T>(this, State);
+            OnBeforeSave();
+            return new SaveData(this, State);
         }
 
         public override UniTask Load(object data)
         {
-            State = ((SaveData<T>) data).data;
+            if (data == null) return UniTask.CompletedTask;
+            State = (T)((data as SaveData)?.Data);
+            OnAfterLoad();
             return UniTask.CompletedTask;
+        }
+        
+        protected virtual void OnBeforeSave()
+        {
+            
+        }
+        
+        protected virtual void OnAfterLoad()
+        {
+            
         }
     }
 }
