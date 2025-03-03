@@ -10,6 +10,7 @@ using MicroBehaviours;
 /// <summary>
 /// Service allows you to track objects in and out of the camera FOV
 /// </summary>
+[RequireService(typeof(CameraService))]
 public class FOV2DService : Service
 {
     [SerializeField] private float m_OuterBuffer = 1.0f;

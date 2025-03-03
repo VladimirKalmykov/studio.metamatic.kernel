@@ -2,6 +2,7 @@
 :root {
     --MetamaticTailwind_PrimarySize: 12;
     --MetamaticTailwind_TextColor: #f0f0f0;
+    --MetamaticTailwind_TextColorInverse: #1a1a1a;
     --MetamaticTailwind_BackgroundColor: #1a1a1a;
     --MetamaticTailwind_BorderColor: #282828;
     --MetamaticTailwind_BorderLightColor: #3a3a3a;
@@ -278,6 +279,14 @@
 
 .MetamaticTailwind_BackgroundColorIndicatorActive {
     background-color: var(--MetamaticTailwind_IndicatorActiveColor);
+}
+
+.MetamaticTailwind_TextColorDefault {
+    color: var(--MetamaticTailwind_TextColor);
+}
+
+.MetamaticTailwind_TextColorInverse {
+    color: var(--MetamaticTailwind_TextColorInverse);
 }
 
 /* Border radius */

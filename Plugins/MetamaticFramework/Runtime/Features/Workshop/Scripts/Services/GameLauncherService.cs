@@ -1,5 +1,7 @@
 using System;
 using Metamatic.SaveSystem;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -30,6 +32,11 @@ namespace Metamatic.Framework.Workshop
             public string dateTime;
             public SaveServiceData[] services;
         }
+        
+        #region Fields
+        [SerializeField] private AssetReference m_MainMenuScene;
+        [SerializeField] private AssetReference m_GameplayScene;
+        #endregion
 
         protected override UniTask RunService(Ready ready, Signal signal)
         {
