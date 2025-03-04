@@ -98,15 +98,15 @@ namespace Micro.Behaviours
                     var intersection =
                         await m_FOV2DService.TrackAreaOneShot(area, CameraFOVTracker2d.FovBoundsType.Fov, token);
                     /* Get currently spawned objects count */
-                    if (!m_SpawnedObjectsMap.TryGetValue(intersection.area, out var spawnedObjects))
+                    if (!m_SpawnedObjectsMap.TryGetValue(area, out var spawnedObjects))
                     {
                         spawnedObjects = new List<Transform>();
-                        m_SpawnedObjectsMap.Add(intersection.area, spawnedObjects);
+                        m_SpawnedObjectsMap.Add(area, spawnedObjects);
                     }
                     /* Calculate the min distance between objects */
-                    var minDistance = FindMinimumDistance(intersection.area.size, m_MaxObjectsCount);
+                    var minDistance = FindMinimumDistance(area.size, m_MaxObjectsCount);
                     var maxObjectsCountPerArea = (int)(m_MaxObjectsCount * (area.size / m_TotalAreasSize));
-                    SpawnObjectsInIntersectedArea(intersection.area, intersection, spawnedObjects, (float)minDistance, maxObjectsCountPerArea);
+                    SpawnObjectsInIntersectedArea(area, intersection, spawnedObjects, (float)minDistance, maxObjectsCountPerArea);
                 } catch (OperationCanceledException)
                 {
                     return;
@@ -133,17 +133,17 @@ namespace Micro.Behaviours
             /* Calculate the min distance between objects */
             var minDistance = FindMinimumDistance(m_TotalAreasSize, m_MaxObjectsCount);
             /* Get currently spawned objects count */
-            if (!m_SpawnedObjectsMap.TryGetValue(intersection.area, out var spawnedObjects))
+            if (!m_SpawnedObjectsMap.TryGetValue(area, out var spawnedObjects))
             {
                 spawnedObjects = new List<Transform>();
-                m_SpawnedObjectsMap.Add(intersection.area, spawnedObjects);
+                m_SpawnedObjectsMap.Add(area, spawnedObjects);
             }
             /* Calculate objects count to spawn */
             var maxObjectsCountPerArea = (int)(m_MaxObjectsCount * (area.size / m_TotalAreasSize));
             using var loop = AsyncUtils.PlayerLoopAction(() =>
             {
                 UILog.Add("spawnedObjects", "Count", spawnedObjects.Count);
-                SpawnObjectsInIntersectedArea(intersection.area, intersection, spawnedObjects, (float)minDistance, maxObjectsCountPerArea);
+                SpawnObjectsInIntersectedArea(area, intersection, spawnedObjects, (float)minDistance, maxObjectsCountPerArea);
 
             }, PlayerLoopTiming.FixedUpdate);
                 
@@ -176,7 +176,7 @@ namespace Micro.Behaviours
                     var index = uniqueDice.Next();
                     var rect = intersectedRects[index];
                     var startGenerateRandomPoints = Time.realtimeSinceStartup;
-                    var randomPoints = intersection.area.GetSpawnPoints(rect, minDistance, maxCounts, spawnedPoints, algorithm: m_Algorithm);
+                    var randomPoints = area.GetSpawnPoints(rect, minDistance, maxCounts, spawnedPoints, algorithm: m_Algorithm);
                     pointsGenerationDuration += (Time.realtimeSinceStartup - startGenerateRandomPoints) * 1000;
                     // var rp = intersection.area.GetRandomPosition(rect);
                     /* Ensure the minimum distance between objects */
@@ -194,7 +194,7 @@ namespace Micro.Behaviours
                         spawnedObjects.Add(obj.transform);
                         spawnedPoints.Add(rp);
                         obj.SetActive(true);
-                        m_ObjectTracker.Add(TrackObject(intersection.area, obj));
+                        m_ObjectTracker.Add(TrackObject(area, obj));
                         successSpawned = true;
                         m_OnObjectSpawned?.Invoke(obj.transform);
                     }

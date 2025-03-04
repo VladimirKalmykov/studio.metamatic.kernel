@@ -75,7 +75,7 @@ public class FOV2DService : Service
         m_Trackers.ForEach(t => t.Dispose());
     }
 
-    public DisposableAction TrackArea(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
+    public DisposableAction TrackArea(IArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
     {
         var untrack = cameraFovTracker2d.TrackArea(area, boundsType, onActivated);
         m_Trackers.Add(untrack);
@@ -93,7 +93,7 @@ public class FOV2DService : Service
     /// <param name="boundsType"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public UniTask<CameraFOVTracker2d.AreaIntersection> TrackAreaOneShot(VirtualArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CancellationToken cancellationToken)
+    public UniTask<CameraFOVTracker2d.AreaIntersection> TrackAreaOneShot(IArea2d area, CameraFOVTracker2d.FovBoundsType boundsType, CancellationToken cancellationToken)
     {
         var tcs = new UniTaskCompletionSource<CameraFOVTracker2d.AreaIntersection>();
         DisposableAction release = default;
@@ -130,7 +130,7 @@ public class FOV2DService : Service
     /// <param name="areas"></param>
     /// <param name="onActivated"></param>
     /// <returns></returns>
-    public DisposableAction TrackAreas(IEnumerable<VirtualArea2d> areas, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
+    public DisposableAction TrackAreas(IEnumerable<IArea2d> areas, CameraFOVTracker2d.FovBoundsType boundsType, CameraFOVTracker2d.TrackAreaHandler onActivated)
     {
         var untrack = cameraFovTracker2d.TrackAreas(areas, boundsType, onActivated);
         m_Trackers.Add(untrack);

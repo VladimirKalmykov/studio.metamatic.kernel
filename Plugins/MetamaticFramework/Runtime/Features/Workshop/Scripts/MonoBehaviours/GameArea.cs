@@ -11,13 +11,14 @@ namespace Metamatic.Framework.Workshop
 {
     public class GameArea : MonoBehaviour
     {
-        #if UNITY_EDITOR
-        [SerializeField][HideInInspector] public bool isActiveInEditor;
-        #endif
-        
-        [ShowInInspector, ReadOnly]
-        private bool m_FactualIsActiveInEditor = false;
-        
+#if UNITY_EDITOR
+        [SerializeField] [HideInInspector] public bool isActiveInEditor;
+#endif
+
+        [ReadOnly] [SerializeField] public string id;
+
+        [ShowInInspector, ReadOnly] private bool m_FactualIsActiveInEditor = false;
+
         public enum ResourceMode
         {
             Prefab,
@@ -40,25 +41,32 @@ namespace Metamatic.Framework.Workshop
 
         private void OnEnable()
         {
-            #if UNITY_EDITOR
+#if UNITY_EDITOR
             if (!Application.isPlaying && isActiveInEditor)
             {
                 EditorOnlyActivate();
             }
-            #endif
+#endif
+            GameAreasService.RegisterGameArea(this);
         }
-        
+
         private void OnDisable()
         {
-            #if UNITY_EDITOR
+#if UNITY_EDITOR
             if (!Application.isPlaying && isActiveInEditor)
             {
                 EditorOnlyDeactivate();
             }
-            #endif
+#endif
+            GameAreasService.UnregisterGameArea(this);
         }
-        
-        #if UNITY_EDITOR
+
+        private void GenerateUniqueId(bool force = false)
+        {
+            id = Guid.NewGuid().ToString();
+        }
+
+#if UNITY_EDITOR
         public void EditorOnlyApplyActivation()
         {
             if (Application.isPlaying) return;
@@ -71,7 +79,7 @@ namespace Metamatic.Framework.Workshop
                 EditorOnlyDeactivate();
             }
         }
-        #endif
+#endif
 
         /// <summary>
         /// Активирует область:
@@ -169,5 +177,24 @@ namespace Metamatic.Framework.Workshop
             Debug.LogWarning("Deactivate работает только в режиме редактора");
 #endif
         }
+
+#if UNITY_EDITOR
+        // Метод вызывается при изменениях в редакторе
+        protected void OnValidate()
+        {
+            // EditorUtility.IsPersistent(gameObject)
+            if (PrefabUtility.IsPartOfPrefabAsset(gameObject))
+            {
+                /* Erase Id for prefab assets */
+                id = null;
+                EditorUtility.SetDirty(this);
+            }
+            else if (string.IsNullOrEmpty(id))
+            {
+                GenerateUniqueId();
+                EditorUtility.SetDirty(this);
+            }
+        }
+#endif
     }
 }

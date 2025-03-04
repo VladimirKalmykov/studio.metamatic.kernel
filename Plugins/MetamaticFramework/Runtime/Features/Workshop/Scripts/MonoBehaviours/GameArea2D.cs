@@ -5,7 +5,7 @@ using UnityEngine.Serialization;
 namespace Metamatic.Framework.Workshop
 {
     [AddComponentMenu("2D Object/Metamatic/Workshop/Game Area 2D")]
-    public class GameArea2D : GameArea
+    public class GameArea2D : GameArea, IArea2d
     {
         [SerializeField] public Bounds bounds;
 
@@ -31,5 +31,6 @@ namespace Metamatic.Framework.Workshop
             Handles.Label(worldCenter, area.name, labelStyle);
         }
 #endif
+        public Rect rect => new Rect(transform.position + bounds.min, bounds.size);
     }
 }

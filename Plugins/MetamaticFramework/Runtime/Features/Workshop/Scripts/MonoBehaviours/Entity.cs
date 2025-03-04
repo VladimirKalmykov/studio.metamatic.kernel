@@ -68,11 +68,6 @@ namespace Metamatic.Framework.Workshop
         public bool isStatic { get; private set; }= true;
 
         #region Mono
-
-        protected void Reset()
-        {
-            GenerateUniqueId();
-        }
         
         protected override void Awake()
         {

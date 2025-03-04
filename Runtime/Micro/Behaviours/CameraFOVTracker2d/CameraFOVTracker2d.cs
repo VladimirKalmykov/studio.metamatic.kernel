@@ -1,19 +1,21 @@
-﻿using System;
+﻿// ==============================================
+// 2. Обновлённый класс CameraFOVTracker2d
+// ==============================================
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
+using Unity.Jobs;
+using Unity.Collections;
+using UnityEngine;
 
 namespace Metamatic.MicroBehaviours
 {
-    using Unity.Jobs;
-    using Unity.Collections;
-    using UnityEngine;
-    
     /// <summary>
     /// MicroBehaviour that tracks spawn areas and emit events when they are inside the camera field of view
     /// </summary>
-    public partial class CameraFOVTracker2d: MicroBehaviourLegacy
+    public partial class CameraFOVTracker2d : MicroBehaviourLegacy
     {
         [Flags]
         public enum FovBoundsType
@@ -86,7 +88,7 @@ namespace Metamatic.MicroBehaviours
             /// <summary>
             /// Reference to the area itself
             /// </summary>
-            public readonly VirtualArea2d area;
+            public readonly IArea2d area;
             /// <summary>
             /// Intersected rects mask (bitwise representation)
             /// </summary>
@@ -102,7 +104,7 @@ namespace Metamatic.MicroBehaviours
             private readonly List<Rect> m_IntersectedRects = new List<Rect>(7);
             public event Action OnIntersectedRectsChange;
 
-            internal AreaIntersection(AreaTracker areaTracker, VirtualArea2d area)
+            internal AreaIntersection(AreaTracker areaTracker, IArea2d area)
             {
                 this.m_AreaTracker = areaTracker;
                 this.area = area;
@@ -140,7 +142,7 @@ namespace Metamatic.MicroBehaviours
             }
         }
 
-        private class ObjectTracker: IDisposable
+        private class ObjectTracker : IDisposable
         {
             public readonly Transform transform;
             public FovBoundsType activatedBoundsTypesMask { get; private set; } = 0;
@@ -215,10 +217,10 @@ namespace Metamatic.MicroBehaviours
                             onReactivate.Invoke(transform, intersection);
                         }
                     };
-                    
+
                     OnActivateChange += handler;
                 }
-                
+
                 var isDisposed = false;
                 return new DisposableAction(() =>
                 {
@@ -276,7 +278,7 @@ namespace Metamatic.MicroBehaviours
         internal class AreaTracker : IDisposable
         {
             internal readonly CameraFOVTracker2d masterTracker;
-            public readonly VirtualArea2d area;
+            public readonly IArea2d area;
             public FovBoundsType activatedBoundsTypesMask { get; private set; } = 0;
             private Dictionary<FovBoundsType, int> m_AcquiredBoundsTypeMap = new();
             public FovBoundsType acquiredBoundsTypesBinaryMask { get; private set; } = 0;
@@ -286,7 +288,7 @@ namespace Metamatic.MicroBehaviours
             private bool m_Disposed;
             private bool m_Pristine = true;
 
-            public AreaTracker(CameraFOVTracker2d masterTracker, VirtualArea2d area)
+            public AreaTracker(CameraFOVTracker2d masterTracker, IArea2d area)
             {
                 this.masterTracker = masterTracker;
                 this.area = area;
@@ -299,7 +301,6 @@ namespace Metamatic.MicroBehaviours
 
             public bool ApplyBounds(FovBoundsType boundsType, ulong intersectedRectsMask)
             {
-                
                 if (!m_Pristine && activatedBoundsTypesMask == boundsType && m_IntersectedRectsMask == intersectedRectsMask)
                 {
                     return false;
@@ -350,7 +351,7 @@ namespace Metamatic.MicroBehaviours
                     {
                         onReactivate.Invoke(intersection != 0, areaIntersection);
                     }
-                    
+
                     handler = (activeBounds, activeRectsMask, wasPristine) =>
                     {
                         var nextIntersection = activeBounds & boundsTypeMask;
@@ -365,7 +366,7 @@ namespace Metamatic.MicroBehaviours
                     };
                     OnActivateChange += handler;
                 }
-                
+
                 var isDisposed = false;
                 return new DisposableAction(() =>
                 {
@@ -385,8 +386,8 @@ namespace Metamatic.MicroBehaviours
                     }
                     BakeAcquiredBoundsTypes();
                     if (areaIntersection != null && onReactivate != null && areaIntersection.isIntersected)
-                        /* Send deactivation event */
                     {
+                        /* Send deactivation event */
                         onReactivate.Invoke(false, new AreaIntersection(this, area));
                     }
                 });
@@ -433,10 +434,10 @@ namespace Metamatic.MicroBehaviours
         private float m_InnerBuffer;
         private float m_OuterBuffer;
         private bool m_TrackedAreasAreSwapped;
-        private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreas;
-        private Dictionary<VirtualArea2d, AreaTracker> m_TrackedAreasBuffer;
-        private Dictionary<VirtualArea2d, AreaTracker> iterableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreasBuffer : m_TrackedAreas;
-        private Dictionary<VirtualArea2d, AreaTracker> mutableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreas : m_TrackedAreasBuffer;
+        private Dictionary<IArea2d, AreaTracker> m_TrackedAreas;
+        private Dictionary<IArea2d, AreaTracker> m_TrackedAreasBuffer;
+        private Dictionary<IArea2d, AreaTracker> iterableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreasBuffer : m_TrackedAreas;
+        private Dictionary<IArea2d, AreaTracker> mutableTrackedAreas => m_TrackedAreasAreSwapped ? m_TrackedAreas : m_TrackedAreasBuffer;
 
         private bool m_TrackedObjectsAreSwapped;
         private List<ObjectTracker> m_TrackedObjects;
@@ -452,7 +453,7 @@ namespace Metamatic.MicroBehaviours
         internal NativeArray<FovBoundsType> mapBoundsTypesToRectIndexesBoundTypes;
         internal NativeArray<int> mapBoundsTypeToRectsStartIndex;
         internal NativeArray<int> mapBoundsTypeToRectsEndIndex;
-    
+
         public float innerBuffer
         {
             get => m_InnerBuffer;
@@ -472,8 +473,8 @@ namespace Metamatic.MicroBehaviours
         }
         private bool m_IsTracking;
 
-        public event Action<VirtualArea2d, Rect> OnAreaActivated;
-        public event Action<VirtualArea2d> OnAreaDeactivated;
+        public event Action<IArea2d, Rect> OnAreaActivated;
+        public event Action<IArea2d> OnAreaDeactivated;
         public event Action<Transform, FovBoundsType> OnObjectReactivate;
         public event Action OnPostTracking;
         public Camera camera
@@ -492,8 +493,8 @@ namespace Metamatic.MicroBehaviours
             m_CustomCamera = camera;
             this.m_InnerBuffer = innerBuffer;
             this.m_OuterBuffer = outerBuffer;
-            this.m_TrackedAreas = new Dictionary<VirtualArea2d, AreaTracker>();
-            this.m_TrackedAreasBuffer = new Dictionary<VirtualArea2d, AreaTracker>();
+            this.m_TrackedAreas = new Dictionary<IArea2d, AreaTracker>();
+            this.m_TrackedAreasBuffer = new Dictionary<IArea2d, AreaTracker>();
             this.m_TrackedObjects = new List<ObjectTracker>();
             this.m_TrackedObjectsBuffer = new List<ObjectTracker>();
             this.m_ZDepth = zDepth;
@@ -504,12 +505,12 @@ namespace Metamatic.MicroBehaviours
             }
         }
 
-        public bool ContainsArea(VirtualArea2d area)
+        public bool ContainsArea(IArea2d area)
         {
             return mutableTrackedAreas.ContainsKey(area);
         }
 
-        public DisposableAction TrackArea(VirtualArea2d area, FovBoundsType boundsType, TrackAreaHandler onReactivate = null)
+        public DisposableAction TrackArea(IArea2d area, FovBoundsType boundsType, TrackAreaHandler onReactivate = null)
         {
             if (!mutableTrackedAreas.TryGetValue(area, out var tracker))
             {
@@ -528,7 +529,7 @@ namespace Metamatic.MicroBehaviours
             });
         }
 
-        public DisposableAction TrackAreas(IEnumerable<VirtualArea2d> areas, FovBoundsType boundsType, TrackAreaHandler onAreaActivated = null)
+        public DisposableAction TrackAreas(IEnumerable<IArea2d> areas, FovBoundsType boundsType, TrackAreaHandler onAreaActivated = null)
         {
             var disposables = areas.Select(area => TrackArea(area, boundsType, onAreaActivated)).ToList();
             return new DisposableAction(() =>
@@ -561,7 +562,7 @@ namespace Metamatic.MicroBehaviours
             }
 
             var release = (Action)tracker.Acquire(boundsType, onActivate);
-            
+
             mutableTrackedObjects.Add(tracker);
 
             return new DisposableAction(() =>
@@ -704,7 +705,7 @@ namespace Metamatic.MicroBehaviours
                     for (var i = 0; i < iterableTrackedAreas.Count; i++)
                     {
                         var (area, areaTrack) = iterableTrackedAreas.ElementAt(i);
-                        areaRects[i] = area.rectRepresentation;
+                        areaRects[i] = area.rect;
                         areaAcquiredBoundsTypesBinaryMaskArray[i] = areaTrack.acquiredBoundsTypesBinaryMask;
                     }
 
@@ -750,7 +751,7 @@ namespace Metamatic.MicroBehaviours
                         {
                             if (hresultBoundsTypeMask != 0)
                             {
-                                OnAreaActivated?.Invoke(area, area.rectRepresentation);
+                                OnAreaActivated?.Invoke(area, area.rect);
                             }
                             else
                             {

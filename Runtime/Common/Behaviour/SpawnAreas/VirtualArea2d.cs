@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public abstract class VirtualArea2d: VirtualArea
+    public abstract class VirtualArea2d: VirtualArea, IArea2d
     {
         
         public enum GeneratePointsAlgorithm
@@ -104,5 +104,7 @@ namespace Metamatic
         {
             m_DisableCancellationTokenSource?.Cancel();
         }
+
+        public Rect rect => rectRepresentation;
     }
 }

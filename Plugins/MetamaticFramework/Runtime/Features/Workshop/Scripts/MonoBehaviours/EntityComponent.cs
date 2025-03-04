@@ -2,7 +2,6 @@ using System;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using Metamatic.SaveSystem;
-using Unity.Plastic.Newtonsoft.Json;
 using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
@@ -70,7 +69,7 @@ namespace Metamatic.Framework.Workshop
             entity.RegisterComponent(this);
             OnDestroyEvent += entity.SubscribeToEntityReset(OnEntityReset);
             OnDestroyEvent += entity.SubscribeToEntityUpdate(InternalOnEntityUpdate);
-            OnDestroyEvent += m_Entity.SubscribeReady(OnInitialize);
+            OnDestroyEvent += m_Entity.SubscribeReady(OnInitializeInternal);
         }
         
         protected virtual void OnDestroy()
