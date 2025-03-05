@@ -24,7 +24,7 @@ namespace Metamatic.Systems
             
             handle.Completed += HandleCompleted;
             
-            return new AsyncSummon<T>(token, tcs.Task, ReleaseSummon);
+            return new AsyncSummon<T>(token, tcs.Task, Release);
             
             void HandleCompleted(AsyncOperationHandle<T> operationHandle)
             {
@@ -47,7 +47,7 @@ namespace Metamatic.Systems
             
             handle.Completed += HandleCompleted;
             
-            return new AsyncSummon<T>(token, tcs.Task, ReleaseSummon);
+            return new AsyncSummon<T>(token, tcs.Task, Release);
             
             void HandleCompleted(AsyncOperationHandle<UnityEngine.Object> operationHandle)
             {
@@ -78,7 +78,7 @@ namespace Metamatic.Systems
             
             handle.Completed += HandleCompleted;
             
-            return new AsyncSummon<TOutput>(token, tcs.Task.ContinueWith(converter), ReleaseSummon);
+            return new AsyncSummon<TOutput>(token, tcs.Task.ContinueWith(converter), Release);
             
             void HandleCompleted(AsyncOperationHandle<T> operationHandle)
             {
@@ -92,8 +92,15 @@ namespace Metamatic.Systems
                 }
             }
         }
+
+        public static IDisposable LoadScene(AssetReference asset, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            var handle = Addressables.LoadSceneAsync(asset, mode);
+            var token = HandleReleaseActions.Add(() => Addressables.UnloadSceneAsync(handle));
+            return DisposableAction.Create(() => Release(token));
+        }
         
-        private static void ReleaseSummon(Token96Bit token)
+        private static void Release(Token96Bit token)
         {
             if (HandleReleaseActions.Remove(token, out var release))
             {

@@ -3,9 +3,12 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 #endif
 using System;
+using Cysharp.Threading.Tasks;
+using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using Sirenix.OdinInspector;
+using UnityEngine.SceneManagement;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -17,7 +20,11 @@ namespace Metamatic.Framework.Workshop
 
         [ReadOnly] [SerializeField] public string id;
 
-        [ShowInInspector, ReadOnly] private bool m_FactualIsActiveInEditor = false;
+#if UNITY_EDITOR        
+        private bool m_FactualIsActiveInEditor = false;
+#endif
+        
+        private bool m_IsActivated = false;
 
         public enum ResourceMode
         {
@@ -176,6 +183,72 @@ namespace Metamatic.Framework.Workshop
 #else
             Debug.LogWarning("Deactivate работает только в режиме редактора");
 #endif
+        }
+
+        public async UniTask Activate(Signal cancellationSignal)
+        {
+            if (m_IsActivated)
+            {
+                Console.Exception("GameArea", "Already active");
+                return;
+            }
+
+            m_IsActivated = true;
+
+            try
+            {
+                if (m_ResourceMode == ResourceMode.Prefab)
+                {
+                    if (m_Prefab == null)
+                    {
+                        Console.Exception("GameArea", "Prefab is not set");
+                        return;
+                    }
+
+                    await ActivatePrefab(cancellationSignal);
+                }
+                else if (m_ResourceMode == ResourceMode.AddictiveScene)
+                {
+                    if (m_AddictiveScene == null)
+                    {
+                        Console.Exception("GameArea", "Scene is not set");
+                        return;
+                    }
+
+                    await ActivateScene(cancellationSignal);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Skip
+            }
+            catch (Exception e)
+            {
+                Console.Exception("GameArea", e);
+            }
+            finally
+            {
+                m_IsActivated = false;
+            }
+        }
+        
+        private async UniTask ActivatePrefab(Signal cancellationSignal)
+        {
+            /* Load prefab resource */
+            using var prefabSummon = ResourcesSystem.Summon<Transform>(m_Prefab);
+            var prefab = await prefabSummon.Wait(cancellationSignal);
+            /* Create instance */
+            var thisTransform = transform;
+            var instance = Instantiate(prefab, thisTransform);
+            await cancellationSignal;
+            Destroy(instance.gameObject);
+        }
+        
+        private async UniTask ActivateScene(Signal cancellationSignal)
+        {
+            /* Load scene */
+            using var sceneSummon = ResourcesSystem.LoadScene(m_AddictiveScene, LoadSceneMode.Additive);
+            await cancellationSignal;
         }
 
 #if UNITY_EDITOR

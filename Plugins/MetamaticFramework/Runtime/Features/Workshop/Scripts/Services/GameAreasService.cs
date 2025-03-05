@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Metamatic.MicroBehaviours;
@@ -8,8 +9,9 @@ namespace Metamatic.Framework.Workshop
     public class GameAreasService: Service
     {
         private static readonly ObservableList<GameArea> GameAreas = new();
-        private readonly HashSet<GameArea> m_IntersectedAreas = new();
-        private readonly Dictionary<GameArea, SignalSource> m_AreaActivationSignals = new();
+        private readonly HashSet<string> m_IntersectedAreas = new();
+        private readonly Dictionary<string, SignalSource> m_AreaActivationSignals = new();
+        private readonly Dictionary<string, SignalSource> m_DeactivateDebounceSignals = new();
         public static void RegisterGameArea(GameArea gameArea)
         {
             GameAreas.Add(gameArea);
@@ -50,7 +52,7 @@ namespace Metamatic.Framework.Workshop
 
             if (intersected)
             {
-                if (m_IntersectedAreas.Add(gameArea))
+                if (m_IntersectedAreas.Add(gameArea.id))
                 {
                     // Activate area
                     ActivateArea(gameArea);
@@ -58,7 +60,7 @@ namespace Metamatic.Framework.Workshop
             }
             else
             {
-                if (m_IntersectedAreas.Remove(gameArea))
+                if (m_IntersectedAreas.Remove(gameArea.id))
                 {
                     // Deactivate area
                     DeactivateArea(gameArea);
@@ -68,22 +70,67 @@ namespace Metamatic.Framework.Workshop
         
         public void ActivateArea(GameArea2D gameArea)
         {
-            if (!m_AreaActivationSignals.TryGetValue(gameArea, out var signalSource))
+            if (!m_AreaActivationSignals.TryGetValue(gameArea.id, out var signalSource))
             {
                 Console.Debug("GameAreasService", $"Activating area {gameArea.name}");
                 signalSource = SignalSource.Create();
                 // ...Here's activation
+                m_AreaActivationSignals.Add(gameArea.id, signalSource);
+                HandleTackErrors(gameArea.Activate(signalSource.Signal)).Forget();
+            }
+            else if (m_DeactivateDebounceSignals.TryGetValue(gameArea.id, out var debounceSignalSource))
+            {
+                debounceSignalSource.TryRaise();
+                m_DeactivateDebounceSignals.Remove(gameArea.id);
             }
         }
         
         public void DeactivateArea(GameArea2D gameArea)
         {
             Console.Debug("GameAreasService", $"Deactivating area {gameArea.name}");
-            if (m_AreaActivationSignals.TryGetValue(gameArea, out var signalSource))
+            if (m_AreaActivationSignals.TryGetValue(gameArea.id, out var signalSource))
             {
-                signalSource.TryRaise();
-                m_AreaActivationSignals.Remove(gameArea);
-                // ...Here's deactivation
+                if (!m_DeactivateDebounceSignals.TryGetValue(gameArea.id, out var debounceSignalSource))
+                {
+                    debounceSignalSource = SignalSource.Create();
+                    m_DeactivateDebounceSignals.Add(gameArea.id, debounceSignalSource);
+                    DebouncedDeactivateScene(gameArea.id, signalSource, debounceSignalSource).Forget();
+                }
+            }
+        }
+        
+        private async UniTaskVoid DebouncedDeactivateScene(string gameAreaId, SignalSource deactivateSignal, SignalSource cancellationSignalSource)
+        {
+            try
+            {
+                await PlayerLoop.Delay(TimeSpan.FromSeconds(3), signal: cancellationSignalSource.Signal);
+                deactivateSignal.TryRaise();
+                m_AreaActivationSignals.Remove(gameAreaId);
+                cancellationSignalSource.Dispose();
+                m_DeactivateDebounceSignals.Remove(gameAreaId);
+            }
+            catch (OperationCanceledException)
+            {
+                // Skip
+            } catch (Exception e)
+            {
+                Console.Error("GameAreasService", e);
+            }
+        }
+
+        private async UniTaskVoid HandleTackErrors(UniTask task)
+        {
+            try
+            {
+                await task;
+            }
+            catch (OperationCanceledException)
+            {
+                // Skip
+            }
+            catch (Exception e)
+            {
+                Console.Error("GameAreasService", e);
             }
         }
     }
