@@ -6,7 +6,7 @@ using Metamatic.MicroBehaviours;
 namespace Metamatic.Framework.Workshop
 {
     [RequireService(typeof(FOV2DService))]
-    public class GameAreasService: Service
+    public class GameAreas2dService: Service
     {
         private static readonly ObservableList<GameArea> GameAreas = new();
         private readonly HashSet<string> m_IntersectedAreas = new();
@@ -33,11 +33,21 @@ namespace Metamatic.Framework.Workshop
             
             if (gameArea is GameArea2D area2d)
             {
-                Console.Debug("GameAreasService", $"Area 2D {gameArea.name} announced");
-                using (m_Fov2dService.TrackArea(area2d, CameraFOVTracker2d.FovBoundsType.Full, OnAreaFOVIntersection))
+                using var trackArea = m_Fov2dService.TrackArea(area2d, CameraFOVTracker2d.FovBoundsType.Full,
+                    OnAreaFOVIntersection);
+
+                using var listenDeactivated = gameArea.SubscribeBeforeDeactivate(OnAreaBeforeDeactivate);
+                await cancellationSignal;
+            }
+        }
+
+        private void OnAreaBeforeDeactivate(GameArea area)
+        {
+            if (area is GameArea2D gameArea2D)
+            {
+                if (area.isFoundation)
                 {
-                    await cancellationSignal;
-                    Console.Debug("GameAreasService", $"Area 2D {gameArea.name} released");
+                    /* Virtualize area */
                 }
             }
         }

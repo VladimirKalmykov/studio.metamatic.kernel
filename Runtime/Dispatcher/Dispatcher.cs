@@ -137,6 +137,32 @@ namespace Metamatic
             Unsubscribe(handler);
         }
 
+        public UniTask<T> WhenEmitted<T>(T value, CancellationToken cancellationToken)
+        {
+            var tcs = new UniTaskCompletionSource<T>();
+            UniTask<T> task = tcs.Task;
+            System.Action releaseSubscription = null;
+            CancellationTokenRegistration cancellationTokenRegistration = cancellationToken.Register(() =>
+            {
+                releaseSubscription?.Invoke();
+                tcs.TrySetCanceled(cancellationToken);
+            });
+            releaseSubscription = Subscribe<T>(source =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                if (source.Equals(value))
+                {
+                    releaseSubscription?.Invoke();
+                    cancellationTokenRegistration.Dispose();
+                    tcs.TrySetResult(source);
+                }
+            });
+            return task;
+        }
+
         public UniTask<T> WhenEmitted<T>(IDispatcher.Condition<T> condition, CancellationToken cancellationToken) where T : notnull
         {
             var tcs = new UniTaskCompletionSource<T>();

@@ -11,13 +11,15 @@ namespace Metamatic
 {
     public abstract class Service: MonoBehaviour
     {
-        private static readonly Dictionary<Type, Service> _AwakedServices = new ();
-        private static readonly Dictionary<Type, Service> _Services = new ();
-        public static IReadOnlyDictionary<Type, Service> Services => _Services;
+        private static readonly Dictionary<Type, Service> AwakedServices = new ();
+        private static readonly Dictionary<Type, Service> EnabledServices = new ();
+        private static readonly Dictionary<Type, List<Func<Service, Signal, UniTaskVoid>>> ServiceObservers = new ();
+        // ReSharper disable once InconsistentNaming
+        public static IReadOnlyDictionary<Type, Service> Services => EnabledServices;
         private static event Action<Type, Service> OnServiceRegistered; 
         private static event Action<Type, Service> OnServiceUnregistered;
-        private static event Action<Service> HandleServiceAdded;
-        private static event Action<Service> HandleServiceRemoved;
+        private static event Action<Service> ServiceAddedEvent;
+        private static event Action<Service> ServiceRemovedEvent;
         
         private event Action OnValidateEvent;
         private event Action OnDrawGizmosEvent;
@@ -79,7 +81,7 @@ namespace Metamatic
             /* Ensure that all required services are registered */
             foreach (var requiredService in requiredServices)
             {
-                if (!_AwakedServices.ContainsKey(requiredService))
+                if (!AwakedServices.ContainsKey(requiredService))
                 {
                     #if UNITY_EDITOR
                     m_MissedRequiredServices.Add(requiredService.ToString());
@@ -124,19 +126,19 @@ namespace Metamatic
         {
             m_DestroySignalSource = SignalSource.Create();
             var type = this.GetType();
-            if (_AwakedServices.ContainsKey(type))
+            if (AwakedServices.ContainsKey(type))
             {
                 throw new InvalidOperationException($"Service {type} already added");
             }
             Console.Log("Service", "Register", $"{type} by ${name}");
-            _AwakedServices.Add(type, this);
+            AwakedServices.Add(type, this);
             OnServiceRegistered?.Invoke(type, this);
         }
 
         protected virtual void OnDestroy()
         {
             var type = this.GetType();
-            _AwakedServices.Remove(type);
+            AwakedServices.Remove(type);
             OnServiceUnregistered?.Invoke(type, this);
             #if UNITY_EDITOR
             if (Application.isPlaying)
@@ -221,18 +223,18 @@ namespace Metamatic
         protected async UniTaskVoid OnEnableAsync(Signal signal)
         {
             var type = this.GetType();
-            if (_Services.ContainsKey(type))
+            if (EnabledServices.ContainsKey(type))
             {
                 throw new InvalidOperationException($"Service {type} already added");
             }
-            _Services.Add(type, this);
-            HandleServiceAdded?.Invoke(this);
+            EnabledServices.Add(type, this);
+            ServiceAddedEvent?.Invoke(this);
             signal.Register(() =>
             {
                 m_DemandCompletionSource?.TrySetCanceled();
                 m_DemandCompletionSource = null;
-                _Services.Remove(this.GetType());
-                HandleServiceRemoved?.Invoke(this);
+                EnabledServices.Remove(this.GetType());
+                ServiceRemovedEvent?.Invoke(this);
             });
             try
             {
@@ -278,7 +280,7 @@ namespace Metamatic
         /// <returns></returns>
         public static UniTask<T> ResolveInternal<T>(Signal signal = default, float timeout = 10f) where T : Service
         {
-            if (_Services.TryGetValue(typeof(T), out var service))
+            if (EnabledServices.TryGetValue(typeof(T), out var service))
             {
                 return UniTask.FromResult((T) service);
             }
@@ -294,14 +296,14 @@ namespace Metamatic
                         tcs.TrySetCanceled();
                         return;
                     }
-                    HandleServiceAdded -= handler;
+                    ServiceAddedEvent -= handler;
                     tcs.TrySetResult((T) s);
                 }
             };
-            HandleServiceAdded += handler;
+            ServiceAddedEvent += handler;
             var cancellationTokenRegistration = signal.Register(() =>
             {
-                HandleServiceAdded -= handler;
+                ServiceAddedEvent -= handler;
                 tcs.TrySetCanceled();
             });
             
@@ -335,8 +337,73 @@ namespace Metamatic
                     service((T)s);
                 }
             };
-            HandleServiceAdded += handler;
-            return new DisposableAction(() => HandleServiceAdded -= handler);
+            ServiceAddedEvent += handler;
+            return new DisposableAction(() => ServiceAddedEvent -= handler);
+        }
+        
+        public static DisposableAction SubscribeService(Type serviceType, Action<Service> service)
+        {
+            Action<Service> handler = null;
+            handler = s =>
+            {
+                if (s.GetType() == serviceType)
+                {
+                    service(s);
+                }
+            };
+            ServiceAddedEvent += handler;
+            return new DisposableAction(() => ServiceAddedEvent -= handler);
+        }
+        
+        public static DisposableAction WatchServices(Action<Service> service)
+        {
+            /* List already added services */
+            foreach (var servicePair in EnabledServices)
+            {
+                service(servicePair.Value);
+            }
+            ServiceAddedEvent += service;
+            return new DisposableAction(() => ServiceAddedEvent -= service);
+        }
+
+        public static DisposableAction WatchServiceAsync(Type serviceType, Func<Service, Signal, UniTaskVoid> handler)
+        {
+            SignalSource cancellationSignalSource = default;
+            
+            /* Get existing service */
+            if (EnabledServices.TryGetValue(serviceType, out var service))
+            {
+                cancellationSignalSource = SignalSource.Create();
+                handler(service, cancellationSignalSource.Signal).Forget();
+            }
+            
+            ServiceAddedEvent += OnServiceAdded;
+            ServiceRemovedEvent += OnServiceRemoved;
+            
+            return DisposableAction.Create(() =>
+            {
+                ServiceAddedEvent -= OnServiceAdded;
+                ServiceRemovedEvent -= OnServiceRemoved;
+                cancellationSignalSource.TryRaise();
+            });
+            
+            void OnServiceAdded(Service service)
+            {
+                if (service.GetType() != serviceType)
+                {
+                    return;
+                }
+                cancellationSignalSource = SignalSource.Create();
+                handler(service, cancellationSignalSource.Signal).Forget();
+            }
+            void OnServiceRemoved(Service service)
+            {
+                if (service.GetType() != serviceType)
+                {
+                    return;
+                }
+                cancellationSignalSource.TryRaise();
+            }
         }
         
         protected delegate UniTask Ready();

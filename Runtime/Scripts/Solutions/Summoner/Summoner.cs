@@ -98,6 +98,58 @@ namespace Metamatic
             m_Dispose?.Invoke(m_Token);
         }
     }
+    
+    /// <summary>
+    /// Async summon that can be disposed asynchronously.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public readonly struct AsyncDisposableSummon<T> : IUniTaskAsyncDisposable
+    {
+        // ReSharper disable once InconsistentNaming
+        public static AsyncDisposableSummon<T> Empty => new AsyncDisposableSummon<T>(Token96Bit.Empty, UniTask.FromResult<T>(default), null);
+        private readonly Func<Token96Bit, UniTask> m_DisposeAsync;
+        private readonly Token96Bit m_Token;
+#if DEBUG
+        private readonly Container<bool> m_IsDisposed;
+#endif
+        
+        public bool isEmpty => m_DisposeAsync == null;
+        
+        public UniTask<T> task { get; }
+
+        public AsyncDisposableSummon(Token96Bit token, UniTask<T> task, Func<Token96Bit, UniTask> disposeAsync)
+        {
+#if DEBUG
+            m_IsDisposed = new Container<bool>(false);
+#endif
+            m_Token = token;
+            this.task = task;
+            m_DisposeAsync = disposeAsync;
+        }
+
+        public async UniTask<T> Wait(Signal cancellationSignal)
+        {
+            var (isLeft, result) = await UniTask.WhenAny(this.task, cancellationSignal.ToUniTask());
+            if (!isLeft)
+            {
+                throw new OperationCanceledException();
+            }
+            return result;
+        }
+
+        public UniTask DisposeAsync()
+        {
+#if DEBUG
+            if (m_IsDisposed.value)
+            {
+                throw new InvalidOperationException("Summon already disposed");
+            }
+            m_IsDisposed.value = true;
+#endif
+            this.task.Forget();
+            return m_DisposeAsync?.Invoke(m_Token) ?? UniTask.CompletedTask;
+        }
+    }
 
     public readonly struct Summoner<T>: ISummoner<T>
     {

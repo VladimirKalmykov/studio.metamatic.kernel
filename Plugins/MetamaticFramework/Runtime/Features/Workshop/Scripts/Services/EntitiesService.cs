@@ -12,8 +12,42 @@ using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
+    
     public class EntitiesService : Service, ISavable
     {
+        public class Shadow: IShadow
+        {
+            public Type oritinType { get; private set; }
+            public SaveData data { get; private set; }
+            
+            public Shadow()
+            {
+                oritinType = typeof(EntitiesService);
+            }
+
+            public object Save()
+            {
+                return data;
+            }
+
+            public UniTask Load(object data)
+            {
+                this.data = (SaveData)data;
+                return UniTask.CompletedTask;
+            }
+
+            public UniTask Bootstrap()
+            {
+                this.data = new SaveData();
+                return UniTask.CompletedTask;
+            }
+        }
+        public static IShadow CreateShadow()
+        {
+            return new Shadow();
+        }
+        
+        
         [Serializable]
         [Version("1.0.0")]
         public struct SaveData

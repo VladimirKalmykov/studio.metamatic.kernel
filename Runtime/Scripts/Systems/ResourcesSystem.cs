@@ -4,12 +4,14 @@ using Cysharp.Threading.Tasks;
 using Metamatic;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 
 namespace Metamatic.Systems
 {
     public static class ResourcesSystem
     {
-        private static readonly SignedIndexedPool<Action> HandleReleaseActions = new (1000);
+        private static readonly SignedIndexedPool<Action> HandleReleaseActions = new (500);
+        private static readonly SignedIndexedPool<AsyncOperationHandle<SceneInstance>> LoadSceneOperationHandles = new (500);
         /// <summary>
         /// Summon addressable resource asynchronously.
         /// </summary>
@@ -93,11 +95,31 @@ namespace Metamatic.Systems
             }
         }
 
-        public static IDisposable LoadScene(AssetReference asset, UnityEngine.SceneManagement.LoadSceneMode mode)
+        public static AsyncDisposableSummon<SceneInstance> LoadScene(
+            AssetReference asset,
+            UnityEngine.SceneManagement.LoadSceneMode mode,
+            bool activationOnLoad = true
+        )
         {
-            var handle = Addressables.LoadSceneAsync(asset, mode);
-            var token = HandleReleaseActions.Add(() => Addressables.UnloadSceneAsync(handle));
-            return DisposableAction.Create(() => Release(token));
+            var handle = Addressables.LoadSceneAsync(asset, mode, SceneReleaseMode.OnlyReleaseSceneOnHandleRelease, activationOnLoad);
+            var tcs = SafeUniTaskCompletionSource<SceneInstance>.Create();
+            var token = LoadSceneOperationHandles.Add(handle);
+            
+            handle.Completed += HandleCompleted;
+            
+            return new AsyncDisposableSummon<SceneInstance>(token, tcs.Task, ReleaseScene);
+            
+            void HandleCompleted(AsyncOperationHandle<SceneInstance> operationHandle)
+            {
+                if (operationHandle.Status == AsyncOperationStatus.Succeeded)
+                {
+                    tcs.TrySetResult(operationHandle.Result);
+                }
+                else
+                {
+                    tcs.TrySetException(new Exception($"Failed to load scene {asset}"));
+                }
+            }
         }
         
         private static void Release(Token96Bit token)
@@ -105,6 +127,30 @@ namespace Metamatic.Systems
             if (HandleReleaseActions.Remove(token, out var release))
             {
                 release();
+            }
+        }
+        
+        private static async UniTask ReleaseScene(Token96Bit token)
+        {
+            if (LoadSceneOperationHandles.Remove(token, out var handle))
+            {
+                if (handle.Status == AsyncOperationStatus.Succeeded)
+                {
+                    try
+                    {
+                        var sceneInstance = handle.Result;
+                        if (sceneInstance.Scene.isLoaded)
+                        {
+                            await Addressables.UnloadSceneAsync(sceneInstance);
+                        }
+                    }
+                    finally
+                    {
+                        Addressables.Release(handle);
+                    }
+                } else {
+                    Addressables.Release(handle);
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using Sirenix.OdinInspector;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -17,7 +18,8 @@ namespace Metamatic.Framework.Workshop
 #if UNITY_EDITOR
         [SerializeField] [HideInInspector] public bool isActiveInEditor;
 #endif
-
+        [Tooltip("Determines that all entities that belong to this area should be removed or virtualized if the area is deactivated. To put it simply, all things will fall down to the abyss if this area's basement are disappeared.")]
+        [SerializeField] public bool isFoundation = true;
         [ReadOnly] [SerializeField] public string id;
 
 #if UNITY_EDITOR        
@@ -45,6 +47,9 @@ namespace Metamatic.Framework.Workshop
         private GameObject m_InstantiatedPrefab;
         private UnityEngine.SceneManagement.Scene m_LoadedScene;
 #endif
+        
+        public event Action<GameArea> OnActivateEvent;
+        public event Action<GameArea> OnBeforeDeactivate;
 
         private void OnEnable()
         {
@@ -54,7 +59,7 @@ namespace Metamatic.Framework.Workshop
                 EditorOnlyActivate();
             }
 #endif
-            GameAreasService.RegisterGameArea(this);
+            GameAreas2dService.RegisterGameArea(this);
         }
 
         private void OnDisable()
@@ -65,7 +70,7 @@ namespace Metamatic.Framework.Workshop
                 EditorOnlyDeactivate();
             }
 #endif
-            GameAreasService.UnregisterGameArea(this);
+            GameAreas2dService.UnregisterGameArea(this);
         }
 
         private void GenerateUniqueId(bool force = false)
@@ -240,7 +245,9 @@ namespace Metamatic.Framework.Workshop
             /* Create instance */
             var thisTransform = transform;
             var instance = Instantiate(prefab, thisTransform);
+            OnActivateEvent?.Invoke(this);
             await cancellationSignal;
+            OnBeforeDeactivate?.Invoke(this);
             Destroy(instance.gameObject);
         }
         
@@ -248,7 +255,22 @@ namespace Metamatic.Framework.Workshop
         {
             /* Load scene */
             using var sceneSummon = ResourcesSystem.LoadScene(m_AddictiveScene, LoadSceneMode.Additive);
+            await sceneSummon.Wait(cancellationSignal);
+            OnActivateEvent?.Invoke(this);
             await cancellationSignal;
+            OnBeforeDeactivate?.Invoke(this);
+        }
+        
+        public DisposableAction SubscribeBeforeDeactivate(Action<GameArea> handler)
+        {
+            OnBeforeDeactivate += handler;
+            return new DisposableAction(() => OnBeforeDeactivate -= handler);
+        }
+        
+        public DisposableAction SubscribeActivated(Action<GameArea> handler)
+        {
+            OnActivateEvent += handler;
+            return new DisposableAction(() => OnActivateEvent -= handler);
         }
 
 #if UNITY_EDITOR

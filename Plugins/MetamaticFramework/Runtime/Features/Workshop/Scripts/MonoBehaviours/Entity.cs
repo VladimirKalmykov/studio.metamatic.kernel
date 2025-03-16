@@ -45,6 +45,8 @@ namespace Metamatic.Framework.Workshop
         [ReadOnly] public string id;
 
         #endregion
+        
+        private Token96Bit m_RegistrationToken;
 
         private void GenerateUniqueId(bool force = false)
         {
@@ -84,6 +86,14 @@ namespace Metamatic.Framework.Workshop
                 Debug.Log("Это экземпляр, находящийся в сцене");
             }
 #endif
+            if (gameObject.TryGetComponent<RecyclableBehaviour>(out var recyclable))
+            {
+                recyclable.OnRecycle += () =>
+                {
+                    /* Remove its id when recycled */
+                    id = null;
+                };
+            }
         }
 
         // TODO: Update entity according to its LOD level
@@ -111,13 +121,15 @@ namespace Metamatic.Framework.Workshop
         }
 #endif
 
-        #endregion
         
-        #region Mono
-
-        private Token96Bit m_RegistrationToken;
         protected void Start()
         {
+            if (String.IsNullOrEmpty(id))
+            {
+                /* Entity become automatically non static if it has no id at start */
+                isStatic = false;
+                id = Guid.NewGuid().ToString();
+            }
             m_RegistrationToken = EntitiesService.TryRegisterEntity(this);
         }
 
@@ -128,16 +140,18 @@ namespace Metamatic.Framework.Workshop
         }
         #endregion
 
-        public string Initialize(AssetReferenceT<EntityBlueprint> blueprint, string id, bool isStatic = false)
+        /// <summary>
+        /// This method must be called to initialize the entity when it has been created from prefab
+        /// </summary>
+        /// <param name="nextBlueprint"></param>
+        /// <param name="nextId"></param>
+        /// <param name="isStatic"></param>
+        /// <returns></returns>
+        public string Initialize(AssetReferenceT<EntityBlueprint> nextBlueprint, string nextId)
         {
-            if (id == null)
-            {
-                id = Guid.NewGuid().ToString();
-            }
-
-            this.id = id;
-            this.blueprint = blueprint;
-            this.isStatic = isStatic;
+            this.id = nextId;
+            this.blueprint = nextBlueprint;
+            this.isStatic = false;
             return this.id;
         }
 
