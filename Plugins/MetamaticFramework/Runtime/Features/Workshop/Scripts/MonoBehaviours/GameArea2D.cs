@@ -1,6 +1,5 @@
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -32,5 +31,9 @@ namespace Metamatic.Framework.Workshop
         }
 #endif
         public Rect rect => new Rect(transform.position + bounds.min, bounds.size);
+        public override bool IsIntersected(Vector3 position)
+        {
+            return rect.Contains(position);
+        }
     }
 }

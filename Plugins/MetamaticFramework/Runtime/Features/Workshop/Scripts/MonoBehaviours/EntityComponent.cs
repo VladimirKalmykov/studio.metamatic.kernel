@@ -16,6 +16,7 @@ namespace Metamatic.Framework.Workshop
         public class SaveData
         {
             public Type ComponentType;
+            public Type DataType;
             public object Data;
 
             /// <summary>
@@ -26,9 +27,10 @@ namespace Metamatic.Framework.Workshop
                 
             }
             
-            public SaveData(EntityComponent component, object data)
+            public SaveData(EntityComponent component, Type dataType, object data)
             {
                 ComponentType = component.GetType();
+                DataType = dataType;
                 this.Data = data;
             }
         }
@@ -166,7 +168,7 @@ namespace Metamatic.Framework.Workshop
         public override object Save()
         {
             OnBeforeSave();
-            return new SaveData(this, State);
+            return new SaveData(this, typeof(T), State);
         }
 
         public override UniTask Load(object data)

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
-using Metamatic.Framework.Workshop;
 using Metamatic.Systems;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
@@ -16,7 +15,8 @@ namespace Metamatic.Framework
     public static class GameSystem
     {
         #region Public API
-        public static ShadowWorld shadowWorld { get; private set; }
+        public static VirtualWorld virtualWorld { get; private set; }
+        public static bool isGameRunning { get; private set; }
         private static AssetReference _CurrentBaseSceneRef;
         private static AsyncDisposableSummon<SceneInstance> _CurrentBaseSceneSummon =
             AsyncDisposableSummon<SceneInstance>.Empty;
@@ -26,8 +26,41 @@ namespace Metamatic.Framework
 
         static GameSystem()
         {
+            
+        }
+
+        public static bool StartGame()
+        {
+            if (isGameRunning)
+            {
+                return false;
+            }
+            isGameRunning = true;
             /* Create shadow world */
-            shadowWorld = new ShadowWorld();
+            virtualWorld = new VirtualWorld();
+            return true;
+        }
+        
+        public static bool ResetGame()
+        {
+            if (!isGameRunning)
+            {
+                return false;
+            }
+            virtualWorld.Dispose();
+            virtualWorld = new VirtualWorld();
+            return true;
+        }
+
+        public static bool ExitGame()
+        {
+            if (!isGameRunning)
+            {
+                return false;
+            }
+            virtualWorld.Dispose();
+            isGameRunning = false;
+            return true;
         }
         
         public static async UniTask ActivateScenes(AssetReference baseScene, AssetReference[] additiveScenes = null, bool trySeamless = false, Signal cancellationSignal = default)

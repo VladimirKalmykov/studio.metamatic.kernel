@@ -1,18 +1,15 @@
 using System;
-using Metamatic.SaveSystem;
 using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
-    using System.Collections.Generic;
     using System.Linq;
     using Cysharp.Threading.Tasks;
-    using Metamatic;
-    using Newtonsoft.Json;
 
     /// <summary>
     /// Launcher is responsible for saving, loading the game, and start game from the beginning.
@@ -37,9 +34,9 @@ namespace Metamatic.Framework.Workshop
         }
         
         #region Fields
-        [SerializeField] private AssetReference m_StartScene;
-        [SerializeField] private AssetReference m_MainMenuScene;
-        [SerializeField] private AssetReference m_LoadGameScene;
+        [SerializeField] private AssetReference startScene;
+        [SerializeField] private AssetReference mainMenuScene;
+        [SerializeField] private AssetReference loadGameScene;
         #endregion
         
         #region Private properties
@@ -50,9 +47,9 @@ namespace Metamatic.Framework.Workshop
         protected override async UniTask RunService(Ready ready, Signal signal)
         {
             /* Preload and activate start scene */
-            m_StartSceneSummon = ResourcesSystem.LoadScene(m_StartScene, LoadSceneMode.Additive, activationOnLoad: true);
+            m_StartSceneSummon = ResourcesSystem.LoadScene(startScene, LoadSceneMode.Additive, activationOnLoad: true);
             /* While the start scene is loading, load the main menu scene */
-            m_MainMenuSceneSummon = ResourcesSystem.LoadScene(m_MainMenuScene, LoadSceneMode.Additive, activationOnLoad: false);
+            m_MainMenuSceneSummon = ResourcesSystem.LoadScene(this.mainMenuScene, LoadSceneMode.Additive, activationOnLoad: false);
             /* Wait for start clip end */
             await Dispatcher.global.WhenEmitted<string>("start_scene_complete", signal);
             /* Unload start scene */
@@ -65,18 +62,30 @@ namespace Metamatic.Framework.Workshop
 
         public async UniTask Save(string address = "latest", Signal cancellationSignal = default)
         {
-            var data = GameSystem.shadowWorld.Save();
+            var data = GameSystem.virtualWorld.Save();
 
             Console.Debug("Launcher", $"Saving game data: {data}");
             await Repository.LocalStorage.Set(address, data, cancellationSignal);
         }
 
-        public async UniTask Load(string saveAddress = "latest", Signal signal = default)
+        public async UniTask Load(string saveAddress = "latest", bool seamless = false, Signal signal = default)
         {
             var saveData = await Repository.LocalStorage.Get<SaveData>(saveAddress, signal);
             Console.Debug("Launcher", $"Loaded game data: {saveData}");
             
-            await GameSystem.shadowWorld.Load(saveData);
+            if (GameSystem.isGameRunning)
+            {
+                if (!seamless)
+                {
+                    GameSystem.ResetGame();
+                }
+            }
+            else
+            {
+                GameSystem.StartGame();
+            }
+            
+            await GameSystem.virtualWorld.Load(saveData);
         }
 
         /// <summary>
@@ -84,8 +93,12 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async UniTask Launch(AssetReferenceT<Chapter> chapterReferenceT) // Chapter chapter
+        public async UniTask Launch(AssetReferenceT<Chapter> chapterReferenceT, Signal cancellationSignal) // Chapter chapter
         {
+            if (!GameSystem.StartGame())
+            {
+                throw new Exception("Game is already running.");
+            }
             // Show load game scene
             // Launch the game async
             using var summonChapter = ResourcesSystem.Summon<Chapter>(chapterReferenceT);
@@ -94,17 +107,6 @@ namespace Metamatic.Framework.Workshop
             await GameSystem.ActivateScenes(chapter.baseScene, chapter.scenes);
             var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
             await UniTask.WhenAll(servicesReadyTasks);
-            
-            var tasks = new List<UniTask>();
-            foreach (var service in Service.Services.Values)
-            {
-                if (service is ISavable savable)
-                {
-                    tasks.Add(savable.Bootstrap());
-                }
-            }
-            
-            await UniTask.WhenAll(tasks);
         }
     }
 }

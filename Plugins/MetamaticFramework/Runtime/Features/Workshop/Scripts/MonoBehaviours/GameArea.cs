@@ -3,18 +3,75 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 #endif
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using Sirenix.OdinInspector;
 using UnityEngine.SceneManagement;
-using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
-    public class GameArea : MonoBehaviour
+    public abstract class GameArea : MonoBehaviour
     {
+        public static readonly List<GameArea> AllAreas = new List<GameArea>();
+        public static readonly List<GameArea> ActiveAreas = new List<GameArea>();
+        /// <summary>
+        /// Determines if the position is intersected with any active areas.
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public static bool IsIntersectedWithActiveAreas(Vector3 position)
+        {
+            foreach (var area in ActiveAreas)
+            {
+                if (area.IsIntersected(position))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        
+        /// <summary>
+        /// Finds intersected area by position.
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="includingInactive"></param>
+        /// <param name="area"></param>
+        /// <returns></returns>
+        public static bool TryFindIntersectArea(Vector3 position, bool includingInactive, out GameArea area)
+        {
+            foreach (var activeArea in ActiveAreas)
+            {
+                if ((includingInactive || activeArea.isActive) && activeArea.IsIntersected(position))
+                {
+                    area = activeArea;
+                    return true;
+                }
+            }
+
+            area = null;
+            return false;
+        }
+        
+        public static bool TryGetAreaById(string id, out GameArea area)
+        {
+            foreach (var nextArea in AllAreas)
+            {
+                if (nextArea.id == id)
+                {
+                    area = nextArea;
+                    return true;
+                }
+            }
+
+            area = null;
+            return false;
+        }
+        
 #if UNITY_EDITOR
         [SerializeField] [HideInInspector] public bool isActiveInEditor;
 #endif
@@ -25,8 +82,8 @@ namespace Metamatic.Framework.Workshop
 #if UNITY_EDITOR        
         private bool m_FactualIsActiveInEditor = false;
 #endif
-        
-        private bool m_IsActivated = false;
+
+        public bool isActive { get; private set; } = false;
 
         public enum ResourceMode
         {
@@ -190,15 +247,30 @@ namespace Metamatic.Framework.Workshop
 #endif
         }
 
+        #region Mono
+
+        private void Awake()
+        {
+            AllAreas.Add(this);
+        }
+
+        private void OnDestroy()
+        {
+            AllAreas.Remove(this);
+        }
+
+        #endregion
+        
         public async UniTask Activate(Signal cancellationSignal)
         {
-            if (m_IsActivated)
+            if (isActive)
             {
                 Console.Exception("GameArea", "Already active");
                 return;
             }
 
-            m_IsActivated = true;
+            isActive = true;
+            ActiveAreas.Add(this);
 
             try
             {
@@ -233,7 +305,8 @@ namespace Metamatic.Framework.Workshop
             }
             finally
             {
-                m_IsActivated = false;
+                isActive = false;
+                ActiveAreas.Remove(this);
             }
         }
         
@@ -254,7 +327,7 @@ namespace Metamatic.Framework.Workshop
         private async UniTask ActivateScene(Signal cancellationSignal)
         {
             /* Load scene */
-            using var sceneSummon = ResourcesSystem.LoadScene(m_AddictiveScene, LoadSceneMode.Additive);
+            await using var sceneSummon = ResourcesSystem.LoadScene(m_AddictiveScene, LoadSceneMode.Additive);
             await sceneSummon.Wait(cancellationSignal);
             OnActivateEvent?.Invoke(this);
             await cancellationSignal;
@@ -272,6 +345,12 @@ namespace Metamatic.Framework.Workshop
             OnActivateEvent += handler;
             return new DisposableAction(() => OnActivateEvent -= handler);
         }
+        
+        #region Abstract methods
+
+        public abstract bool IsIntersected(Vector3 position);
+        #endregion
+        
 
 #if UNITY_EDITOR
         // Метод вызывается при изменениях в редакторе

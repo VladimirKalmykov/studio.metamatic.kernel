@@ -1,13 +1,9 @@
 using System;
-using Cysharp.Threading.Tasks;
-using Metamatic;
 
 namespace Metamatic.Framework
 {
     public abstract class VirtualBehaviour: IDisposable
     {
-        private SignalSource m_DisposeSignalSource = default;
-        private SignalSource m_DisableSignalSource = default;
         private bool m_Enabled = false;
 
         public bool enabled
@@ -19,6 +15,7 @@ namespace Metamatic.Framework
                     return;
                 }
 
+                m_Enabled = value;
                 if (value)
                 {
                     Enable(); 
@@ -28,42 +25,37 @@ namespace Metamatic.Framework
                     Disable();
                 }
             }
-        }
-
-        public void Awake()
-        {
-            m_DisposeSignalSource = SignalSource.Create();
-            OnAwakeAsync(m_DisposeSignalSource.Signal).Forget();
+            
+            get => m_Enabled;
         }
         
-        private void Enable()
+        internal void InternalAwake()
         {
-            m_DisableSignalSource = SignalSource.Create();
-            OnEnableAsync(m_DisableSignalSource.Signal).Forget();
+            Awake();
         }
 
-        private void Disable()
+        protected virtual void Awake()
         {
-            m_DisableSignalSource.TryRaise();
+            
         }
-
-        public virtual void Destroy()
+        
+        protected virtual void Enable()
         {
             
         }
 
-        public virtual UniTaskVoid OnEnableAsync(Signal cancellationSignal)
+        protected virtual void Disable()
         {
-            return new UniTaskVoid();
+            
         }
-        public virtual UniTaskVoid OnAwakeAsync(Signal cancellationSignal)
+
+        protected virtual void Destroy()
         {
-            return new UniTaskVoid();
+            
         }
         public void Dispose()
         {
-            m_DisableSignalSource.TryRaise();
-            m_DisposeSignalSource.TryRaise();
+            Destroy();
         }
     }
 }

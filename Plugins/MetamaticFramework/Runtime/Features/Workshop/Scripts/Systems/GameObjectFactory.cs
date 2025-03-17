@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using Metamatic;
 using Metamatic.Framework.Workshop;
 using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.SceneManagement;
 
 namespace Metamatic.Framework
 {
@@ -14,28 +12,6 @@ namespace Metamatic.Framework
     {
         private static readonly Dictionary<string, AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>> Pools = new();
         private static readonly SignedIndexedPool<Action> SummonCancellationSignals = new(1000);
-        
-        public static async UniTask<T> SpawnFromBlueprint<T>(AssetReferenceT<ScriptableBlueprint<T>> assetReference, Signal cancellationSignal) where T: Component
-        {
-            return await SpawnFromBlueprint<T>((AssetReference)assetReference, cancellationSignal);
-        }
-        
-        public static async UniTask<T> SpawnFromBlueprint<T>(AssetReferenceT<ScriptableBlueprint> assetReference, Signal cancellationSignal) where T: Component
-        {
-            return await SpawnFromBlueprint<T>((AssetReference)assetReference, cancellationSignal);
-        }
-        
-        public static async UniTask<T> SpawnFromBlueprint<T>(AssetReference assetReference, Signal cancellationSignal) where T: Component
-        {
-            var poolContainer = GetOrAddPoolContainer(assetReference);
-            var pool = await poolContainer.GetContent(cancellationSignal);
-            var instanceSummon = pool.Summon();
-            var instance = instanceSummon.resource;
-            var recyclable = instance.gameObject.GetOrAddComponent<RecyclableBehaviour>();
-            recyclable.OnRecycle += instanceSummon.Dispose;
-
-            return (T)instance;
-        }
         
         public static AsyncSummon<T> SummonFromBlueprint<T>(AssetReferenceT<ScriptableBlueprint<T>> assetReference) where T: Component
         {
@@ -63,11 +39,6 @@ namespace Metamatic.Framework
             return new AsyncSummon<T>(token, task, CancelSummon);
         }
         
-        public static UniTask<T> SpawnFromPrefab<T>(AssetReferenceT<T> assetReference, Signal cancellationSignal) where T: Component
-        {
-            return SpawnFromPrefab<T>((AssetReference)assetReference, cancellationSignal);
-        }
-        
         public static AsyncSummon<T> SummonFromPrefab<T>(AssetReferenceT<T> assetReference) where T: Component
         {
             return SummonFromPrefab<T>((AssetReference)assetReference);
@@ -89,18 +60,6 @@ namespace Metamatic.Framework
             });
             return new AsyncSummon<T>(token, task, CancelSummon);
         }
-        
-        public static async UniTask<T> SpawnFromPrefab<T>(AssetReference assetReference, Signal cancellationSignal) where T: Component
-        {
-            var poolContainer = GetOrAddPoolContainer(assetReference);
-            var pool = await poolContainer.GetContent(cancellationSignal);
-            var instanceSummon = pool.Summon();
-            var instance = instanceSummon.resource;
-            var recyclable = instance.gameObject.GetOrAddComponent<RecyclableBehaviour>();
-            recyclable.OnRecycle += instanceSummon.Dispose;
-
-            return (T)instance;
-        } 
         
         /// <summary>
         /// Increases the capacity of the pool by the specified amount. As the result of this operation, the pool will have at least the specified capacity available (spawned, but disabled).
@@ -154,9 +113,8 @@ namespace Metamatic.Framework
         {
             if (!Pools.TryGetValue(assetReference.AssetGUID, out var poolContainer))
             {
-                var newContainer = AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, assetReference);
-                Pools.Add(assetReference.AssetGUID, newContainer);
-                return newContainer;
+                poolContainer = AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, assetReference);
+                Pools.Add(assetReference.AssetGUID, poolContainer);
             }
             return poolContainer;
         }

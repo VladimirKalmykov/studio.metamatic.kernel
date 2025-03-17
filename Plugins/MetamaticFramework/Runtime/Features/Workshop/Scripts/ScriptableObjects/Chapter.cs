@@ -3,7 +3,6 @@ using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {

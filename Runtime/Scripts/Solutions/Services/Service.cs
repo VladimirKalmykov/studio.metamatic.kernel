@@ -11,256 +11,19 @@ namespace Metamatic
 {
     public abstract class Service: MonoBehaviour
     {
+        #region Static Members
         private static readonly Dictionary<Type, Service> AwakedServices = new ();
         private static readonly Dictionary<Type, Service> EnabledServices = new ();
-        private static readonly Dictionary<Type, List<Func<Service, Signal, UniTaskVoid>>> ServiceObservers = new ();
-        // ReSharper disable once InconsistentNaming
+        private static readonly Dictionary<Type, List<Action<Service, bool>>> ServiceObservers = new ();
+        
         public static IReadOnlyDictionary<Type, Service> Services => EnabledServices;
+        
         private static event Action<Type, Service> OnServiceRegistered; 
         private static event Action<Type, Service> OnServiceUnregistered;
         private static event Action<Service> ServiceAddedEvent;
         private static event Action<Service> ServiceRemovedEvent;
-        
-        private event Action OnValidateEvent;
-        private event Action OnDrawGizmosEvent;
         public static event Action<Type, Exception> OnErrorInService;
-        
-        private SignalSource m_DisableSignalSource;
-        private SignalSource m_DestroySignalSource;
-        public Signal disableSignal => m_DisableSignalSource.Signal;
-        public Signal destroySignal => m_DestroySignalSource.Signal;
-        
-        
-        public DisposableAction SubscribeErrorInService(Action<Type, Exception> action)
-        {
-            OnErrorInService += action;
-            return new DisposableAction(() => OnErrorInService -= action);
-        }
-        
-        private event Action OnReady;
-        private bool m_IsReady;
-        
-        #if UNITY_EDITOR
-        [ShowIf("@m_MissedRequiredServices.Count > 0"), ShowInInspector, ReadOnly, InfoBox("Following required services are missed", InfoMessageType.Error), UsedImplicitly]
-        [ListDrawerSettings(IsReadOnly = true, ShowFoldout = false)]
-        private List<string> m_MissedRequiredServices = new();
-        #endif
-        
-        #region Fields
-        [Tooltip("If true, service will be initialized only on demand")]
-        [SerializeField] private bool m_InitializeOnDemand;
-        #endregion
 
-        #if DEBUG
-        private Type[] m_RequiredServices;
-        private void OnRequiredServiceRegistered(Type type, Service service)
-        {
-            if (m_MissedRequiredServices.Contains(type.ToString()))
-            {
-                m_MissedRequiredServices.Remove(type.ToString());
-            }
-        }
-        
-        private void OnRequiredServiceUnregistered(Type type, Service service)
-        {
-            if (m_RequiredServices.Contains(type) && !m_MissedRequiredServices.Contains(type.ToString()))
-            {
-                m_MissedRequiredServices.Add(type.ToString());
-            }
-        }
-        #endif
-        
-        protected virtual void OnEnable()
-        {
-            #if DEBUG
-            #if UNITY_EDITOR
-            m_MissedRequiredServices.Clear();
-            #endif
-            /* Validate are there all required by RequireServiceAttribute services have registered */
-            var requiredServices = m_RequiredServices = RequireServiceAttribute.GetRequiredServices(this.GetType());
-            /* Ensure that all required services are registered */
-            foreach (var requiredService in requiredServices)
-            {
-                if (!AwakedServices.ContainsKey(requiredService))
-                {
-                    #if UNITY_EDITOR
-                    m_MissedRequiredServices.Add(requiredService.ToString());
-                    #endif
-                    global::Metamatic.Console.Exception("Service", $"Service {requiredService} is required by {this.GetType()} but not registered");
-                }
-            }
-            
-            OnServiceRegistered += OnRequiredServiceRegistered;
-            OnServiceUnregistered += OnRequiredServiceUnregistered;
-            
-            #endif
-
-            #if UNITY_EDITOR
-            if (Application.isPlaying)
-            {
-            #endif
-                m_DisableSignalSource = SignalSource.Create();
-                OnEnableAsync(disableSignal).Forget();
-            #if UNITY_EDITOR
-            }
-            #endif
-        }
-
-        protected virtual void OnDisable()
-        {
-            #if DEBUG
-            OnServiceUnregistered -= OnRequiredServiceUnregistered;
-            OnServiceRegistered -= OnRequiredServiceRegistered;
-            #endif
-#if UNITY_EDITOR
-            if (Application.isPlaying)
-            {
-#endif
-            m_DisableSignalSource.TryRaise();
-#if UNITY_EDITOR
-            }
-#endif
-        }
-
-        protected virtual void Awake()
-        {
-            m_DestroySignalSource = SignalSource.Create();
-            var type = this.GetType();
-            if (AwakedServices.ContainsKey(type))
-            {
-                throw new InvalidOperationException($"Service {type} already added");
-            }
-            Console.Log("Service", "Register", $"{type} by ${name}");
-            AwakedServices.Add(type, this);
-            OnServiceRegistered?.Invoke(type, this);
-        }
-
-        protected virtual void OnDestroy()
-        {
-            var type = this.GetType();
-            AwakedServices.Remove(type);
-            OnServiceUnregistered?.Invoke(type, this);
-            #if UNITY_EDITOR
-            if (Application.isPlaying)
-            {
-            #endif
-            m_DestroySignalSource.TryRaise();
-            #if UNITY_EDITOR
-            }
-            #endif
-        }
-
-#if UNITY_EDITOR
-        protected virtual void OnValidate()
-        {
-            OnValidateEvent?.Invoke();
-        }
-
-        protected virtual void OnDrawGizmos()
-        {
-            OnDrawGizmosEvent?.Invoke();
-        }
-#endif
-
-        private UniTask InternalServiceReady()
-        {
-            m_IsReady = true;
-            OnReady?.Invoke();
-            return disableSignal.ToUniTask();
-        }
-        public UniTask WhenReady(Signal signal = default)
-        {
-            var tcs = SafeUniTaskCompletionSource.Create();
-            IDisposable readyListener = null;
-            var cancellationTokenRegistration = signal.Register(() =>
-            {
-                readyListener?.Dispose();
-                tcs.TrySetCanceled();
-            });
-            
-            readyListener = SubscribeReady(() =>
-            {
-                cancellationTokenRegistration.Dispose();
-                readyListener?.Dispose();
-                tcs.TrySetResult();
-            });
-
-            return tcs.Task;
-        }
-        
-        public DisposableAction SubscribeReady(Action action)
-        {
-            if (m_IsReady)
-            {
-                action();
-                return DisposableAction.Empty;
-            }
-            OnReady += action;
-            return new DisposableAction(() => OnReady -= action);
-        }
-        
-        /// <summary>
-        /// Demand service initialization (only if InitializeOnDemand is true)
-        /// </summary>
-        public void Demand()
-        {
-            if (m_InitializeOnDemand && !m_Demanded)
-            {
-                m_Demanded = true;
-                m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
-                m_DemandCompletionSource.TrySetResult();
-            }
-        }
-        
-        public UniTask Demand(Signal signal)
-        {
-            Demand();
-            return WhenReady(signal);
-        }
-
-        private bool m_Demanded;
-        private UniTaskCompletionSource m_DemandCompletionSource;
-        protected async UniTaskVoid OnEnableAsync(Signal signal)
-        {
-            var type = this.GetType();
-            if (EnabledServices.ContainsKey(type))
-            {
-                throw new InvalidOperationException($"Service {type} already added");
-            }
-            EnabledServices.Add(type, this);
-            ServiceAddedEvent?.Invoke(this);
-            signal.Register(() =>
-            {
-                m_DemandCompletionSource?.TrySetCanceled();
-                m_DemandCompletionSource = null;
-                EnabledServices.Remove(this.GetType());
-                ServiceRemovedEvent?.Invoke(this);
-            });
-            try
-            {
-                if (m_InitializeOnDemand)
-                {
-                    m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
-                    await m_DemandCompletionSource.Task;
-                }
-                
-                Debug.Log($"[Service] {type} is running");
-                await RunService(InternalServiceReady, signal);
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.Log($"Service {type} was canceled.");
-            }
-            catch (Exception e)
-            {
-                OnErrorInService?.Invoke(type, e);
-                #if METAMATIC_TERMINAL
-                Terminal.LogError($"Service {type} failed to run: {e.Message}");
-                #endif
-                Debug.LogError($"Service {type} failed to run: {e}");
-            }
-        }
-        
         public static async UniTask<T> Resolve<T>(Signal signal = default, float timeout = 10f)
             where T : Service
         {
@@ -272,13 +35,8 @@ namespace Metamatic
             await service.Demand(signal);
             return service;
         }
-        
-        /// <summary>
-        /// Resolve service by type
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static UniTask<T> ResolveInternal<T>(Signal signal = default, float timeout = 10f) where T : Service
+
+        private static UniTask<T> ResolveInternal<T>(Signal signal = default, float timeout = 10f) where T : Service
         {
             if (EnabledServices.TryGetValue(typeof(T), out var service))
             {
@@ -376,16 +134,32 @@ namespace Metamatic
                 cancellationSignalSource = SignalSource.Create();
                 handler(service, cancellationSignalSource.Signal).Forget();
             }
+
+            if (!ServiceObservers.TryGetValue(serviceType, out var observers))
+            {
+                observers = new List<Action<Service, bool>>();
+                ServiceObservers.Add(serviceType, observers);
+            }
             
-            ServiceAddedEvent += OnServiceAdded;
-            ServiceRemovedEvent += OnServiceRemoved;
+            observers.Add(OnServiceChanged);
             
             return DisposableAction.Create(() =>
             {
-                ServiceAddedEvent -= OnServiceAdded;
-                ServiceRemovedEvent -= OnServiceRemoved;
+                observers.Remove(OnServiceChanged);
                 cancellationSignalSource.TryRaise();
             });
+            
+            void OnServiceChanged(Service service, bool added)
+            {
+                if (added)
+                {
+                    OnServiceAdded(service);
+                }
+                else
+                {
+                    OnServiceRemoved(service);
+                }
+            }
             
             void OnServiceAdded(Service service)
             {
@@ -405,9 +179,264 @@ namespace Metamatic
                 cancellationSignalSource.TryRaise();
             }
         }
+        #endregion
+
+        #region Instance Members
+        private event Action OnValidateEvent;
+        private event Action OnDrawGizmosEvent;
+        private event Action OnReady;
+        
+        private SignalSource m_DisableSignalSource;
+        private SignalSource m_DestroySignalSource;
+        private bool m_IsReady;
+        private bool m_Demanded;
+        private bool m_InitializedOnDemand;
+        private UniTaskCompletionSource m_DemandCompletionSource;
+        
+        public Signal disableSignal => m_DisableSignalSource.Signal;
+        public Signal destroySignal => m_DestroySignalSource.Signal;
+        
+        #if UNITY_EDITOR
+        [ShowIf("@m_MissedRequiredServices.Count > 0"), ShowInInspector, ReadOnly, InfoBox("Following required services are missed", InfoMessageType.Error), UsedImplicitly]
+        [ListDrawerSettings(IsReadOnly = true, ShowFoldout = false)]
+        private List<string> m_MissedRequiredServices = new();
+        #endif
+        
+        [Tooltip("If true, service will be initialized only on demand")]
+        [SerializeField] private bool m_InitializeOnDemand;
+
+        #if DEBUG
+        private Type[] m_RequiredServices;
+        #endif
         
         protected delegate UniTask Ready();
-        private bool m_InitializedOnDemand;
+
+        public DisposableAction SubscribeErrorInService(Action<Type, Exception> action)
+        {
+            OnErrorInService += action;
+            return new DisposableAction(() => OnErrorInService -= action);
+        }
+
+        #if DEBUG
+        private void OnRequiredServiceRegistered(Type type, Service service)
+        {
+            if (m_MissedRequiredServices.Contains(type.ToString()))
+            {
+                m_MissedRequiredServices.Remove(type.ToString());
+            }
+        }
+        
+        private void OnRequiredServiceUnregistered(Type type, Service service)
+        {
+            if (m_RequiredServices.Contains(type) && !m_MissedRequiredServices.Contains(type.ToString()))
+            {
+                m_MissedRequiredServices.Add(type.ToString());
+            }
+        }
+        #endif
+        
+        protected virtual void OnEnable()
+        {
+            #if DEBUG
+            #if UNITY_EDITOR
+            m_MissedRequiredServices.Clear();
+            #endif
+            /* Validate are there all required by RequireServiceAttribute services have registered */
+            var requiredServices = m_RequiredServices = RequireServiceAttribute.GetRequiredServices(this.GetType());
+            /* Ensure that all required services are registered */
+            foreach (var requiredService in requiredServices)
+            {
+                if (!AwakedServices.ContainsKey(requiredService))
+                {
+                    #if UNITY_EDITOR
+                    m_MissedRequiredServices.Add(requiredService.ToString());
+                    #endif
+                    global::Metamatic.Console.Exception("Service", $"Service {requiredService} is required by {this.GetType()} but not registered");
+                }
+            }
+            
+            OnServiceRegistered += OnRequiredServiceRegistered;
+            OnServiceUnregistered += OnRequiredServiceUnregistered;
+            
+            #endif
+
+            #if UNITY_EDITOR
+            if (Application.isPlaying)
+            {
+            #endif
+                m_DisableSignalSource = SignalSource.Create();
+                OnEnableAsync(disableSignal).Forget();
+            #if UNITY_EDITOR
+            }
+            #endif
+        }
+
+        protected virtual void OnDisable()
+        {
+            #if DEBUG
+            OnServiceUnregistered -= OnRequiredServiceUnregistered;
+            OnServiceRegistered -= OnRequiredServiceRegistered;
+            #endif
+            #if UNITY_EDITOR
+            if (Application.isPlaying)
+            {
+            #endif
+            m_DisableSignalSource.TryRaise();
+            #if UNITY_EDITOR
+            }
+            #endif
+        }
+
+        protected virtual void Awake()
+        {
+            m_DestroySignalSource = SignalSource.Create();
+            var type = this.GetType();
+            if (AwakedServices.ContainsKey(type))
+            {
+                throw new InvalidOperationException($"Service {type} already added");
+            }
+            Console.Log("Service", "Register", $"{type} by ${name}");
+            AwakedServices.Add(type, this);
+            OnServiceRegistered?.Invoke(type, this);
+        }
+
+        protected virtual void OnDestroy()
+        {
+            var type = this.GetType();
+            AwakedServices.Remove(type);
+            OnServiceUnregistered?.Invoke(type, this);
+            #if UNITY_EDITOR
+            if (Application.isPlaying)
+            {
+            #endif
+            m_DestroySignalSource.TryRaise();
+            #if UNITY_EDITOR
+            }
+            #endif
+        }
+
+        #if UNITY_EDITOR
+        protected virtual void OnValidate()
+        {
+            OnValidateEvent?.Invoke();
+        }
+
+        protected virtual void OnDrawGizmos()
+        {
+            OnDrawGizmosEvent?.Invoke();
+        }
+        #endif
+
+        private UniTask InternalServiceReady()
+        {
+            m_IsReady = true;
+            OnReady?.Invoke();
+            return disableSignal.ToUniTask();
+        }
+
+        public UniTask WhenReady(Signal signal = default)
+        {
+            var tcs = SafeUniTaskCompletionSource.Create();
+            IDisposable readyListener = null;
+            var cancellationTokenRegistration = signal.Register(() =>
+            {
+                readyListener?.Dispose();
+                tcs.TrySetCanceled();
+            });
+            
+            readyListener = SubscribeReady(() =>
+            {
+                cancellationTokenRegistration.Dispose();
+                readyListener?.Dispose();
+                tcs.TrySetResult();
+            });
+
+            return tcs.Task;
+        }
+        
+        public DisposableAction SubscribeReady(Action action)
+        {
+            if (m_IsReady)
+            {
+                action();
+                return DisposableAction.Empty;
+            }
+            OnReady += action;
+            return new DisposableAction(() => OnReady -= action);
+        }
+        
+        public void Demand()
+        {
+            if (m_InitializeOnDemand && !m_Demanded)
+            {
+                m_Demanded = true;
+                m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
+                m_DemandCompletionSource.TrySetResult();
+            }
+        }
+        
+        public UniTask Demand(Signal signal)
+        {
+            Demand();
+            return WhenReady(signal);
+        }
+
+        protected async UniTaskVoid OnEnableAsync(Signal signal)
+        {
+            var type = this.GetType();
+            if (EnabledServices.ContainsKey(type))
+            {
+                throw new InvalidOperationException($"Service {type} already added");
+            }
+            EnabledServices.Add(type, this);
+            ServiceAddedEvent?.Invoke(this);
+            
+            var hasObservers = ServiceObservers.TryGetValue(type, out var observers);
+            if (hasObservers)
+            {
+                foreach (var observer in observers)
+                {
+                    observer(this, true);
+                }
+            }
+            signal.Register(() =>
+            {
+                m_DemandCompletionSource?.TrySetCanceled();
+                m_DemandCompletionSource = null;
+                EnabledServices.Remove(this.GetType());
+                ServiceRemovedEvent?.Invoke(this);
+                if (hasObservers)
+                {
+                    foreach (var observer in observers)
+                    {
+                        observer(this, false);
+                    }
+                }
+            });
+            try
+            {
+                if (m_InitializeOnDemand)
+                {
+                    m_DemandCompletionSource = m_DemandCompletionSource ?? new UniTaskCompletionSource();
+                    await m_DemandCompletionSource.Task;
+                }
+                
+                Debug.Log($"[Service] {type} is running");
+                await RunService(InternalServiceReady, signal);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.Log($"Service {type} was canceled.");
+            }
+            catch (Exception e)
+            {
+                OnErrorInService?.Invoke(type, e);
+                #if METAMATIC_TERMINAL
+                Terminal.LogError($"Service {type} failed to run: {e.Message}");
+                #endif
+                Debug.LogError($"Service {type} failed to run: {e}");
+            }
+        }
         
         protected DisposableAction SubscribeValidate(Action action)
         {
@@ -422,5 +451,6 @@ namespace Metamatic
         }
 
         protected abstract UniTask RunService(Ready ready, Signal signal);
+        #endregion
     }
 }

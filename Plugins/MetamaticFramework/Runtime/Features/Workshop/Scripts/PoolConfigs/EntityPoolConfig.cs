@@ -1,5 +1,3 @@
-using Metamatic;
-using Metamatic.Framework.Workshop;
 using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
