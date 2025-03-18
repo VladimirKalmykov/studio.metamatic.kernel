@@ -196,7 +196,10 @@ namespace Metamatic
         public abstract TValue GetValue();
         public abstract ref TValue GetRef();
 
-        public abstract void SetValue(TValue value);
+        public virtual void SetValue(TValue value)
+        {
+            Debug.LogError("You can't set value of read-only observable");
+        }
 
         public void Reset()
         {

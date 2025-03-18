@@ -196,6 +196,34 @@ namespace Metamatic
         /// Т. е. общее число позиций (m_Count) минус количество освобождённых индексов.
         /// </remarks>
         public int Count => m_Count - m_FreeIndices.Count;
+        
+        public IEnumerator<T> GetEnumerator()
+        {
+            // Проходим по всем позициям от 0 до m_Count (верхняя граница)
+            for (int i = 0; i < m_Count; i++)
+            {
+                // Возвращаем только те элементы, которые используются
+                if (m_Items[i].Used)
+                {
+                    yield return m_Items[i].Value;
+                }
+            }
+        }
+        
+        public T[] ToArray()
+        {
+            T[] result = new T[Count];
+            int index = 0;
+            for (int i = 0; i < m_Count; i++)
+            {
+                if (m_Items[i].Used)
+                {
+                    result[index] = m_Items[i].Value;
+                    index++;
+                }
+            }
+            return result;
+        }
 
         /// <summary>
         /// Увеличивает размер внутреннего массива в 2 раза (пока не достигнем MaxArrayLength).

@@ -14,8 +14,15 @@ namespace Metamatic.Framework
      */
     public static class GameSystem
     {
+        public enum GameEvent
+        {
+            IntroSceneComplete,
+        }
+        
+        private static Observable<VirtualWorld> m_ObservableVirtualWorld = new Observable<VirtualWorld>(); 
         #region Public API
-        public static VirtualWorld virtualWorld { get; private set; }
+
+        public static VirtualWorld virtualWorld => m_ObservableVirtualWorld.Value;
         public static bool isGameRunning { get; private set; }
         private static AssetReference _CurrentBaseSceneRef;
         private static AsyncDisposableSummon<SceneInstance> _CurrentBaseSceneSummon =
@@ -37,7 +44,7 @@ namespace Metamatic.Framework
             }
             isGameRunning = true;
             /* Create shadow world */
-            virtualWorld = new VirtualWorld();
+            m_ObservableVirtualWorld.Value = new VirtualWorld();
             return true;
         }
         
@@ -48,7 +55,7 @@ namespace Metamatic.Framework
                 return false;
             }
             virtualWorld.Dispose();
-            virtualWorld = new VirtualWorld();
+            m_ObservableVirtualWorld.Value = new VirtualWorld();
             return true;
         }
 
@@ -61,6 +68,11 @@ namespace Metamatic.Framework
             virtualWorld.Dispose();
             isGameRunning = false;
             return true;
+        }
+        
+        public static DisposableAction WatchVirtualWorldAsync(Func<VirtualWorld, Signal, UniTaskVoid> action)
+        {
+            return m_ObservableVirtualWorld.WatchAsync(action);
         }
         
         public static async UniTask ActivateScenes(AssetReference baseScene, AssetReference[] additiveScenes = null, bool trySeamless = false, Signal cancellationSignal = default)

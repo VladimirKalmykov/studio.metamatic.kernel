@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using Metamatic.SaveSystem;
 using Sirenix.OdinInspector;
@@ -21,6 +22,14 @@ namespace Metamatic.Framework.Workshop
         /// Reference to original entity if it exists
         /// </summary>
         public Entity origin { get; private set; }
+        
+        public AssetReferenceT<EntityBlueprint> blueprint;
+        public Type type;
+        public bool isStatic;
+        public bool isKicked;
+        public Vector3 position;
+        public Quaternion rotation;
+        public string gameAreaId;
 
         public VirtualEntity(string id)
         {
@@ -31,7 +40,17 @@ namespace Metamatic.Framework.Workshop
         {
             if (origin == null)
             {
-                return m_SaveData;
+                return new Entity.SaveData()
+                {
+                    blueprint = blueprint,
+                    type = type,
+                    id = id,
+                    isStatic = isStatic,
+                    isKicked = isKicked,
+                    position = position,
+                    rotation = rotation,
+                    gameAreaId = gameAreaId
+                };
             }
             if (origin is ISavable savable)
             {
@@ -42,14 +61,29 @@ namespace Metamatic.Framework.Workshop
 
         public UniTask Load(object data)
         {
-            if (origin == null)
+            if (data is Entity.SaveData saveData)
             {
-                m_SaveData = data;
+                if (origin == null)
+                {
+                    id = saveData.id;
+                    blueprint = saveData.blueprint;
+                    type = saveData.type;
+                    isStatic = saveData.isStatic;
+                    isKicked = saveData.isKicked;
+                    position = saveData.position;
+                    rotation = saveData.rotation;
+                    gameAreaId = saveData.gameAreaId;
+                    return UniTask.CompletedTask;
+                }
+                if (origin is ISavable savable)
+                {
+                    return savable.Load(data);
+                }
                 return UniTask.CompletedTask;
             }
-            if (origin is ISavable savable)
+            else
             {
-                return savable.Load(data);
+                Console.Error("Entity", "Load", $"Unexpected data type: {data.GetType().Name}");
             }
             return UniTask.CompletedTask;
         }
@@ -58,7 +92,7 @@ namespace Metamatic.Framework.Workshop
     /// <summary>
     /// Base class for all game entities
     /// </summary>
-    public class Entity : AsyncBehaviour, ISavable
+    public class Entity : AsyncBehaviour, ISavable, IResettable
     {
         
         [Serializable]
@@ -70,7 +104,6 @@ namespace Metamatic.Framework.Workshop
             public string id;
             public bool isStatic;
             public bool isKicked;
-            public KickReason kickReason;
             public Vector3 position;
             public Quaternion rotation;
             public string gameAreaId;
@@ -85,14 +118,29 @@ namespace Metamatic.Framework.Workshop
         private static event Action<Entity> OnEntityRegisteredEvent;
         private static event Action<Entity, DismissReason> OnEntityUnregisteredEvent;
         
+        private readonly ObservableNullable<GameArea> m_ObservableGameArea = new ObservableNullable<GameArea>();
+
         /// <summary>
         /// Contains the observable game area where the entity is located
         /// </summary>
-        public GameArea gameArea { get; private set; }
+        public GameArea gameArea
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => m_ObservableGameArea.Value;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private set => m_ObservableGameArea.Value = value;
+        }
+        
         /// <summary>
         /// Determines that the game area is set
         /// </summary>
-        private bool m_GameAreaIsSet;
+        private bool gameAreaIsSet
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => m_ObservableGameArea.hasValue;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => m_ObservableGameArea.hasValue = value;
+        }
         
         [ShowInInspector]
         public static int entitiesCount => EntitiesRegistry.Count;
@@ -182,8 +230,6 @@ namespace Metamatic.Framework.Workshop
 
         public static DisposableAction WatchEntityAsync(string id, Func<Entity, Signal, UniTaskVoid> handler)
         {
-            SignalSource cancellationSignalSource = SignalSource.Create();
-            var cancellationSignal = cancellationSignalSource.Signal;
             SignalSource releaseSignalSource = default;
             var listener = WatchEntity(id, (entity, registered) =>
             {
@@ -202,7 +248,6 @@ namespace Metamatic.Framework.Workshop
             {
                 listener.Dispose();
                 releaseSignalSource.TryRaise();
-                cancellationSignalSource.TryRaise();
             });
         }
         
@@ -273,25 +318,29 @@ namespace Metamatic.Framework.Workshop
                     // TODO: Here we can check if the pool for blueprint exists and if it does, we can spawn from the pool
                     
                     /* Summon blueprint */
-                    summon = GameObjectFactory.SummonFromBlueprint<Entity>((AssetReference)blueprintRef);
+                    summon = GameObjectFactory.SummonFromBlueprint<Entity>(blueprintRef);
                     entity = await summon.Wait(cancellationSignal);
                     var entityTransform = entity.transform;
                     
                     entityTransform.position = position;
                     entityTransform.rotation = rotation;
 
+                    entity.Initialize(blueprintRef, id);
+
                     cancellationSignal.ThrowIfRaised();
                     // Release blueprint and prefab after entity is destroyed
-                    entity.OnEntityDismissedEvent += (DismissReason reason) =>
+                    entity.OnEntityDismissedEvent += (reason) =>
                     {
                         if (reason != DismissReason.Destroy)
-                        // We can dispose blueprint and prefab only after entity is destroyed
-                        summon.Dispose();
+                        {
+                            // We can dispose blueprint and prefab only after entity is destroyed
+                            summon.Dispose();
+                        }
                     };
                     // Add entity to the dictionary
                     
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
                     summon.Dispose();
                     return null;
@@ -323,10 +372,14 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         public bool isStatic { get; private set; } = true;
         /// <summary>
-        /// The entity is kicked from the world.
+        /// The entity is kicked from the world. It means that it should be virtualized and stay in the virtual world until it will be revived.
         /// </summary>
-        public bool isKicked { get; private set; } = false;
-        public KickReason kickReason { get; private set; } = KickReason.None;
+        public bool isKicked { get; private set; }
+        /// <summary>
+        /// Entity is marked as virtualized. It means that it is not in the world and can be returned back to the world.
+        /// Even if entity is still in the world, this flag indicates that it already virtualized and can be safely destroyed.
+        /// </summary>
+        public bool isVirtualized { get; private set; }
         public event Action<DismissReason> OnEntityDismissedEvent;
         
         /// <summary>
@@ -334,42 +387,71 @@ namespace Metamatic.Framework.Workshop
         /// Static entities can not be dismissed.
         /// </summary>
         /// <param name="reason"></param>
-        public void Dismiss(DismissReason reason)
+        private void Dismiss(DismissReason reason)
         {
-            if (isStatic)
-            {
-                throw new InvalidOperationException("Static entities can not be dismissed");
-            }
+            m_ObservableGameArea.Clear();
+            /* Clear its game area */
             OnEntityDismissedEvent?.Invoke(reason);
             OnEntityDismissedEvent = null;
+            if (!isStatic)
+            {
+                /* Remove its id when recycled */
+                id = null;
+            }
+        }
+
+        /// <summary>
+        /// Released entity won't be virtualized and will be dismissed with the reason Destroy.
+        /// Use it if you want to destroy the entity.
+        /// </summary>
+        public void Release()
+        {
+            Dismiss(DismissReason.Release);
         }
         
+        /// <summary>
+        /// Killed entity won't be virtualized and will be dismissed with the reason Kill
+        /// </summary>
+        /// <param name="reason"></param>
         public void Kill(KillReason reason)
         {
             Dismiss(DismissReason.Kill);
         }
         
-        public void Kick(KickReason reason)
+        /// <summary>
+        /// Manual move entity to virtual world. It can be returned back to the world by explicit request.
+        /// </summary>
+        public void Kick()
         {
             isKicked = true;
-            kickReason = reason;
             /* Resolve game area */
             
             GameSystem.virtualWorld.VirtualizeEntity(this);
             Dismiss(DismissReason.Kick);
         }
+        
+        /// <summary>
+        /// Virtualize and dismiss entity
+        /// </summary>
+        public void Virtualize()
+        {
+            Console.Debug("Entity", "Virtualize", $"Virtualizing entity {id}");
+            GameSystem.virtualWorld.VirtualizeEntity(this);
+            isVirtualized = true;
+            Dismiss(DismissReason.Abandon);
+        }
 
         /// <summary>
         /// This method is called when the entity is out of any active game area
         /// </summary>
-        private void OutOfArea()
+        private void OnOutOfGameArea()
         {
             /* Search for inactive game area */
             if (GameArea.TryFindIntersectArea(transform.position, true, out var area))
             {
                 gameArea = area;
-                m_GameAreaIsSet = true;
-                Kick(KickReason.Abandon);
+                gameAreaIsSet = true;
+                Virtualize();
             }
             else
             {
@@ -377,7 +459,10 @@ namespace Metamatic.Framework.Workshop
                 {
                     // Static objects can't be killed
                     // So it should be returned to its initial position
-                    // TODO: Return static entity to its initial position
+                    // Restore initial position and rotation
+                    var thisTransform = transform;
+                    thisTransform.position = m_InitialPosition;
+                    thisTransform.rotation = m_InitialRotation;
                 }
                 else
                 {
@@ -386,6 +471,16 @@ namespace Metamatic.Framework.Workshop
                     Kill(KillReason.Exception);
                 }
             }
+        }
+
+        private async UniTaskVoid OnGameAreaChange(GameArea gameArea, bool hasValue, Signal signal)
+        {
+            if (!hasValue)
+            {
+                return;
+            }
+            using var entityRegistration = gameArea.Register(this);
+            await signal;
         }
         
         public void RegisterComponent(EntityComponent component)
@@ -437,10 +532,10 @@ namespace Metamatic.Framework.Workshop
         
         /// <summary>
         /// This method must be called to initialize the entity when it has been created from prefab
+        /// TODO: Do we need this method?
         /// </summary>
         /// <param name="nextBlueprint"></param>
         /// <param name="nextId"></param>
-        /// <param name="isStatic"></param>
         /// <returns></returns>
         public string Initialize(AssetReferenceT<EntityBlueprint> nextBlueprint, string nextId)
         {
@@ -494,15 +589,26 @@ namespace Metamatic.Framework.Workshop
             return false;
         }
 
+        /// <summary>
+        /// This method is called before the entity is returned to the pool (via IResettable interface. See. Reset())
+        /// </summary>
         public void ResetEntity()
         {
+            /* Erase id and game area */
+            id = null;
+            isKicked = false;
+            m_ObservableGameArea.Clear();
+            
             OnEntityResetEvent?.Invoke();
+            OnEntityReset();
         }
         
         #endregion
         
+        #region Private API
+        
         private Token96Bit m_RegistrationToken;
-        private void GenerateUniqueId(bool force = false)
+        private void GenerateUniqueId()
         {
             id = Guid.NewGuid().ToString();
         }
@@ -512,13 +618,16 @@ namespace Metamatic.Framework.Workshop
             new Dictionary<Type, EntityComponent>();
 
         private readonly Dictionary<Type, EntityAbility> m_RegisteredAbilities = new Dictionary<Type, EntityAbility>();
-
+        private Vector3 m_InitialPosition;
+        private Quaternion m_InitialRotation;
+        #endregion
         
-
         #region Mono
         
         protected override void Awake()
         {
+            m_InitialPosition = transform.position;
+            m_InitialRotation = transform.rotation;
             base.Awake();
             Debug.Log("Объект находится в сцене: " + gameObject.scene.name);
 
@@ -532,14 +641,6 @@ namespace Metamatic.Framework.Workshop
                 Debug.Log("Это экземпляр, находящийся в сцене");
             }
 #endif
-            if (gameObject.TryGetComponent<RecyclableBehaviour>(out var recyclable))
-            {
-                recyclable.OnRecycle += (reason) =>
-                {
-                    /* Remove its id when recycled */
-                    id = null;
-                };
-            }
         }
 
         // TODO: Update entity according to its LOD level
@@ -553,23 +654,23 @@ namespace Metamatic.Framework.Workshop
             if (isKicked) return;
             /* First of all check if entity is still inside active game area */
             var position = transform.position;
-            if (!m_GameAreaIsSet || !gameArea.IsIntersected(position))
+            if (!gameAreaIsSet || !gameArea.isActive || !gameArea.IsIntersected(position))
             {
-                m_GameAreaIsSet = false;
+                gameAreaIsSet = false;
                 /* Search for the game area */
                 foreach (var area in GameArea.ActiveAreas)
                 {
                     if (area.IsIntersected(position))
                     {
                         gameArea = area;
-                        m_GameAreaIsSet = true;
+                        gameAreaIsSet = true;
                         break;
                     }
                 }
 
-                if (!m_GameAreaIsSet)
+                if (!gameAreaIsSet)
                 {
-                    OutOfArea();
+                    OnOutOfGameArea();
                 }
             }
         }
@@ -608,13 +709,16 @@ namespace Metamatic.Framework.Workshop
         protected override void OnDestroy()
         {
             base.OnDestroy();
+            Dismiss(DismissReason.Destroy);
+            m_ObservableGameArea.Dispose();
             Entity.TryUnregisterEntity(m_RegistrationToken, DismissReason.Destroy);
         }
         #endregion
 
         protected override async UniTask Run(Ready ready, Signal signal)
         {
-            using var announce = Dispatcher.global.Announce(this, false);
+            using var announce = Dispatcher.global.Announce(this); // TODO: Do we still need this?
+            using var watchGameArea = m_ObservableGameArea.WatchAsync(OnGameAreaChange);
             await OnEntityRun(ready, signal);
         }
 
@@ -625,14 +729,14 @@ namespace Metamatic.Framework.Workshop
 
         protected virtual void OnEntityReset()
         {
-            /* Override this method to implement custom reset logic */
+            
         }
 
         public object Save()
         {
             var entityTransform = transform;
             var componentsData = new EntityComponent.SaveData[Components.Count];
-            var gameAreaId = m_GameAreaIsSet ? gameArea.id : null;
+            var gameAreaId = gameAreaIsSet ? gameArea.id : null;
             var saveData = new SaveData()
             {
                 blueprint = blueprint,
@@ -640,7 +744,6 @@ namespace Metamatic.Framework.Workshop
                 id = id,
                 isStatic = isStatic,
                 isKicked = isKicked,
-                kickReason = kickReason,
                 position =  entityTransform.position,
                 rotation = entityTransform.rotation,
                 gameAreaId = gameAreaId,
@@ -666,13 +769,12 @@ namespace Metamatic.Framework.Workshop
             id = entityData.id;
             isStatic = entityData.isStatic;
             isKicked = false;
-            kickReason = KickReason.None;
             if (!String.IsNullOrEmpty(entityData.gameAreaId))
             {
                 if (GameArea.TryGetAreaById(entityData.gameAreaId, out var resolvedGameArea))
                 {
-                    m_GameAreaIsSet = true;
-                    this.gameArea = resolvedGameArea;
+                    gameAreaIsSet = true;
+                    gameArea = resolvedGameArea;
                 }
             }
             thisTransform.position = entityData.position;
@@ -685,6 +787,14 @@ namespace Metamatic.Framework.Workshop
             }
 
             return UniTask.CompletedTask;
+        }
+
+        public void Reset()
+        {
+            if (Application.isPlaying)
+            {
+                ResetEntity();
+            }
         }
     }
 }

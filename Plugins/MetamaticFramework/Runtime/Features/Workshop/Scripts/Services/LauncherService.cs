@@ -42,6 +42,7 @@ namespace Metamatic.Framework.Workshop
         #region Private properties
         private AsyncDisposableSummon<SceneInstance> m_StartSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private AsyncDisposableSummon<SceneInstance> m_MainMenuSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
+        private AsyncDisposableSummon<SceneInstance> m_LoadGameSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         #endregion
 
         protected override async UniTask RunService(Ready ready, Signal signal)
@@ -51,12 +52,14 @@ namespace Metamatic.Framework.Workshop
             /* While the start scene is loading, load the main menu scene */
             m_MainMenuSceneSummon = ResourcesSystem.LoadScene(this.mainMenuScene, LoadSceneMode.Additive, activationOnLoad: false);
             /* Wait for start clip end */
-            await Dispatcher.global.WhenEmitted<string>("start_scene_complete", signal);
+            await Dispatcher.global.WhenEmitted<GameSystem.GameEvent>(GameSystem.GameEvent.IntroSceneComplete, signal);
             /* Unload start scene */
             m_StartSceneSummon.DisposeAsync().Forget();
             /* Activate main menu scene */
             var mainMenuScene = await m_MainMenuSceneSummon.Wait(signal);
             await mainMenuScene.ActivateAsync().ToUniTask();
+            /* Load load game scene */
+            m_LoadGameSceneSummon = ResourcesSystem.LoadScene(loadGameScene, LoadSceneMode.Additive, activationOnLoad: false);
             await ready();
         }
 
@@ -93,12 +96,15 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async UniTask Launch(AssetReferenceT<Chapter> chapterReferenceT, Signal cancellationSignal) // Chapter chapter
+        public async UniTask LaunchGame(AssetReferenceT<Chapter> chapterReferenceT, Signal cancellationSignal) // Chapter chapter
         {
             if (!GameSystem.StartGame())
             {
                 throw new Exception("Game is already running.");
             }
+            // Activate load game scene
+            var loadSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
+            loadSceneInstance.ActivateAsync().ToUniTask().Forget();
             // Show load game scene
             // Launch the game async
             using var summonChapter = ResourcesSystem.Summon<Chapter>(chapterReferenceT);
@@ -107,6 +113,8 @@ namespace Metamatic.Framework.Workshop
             await GameSystem.ActivateScenes(chapter.baseScene, chapter.scenes);
             var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
             await UniTask.WhenAll(servicesReadyTasks);
+            // Hide load game scene
+            await Addressables.UnloadSceneAsync(loadSceneInstance);
         }
     }
 }

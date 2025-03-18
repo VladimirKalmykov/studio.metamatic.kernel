@@ -8,9 +8,18 @@ namespace Metamatic.Framework.Workshop
         Kill,
         /// <summary>
         /// Kicked. The entity is removed from the world and should be saved or virtualized, also GO can be returned to the pool.
-        /// Entity should not 
+        /// Entity should not materialize again without explicit request. 
         /// </summary>
         Kick,
+        /// <summary>
+        /// Abandoned. The entity is removed from the world and should be saved or virtualized, also GO can be returned to the pool.
+        /// Entity can materialize again without explicit request if its area is active again.
+        /// </summary>
+        Abandon,
+        /// <summary>
+        /// Entity is removed from the world, don't save or virtualize, but return to the pool.
+        /// </summary>
+        Release,
         /// <summary>
         /// Destroyed by Unity.
         /// </summary>
@@ -28,20 +37,5 @@ namespace Metamatic.Framework.Workshop
         /// The object has left the play area, or unforeseen circumstances have occurred.
         /// </summary>
         Exception
-    }
-
-    public enum KickReason
-    {
-        None,
-        /// <summary>
-        /// Game object is out of active areas and should be saved or virtualized, also GO can be returned to the pool.
-        /// If the last area of residence is activated again, the entity will be revived.
-        /// </summary>
-        Abandon,
-        /// <summary>
-        /// Game object should be virtualized, also GO can be returned to the pool.
-        /// It can be returned from virtualization to the world only by programmer's decision.
-        /// </summary>
-        Manual
     }
 }

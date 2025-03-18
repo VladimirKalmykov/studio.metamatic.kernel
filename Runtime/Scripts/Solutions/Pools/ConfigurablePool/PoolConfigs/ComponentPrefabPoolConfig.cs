@@ -40,6 +40,10 @@ namespace Metamatic
         public virtual void OnReturn(T instance)
         {
             if (instance == null || instance.gameObject == null) return;
+            if (instance is IResettable resettable)
+            {
+                resettable.Reset();
+            }
             instance.gameObject.SetActive(false);
         }
 

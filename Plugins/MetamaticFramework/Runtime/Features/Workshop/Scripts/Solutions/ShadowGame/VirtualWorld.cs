@@ -29,6 +29,9 @@ namespace Metamatic.Framework
         
         private readonly Dictionary<Type, VirtualService> m_Services = new();
         private readonly Dictionary<(Type, string), VirtualEntity> m_Entities = new();
+        #if UNITY_EDITOR
+        public readonly ObservableList<VirtualEntity> ObservableEntitiesList = new();
+        #endif
         private SignalSource m_DisposeSignalSource;
 
         public VirtualWorld()
@@ -43,39 +46,55 @@ namespace Metamatic.Framework
             virtualEntity.Load(entity.Save());
         }
         
+        public async UniTaskVoid MaterializeEntity(VirtualEntity virtualEntity)
+        {
+            var entity = await Entity.SpawnEntity(virtualEntity.blueprint, virtualEntity.position, virtualEntity.rotation, id: virtualEntity.id);
+            /* Remove virtual entity from the registry */
+            
+            m_Entities.Remove((entity.GetType(), entity.id));
+#if UNITY_EDITOR
+            ObservableEntitiesList.Remove(virtualEntity);
+#endif
+            await entity.Load(virtualEntity.Save());
+        }
+        
         private async UniTaskVoid RunAsync(Signal cancellationSignal)
         {
             using var serviceSubscription = Service.WatchServices(OnServiceRegistered);
-            using var entityRegisteredSubscription = Entity.WatchEntitiesRegistered(OnEntityRegistered);
-            using var entityUnregisteredSubscription = Entity.WatchEntitiesUnregistered(OnEntityUnregistered);
+            using var areasActivationSubscription = GameArea.WatchAreasActivation(OnAreaActivation);
             await cancellationSignal;
+        }
+
+        private void OnAreaActivation(GameArea gameArea)
+        {
+            // TODO: Consider to perform iteration async with UniTask.Yield() or UniTask.DelayFrame(); 
+            /* Iterate over all virtualized entities */
+            foreach (var virtualEntity in m_Entities.Values)
+            {
+                if (virtualEntity.origin == null)
+                {
+                    /* If entity is virtual, check if it is inside the active area */
+                    if (virtualEntity.gameAreaId == gameArea.id)
+                    {
+                        if (GameArea.IsIntersectedWithActiveAreas(virtualEntity.position))
+                        {
+                            if (virtualEntity.isStatic)
+                            {
+                                // Do nothing, because static entities will find its virtual entity in the registry by itself
+                                continue;
+                            }
+                            /* If entity is inside the active area, spawn it */
+                            MaterializeEntity(virtualEntity).Forget();
+                        }
+                    }
+                }
+            }
         }
 
         private void OnServiceRegistered(Service service)
         {
             /* Create virtual service for real service */
             GetOrCreateVirtualService(typeof(Service));
-        }
-        
-        private void OnEntityRegistered(Entity entity)
-        {
-            if (m_Entities.TryGetValue((entity.GetType(), entity.id), out var virtualEntity))
-            {
-                /* Withdrawing virtual entity and fulfill it with save data */
-                var saveData = virtualEntity.Save();
-                m_Entities.Remove((entity.GetType(), entity.id));
-                entity.Load(saveData);
-            }
-        }
-        
-        private void OnEntityUnregistered(Entity entity, DismissReason reason)
-        {
-            if (reason == DismissReason.Kick)
-            {
-                /* Create virtual entity for real entity */
-                var virtualEntity = GetOrAddVirtualEntity(entity.GetType(), entity.id);
-                virtualEntity.Load(entity.Save());
-            }
         }
 
         public VirtualService GetOrCreateVirtualService(Type type)
@@ -99,6 +118,9 @@ namespace Metamatic.Framework
 
             virtualEntity = new VirtualEntity(id); // TODO: Probably it may be derived class of VirtualEntity
             m_Entities[(type, id)] = virtualEntity;
+#if UNITY_EDITOR
+            ObservableEntitiesList.Add(virtualEntity);
+#endif
             return virtualEntity;
         }
 
@@ -193,10 +215,14 @@ namespace Metamatic.Framework
                 {
                     if (Entity.EntitiesRegistry.TryGet(pairs.Value, out var entity))
                     {
+                        if (entity.isStatic)
+                        {
+                            return;
+                        }
                         // Remove only those entities that are not in the save data
                         if (!spawnEntitiesIds.Contains(entity.id))
                         {
-                            entity.GetOrAddComponent<RecyclableBehaviour>().Recycle();
+                            entity.Release();
                         }
                     }
                 }
@@ -215,6 +241,7 @@ namespace Metamatic.Framework
         {
             Entity entity = null;
             
+            // TODO: Crate Entity.RegisteredEntities property
             if (Entity.EntitiesRegistrationTokens.TryGetValue(entitySaveData.id, out var token))
             {
                 if (Entity.EntitiesRegistry.TryGet(token, out entity))

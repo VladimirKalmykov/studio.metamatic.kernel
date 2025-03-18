@@ -17,6 +17,8 @@ namespace Metamatic.Framework.Workshop
     {
         public static readonly List<GameArea> AllAreas = new List<GameArea>();
         public static readonly List<GameArea> ActiveAreas = new List<GameArea>();
+        public static event Action<GameArea> OnAreaActivatedEvent;
+        public static event Action<GameArea> OnAreaDeactivatedEvent;
         /// <summary>
         /// Determines if the position is intersected with any active areas.
         /// </summary>
@@ -71,6 +73,18 @@ namespace Metamatic.Framework.Workshop
             area = null;
             return false;
         }
+
+        public static DisposableAction WatchGameAreaActivationOnce(string id)
+        {
+            // TOOD: Implement
+            throw new NotImplementedException();
+        }
+
+        public static DisposableAction WatchAreasActivation(Action<GameArea> handler)
+        {
+            OnAreaActivatedEvent += handler;
+            return new DisposableAction(() => OnAreaActivatedEvent -= handler);
+        }
         
 #if UNITY_EDITOR
         [SerializeField] [HideInInspector] public bool isActiveInEditor;
@@ -105,9 +119,12 @@ namespace Metamatic.Framework.Workshop
         private UnityEngine.SceneManagement.Scene m_LoadedScene;
 #endif
         
+        private SignedIndexedPool<Entity> m_Entities = new (100);
+        
         public event Action<GameArea> OnActivateEvent;
         public event Action<GameArea> OnBeforeDeactivate;
 
+        #region Mono
         private void OnEnable()
         {
 #if UNITY_EDITOR
@@ -129,6 +146,7 @@ namespace Metamatic.Framework.Workshop
 #endif
             GameAreas2dService.UnregisterGameArea(this);
         }
+        #endregion
 
         private void GenerateUniqueId(bool force = false)
         {
@@ -150,6 +168,18 @@ namespace Metamatic.Framework.Workshop
         }
 #endif
 
+        public DisposableAction<Token96Bit> Register(Entity entity)
+        {
+            var token = m_Entities.Add(entity);
+            
+            return new DisposableAction<Token96Bit>(Unregister, token);
+        }
+        
+        private void Unregister(Token96Bit token)
+        {
+            m_Entities.Remove(token);
+        }
+        
         /// <summary>
         /// Активирует область:
         /// - Если режим Prefab, то загружает префаб и добавляет его в сцену.
@@ -271,6 +301,7 @@ namespace Metamatic.Framework.Workshop
 
             isActive = true;
             ActiveAreas.Add(this);
+            OnAreaActivatedEvent?.Invoke(this);
 
             try
             {
@@ -305,8 +336,17 @@ namespace Metamatic.Framework.Workshop
             }
             finally
             {
+                /* Move all entities to the virtual world */
+                if (isFoundation)
+                {
+                    foreach (var entity in m_Entities.ToArray())
+                    {
+                        entity.Virtualize();
+                    }
+                }
                 isActive = false;
                 ActiveAreas.Remove(this);
+                OnAreaDeactivatedEvent?.Invoke(this);
             }
         }
         
