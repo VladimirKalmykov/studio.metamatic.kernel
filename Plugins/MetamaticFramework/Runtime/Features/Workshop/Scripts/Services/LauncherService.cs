@@ -43,23 +43,30 @@ namespace Metamatic.Framework.Workshop
         private AsyncDisposableSummon<SceneInstance> m_StartSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private AsyncDisposableSummon<SceneInstance> m_MainMenuSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private AsyncDisposableSummon<SceneInstance> m_LoadGameSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
+        private SceneInstance m_MainMenuSceneInstance;
         #endregion
 
         protected override async UniTask RunService(Ready ready, Signal signal)
         {
+            DontDestroyOnLoad(this.gameObject);
             /* Preload and activate start scene */
-            m_StartSceneSummon = ResourcesSystem.LoadScene(startScene, LoadSceneMode.Additive, activationOnLoad: true);
-            /* While the start scene is loading, load the main menu scene */
-            m_MainMenuSceneSummon = ResourcesSystem.LoadScene(this.mainMenuScene, LoadSceneMode.Additive, activationOnLoad: false);
+            m_StartSceneSummon = ResourcesSystem.LoadScene(startScene, LoadSceneMode.Additive, activateOnLoad: true);
+            await m_StartSceneSummon.Wait(signal);
+            
+            /* We have to load main menu after intro scene, because of addressable bug with activateOnLoad (https://discussions.unity.com/t/loadsceneasync-activateonload-false-does-not-work/817793/12)  */
+            m_MainMenuSceneSummon = ResourcesSystem.LoadScene(this.mainMenuScene, LoadSceneMode.Additive, activateOnLoad: false);
+            
             /* Wait for start clip end */
             await Dispatcher.global.WhenEmitted<GameSystem.GameEvent>(GameSystem.GameEvent.IntroSceneComplete, signal);
+            Console.Debug("Launcher", "Intro scene complete.");
+            
+            /* Activate main menu scene */
+            m_MainMenuSceneInstance = await m_MainMenuSceneSummon.Wait(signal);
+            await m_MainMenuSceneInstance.ActivateAsync().ToUniTask();
             /* Unload start scene */
             m_StartSceneSummon.DisposeAsync().Forget();
-            /* Activate main menu scene */
-            var mainMenuScene = await m_MainMenuSceneSummon.Wait(signal);
-            await mainMenuScene.ActivateAsync().ToUniTask();
             /* Load load game scene */
-            m_LoadGameSceneSummon = ResourcesSystem.LoadScene(loadGameScene, LoadSceneMode.Additive, activationOnLoad: false);
+            m_LoadGameSceneSummon = ResourcesSystem.LoadScene(loadGameScene, LoadSceneMode.Additive, activateOnLoad: false);
             await ready();
         }
 
@@ -98,23 +105,32 @@ namespace Metamatic.Framework.Workshop
         /// <exception cref="NotImplementedException"></exception>
         public async UniTask LaunchGame(AssetReferenceT<Chapter> chapterReferenceT, Signal cancellationSignal) // Chapter chapter
         {
-            if (!GameSystem.StartGame())
+            try
             {
-                throw new Exception("Game is already running.");
-            }
-            // Activate load game scene
-            var loadSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
-            loadSceneInstance.ActivateAsync().ToUniTask().Forget();
-            // Show load game scene
-            // Launch the game async
-            using var summonChapter = ResourcesSystem.Summon<Chapter>(chapterReferenceT);
-            var chapter = await summonChapter.Wait(default);
+                Console.Debug("Launcher", "Launching game.");
+                if (!GameSystem.StartGame())
+                {
+                    throw new Exception("Game is already running.");
+                }
+                // Activate load game scene
+                var loadSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
+                loadSceneInstance.ActivateAsync().ToUniTask().Forget();
+                // Unload main menu scene
+                await Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
+                // Show load game scene
+                // Launch the game async
+                using var summonChapter = ResourcesSystem.Summon<Chapter>(chapterReferenceT);
+                var chapter = await summonChapter.Wait(default);
             
-            await GameSystem.ActivateScenes(chapter.baseScene, chapter.scenes);
-            var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
-            await UniTask.WhenAll(servicesReadyTasks);
-            // Hide load game scene
-            await Addressables.UnloadSceneAsync(loadSceneInstance);
+                await GameSystem.ActivateScenes(chapter.baseScene, chapter.gameScene);
+                var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
+                await UniTask.WhenAll(servicesReadyTasks);
+                // Hide load game scene
+                await Addressables.UnloadSceneAsync(loadSceneInstance, false);
+            } catch (Exception e)
+            {
+                Console.Error("Launcher", e);
+            }
         }
     }
 }

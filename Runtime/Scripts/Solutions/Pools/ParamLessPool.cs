@@ -30,6 +30,15 @@ namespace Metamatic
             OnPoolRemoved?.Invoke(pool);
         }
         
+        public static event Action OnUnityInitialized;
+        
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void OnUnityInitializedHandler()
+        {
+            OnUnityInitialized?.Invoke();
+            OnUnityInitialized = null;
+        }
+        
         public abstract string displayName { get; }
         public abstract int countInPool { get; }
         public abstract int countOutPool { get; }
@@ -350,12 +359,17 @@ namespace Metamatic
 
             if (autoShrink)
             {
-                /* Start auto shrink timer */
-                m_FruitBasket = new AverageFruitBasket(DefaultShrinkingPeriod);
-                #if !DISABLE_POOL_AUTOSHRINK
-                m_OnDisposeHandler += SubscribeAutoShrinkTime(AutoShrinkTimestamp);
-                #endif
+                OnUnityInitialized += LaunchAutoShrinkOnGameStart;
             }
+        }
+
+        private void LaunchAutoShrinkOnGameStart()
+        {
+            /* Start auto shrink timer */
+            m_FruitBasket = new AverageFruitBasket(DefaultShrinkingPeriod);
+#if !DISABLE_POOL_AUTOSHRINK
+            m_OnDisposeHandler += SubscribeAutoShrinkTime(AutoShrinkTimestamp);
+#endif
         }
         
         private T CreateInstance()

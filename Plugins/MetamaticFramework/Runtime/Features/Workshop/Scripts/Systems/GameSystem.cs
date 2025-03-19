@@ -25,10 +25,11 @@ namespace Metamatic.Framework
         public static VirtualWorld virtualWorld => m_ObservableVirtualWorld.Value;
         public static bool isGameRunning { get; private set; }
         private static AssetReference _CurrentBaseSceneRef;
+        private static AssetReference _CurrentGameSceneRef;
         private static AsyncDisposableSummon<SceneInstance> _CurrentBaseSceneSummon =
             AsyncDisposableSummon<SceneInstance>.Empty;
-        private static Dictionary<AssetReference, AsyncDisposableSummon<SceneInstance>> _CurrentAdditionalSceneSummons =
-            new();
+        private static AsyncDisposableSummon<SceneInstance> _CurrentGameSceneSummon =
+            AsyncDisposableSummon<SceneInstance>.Empty;
         private static List<UniTask> _UnloadTasks = new();
 
         static GameSystem()
@@ -38,6 +39,7 @@ namespace Metamatic.Framework
 
         public static bool StartGame()
         {
+            Console.Debug("GameSystem", "StartGame");
             if (isGameRunning)
             {
                 return false;
@@ -75,56 +77,38 @@ namespace Metamatic.Framework
             return m_ObservableVirtualWorld.WatchAsync(action);
         }
         
-        public static async UniTask ActivateScenes(AssetReference baseScene, AssetReference[] additiveScenes = null, bool trySeamless = false, Signal cancellationSignal = default)
+        public static async UniTask ActivateScenes(AssetReference baseScene, AssetReference gameScene = null, bool trySeamless = false)
         {
             try
             {
-                if (trySeamless && _CurrentBaseSceneRef != baseScene)
+                if (!trySeamless || _CurrentBaseSceneRef != baseScene)
                 {
                     // Unload previous base scene
                     await _CurrentBaseSceneSummon.DisposeAsync();
                 }
                 
-                // Unload previous additional scenes
-                _UnloadTasks.Clear();
-                foreach (var scene in _CurrentAdditionalSceneSummons.ToArray())
+                if (!trySeamless || (_CurrentGameSceneRef != null && _CurrentGameSceneRef != gameScene))
                 {
-                    /* Skip if additiveScenes contains the scene */
-                    if (trySeamless && additiveScenes != null && additiveScenes.Contains(scene.Key))
-                    {
-                        continue;
-                    }
-                    _UnloadTasks.Add(scene.Value.DisposeAsync());
-                    /* Remove from the list */
-                    _CurrentAdditionalSceneSummons.Remove(scene.Key);
+                    await _CurrentGameSceneSummon.DisposeAsync();
                 }
-                var result = await UniTask.WhenAny(cancellationSignal.ToUniTask(), UniTask.WhenAll(_UnloadTasks));
-                if (result == 0)
-                {
-                    throw new OperationCanceledException();
-                }
-            }
-            finally
-            {
-                await _CurrentBaseSceneSummon.DisposeAsync();
+                _CurrentGameSceneRef = gameScene;
                 _CurrentBaseSceneRef = baseScene;
-                _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(baseScene, LoadSceneMode.Single);
-            }
             
-            // Load additional scenes as additive
-            if (additiveScenes == null)
-            {
-                return;
-            }
-            var additiveScenesToLoad = trySeamless ? additiveScenes.Except(_CurrentAdditionalSceneSummons.Keys) : additiveScenes;
-            var waitList = new List<UniTask>(); // TODO: Use property instead of local variable
-            foreach (var scene in additiveScenesToLoad)
-            {
-                _CurrentAdditionalSceneSummons[scene] = ResourcesSystem.LoadScene(scene, LoadSceneMode.Additive);
-                waitList.Add(_CurrentAdditionalSceneSummons[scene].Wait(cancellationSignal));
-            }
+                // Load base scene
+                _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Additive);
             
-            await UniTask.WhenAll(waitList);
+                // Load game scene
+                _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentGameSceneRef, LoadSceneMode.Additive);
+            
+                await UniTask.WhenAll(_CurrentBaseSceneSummon.ToUniTask(), _CurrentGameSceneSummon.ToUniTask());
+            } catch (Exception e)
+            {
+                Console.Error("GameSystem", e);
+                
+                // Unload all scenes
+                await _CurrentBaseSceneSummon.DisposeAsync();
+                await _CurrentGameSceneSummon.DisposeAsync();
+            }
         }
         #endregion
         

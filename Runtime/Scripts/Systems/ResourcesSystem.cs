@@ -98,10 +98,10 @@ namespace Metamatic.Systems
         public static AsyncDisposableSummon<SceneInstance> LoadScene(
             AssetReference asset,
             UnityEngine.SceneManagement.LoadSceneMode mode,
-            bool activationOnLoad = true
+            bool activateOnLoad = true
         )
         {
-            var handle = Addressables.LoadSceneAsync(asset, mode, SceneReleaseMode.OnlyReleaseSceneOnHandleRelease, activationOnLoad);
+            var handle = Addressables.LoadSceneAsync(asset, mode, SceneReleaseMode.OnlyReleaseSceneOnHandleRelease, activateOnLoad: activateOnLoad);
             var tcs = SafeUniTaskCompletionSource<SceneInstance>.Create();
             var token = LoadSceneOperationHandles.Add(handle);
             

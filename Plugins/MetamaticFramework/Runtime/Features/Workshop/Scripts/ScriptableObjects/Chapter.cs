@@ -12,7 +12,7 @@ namespace Metamatic.Framework.Workshop
         [ReadOnly][SerializeField] public string id;
         public string title;
         public AssetReference baseScene;
-        public AssetReference[] scenes;
+        public AssetReference gameScene;
         
 #if UNITY_EDITOR
         // Метод вызывается при изменениях в редакторе

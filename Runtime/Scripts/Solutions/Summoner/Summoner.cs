@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
@@ -57,13 +58,12 @@ namespace Metamatic
         public static AsyncSummon<T> Empty => new AsyncSummon<T>(Token96Bit.Empty, UniTask.FromResult<T>(default), null);
         private readonly Action<Token96Bit> m_Dispose;
         private readonly Token96Bit m_Token;
+        private readonly TaskLike<T> m_TaskLike;
 #if DEBUG
         private readonly Container<bool> m_IsDisposed;
 #endif
         
         public bool isEmpty => m_Dispose == null;
-        
-        public UniTask<T> task { get; }
 
         public AsyncSummon(Token96Bit token, UniTask<T> task, Action<Token96Bit> dispose)
         {
@@ -71,18 +71,13 @@ namespace Metamatic
             m_IsDisposed = new Container<bool>(false);
             #endif
             m_Token = token;
-            this.task = task;
+            this.m_TaskLike = new TaskLike<T>(task);
             m_Dispose = dispose;
         }
 
-        public async UniTask<T> Wait(Signal cancellationSignal)
+        public TaskLike<T>.CancellableTaskLike Wait(Signal cancellationSignal)
         {
-            var (isLeft, result) = await UniTask.WhenAny(this.task, cancellationSignal.ToUniTask());
-            if (!isLeft)
-            {
-                throw new OperationCanceledException();
-            }
-            return result;
+            return m_TaskLike.Wait(cancellationSignal);
         }
 
         public void Dispose()
@@ -93,8 +88,8 @@ namespace Metamatic
                 throw new InvalidOperationException("Summon already disposed");
             }
             m_IsDisposed.value = true;
+            m_TaskLike.Dispose();
             #endif
-            this.task.Forget();
             m_Dispose?.Invoke(m_Token);
         }
     }
@@ -109,45 +104,33 @@ namespace Metamatic
         public static AsyncDisposableSummon<T> Empty => new AsyncDisposableSummon<T>(Token96Bit.Empty, UniTask.FromResult<T>(default), null);
         private readonly Func<Token96Bit, UniTask> m_DisposeAsync;
         private readonly Token96Bit m_Token;
-#if DEBUG
-        private readonly Container<bool> m_IsDisposed;
-#endif
+        private readonly TaskLike<T> m_TaskLike;
         
         public bool isEmpty => m_DisposeAsync == null;
-        
-        public UniTask<T> task { get; }
 
         public AsyncDisposableSummon(Token96Bit token, UniTask<T> task, Func<Token96Bit, UniTask> disposeAsync)
         {
-#if DEBUG
-            m_IsDisposed = new Container<bool>(false);
-#endif
             m_Token = token;
-            this.task = task;
+            m_TaskLike = new TaskLike<T>(task);
             m_DisposeAsync = disposeAsync;
         }
 
-        public async UniTask<T> Wait(Signal cancellationSignal)
+        public TaskLike<T>.CancellableTaskLike Wait(Signal cancellationSignal)
         {
-            var (isLeft, result) = await UniTask.WhenAny(this.task, cancellationSignal.ToUniTask());
-            if (!isLeft)
-            {
-                throw new OperationCanceledException();
-            }
-            return result;
+            return m_TaskLike.Wait(cancellationSignal);
+        }
+        
+        public UniTask<T> ToUniTask()
+        {
+            return m_TaskLike.ToUniTask();
         }
 
         public UniTask DisposeAsync()
         {
-#if DEBUG
-            if (m_IsDisposed.value)
-            {
-                throw new InvalidOperationException("Summon already disposed");
-            }
-            m_IsDisposed.value = true;
-#endif
-            this.task.Forget();
-            return m_DisposeAsync?.Invoke(m_Token) ?? UniTask.CompletedTask;
+            if (isEmpty) return UniTask.CompletedTask;
+            this.m_TaskLike.Dispose();
+            return m_DisposeAsync.Invoke(m_Token);
+
         }
     }
 
