@@ -20,6 +20,7 @@ namespace Metamatic.Framework.Workshop
         private GameArea2D m_Area2D;
         private Observable<PreviewMode> m_PreviewMode = new(PreviewMode.Disabled);
         private Button m_TogglePreviewButton;
+        
 
         protected override VisualElement CreateInspectorGUIAsync()
         {
@@ -39,6 +40,8 @@ namespace Metamatic.Framework.Workshop
 
             superRoot.Add(ugui);
             superRoot.Add(CreateControlsElement());
+            
+            superRoot.Add(CreateEntitiesListElement());
 
             Console.Debug("Editor", "Create GUI");
 
@@ -64,6 +67,32 @@ namespace Metamatic.Framework.Workshop
             }
 
             return m_TogglePreviewButton;
+        }
+        
+        private VisualElement CreateEntitiesListElement()
+        {
+            var entitiesContainer = new VisualElement();
+            entitiesContainer.AddToClassList(UIToolKitCore.Tailwind.PaddingTop12);
+            entitiesContainer.AddToClassList(UIToolKitCore.Tailwind.Column);
+            
+            var title = new Label("Entities");
+            title.AddToClassList(UIToolKitCore.Tailwind.TextSizeMd);
+            title.AddToClassList(UIToolKitCore.Tailwind.MarginBottom6);
+            
+            entitiesContainer.Add(title);
+            
+            var entitiesList = new TableView<Entity>(new TableView<Entity>.Col[]
+            {
+                new TableView<Entity>.Col("Name", TableView<Entity>.Col.WidthType.Fixed, 80f, (entity) => new Label(entity.name)),
+                new TableView<Entity>.Col("id", TableView<Entity>.Col.WidthType.Fixed, 120f, (entity) => new Label(entity.id)),
+                new TableView<Entity>.Col("Is Static", TableView<Entity>.Col.WidthType.Relative, 1f, (entity) => new Label(entity.isStatic ? "true" : "false")),
+            });
+            entitiesList.AddToClassList("EntitiesList");
+            entitiesList.Bind(m_Area2D.EditorObservableEntities);
+            
+            entitiesContainer.Add(entitiesList);
+            
+            return entitiesContainer;
         }
 
         protected override async UniTask OnEnableAsync(Signal cancellationSignal)

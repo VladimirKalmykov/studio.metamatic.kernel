@@ -112,11 +112,7 @@ namespace Metamatic
         // Позволяет использовать DisposableAction напрямую как Action
         public static implicit operator Action(DisposableAction<T> disposableAction)
         {
-#if DEBUG
             return disposableAction.Dispose;
-#else
-            return disposableAction._action;
-#endif
         }
     }
 }

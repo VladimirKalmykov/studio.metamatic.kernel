@@ -4,6 +4,7 @@ using UnityEditor.SceneManagement;
 #endif
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 using Metamatic.Systems;
 using UnityEngine;
@@ -119,10 +120,18 @@ namespace Metamatic.Framework.Workshop
         private UnityEngine.SceneManagement.Scene m_LoadedScene;
 #endif
         
-        private SignedIndexedPool<Entity> m_Entities = new (100);
+        private readonly SignedIndexedPool<Entity> m_EntitiesRegistrations = new (100);
+        private readonly Dictionary<string, Entity> m_RegisteredEntities = new Dictionary<string, Entity>();
+        
+        #if UNITY_EDITOR
+        public readonly ObservableList<Entity> EditorObservableEntities = new();
+        #endif
         
         public event Action<GameArea> OnActivateEvent;
-        public event Action<GameArea> OnBeforeDeactivate;
+        public event Action<GameArea> OnBeforeDeactivateEvent;
+        
+        public event Action<Entity> OnEntityRegistered;
+        public event Action<Entity> OnEntityUnregistered;
 
         #region Mono
         private void OnEnable()
@@ -170,14 +179,26 @@ namespace Metamatic.Framework.Workshop
 
         public DisposableAction<Token96Bit> Register(Entity entity)
         {
-            var token = m_Entities.Add(entity);
+            var token = m_EntitiesRegistrations.Add(entity);
+            m_RegisteredEntities[entity.id] = entity;
+            OnEntityRegistered?.Invoke(entity);
+            #if UNITY_EDITOR
+            EditorObservableEntities.Add(entity);
+            #endif
             
             return new DisposableAction<Token96Bit>(Unregister, token);
         }
         
         private void Unregister(Token96Bit token)
         {
-            m_Entities.Remove(token);
+            if (m_EntitiesRegistrations.Remove(token, out var entity))
+            {
+                #if UNITY_EDITOR
+                m_RegisteredEntities.Remove(entity.id);
+                EditorObservableEntities.Remove(entity);
+                #endif
+                OnEntityUnregistered?.Invoke(entity);
+            }
         }
         
         /// <summary>
@@ -290,6 +311,18 @@ namespace Metamatic.Framework.Workshop
         }
 
         #endregion
+
+        private void InternalBeforeDeactivate()
+        {
+            /* Move all entities to the virtual world */
+            if (isFoundation)
+            {
+                foreach (var entity in m_RegisteredEntities.Values.ToArray())
+                {
+                    entity.Virtualize();
+                }
+            }
+        }
         
         public async UniTask Activate(Signal cancellationSignal)
         {
@@ -336,14 +369,6 @@ namespace Metamatic.Framework.Workshop
             }
             finally
             {
-                /* Move all entities to the virtual world */
-                if (isFoundation)
-                {
-                    foreach (var entity in m_Entities.ToArray())
-                    {
-                        entity.Virtualize();
-                    }
-                }
                 isActive = false;
                 ActiveAreas.Remove(this);
                 OnAreaDeactivatedEvent?.Invoke(this);
@@ -360,7 +385,8 @@ namespace Metamatic.Framework.Workshop
             var instance = Instantiate(prefab, thisTransform);
             OnActivateEvent?.Invoke(this);
             await cancellationSignal;
-            OnBeforeDeactivate?.Invoke(this);
+            InternalBeforeDeactivate();
+            OnBeforeDeactivateEvent?.Invoke(this);
             Destroy(instance.gameObject);
         }
         
@@ -371,13 +397,14 @@ namespace Metamatic.Framework.Workshop
             await sceneSummon.Wait(cancellationSignal);
             OnActivateEvent?.Invoke(this);
             await cancellationSignal;
-            OnBeforeDeactivate?.Invoke(this);
+            InternalBeforeDeactivate();
+            OnBeforeDeactivateEvent?.Invoke(this);
         }
         
         public DisposableAction SubscribeBeforeDeactivate(Action<GameArea> handler)
         {
-            OnBeforeDeactivate += handler;
-            return new DisposableAction(() => OnBeforeDeactivate -= handler);
+            OnBeforeDeactivateEvent += handler;
+            return new DisposableAction(() => OnBeforeDeactivateEvent -= handler);
         }
         
         public DisposableAction SubscribeActivated(Action<GameArea> handler)

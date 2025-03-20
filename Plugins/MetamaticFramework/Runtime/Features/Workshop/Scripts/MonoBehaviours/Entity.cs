@@ -30,6 +30,7 @@ namespace Metamatic.Framework.Workshop
         public Vector3 position;
         public Quaternion rotation;
         public string gameAreaId;
+        public EntityComponent.SaveData[] originalComponentsData;
 
         public VirtualEntity(string id)
         {
@@ -49,7 +50,8 @@ namespace Metamatic.Framework.Workshop
                     isKicked = isKicked,
                     position = position,
                     rotation = rotation,
-                    gameAreaId = gameAreaId
+                    gameAreaId = gameAreaId,
+                    ComponentsData = originalComponentsData
                 };
             }
             if (origin is ISavable savable)
@@ -73,6 +75,7 @@ namespace Metamatic.Framework.Workshop
                     position = saveData.position;
                     rotation = saveData.rotation;
                     gameAreaId = saveData.gameAreaId;
+                    originalComponentsData = saveData.ComponentsData;
                     return UniTask.CompletedTask;
                 }
                 if (origin is ISavable savable)
@@ -138,8 +141,6 @@ namespace Metamatic.Framework.Workshop
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => m_ObservableGameArea.hasValue;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => m_ObservableGameArea.hasValue = value;
         }
         
         [ShowInInspector]
@@ -426,7 +427,7 @@ namespace Metamatic.Framework.Workshop
             isKicked = true;
             /* Resolve game area */
             
-            GameSystem.virtualWorld.VirtualizeEntity(this);
+            GameSystem.virtualWorld.Virtualize(this);
             Dismiss(DismissReason.Kick);
         }
         
@@ -436,7 +437,7 @@ namespace Metamatic.Framework.Workshop
         public void Virtualize()
         {
             Console.Debug("Entity", "Virtualize", $"Virtualizing entity {id} in virtual world: ${GameSystem.virtualWorld}");;
-            GameSystem.virtualWorld.VirtualizeEntity(this);
+            GameSystem.virtualWorld.Virtualize(this);
             isVirtualized = true;
             Dismiss(DismissReason.Abandon);
         }
@@ -449,8 +450,8 @@ namespace Metamatic.Framework.Workshop
             /* Search for inactive game area */
             if (GameArea.TryFindIntersectArea(transform.position, true, out var area))
             {
+                Console.Debug("Debug1", "SetGameArea", $"Set game area {area} for entity {id}");
                 gameArea = area;
-                gameAreaIsSet = true;
                 Virtualize();
             }
             else
@@ -656,14 +657,14 @@ namespace Metamatic.Framework.Workshop
             var position = transform.position;
             if (!gameAreaIsSet || !gameArea.isActive || !gameArea.IsIntersected(position))
             {
-                gameAreaIsSet = false;
+                m_ObservableGameArea.Clear();
                 /* Search for the game area */
                 foreach (var area in GameArea.ActiveAreas)
                 {
                     if (area.IsIntersected(position))
                     {
+                        Console.Debug("Debug1", "SetGameArea", $"Set game area {area} for entity {id}");
                         gameArea = area;
-                        gameAreaIsSet = true;
                         break;
                     }
                 }
@@ -703,12 +704,18 @@ namespace Metamatic.Framework.Workshop
                 isStatic = false;
                 id = Guid.NewGuid().ToString();
             }
+            else
+            {
+                GameSystem.virtualWorld.TryHydrate(this);
+            }
+            
             m_RegistrationToken = Entity.TryRegisterEntity(this);
         }
 
         protected override void OnDestroy()
         {
             base.OnDestroy();
+            // TODO: Here need to add some protected from destroying the entity without its virtualization. Check to kill. Reason of destruction.
             Dismiss(DismissReason.Destroy);
             m_ObservableGameArea.Dispose();
             Entity.TryUnregisterEntity(m_RegistrationToken, DismissReason.Destroy);
@@ -773,7 +780,7 @@ namespace Metamatic.Framework.Workshop
             {
                 if (GameArea.TryGetAreaById(entityData.gameAreaId, out var resolvedGameArea))
                 {
-                    gameAreaIsSet = true;
+                    Console.Debug("Debug1", "SetGameArea", $"Set game area {resolvedGameArea} for entity {id}");
                     gameArea = resolvedGameArea;
                 }
             }

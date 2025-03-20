@@ -17,6 +17,10 @@ namespace Metamatic.UIToolKit
             
             /* Text size */
             public const string TextSizeDefault = "MetamaticTailwind_TextSizeDefault";
+            public const string TextSizeXs = "MetamaticTailwind_TextSizeXs";
+            public const string TextSizeSm = "MetamaticTailwind_TextSizeSm";
+            public const string TextSizeMd = "MetamaticTailwind_TextSizeMd";
+            public const string TextSizeLg = "MetamaticTailwind_TextSizeLg";
             public const string TextSizeXl = "MetamaticTailwind_TextSizeXl";
             
             /* Position */
@@ -69,6 +73,12 @@ namespace Metamatic.UIToolKit
             public const string PaddingLeft12 = "MetamaticTailwind_PaddingLeft12";
             public const string PaddingLeft24 = "MetamaticTailwind_PaddingLeft24";
             
+            /* Padding top */
+            public const string PaddingTop0 = "MetamaticTailwind_PaddingTop0";
+            public const string PaddingTop6 = "MetamaticTailwind_PaddingTop6";
+            public const string PaddingTop12 = "MetamaticTailwind_PaddingTop12";
+            public const string PaddingTop24 = "MetamaticTailwind_PaddingTop24";
+            
             /* Margin */
             public const string Margin0 = "MetamaticTailwind_Margin0";
             public const string Margin6 = "MetamaticTailwind_Margin6";
@@ -86,6 +96,12 @@ namespace Metamatic.UIToolKit
             public const string MarginLeft6 = "MetamaticTailwind_MarginLeft6";
             public const string MarginLeft12 = "MetamaticTailwind_MarginLeft12";
             public const string MarginLeft24 = "MetamaticTailwind_MarginLeft24";
+            
+            /* Margin bottom */
+            public const string MarginBottom0 = "MetamaticTailwind_MarginBottom0";
+            public const string MarginBottom6 = "MetamaticTailwind_MarginBottom6";
+            public const string MarginBottom12 = "MetamaticTailwind_MarginBottom12";
+            public const string MarginBottom24 = "MetamaticTailwind_MarginBottom24";
             
             /* Fixed width */
             public const string FixedWidth60 = "MetamaticTailwind_FixedWidth60";

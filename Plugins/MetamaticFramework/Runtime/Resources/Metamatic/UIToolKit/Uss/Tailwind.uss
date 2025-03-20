@@ -17,6 +17,22 @@
     font-size: var(--MetamaticTailwind_PrimarySize);
 }
 
+.MetamaticTailwind_TextSizeXs {
+    font-size: 10px;
+}
+
+.MetamaticTailwind_TextSizeSm {
+    font-size: 12px;
+}
+
+.MetamaticTailwind_TextSizeMd {
+    font-size: 16px;
+}
+
+.MetamaticTailwind_TextSizeLg {
+    font-size: 20px;
+}
+
 .MetamaticTailwind_TextSizeXl {
     font-size: 23px;
 }
@@ -159,6 +175,24 @@
     padding-left: 24px;
 }
 
+
+/* Padding top */
+.MetamaticTailwind_PaddingTop0 {
+    padding-top: 0;
+}
+
+.MetamaticTailwind_PaddingTop6 {
+    padding-top: 6px;
+}
+
+.MetamaticTailwind_PaddingTop12 {
+    padding-top: 12px;
+}
+
+.MetamaticTailwind_PaddingTop24 {
+    padding-top: 24px;
+}
+
 /* Margin */
 .MetamaticTailwind_Margin0 {
     margin: 0;
@@ -208,6 +242,23 @@
 
 .MetamaticTailwind_MarginLeft24 {
     margin-left: 24px;
+}
+
+/* Margin bottom */
+.MetamaticTailwind_MarginBottom0 {
+    margin-bottom: 0;
+}
+
+.MetamaticTailwind_MarginBottom6 {
+    margin-bottom: 6px;
+}
+
+.MetamaticTailwind_MarginBottom12 {
+    margin-bottom: 12px;
+}
+
+.MetamaticTailwind_MarginBottom24 {
+    margin-bottom: 24px;
 }
 
 /* Fixed width */

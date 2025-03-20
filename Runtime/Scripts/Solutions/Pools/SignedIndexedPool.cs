@@ -197,6 +197,7 @@ namespace Metamatic
         /// </remarks>
         public int Count => m_Count - m_FreeIndices.Count;
         
+        [Obsolete("Unstable", true)]
         public IEnumerator<T> GetEnumerator()
         {
             // Проходим по всем позициям от 0 до m_Count (верхняя граница)
@@ -210,6 +211,7 @@ namespace Metamatic
             }
         }
         
+        [Obsolete("Unstable", true)]
         public T[] ToArray()
         {
             T[] result = new T[Count];

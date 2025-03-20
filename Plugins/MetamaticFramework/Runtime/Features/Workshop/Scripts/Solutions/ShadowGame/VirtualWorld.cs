@@ -28,7 +28,7 @@ namespace Metamatic.Framework
         }
         
         private readonly Dictionary<Type, VirtualService> m_Services = new();
-        private readonly Dictionary<(Type, string), VirtualEntity> m_Entities = new();
+        private readonly Dictionary<(Type, string), VirtualEntity> m_Entities = new(); // TODO: May be we shouldn't need to store type of entity
         #if UNITY_EDITOR
         public readonly ObservableList<VirtualEntity> ObservableEntitiesList = new();
         #endif
@@ -40,14 +40,21 @@ namespace Metamatic.Framework
             RunAsync(m_DisposeSignalSource.Signal).Forget();
         }
         
-        public void VirtualizeEntity(Entity entity)
+        public void Virtualize(Entity entity)
         {
             var virtualEntity = GetOrAddVirtualEntity(entity.GetType(), entity.id);
             virtualEntity.Load(entity.Save());
         }
         
-        public async UniTaskVoid MaterializeEntity(VirtualEntity virtualEntity)
+        public async UniTaskVoid Materialize(VirtualEntity virtualEntity)
         {
+            #if DEBUG
+            if (virtualEntity.isStatic)
+            {
+                throw new InvalidOperationException("Cannot materialize static entity");
+            }
+            #endif
+            Console.Verbose("VirtualWorld", "Materialize", $"Materializing entity {virtualEntity.id}");
             var entity = await Entity.SpawnEntity(virtualEntity.blueprint, virtualEntity.position, virtualEntity.rotation, id: virtualEntity.id);
             /* Remove virtual entity from the registry */
             
@@ -56,6 +63,19 @@ namespace Metamatic.Framework
             ObservableEntitiesList.Remove(virtualEntity);
 #endif
             await entity.Load(virtualEntity.Save());
+        }
+        
+        public bool TryHydrate(Entity entity)
+        {
+            if (m_Entities.TryGetValue((entity.GetType(), entity.id), out var virtualEntity))
+            {
+                Console.Verbose("VirtualWorld", "Hydrate", $"Hydrating entity {entity.id}");
+                m_Entities.Remove((entity.GetType(), entity.id));
+                entity.Load(virtualEntity.Save()).Forget();
+                return true;
+            }
+
+            return false;
         }
         
         private async UniTaskVoid RunAsync(Signal cancellationSignal)
@@ -84,7 +104,7 @@ namespace Metamatic.Framework
                                 continue;
                             }
                             /* If entity is inside the active area, spawn it */
-                            MaterializeEntity(virtualEntity).Forget();
+                            Materialize(virtualEntity).Forget();
                         }
                     }
                 }

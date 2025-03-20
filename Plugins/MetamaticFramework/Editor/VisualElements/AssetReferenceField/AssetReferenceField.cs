@@ -1,6 +1,6 @@
 using System;
 
-namespace Metamatic.UIToolKit
+namespace Metamatic.Framework.Editor
 {
 #if UNITY_EDITOR
     using UnityEditor;

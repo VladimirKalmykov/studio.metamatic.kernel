@@ -423,8 +423,9 @@ namespace Metamatic
             #if DEBUG
             if (m_HasNextState) Debug.LogError($"Already has next state. Current state: {currentState}, next state: {nextState}. Attempt to set next state: {newNextState}. Previous call stack trace: {m_PreviousSetNextStateStackTrace}");
             if (m_SettingDebug) Console.Verbose("AsyncStateMachine", $"Set next state: {newNextState}");
-            #endif
             m_PreviousSetNextStateStackTrace = new StackTrace();
+            #endif
+            
             /* Invalidate state */
             if (!skipValidationCheck && !m_NextStateValidator.Validate(state, newNextState))
             {

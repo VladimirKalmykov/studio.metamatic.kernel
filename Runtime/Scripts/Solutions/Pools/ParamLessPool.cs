@@ -9,7 +9,7 @@ namespace Metamatic
 {
     public abstract class ParamLessPool: IDevPool
     {
-        #if DEBUG
+#if DEBUG
         public static int PoolsCount;
         public static int SharedPoolsCount;
         public static List<ParamLessPool> Pools = new();
@@ -30,15 +30,6 @@ namespace Metamatic
             OnPoolRemoved?.Invoke(pool);
         }
         
-        public static event Action OnUnityInitialized;
-        
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void OnUnityInitializedHandler()
-        {
-            OnUnityInitialized?.Invoke();
-            OnUnityInitialized = null;
-        }
-        
         public abstract string displayName { get; }
         public abstract int countInPool { get; }
         public abstract int countOutPool { get; }
@@ -49,6 +40,15 @@ namespace Metamatic
             Monitoring.Create("ParamLessPool", "Shared count", () => SharedPoolsCount, PlayerLoopTiming.FixedUpdate);
         }
 #endif
+        
+        public static event Action OnUnityInitialized;
+        
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void OnUnityInitializedHandler()
+        {
+            OnUnityInitialized?.Invoke();
+            OnUnityInitialized = null;
+        }
     }
 
     public class ParamLessPool<T> : ParamLessPool, IDisposable
