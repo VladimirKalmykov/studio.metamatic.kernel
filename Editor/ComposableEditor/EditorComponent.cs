@@ -17,7 +17,7 @@ namespace Metamatic {
         public EditorComponent(ComposableEditor composableEditor)
         {
             this.composableEditor = composableEditor;
-            editor = (Editor)composableEditor;
+            editor = (UnityEditor.Editor)composableEditor;
             target = composableEditor.target;
             
             var el = CreateInspectorGUI();

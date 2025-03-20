@@ -99,6 +99,44 @@ namespace Metamatic.Framework
             });
         }
         
+        /// <summary>
+        /// Increases the capacity of the pool by the specified amount. As the result of this operation, the pool will have at least the specified capacity available (spawned, but disabled).
+        /// You can call this method multiple times to increase the capacity of the pool by the specified amount, but you must call <see cref="IDisposable.Dispose"/> on the returned object to decrease the capacity of the pool.
+        /// </summary>
+        /// <param name="assetReference"></param>
+        /// <param name="capacity"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static IDisposable ReservePoolCapacity(string address, int capacity)
+        {
+            var cts = SignalSource.Create();
+            var typedContainer = GetOrAddPoolContainer(address);
+#if DEBUG
+            if (!typedContainer.isAlive)
+            {
+                throw new Exception("Failed to get container.");
+            }
+#endif
+            ConfigurablePool<UnityEngine.Component> resolvedPool = null;
+            typedContainer.GetContent(cts.Signal).ContinueWith(pool =>
+            {
+                try
+                {
+                    resolvedPool = pool;
+                    resolvedPool?.AddCapacity(capacity);
+                } catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+            }).Forget();
+
+            return DisposableAction.Create(() =>
+            {
+                resolvedPool?.WithdrawCapacity(capacity);
+                cts.TryRaise();
+            });
+        }
+        
         #region Internal private logic
         
         private static void CancelSummon(Token96Bit token)
@@ -115,6 +153,16 @@ namespace Metamatic.Framework
             {
                 poolContainer = AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, assetReference);
                 Pools.Add(assetReference.AssetGUID, poolContainer);
+            }
+            return poolContainer;
+        }
+        
+        private static AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>> GetOrAddPoolContainer(string id)
+        {
+            if (!Pools.TryGetValue(id, out var poolContainer))
+            {
+                poolContainer = AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, id);
+                Pools.Add(id, poolContainer);
             }
             return poolContainer;
         }
@@ -141,6 +189,36 @@ namespace Metamatic.Framework
             void PoolEmptyHandler()
             {
                 ReleasePoolContainer(assetReferenceRuntimeKey);
+            }
+            
+            void ResolveHandler(ConfigurablePool<Component> pool)
+            {
+                pool.OnPoolIsUseless += PoolEmptyHandler;
+                resolve(pool);
+            }
+        }
+        
+        private static async UniTask InitializePoolForAsset(Action<ConfigurablePool<UnityEngine.Component>> resolve, string address, Signal cancellationSignal)
+        {
+            using var directResourceResourceSummon = ResourcesSystem.Summon<UnityEngine.Object>(address);
+            var directResource = await directResourceResourceSummon.Wait(cancellationSignal);
+            switch (directResource)
+            {
+                case UnityEngine.Component component:
+                    await InitializePoolForComponent(ResolveHandler, address, component, cancellationSignal);
+                    break;
+                case ScriptableBlueprint blueprint:
+                    await InitializePoolForBlueprint(ResolveHandler, address, blueprint, cancellationSignal);
+                    break;
+                default:
+                    throw new Exception($"Failed to initialize pool for asset {address}");
+            }
+
+            return;
+
+            void PoolEmptyHandler()
+            {
+                ReleasePoolContainer(address);
             }
             
             void ResolveHandler(ConfigurablePool<Component> pool)

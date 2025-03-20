@@ -14,6 +14,13 @@ namespace Metamatic.Framework
      */
     public static class GameSystem
     {
+        // TODO: Add loading list 
+        
+        #region Constants
+        public const string ConfigSkipGameIntroKeyName = "Metamatic_ConfigSkipGameIntro";
+        public const string ConfigSkipMainMenuOnStartKeyName = "Metamatic_ConfigSkipMainMenuOnStart";
+        public const string ConfigForceStartChapterGuid = "Metamatic_ConfigForceStartChapterGuid";
+        #endregion
         public enum GameEvent
         {
             IntroSceneComplete,

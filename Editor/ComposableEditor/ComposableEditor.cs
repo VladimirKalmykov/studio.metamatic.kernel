@@ -32,12 +32,12 @@ namespace Metamatic {
         }
 
         protected override void OnEnable(){
-            var remainingBuggedEditors  = Editor.FindObjectsOfType<ComposableEditor>();
+            var remainingBuggedEditors  = FindObjectsOfType<ComposableEditor>();
             foreach(var editor in remainingBuggedEditors) {
                 if(editor == this){
                     continue;
                 }
-                Editor.DestroyImmediate(editor);
+                UnityEditor.Editor.DestroyImmediate(editor);
             }//end foreach
 
             if (!m_Enabled)

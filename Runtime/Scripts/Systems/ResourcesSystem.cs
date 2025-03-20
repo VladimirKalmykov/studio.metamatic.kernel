@@ -64,6 +64,29 @@ namespace Metamatic.Systems
             }
         }
         
+        public static AsyncSummon<T> Summon<T>(string address) where T : UnityEngine.Object
+        {
+            var tcs = SafeUniTaskCompletionSource<T>.Create();
+            var handle = Addressables.LoadAssetAsync<UnityEngine.Object>(address);
+            var token = HandleReleaseActions.Add(() => Addressables.Release(handle));
+            
+            handle.Completed += HandleCompleted;
+            
+            return new AsyncSummon<T>(token, tcs.Task, Release);
+            
+            void HandleCompleted(AsyncOperationHandle<UnityEngine.Object> operationHandle)
+            {
+                if (operationHandle.Status == AsyncOperationStatus.Succeeded)
+                {
+                    tcs.TrySetResult((T)operationHandle.Result);
+                }
+                else
+                {
+                    tcs.TrySetException(new Exception($"Failed to load asset {address}"));
+                }
+            }
+        }
+        
         /// <summary>
         /// Same as Summon but with converter function.
         /// </summary>

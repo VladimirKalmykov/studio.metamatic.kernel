@@ -1,5 +1,6 @@
 using System;
 using Metamatic.Systems;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
@@ -49,26 +50,64 @@ namespace Metamatic.Framework.Workshop
         protected override async UniTask RunService(Ready ready, Signal signal)
         {
             DontDestroyOnLoad(this.gameObject);
-            /* Preload and activate start scene */
-            m_StartSceneSummon = ResourcesSystem.LoadScene(startScene, LoadSceneMode.Additive, activateOnLoad: true);
-            await m_StartSceneSummon.Wait(signal);
+            /* Load editor prefs */
+#if METAMATIC_SKIP_GAME_INTRO
+                var skipGameIntro = true;
+#else
+            #if UNITY_EDITOR
+                var skipGameIntro = EditorPrefs.GetBool(GameSystem.ConfigSkipGameIntroKeyName, false);
+            #else
+                var skipGameIntro = false;            
+            #endif
+#endif
+
+            if (!skipGameIntro)
+            {
+                /* Preload and activate start scene */
+                m_StartSceneSummon = ResourcesSystem.LoadScene(startScene, LoadSceneMode.Additive, activateOnLoad: true);
+                await m_StartSceneSummon.Wait(signal);
+            }
             
             /* We have to load main menu after intro scene, because of addressable bug with activateOnLoad (https://discussions.unity.com/t/loadsceneasync-activateonload-false-does-not-work/817793/12)  */
             m_MainMenuSceneSummon = ResourcesSystem.LoadScene(this.mainMenuScene, LoadSceneMode.Additive, activateOnLoad: false);
-            
-            /* Wait for start clip end */
-            await Dispatcher.global.WhenEmitted<GameSystem.GameEvent>(GameSystem.GameEvent.IntroSceneComplete, signal);
-            Console.Debug("Launcher", "Intro scene complete.");
+
+            if (!skipGameIntro)
+            {
+                /* Wait for start clip end */
+                await Dispatcher.global.WhenEmitted<GameSystem.GameEvent>(GameSystem.GameEvent.IntroSceneComplete, signal);
+                Console.Debug("Launcher", "Intro scene complete.");
+            }
             
             /* Activate main menu scene */
             m_MainMenuSceneInstance = await m_MainMenuSceneSummon.Wait(signal);
             await m_MainMenuSceneInstance.ActivateAsync().ToUniTask();
-            /* Unload start scene */
-            m_StartSceneSummon.DisposeAsync().Forget();
+
+            if (!skipGameIntro)
+            {
+                /* Unload start scene */
+                m_StartSceneSummon.DisposeAsync().Forget();
+            }
+            
             /* Load load game scene */
             m_LoadGameSceneSummon = ResourcesSystem.LoadScene(loadGameScene, LoadSceneMode.Additive, activateOnLoad: false);
+            #if UNITY_EDITOR
+            ProcessDevelopmentLoadingScenario().Forget();
+            #endif
             await ready();
         }
+        
+        #if UNITY_EDITOR
+        private async UniTaskVoid ProcessDevelopmentLoadingScenario()
+        {
+            #if UNITY_EDITOR
+            var forceLoadChapterAddress = EditorPrefs.GetString(GameSystem.ConfigForceStartChapterGuid, "");
+            if (String.IsNullOrEmpty(forceLoadChapterAddress)) return;
+            
+            await UniTask.Delay(1000);
+            LaunchGame(forceLoadChapterAddress, default).Forget();
+            #endif
+        }
+        #endif
 
         public async UniTask Save(string address = "latest", Signal cancellationSignal = default)
         {
@@ -98,12 +137,17 @@ namespace Metamatic.Framework.Workshop
             await GameSystem.virtualWorld.Load(saveData);
         }
 
+        public UniTask LaunchGame(AssetReferenceT<Chapter> chapterReferenceT, Signal cancellationSignal) // Chapter chapter
+        {
+            return LaunchGame(chapterReferenceT.AssetGUID, cancellationSignal);
+        }
+
         /// <summary>
         /// Start the game from the beginning.
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async UniTask LaunchGame(AssetReferenceT<Chapter> chapterReferenceT, Signal cancellationSignal) // Chapter chapter
+        public async UniTask LaunchGame(string addressOrGuid, Signal cancellationSignal) // Chapter chapter
         {
             try
             {
@@ -119,7 +163,7 @@ namespace Metamatic.Framework.Workshop
                 await Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
                 // Show load game scene
                 // Launch the game async
-                using var summonChapter = ResourcesSystem.Summon<Chapter>(chapterReferenceT);
+                using var summonChapter = ResourcesSystem.Summon<Chapter>(addressOrGuid);
                 var chapter = await summonChapter.Wait(default);
             
                 await GameSystem.ActivateScenes(chapter.baseScene, chapter.gameScene);

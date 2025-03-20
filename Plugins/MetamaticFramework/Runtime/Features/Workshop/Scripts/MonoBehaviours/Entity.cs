@@ -435,7 +435,7 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         public void Virtualize()
         {
-            Console.Debug("Entity", "Virtualize", $"Virtualizing entity {id}");
+            Console.Debug("Entity", "Virtualize", $"Virtualizing entity {id} in virtual world: ${GameSystem.virtualWorld}");;
             GameSystem.virtualWorld.VirtualizeEntity(this);
             isVirtualized = true;
             Dismiss(DismissReason.Abandon);

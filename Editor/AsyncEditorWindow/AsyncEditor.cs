@@ -1,11 +1,10 @@
 using System;
 using Cysharp.Threading.Tasks;
-using UnityEditor;
 using UnityEngine.UIElements;
 
 namespace Metamatic.EditorTools
 {
-    public abstract class AsyncEditor: Editor
+    public abstract class AsyncEditor: UnityEditor.Editor
     {
         private SignalSource m_EnableCancellationSignalSource;
         private Observable<bool> m_InspectorGUIIsCreated = new(false);
