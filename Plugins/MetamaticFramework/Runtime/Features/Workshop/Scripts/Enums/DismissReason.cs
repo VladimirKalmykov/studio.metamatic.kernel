@@ -3,6 +3,10 @@ namespace Metamatic.Framework.Workshop
     public enum DismissReason
     {
         /// <summary>
+        /// Is not dismissed.
+        /// </summary>
+        None,
+        /// <summary>
         /// Killed. The entity is dead. It can be revived and should not be saved or virtualized, but can be returned to the pool.
         /// </summary>
         Kill,

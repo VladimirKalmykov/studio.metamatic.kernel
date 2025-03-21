@@ -38,38 +38,58 @@ namespace Metamatic.Framework
         private static AsyncDisposableSummon<SceneInstance> _CurrentGameSceneSummon =
             AsyncDisposableSummon<SceneInstance>.Empty;
         private static List<UniTask> _UnloadTasks = new();
+        public static event Action<Exception> OnFatalError;
 
         static GameSystem()
         {
             
         }
 
-        public static bool StartGame()
+        public static void FatalError(Exception error)
+        {
+            Console.Error("GameSystem", error);
+            OnFatalError?.Invoke(error); // TOOD: And what then?
+            StopGame();
+        }
+
+        public static bool PrepareGame()
         {
             Console.Debug("GameSystem", "StartGame");
             if (isGameRunning)
             {
                 return false;
             }
-            isGameRunning = true;
             /* Create shadow world */
             m_ObservableVirtualWorld.Value = new VirtualWorld();
             return true;
         }
         
+        public static bool StartGame()
+        {
+            if (isGameRunning)
+            {
+                return false;
+            }
+
+            Service.StartGame();
+            return true;
+        }
+        
         public static bool ResetGame()
         {
+            Service.StopGame();
             if (!isGameRunning)
             {
                 return false;
             }
-            virtualWorld.Dispose();
+            virtualWorld?.Dispose();
             m_ObservableVirtualWorld.Value = new VirtualWorld();
             return true;
         }
 
-        public static bool ExitGame()
+        public static bool StopGame()
         {
+            Service.StopGame();
             if (!isGameRunning)
             {
                 return false;

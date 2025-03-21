@@ -4,7 +4,7 @@ namespace Metamatic
     using System.Collections.Generic;
 
     /// <summary>
-    /// Most heaviest variant of SignedIndexedPool that allows to get items by their instance.
+    /// Most heaviest variant of SignedIndexedPool that allows to get items by their instance, subscribe to events and remove items by instance.
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public sealed class SignedIndexedHashPool<T>
@@ -22,6 +22,9 @@ namespace Metamatic
 
         // Текущее фактическое число позиций (верхняя граница).
         private int m_Count;
+        
+        public event Action<T> OnAdd;
+        public event Action<T> OnRemove;
 
         /// <summary>
         /// Создаёт пул с начальным размером массива.
@@ -55,6 +58,7 @@ namespace Metamatic
                 m_Items[freeIndex] = (item, true, m_LastSignature);
                 var freeIndexToken = new Token96Bit(freeIndex, m_LastSignature);
                 m_Map[item] = freeIndexToken;
+                OnAdd?.Invoke(item);
                 return freeIndexToken;
             }
 
@@ -67,6 +71,7 @@ namespace Metamatic
             m_Count++;
             var token = new Token96Bit(newIndex, m_LastSignature);
             m_Map[item] = token;
+            OnAdd?.Invoke(item);
             return token;
         }
 
@@ -93,6 +98,7 @@ namespace Metamatic
                 m_Items[index] = (default!, false, 0);
                 m_Map.Remove(item.Value);
                 m_FreeIndices.Push(index);
+                OnRemove?.Invoke(item.Value);
                 return true;
             }
 
@@ -125,6 +131,7 @@ namespace Metamatic
             m_Items[index] = (default!, false, 0);
             m_Map.Remove(item);
             m_FreeIndices.Push(index);
+            OnRemove?.Invoke(tmpItem.Value);
             return true;
         }
         
@@ -225,7 +232,8 @@ namespace Metamatic
         /// <remarks>
         /// Т. е. общее число позиций (m_Count) минус количество освобождённых индексов.
         /// </remarks>
-        public int Count => m_Count - m_FreeIndices.Count;
+        // ReSharper disable once InconsistentNaming
+        public int Count => m_Map.Count;
         
         public IEnumerator<T> GetEnumerator()
         {

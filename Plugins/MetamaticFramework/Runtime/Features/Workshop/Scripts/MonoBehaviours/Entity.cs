@@ -293,7 +293,7 @@ namespace Metamatic.Framework.Workshop
         /// <param name="activate"></param>
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
-        public static async UniTask<Entity> SpawnEntity(
+        public static async UniTask<Entity> Spawn(
             AssetReferenceT<EntityBlueprint> blueprintRef,
             Vector3 position = default,
             Quaternion rotation = default,
@@ -376,12 +376,33 @@ namespace Metamatic.Framework.Workshop
         /// The entity is kicked from the world. It means that it should be virtualized and stay in the virtual world until it will be revived.
         /// </summary>
         public bool isKicked { get; private set; }
+
         /// <summary>
         /// Entity is marked as virtualized. It means that it is not in the world and can be returned back to the world.
         /// Even if entity is still in the world, this flag indicates that it already virtualized and can be safely destroyed.
         /// </summary>
+        public DismissReason isDismissed = DismissReason.None;
         public bool isVirtualized { get; private set; }
         public event Action<DismissReason> OnEntityDismissedEvent;
+
+        /// <summary>
+        /// Watch entity lifecycle. Signal will be raised when entity is dismissed.
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public DisposableAction WatchEntityLifecycle(Func<Entity, UniTask<DismissReason>, UniTaskVoid> handler)
+        {
+            var dismissedTaskCs = SafeUniTaskCompletionSource<DismissReason>.Create();
+            OnEntityDismissedEvent += (reason) =>
+            {
+                dismissedTaskCs.TrySetResult(reason);
+            };
+            handler(this, dismissedTaskCs.Task).Forget();
+            return new DisposableAction(() =>
+            {
+                dismissedTaskCs.TrySetCanceled();
+            });
+        }
         
         /// <summary>
         /// Dismiss entity with the specified reason. Entities created by the pool should be returned to the pool.
@@ -390,6 +411,11 @@ namespace Metamatic.Framework.Workshop
         /// <param name="reason"></param>
         private void Dismiss(DismissReason reason)
         {
+            if (isDismissed != DismissReason.None)
+            {
+                return;
+            }
+            isDismissed = reason;
             m_ObservableGameArea.Clear();
             /* Clear its game area */
             OnEntityDismissedEvent?.Invoke(reason);
@@ -599,6 +625,7 @@ namespace Metamatic.Framework.Workshop
             id = null;
             isKicked = false;
             m_ObservableGameArea.Clear();
+            isDismissed = DismissReason.None;
             
             OnEntityResetEvent?.Invoke();
             OnEntityReset();

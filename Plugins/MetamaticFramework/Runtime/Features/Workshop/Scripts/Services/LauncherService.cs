@@ -104,40 +104,56 @@ namespace Metamatic.Framework.Workshop
 
         public async UniTask Save(string address = "latest", Signal cancellationSignal = default)
         {
-            var worldData = GameSystem.virtualWorld.Save();
-
-            var saveData = new SaveData()
+            try
             {
-                dateTime = DateTime.Now.ToString(),
-                place = m_CurrentChapterAddress,
-                world = worldData
-            };
-            Console.Debug("Launcher", $"Saving game data: {saveData}");
-            await Repository.LocalStorage.Set(address, saveData, cancellationSignal);
+                using var pending = PendingSystem.CreatePending("Save game");
+                var worldData = GameSystem.virtualWorld.Save();
+
+                var saveData = new SaveData()
+                {
+                    dateTime = DateTime.Now.ToString(),
+                    place = m_CurrentChapterAddress,
+                    world = worldData
+                };
+                Console.Debug("Launcher", $"Saving game data: {saveData}");
+                await Repository.LocalStorage.Set(address, saveData, cancellationSignal);
+            } catch (Exception e)
+            {
+                Console.Error("Launcher", e);
+            }
         }
 
         public async UniTask Load(string saveAddress = "latest", bool seamless = false, Signal signal = default)
         {
-            var saveData = await Repository.LocalStorage.Get<SaveData>(saveAddress, signal);
-            Console.Debug("Launcher", $"Loaded game data: {saveData}");
-            
-            if (GameSystem.isGameRunning)
+            try
             {
-                if (!seamless)
+                using var pending = PendingSystem.CreatePending("Load game");
+                var saveData = await Repository.LocalStorage.Get<SaveData>(saveAddress, signal);
+                Console.Debug("Launcher", $"Loaded game data: {saveData}");
+            
+                if (GameSystem.isGameRunning)
                 {
-                    GameSystem.ResetGame();
+                    if (!seamless)
+                    {
+                        GameSystem.ResetGame();
+                    }
                 }
-            }
-            else
-            {
+                else
+                {
+                    GameSystem.PrepareGame();
+                }
+            
+                await LaunchGame(saveData.place, seamless, signal);
+            
+                var worldData = saveData.world;
+            
+                await GameSystem.virtualWorld.Load(worldData);
                 GameSystem.StartGame();
+            } catch (Exception e)
+            {
+                // TODO: Fallback to error screen?
+                Console.Error("Launcher", e);
             }
-            
-            await LaunchGame(saveData.place, seamless, signal);
-            
-            var worldData = saveData.world;
-            
-            await GameSystem.virtualWorld.Load(worldData);
         }
 
         public UniTask LaunchGame(AssetReferenceT<Place> chapterReferenceT, bool seamless, Signal cancellationSignal) // Place place
@@ -155,7 +171,7 @@ namespace Metamatic.Framework.Workshop
             try
             {
                 Console.Debug("Launcher", "Launching game.");
-                if (!GameSystem.StartGame())
+                if (!GameSystem.PrepareGame())
                 {
                     throw new Exception("Game is already running.");
                 }
@@ -184,6 +200,7 @@ namespace Metamatic.Framework.Workshop
                 }
 
                 m_CurrentChapterAddress = addressOrGuid;
+                GameSystem.StartGame();
             } catch (Exception e)
             {
                 Console.Error("Launcher", e);

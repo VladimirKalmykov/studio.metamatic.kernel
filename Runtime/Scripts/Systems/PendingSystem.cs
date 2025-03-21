@@ -1,0 +1,101 @@
+using System;
+using Cysharp.Threading.Tasks;
+
+namespace Metamatic
+{
+    public readonly struct Pending: IDisposable
+    {
+        // ReSharper disable once InconsistentNaming
+        public static Pending Empty => new Pending(null);
+        private readonly InternalPending m_InternalPending;
+        private readonly int m_Version;
+
+        public Pending(InternalPending internalPending)
+        {
+            m_InternalPending = internalPending;
+            m_Version = internalPending?.version ?? -1;
+        }
+        
+        private bool IsValid()
+        {
+            return m_InternalPending != null && m_InternalPending.version == m_Version;
+        }
+
+        public void Dispose()
+        {
+            if (!IsValid()) return;
+            m_InternalPending.Release();
+        }
+    }
+    public class InternalPending: IResettable
+    {
+        public string Comment;
+        public event Action OnRelease;
+        public int version { get; private set; }
+        public void Initialize(string comment)
+        {
+            Comment = comment;
+        }
+        public void Release()
+        {
+            OnRelease?.Invoke();
+        }
+
+        public void Reset()
+        {
+            Comment = null;
+            OnRelease = null;
+            version++;
+        }
+    }
+    
+    public class PendingTracker
+    {
+        private readonly SignedIndexedHashPool<InternalPending> m_Pendings = new (30);
+        public int pendingCount => m_Pendings.Count;
+        public Observable<bool> m_PendingStatus = new Observable<bool>();
+        public event Action OnPendingStateChanged;
+        public Pending CreatePending(string comment = null)
+        {
+            var newPending = ParamLessPool<InternalPending>.GetShared();
+            var token = m_Pendings.Add(newPending);
+            OnPendingStateChanged?.Invoke();
+            m_PendingStatus.uniqValue = true;
+            newPending.OnRelease += () =>
+            {
+                m_Pendings.Remove(token);
+                OnPendingStateChanged?.Invoke();
+                m_PendingStatus.uniqValue = m_Pendings.Count > 0;
+                ParamLessPool<InternalPending>.ReturnShared(newPending);
+            };
+            return new Pending(newPending);
+        }
+
+        public DisposableAction WatchPending(Action<bool> handler)
+        {
+            return m_PendingStatus.Watch(handler);
+        }
+        
+        public DisposableAction WatchPendingAsync(Func<bool, Signal, UniTaskVoid> handler) {
+            return m_PendingStatus.WatchAsync(handler);
+        }
+    }
+    
+    /// <summary>
+    /// Pending system is responsible for tracking pending operations.
+    /// You can use in loading screen, or in any other place where you need to track pending operations (e.g. right bottom side of screen like in Witcher 3)
+    /// </summary>
+    public class PendingSystem
+    {
+        private static readonly PendingTracker CommonPendingTracker = new PendingTracker();
+        public static Pending CreatePending(string comment = null)
+        {
+            return CommonPendingTracker.CreatePending(comment);
+        }
+        
+        public static DisposableAction WatchPending(Action<bool> handler)
+        {
+            return CommonPendingTracker.WatchPending(handler);
+        }
+    }
+}

@@ -10,8 +10,6 @@ namespace Metamatic.Framework.Workshop
     public abstract class ScriptableBlueprint : ScriptableObject, IObjectBlueprint
     {
         private static readonly List<ScriptableBlueprint> s_Blueprints = new List<ScriptableBlueprint>();
-        [ValidateInput("ShouldBeUniqueWithinSystem", "$Message", InfoMessageType.Warning)]
-        [SerializeField] private string address;
         public abstract string blueprintName { get; }
         public abstract Type type { get; }
         public abstract AsyncSummon<UnityEngine.Component> SummonPrefab(Signal cancellationSignal = default);
@@ -24,12 +22,6 @@ namespace Metamatic.Framework.Workshop
         private void OnDisable()
         {
             s_Blueprints.Remove(this);
-        }
-
-        [UsedImplicitly]
-        private bool ShouldBeUniqueWithinSystem(string address)
-        {
-            return s_Blueprints.FindAll(x => x.address == address).Count <= 1;
         }
     }
     public abstract class ScriptableBlueprint<T>: ScriptableBlueprint

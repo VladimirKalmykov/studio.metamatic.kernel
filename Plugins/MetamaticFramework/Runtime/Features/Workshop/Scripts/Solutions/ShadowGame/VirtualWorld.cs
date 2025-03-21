@@ -55,7 +55,7 @@ namespace Metamatic.Framework
             }
             #endif
             Console.Verbose("VirtualWorld", "Materialize", $"Materializing entity {virtualEntity.id}");
-            var entity = await Entity.SpawnEntity(virtualEntity.blueprint, virtualEntity.position, virtualEntity.rotation, id: virtualEntity.id);
+            var entity = await Entity.Spawn(virtualEntity.blueprint, virtualEntity.position, virtualEntity.rotation, id: virtualEntity.id);
             /* Remove virtual entity from the registry */
             
             m_Entities.Remove((entity.GetType(), entity.id));
@@ -286,7 +286,7 @@ namespace Metamatic.Framework
                     if (GameArea.IsIntersectedWithActiveAreas(entityPosition))
                     {
                         /* If entity is inside the game area, we can spawn it */
-                        entity = await Entity.SpawnEntity(entitySaveData.blueprint, entitySaveData.position,
+                        entity = await Entity.Spawn(entitySaveData.blueprint, entitySaveData.position,
                             entitySaveData.rotation, id: entitySaveData.id, activate: false);
                         await entity.Load(entitySaveData);
                     }

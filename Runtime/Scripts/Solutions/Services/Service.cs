@@ -72,6 +72,26 @@ namespace Metamatic
             
             return tcs.Task;
         }
+
+        private static SignalSource m_StopGameSignal = default;
+        
+        public static void StartGame()
+        {
+            m_StopGameSignal = SignalSource.Create();
+            foreach (var service in AwakedServices)
+            {
+                service.Value.OnStartGame(m_StopGameSignal.Signal);
+            }
+        }
+
+        public static void StopGame()
+        {
+            m_StopGameSignal.TryRaise();
+            foreach (var service in AwakedServices)
+            {
+                service.Value.OnStopGame();
+            }
+        }
         
         private static async UniTask<T> DelayTimeout<T>(float timeout, Signal signal, UniTask<T> task, UniTaskCompletionSource<T> tcs, Action<Service> handler, DisposableAction cancellationTokenRegistration)
         {
@@ -192,6 +212,7 @@ namespace Metamatic
         private bool m_Demanded;
         private bool m_InitializedOnDemand;
         private UniTaskCompletionSource m_DemandCompletionSource;
+        private Pending m_Pending = Pending.Empty;
         
         public Signal disableSignal => m_DisableSignalSource.Signal;
         public Signal destroySignal => m_DestroySignalSource.Signal;
@@ -315,6 +336,16 @@ namespace Metamatic
             #endif
         }
 
+        protected virtual void OnStartGame(Signal stopGameSignal)
+        {
+            
+        }
+
+        protected virtual void OnStopGame()
+        {
+            
+        }
+
         #if UNITY_EDITOR
         protected virtual void OnValidate()
         {
@@ -329,6 +360,7 @@ namespace Metamatic
 
         private UniTask InternalServiceReady()
         {
+            m_Pending.Dispose();
             m_IsReady = true;
             OnReady?.Invoke();
             return disableSignal.ToUniTask();
@@ -422,14 +454,17 @@ namespace Metamatic
                 }
                 
                 Debug.Log($"[Service] {type} is running");
+                m_Pending = PendingSystem.CreatePending(name);
                 await RunService(InternalServiceReady, signal);
             }
             catch (OperationCanceledException)
             {
+                m_Pending.Dispose();
                 Debug.Log($"Service {type} was canceled.");
             }
             catch (Exception e)
             {
+                m_Pending.Dispose();
                 OnErrorInService?.Invoke(type, e);
                 #if METAMATIC_TERMINAL
                 Terminal.LogError($"Service {type} failed to run: {e.Message}");

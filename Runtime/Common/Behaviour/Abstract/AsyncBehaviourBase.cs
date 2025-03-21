@@ -67,7 +67,7 @@ namespace Metamatic
         /// IDisposable object will be disposed on component disable
         /// </summary>
         /// <param name="disposable"></param>
-        public IDisposable WithinLifecycle(IDisposable disposable)
+        public IDisposable WithinEnableLifecycle(IDisposable disposable)
         {
             if (m_IsDisabled)
             {
