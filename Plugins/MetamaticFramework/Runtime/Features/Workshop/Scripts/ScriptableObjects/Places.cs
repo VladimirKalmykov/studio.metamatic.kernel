@@ -3,12 +3,12 @@ using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
 {
-    [CreateAssetMenu(fileName = "Chapters", menuName = "Metamatic/Workshop/Chapters")]
-    public class Chapters: ScriptableObject
+    [CreateAssetMenu(fileName = "Places", menuName = "Metamatic/Workshop/Places")]
+    public class Places: ScriptableObject
     {
-        [SerializeField] private Chapter[] m_Index;
+        [SerializeField] private Place[] m_Index;
         
-        private readonly Dictionary<string, Chapter> m_Map = new Dictionary<string, Chapter>();
+        private readonly Dictionary<string, Place> m_Map = new Dictionary<string, Place>();
 
         public void Awake()
         {
@@ -18,12 +18,12 @@ namespace Metamatic.Framework.Workshop
             }
         }
         
-        public Chapter GetChapter(string id)
+        public Place GetChapter(string id)
         {
             return m_Map[id];
         }
         
-        public Chapter[] GetChapters()
+        public Place[] GetChapters()
         {
             return m_Index;
         }

@@ -22,7 +22,7 @@ namespace Metamatic.Framework.Workshop
         public struct SaveData
         {
             public string dateTime;
-            public string chapter;
+            public string place;
             public object world;
         }
         
@@ -93,11 +93,11 @@ namespace Metamatic.Framework.Workshop
         private async UniTaskVoid ProcessDevelopmentLoadingScenario()
         {
             #if UNITY_EDITOR
-            var forceLoadChapterAddress = EditorPrefs.GetString(GameSystem.ConfigForceStartChapterGuid, "");
-            if (String.IsNullOrEmpty(forceLoadChapterAddress)) return;
+            var forceLoadPlaceAddress = EditorPrefs.GetString(GameSystem.ConfigForceStartChapterGuid, "");
+            if (String.IsNullOrEmpty(forceLoadPlaceAddress)) return;
             
             await UniTask.Delay(1000);
-            LaunchGame(forceLoadChapterAddress, false, default).Forget();
+            LaunchGame(forceLoadPlaceAddress, false, default).Forget();
             #endif
         }
         #endif
@@ -109,7 +109,7 @@ namespace Metamatic.Framework.Workshop
             var saveData = new SaveData()
             {
                 dateTime = DateTime.Now.ToString(),
-                chapter = m_CurrentChapterAddress,
+                place = m_CurrentChapterAddress,
                 world = worldData
             };
             Console.Debug("Launcher", $"Saving game data: {saveData}");
@@ -133,14 +133,14 @@ namespace Metamatic.Framework.Workshop
                 GameSystem.StartGame();
             }
             
-            await LaunchGame(saveData.chapter, seamless, signal);
+            await LaunchGame(saveData.place, seamless, signal);
             
             var worldData = saveData.world;
             
             await GameSystem.virtualWorld.Load(worldData);
         }
 
-        public UniTask LaunchGame(AssetReferenceT<Chapter> chapterReferenceT, bool seamless, Signal cancellationSignal) // Chapter chapter
+        public UniTask LaunchGame(AssetReferenceT<Place> chapterReferenceT, bool seamless, Signal cancellationSignal) // Place place
         {
             return LaunchGame(chapterReferenceT.AssetGUID, seamless, cancellationSignal);
         }
@@ -150,7 +150,7 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async UniTask LaunchGame(string addressOrGuid, bool seamless, Signal cancellationSignal) // Chapter chapter
+        public async UniTask LaunchGame(string addressOrGuid, bool seamless, Signal cancellationSignal) // Place place
         {
             try
             {
@@ -171,7 +171,7 @@ namespace Metamatic.Framework.Workshop
                 await Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
                 // Show load game scene
                 // Launch the game async
-                using var summonChapter = ResourcesSystem.Summon<Chapter>(addressOrGuid);
+                using var summonChapter = ResourcesSystem.Summon<Place>(addressOrGuid);
                 var chapter = await summonChapter.Wait(default);
             
                 await GameSystem.ActivateScenes(chapter.baseScene, chapter.gameScene, seamless);

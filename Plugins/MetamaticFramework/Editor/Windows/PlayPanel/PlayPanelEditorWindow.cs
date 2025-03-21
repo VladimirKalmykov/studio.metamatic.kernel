@@ -106,8 +106,8 @@ namespace Metamatic.Framework.Editor.PlayPanel
             
             playButtonContainer.Add(button);
             
-            // Chapter selector (Object selector)
-            m_ChapterAssetReferenceField = new AssetReferenceField(typeof(Chapter))
+            // Place selector (Object selector)
+            m_ChapterAssetReferenceField = new AssetReferenceField(typeof(Place))
             {
                 
             };

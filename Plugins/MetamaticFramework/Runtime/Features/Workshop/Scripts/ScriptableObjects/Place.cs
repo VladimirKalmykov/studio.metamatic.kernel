@@ -6,8 +6,8 @@ using UnityEngine.AddressableAssets;
 
 namespace Metamatic.Framework.Workshop
 {
-    [CreateAssetMenu(fileName = "Chapter", menuName = "Metamatic/Workshop/Chapter")]
-    public class Chapter: ScriptableObject
+    [CreateAssetMenu(fileName = "Place", menuName = "Metamatic/Workshop/Place")]
+    public class Place: ScriptableObject
     {
         [ReadOnly][SerializeField] public string id;
         public string title;
