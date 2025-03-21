@@ -19,19 +19,11 @@ namespace Metamatic.Framework.Workshop
     {
         [Serializable]
         [Version("1.0.0")]
-        public class SaveServiceData
-        {
-            public Type serviceType;
-            public Type dataType;
-            public object data;
-        }
-
-        [Serializable]
-        [Version("1.0.0")]
         public struct SaveData
         {
             public string dateTime;
-            public SaveServiceData[] services;
+            public string chapter;
+            public object world;
         }
         
         #region Fields
@@ -45,6 +37,7 @@ namespace Metamatic.Framework.Workshop
         private AsyncDisposableSummon<SceneInstance> m_MainMenuSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private AsyncDisposableSummon<SceneInstance> m_LoadGameSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private SceneInstance m_MainMenuSceneInstance;
+        private string m_CurrentChapterAddress;
         #endregion
 
         protected override async UniTask RunService(Ready ready, Signal signal)
@@ -104,17 +97,23 @@ namespace Metamatic.Framework.Workshop
             if (String.IsNullOrEmpty(forceLoadChapterAddress)) return;
             
             await UniTask.Delay(1000);
-            LaunchGame(forceLoadChapterAddress, default).Forget();
+            LaunchGame(forceLoadChapterAddress, false, default).Forget();
             #endif
         }
         #endif
 
         public async UniTask Save(string address = "latest", Signal cancellationSignal = default)
         {
-            var data = GameSystem.virtualWorld.Save();
+            var worldData = GameSystem.virtualWorld.Save();
 
-            Console.Debug("Launcher", $"Saving game data: {data}");
-            await Repository.LocalStorage.Set(address, data, cancellationSignal);
+            var saveData = new SaveData()
+            {
+                dateTime = DateTime.Now.ToString(),
+                chapter = m_CurrentChapterAddress,
+                world = worldData
+            };
+            Console.Debug("Launcher", $"Saving game data: {saveData}");
+            await Repository.LocalStorage.Set(address, saveData, cancellationSignal);
         }
 
         public async UniTask Load(string saveAddress = "latest", bool seamless = false, Signal signal = default)
@@ -134,12 +133,16 @@ namespace Metamatic.Framework.Workshop
                 GameSystem.StartGame();
             }
             
-            await GameSystem.virtualWorld.Load(saveData);
+            await LaunchGame(saveData.chapter, seamless, signal);
+            
+            var worldData = saveData.world;
+            
+            await GameSystem.virtualWorld.Load(worldData);
         }
 
-        public UniTask LaunchGame(AssetReferenceT<Chapter> chapterReferenceT, Signal cancellationSignal) // Chapter chapter
+        public UniTask LaunchGame(AssetReferenceT<Chapter> chapterReferenceT, bool seamless, Signal cancellationSignal) // Chapter chapter
         {
-            return LaunchGame(chapterReferenceT.AssetGUID, cancellationSignal);
+            return LaunchGame(chapterReferenceT.AssetGUID, seamless, cancellationSignal);
         }
 
         /// <summary>
@@ -147,7 +150,7 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async UniTask LaunchGame(string addressOrGuid, Signal cancellationSignal) // Chapter chapter
+        public async UniTask LaunchGame(string addressOrGuid, bool seamless, Signal cancellationSignal) // Chapter chapter
         {
             try
             {
@@ -157,8 +160,13 @@ namespace Metamatic.Framework.Workshop
                     throw new Exception("Game is already running.");
                 }
                 // Activate load game scene
-                var loadSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
-                loadSceneInstance.ActivateAsync().ToUniTask().Forget();
+                SceneInstance loadSceneInstance = default;
+                if (!seamless)
+                {
+                    loadSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
+                    loadSceneInstance.ActivateAsync().ToUniTask().Forget();
+                }
+
                 // Unload main menu scene
                 await Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
                 // Show load game scene
@@ -166,11 +174,16 @@ namespace Metamatic.Framework.Workshop
                 using var summonChapter = ResourcesSystem.Summon<Chapter>(addressOrGuid);
                 var chapter = await summonChapter.Wait(default);
             
-                await GameSystem.ActivateScenes(chapter.baseScene, chapter.gameScene);
+                await GameSystem.ActivateScenes(chapter.baseScene, chapter.gameScene, seamless);
                 var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
                 await UniTask.WhenAll(servicesReadyTasks);
                 // Hide load game scene
-                await Addressables.UnloadSceneAsync(loadSceneInstance, false);
+                if (!seamless)
+                {
+                    await Addressables.UnloadSceneAsync(loadSceneInstance, false);
+                }
+
+                m_CurrentChapterAddress = addressOrGuid;
             } catch (Exception e)
             {
                 Console.Error("Launcher", e);

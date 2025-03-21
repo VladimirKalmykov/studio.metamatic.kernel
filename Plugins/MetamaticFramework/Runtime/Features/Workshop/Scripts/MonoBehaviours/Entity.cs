@@ -611,7 +611,7 @@ namespace Metamatic.Framework.Workshop
         private Token96Bit m_RegistrationToken;
         private void GenerateUniqueId()
         {
-            id = Guid.NewGuid().ToString();
+            id = IdsGenerator.GenerateGuid();
         }
         private event Action OnEntityResetEvent;
         private event Action OnEntityUpdateEvent;
@@ -716,6 +716,7 @@ namespace Metamatic.Framework.Workshop
         {
             base.OnDestroy();
             // TODO: Here need to add some protected from destroying the entity without its virtualization. Check to kill. Reason of destruction.
+            
             Dismiss(DismissReason.Destroy);
             m_ObservableGameArea.Dispose();
             Entity.TryUnregisterEntity(m_RegistrationToken, DismissReason.Destroy);

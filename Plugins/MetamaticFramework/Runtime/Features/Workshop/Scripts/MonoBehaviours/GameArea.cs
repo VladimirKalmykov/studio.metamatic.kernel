@@ -18,8 +18,8 @@ namespace Metamatic.Framework.Workshop
     {
         public static readonly List<GameArea> AllAreas = new List<GameArea>();
         public static readonly List<GameArea> ActiveAreas = new List<GameArea>();
-        public static event Action<GameArea> OnAreaActivatedEvent;
-        public static event Action<GameArea> OnAreaDeactivatedEvent;
+        public static event Action<GameArea> OnAreasActivatedEvent;
+        public static event Action<GameArea> OnAreasDeactivatedEvent;
         /// <summary>
         /// Determines if the position is intersected with any active areas.
         /// </summary>
@@ -83,8 +83,8 @@ namespace Metamatic.Framework.Workshop
 
         public static DisposableAction WatchAreasActivation(Action<GameArea> handler)
         {
-            OnAreaActivatedEvent += handler;
-            return new DisposableAction(() => OnAreaActivatedEvent -= handler);
+            OnAreasActivatedEvent += handler;
+            return new DisposableAction(() => OnAreasActivatedEvent -= handler);
         }
         
 #if UNITY_EDITOR
@@ -126,8 +126,9 @@ namespace Metamatic.Framework.Workshop
         #if UNITY_EDITOR
         public readonly ObservableList<Entity> EditorObservableEntities = new();
         #endif
+
+        public event Action<bool> OnActivatedChangeEvent;
         
-        public event Action<GameArea> OnActivateEvent;
         public event Action<GameArea> OnBeforeDeactivateEvent;
         
         public event Action<Entity> OnEntityRegistered;
@@ -334,7 +335,8 @@ namespace Metamatic.Framework.Workshop
 
             isActive = true;
             ActiveAreas.Add(this);
-            OnAreaActivatedEvent?.Invoke(this);
+            OnAreasActivatedEvent?.Invoke(this);
+            OnActivatedChangeEvent?.Invoke(true);
 
             try
             {
@@ -371,7 +373,8 @@ namespace Metamatic.Framework.Workshop
             {
                 isActive = false;
                 ActiveAreas.Remove(this);
-                OnAreaDeactivatedEvent?.Invoke(this);
+                OnAreasDeactivatedEvent?.Invoke(this);
+                OnActivatedChangeEvent?.Invoke(false);
             }
         }
         
@@ -383,7 +386,6 @@ namespace Metamatic.Framework.Workshop
             /* Create instance */
             var thisTransform = transform;
             var instance = Instantiate(prefab, thisTransform);
-            OnActivateEvent?.Invoke(this);
             await cancellationSignal;
             InternalBeforeDeactivate();
             OnBeforeDeactivateEvent?.Invoke(this);
@@ -395,7 +397,6 @@ namespace Metamatic.Framework.Workshop
             /* Load scene */
             await using var sceneSummon = ResourcesSystem.LoadScene(m_AddictiveScene, LoadSceneMode.Additive);
             await sceneSummon.Wait(cancellationSignal);
-            OnActivateEvent?.Invoke(this);
             await cancellationSignal;
             InternalBeforeDeactivate();
             OnBeforeDeactivateEvent?.Invoke(this);
@@ -407,10 +408,11 @@ namespace Metamatic.Framework.Workshop
             return new DisposableAction(() => OnBeforeDeactivateEvent -= handler);
         }
         
-        public DisposableAction SubscribeActivated(Action<GameArea> handler)
+        public DisposableAction WatchActivatedChange(Action<bool> handler)
         {
-            OnActivateEvent += handler;
-            return new DisposableAction(() => OnActivateEvent -= handler);
+            handler(isActive);
+            OnActivatedChangeEvent += handler;
+            return new DisposableAction(() => OnActivatedChangeEvent -= handler);
         }
         
         #region Abstract methods
