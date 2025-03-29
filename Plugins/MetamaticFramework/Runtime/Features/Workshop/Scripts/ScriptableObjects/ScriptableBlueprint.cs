@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using JetBrains.Annotations;
+using Metamatic.Systems;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -11,8 +14,18 @@ namespace Metamatic.Framework.Workshop
     {
         private static readonly List<ScriptableBlueprint> s_Blueprints = new List<ScriptableBlueprint>();
         public abstract string blueprintName { get; }
+        [SerializeField] protected AssetReferenceT<GameObject> prefab;
         public abstract Type type { get; }
-        public abstract AsyncSummon<UnityEngine.Component> SummonPrefab(Signal cancellationSignal = default);
+
+        public AsyncSummon<GameObject> SummonPrefab()
+        {
+            return ResourcesSystem.Summon(prefab);
+        }
+        
+        public AsyncSummon<TOutput> SummonPrefabConverted<TOutput>(Func<GameObject, TOutput> converter)
+        {
+            return ResourcesSystem.SummonConverted<GameObject, TOutput>(prefab, converter);
+        }
         
         private void OnEnable()
         {
@@ -31,6 +44,11 @@ namespace Metamatic.Framework.Workshop
 
         public abstract UniTask<Texture2D> GetPreview(Signal cancellationSignal = default);
         public override Type type => typeof(T);
+        
+        public AsyncSummon<T> SummonPrefabT()
+        {
+            return ResourcesSystem.SummonConverted<GameObject, T>(prefab, p => p.GetComponent<T>());
+        }
     }
     
 }

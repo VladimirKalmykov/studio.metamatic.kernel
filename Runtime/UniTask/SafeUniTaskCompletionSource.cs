@@ -254,6 +254,12 @@ namespace Metamatic
             }
             return source.TrySetResult(value);
         }
+        
+        [DebuggerHidden]
+        public void TrySetResultSilently(T value)
+        {
+            TrySetResult(value);
+        }
 
         [DebuggerHidden]
         public bool TrySetCanceled(CancellationToken cancellationToken = default)

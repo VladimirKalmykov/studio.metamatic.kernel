@@ -23,8 +23,6 @@ namespace Metamatic
         }
         public new Camera camera { get; private set; }
 
-       
-
         protected override async UniTask Run(Ready ready, Signal signal)
         {
             camera = GetComponent<Camera>();

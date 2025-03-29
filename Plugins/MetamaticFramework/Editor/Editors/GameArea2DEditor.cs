@@ -11,16 +11,11 @@ namespace Metamatic.Framework.Workshop
     [CustomEditor(typeof(GameArea2D))]
     public class GameArea2DEditor : AsyncOdinEditor
     {
-        public enum PreviewMode
-        {
-            Disabled,
-            Enabled
-        }
 
         private GameArea2D m_Area2D;
-        private Observable<PreviewMode> m_PreviewMode = new(PreviewMode.Disabled);
         private Button m_TogglePreviewButton;
         
+        private GameArea2D gameArea2D => target as GameArea2D;
 
         protected override VisualElement CreateInspectorGUIAsync()
         {
@@ -57,9 +52,7 @@ namespace Metamatic.Framework.Workshop
             // Listen to click
             m_TogglePreviewButton.clicked += () =>
             {
-                m_PreviewMode.Value = m_PreviewMode.Value == PreviewMode.Disabled
-                    ? PreviewMode.Enabled
-                    : PreviewMode.Disabled;
+                gameArea2D.EditorOnlyEditMode.Value = !gameArea2D.EditorOnlyEditMode.Value;
             };
             if (Application.isPlaying)
             {
@@ -99,14 +92,14 @@ namespace Metamatic.Framework.Workshop
         {
             m_Area2D = (GameArea2D)target;
             await WhenInspectorGUIIsCreated();
-            m_PreviewMode.Value = m_Area2D.isActiveInEditor ? PreviewMode.Enabled : PreviewMode.Disabled;
-            using var previewModeListener = m_PreviewMode.WatchAsync(OnPreviewModeChange);
+            gameArea2D.EditorOnlyEditMode.Value = m_Area2D.isActiveInEditor;
+            using var previewModeListener = gameArea2D.EditorOnlyEditMode.WatchAsync(OnPreviewModeChange);
             await cancellationSignal;
         }
 
-        private UniTaskVoid OnPreviewModeChange(PreviewMode mode, Signal cancellationSignal)
+        private UniTaskVoid OnPreviewModeChange(bool editModeIsEnabled, Signal cancellationSignal)
         {
-            if (mode == PreviewMode.Enabled)
+            if (editModeIsEnabled)
             {
                 m_TogglePreviewButton.AddToClassList("MetamaticTailwind_BackgroundColorIndicatorActive");
                 m_TogglePreviewButton.AddToClassList("MetamaticTailwind_TextColorInverse");

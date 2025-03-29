@@ -88,14 +88,30 @@ namespace Metamatic
     public class PendingSystem
     {
         private static readonly PendingTracker CommonPendingTracker = new PendingTracker();
+        private static readonly PendingTracker CriticalPendingTracker = new PendingTracker();
         public static Pending CreatePending(string comment = null)
         {
             return CommonPendingTracker.CreatePending(comment);
         }
         
+        /// <summary>
+        /// Crate critical pending that should be trigger for displaying loading screen.
+        /// </summary>
+        /// <param name="comment"></param>
+        /// <returns></returns>
+        public static Pending CreateCriticalPending(string comment = null)
+        {
+            return CriticalPendingTracker.CreatePending(comment);
+        }
+        
         public static DisposableAction WatchPending(Action<bool> handler)
         {
             return CommonPendingTracker.WatchPending(handler);
+        }
+        
+        public static DisposableAction WatchCriticalPending(Action<bool> handler)
+        {
+            return CriticalPendingTracker.WatchPending(handler);
         }
     }
 }

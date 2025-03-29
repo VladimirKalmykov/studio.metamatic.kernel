@@ -10,7 +10,7 @@ namespace Metamatic.Framework.Workshop
     /// Entity component is a base class for all other components that are attached to an Entity. E.g. Health, Inventory, etc.
     /// </summary>
     [RequireComponent(typeof(Entity))]
-    public abstract class EntityComponent: MonoBehaviour, ISavable
+    public abstract class EntityData: MonoBehaviour, ISavable
     {
         [Version("1.0.0")]
         public class SaveData
@@ -27,7 +27,7 @@ namespace Metamatic.Framework.Workshop
                 
             }
             
-            public SaveData(EntityComponent component, Type dataType, object data)
+            public SaveData(EntityData component, Type dataType, object data)
             {
                 ComponentType = component.GetType();
                 DataType = dataType;
@@ -120,7 +120,7 @@ namespace Metamatic.Framework.Workshop
         }
     }
     
-    public abstract class EntityComponent<T>: EntityComponent
+    public abstract class EntityComponent<T>: EntityData
     {
         public T State;
         public delegate void StateModifier(ref T state);

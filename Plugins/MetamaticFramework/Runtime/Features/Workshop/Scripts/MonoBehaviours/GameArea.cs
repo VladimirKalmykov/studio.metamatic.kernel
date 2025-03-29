@@ -20,6 +20,23 @@ namespace Metamatic.Framework.Workshop
         public static readonly List<GameArea> ActiveAreas = new List<GameArea>();
         public static event Action<GameArea> OnAreasActivatedEvent;
         public static event Action<GameArea> OnAreasDeactivatedEvent;
+        
+        private static readonly Dictionary<string, Action<GameArea, bool>> m_AreaListeners = new ();
+        
+        public static bool Exists(string id)
+        {
+            // TODO: This can be optimized with HashSet
+            foreach (var area in AllAreas)
+            {
+                if (area.id == id)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        
         /// <summary>
         /// Determines if the position is intersected with any active areas.
         /// </summary>
@@ -35,6 +52,21 @@ namespace Metamatic.Framework.Workshop
                 }
             }
 
+            return false;
+        }
+        
+        public static bool GetIntersectedGameArea(Vector3 position, out GameArea area)
+        {
+            foreach (var activeArea in AllAreas)
+            {
+                if (activeArea.IsIntersected(position))
+                {
+                    area = activeArea;
+                    return true;
+                }
+            }
+
+            area = null;
             return false;
         }
         
@@ -75,10 +107,62 @@ namespace Metamatic.Framework.Workshop
             return false;
         }
 
-        public static DisposableAction WatchGameAreaActivationOnce(string id)
+        public static bool TryGetActiveAreaById(string id, out GameArea area)
         {
-            // TOOD: Implement
-            throw new NotImplementedException();
+            foreach (var activeArea in ActiveAreas)
+            {
+                if (activeArea.id == id)
+                {
+                    area = activeArea;
+                    return true;
+                }
+            }
+            
+            area = null;
+            return false;
+        }
+
+        public static DisposableAction WatchGameAreaActivation(string id, Action<GameArea, bool> action)
+        {
+            if (TryGetAreaById(id, out var area))
+            {
+                if (area.isActive)
+                {
+                    action(area, true);
+                }
+                else
+                {
+                    action(area, false);
+                }
+            }
+            m_AreaListeners[id] += action;
+            
+            return new DisposableAction(() => m_AreaListeners[id] -= action);
+        }
+
+        public static DisposableAction WatchGameAreaActivationAsync(string id,
+            Func<GameArea, bool, Signal, UniTaskVoid> action)
+        {
+            SignalSource css = default;
+            if (TryGetAreaById(id, out var area))
+            {
+                action(area, area.isActive, css.Signal).Forget();
+            }
+            
+            void SyncHandler(GameArea gameArea, bool isActive)
+            {
+                css.TryRaise();
+                css = SignalSource.Create();
+                action(gameArea, isActive, css.Signal).Forget();
+            }
+            
+            m_AreaListeners[id] += SyncHandler;
+            
+            return new DisposableAction(() =>
+            {
+                css.Dispose();
+                m_AreaListeners[id] -= SyncHandler;
+            });
         }
 
         public static DisposableAction WatchAreasActivation(Action<GameArea> handler)
@@ -335,6 +419,10 @@ namespace Metamatic.Framework.Workshop
 
             isActive = true;
             ActiveAreas.Add(this);
+            if (m_AreaListeners.TryGetValue(id, out var listener))
+            {
+                listener?.Invoke(this, true);
+            }
             OnAreasActivatedEvent?.Invoke(this);
             OnActivatedChangeEvent?.Invoke(true);
 
@@ -373,6 +461,10 @@ namespace Metamatic.Framework.Workshop
             {
                 isActive = false;
                 ActiveAreas.Remove(this);
+                if (m_AreaListeners.TryGetValue(id, out var deactivateListener))
+                {
+                    deactivateListener?.Invoke(this, false);
+                }
                 OnAreasDeactivatedEvent?.Invoke(this);
                 OnActivatedChangeEvent?.Invoke(false);
             }

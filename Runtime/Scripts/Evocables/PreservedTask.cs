@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace Metamatic
 {
-    public readonly struct TaskLike<T>: IDisposable
+    public readonly struct PreservedTask<T>: IDisposable
     {
         private readonly InternalTaskLike<T> m_LazyTask;
         private readonly short m_Version;
         
-        public TaskLike(UniTask<T> uniTask)
+        public PreservedTask(UniTask<T> uniTask)
         {
             m_LazyTask = ParamLessPool<InternalTaskLike<T>>.GetShared();
             m_LazyTask.Initialize(uniTask);

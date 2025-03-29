@@ -12,97 +12,27 @@ using UnityEngine.AddressableAssets;
 
 namespace Metamatic.Framework.Workshop
 {
-    [Virtualization(typeof(Entity))]
-    public class VirtualEntity : VirtualBehaviour, ISavable
-    {
-        public string id { get; private set; }
-        private object m_SaveData;
-        
-        /// <summary>
-        /// Reference to original entity if it exists
-        /// </summary>
-        public Entity origin { get; private set; }
-        
-        public AssetReferenceT<EntityBlueprint> blueprint;
-        public Type type;
-        public bool isStatic;
-        public bool isKicked;
-        public Vector3 position;
-        public Quaternion rotation;
-        public string gameAreaId;
-        public EntityComponent.SaveData[] originalComponentsData;
-
-        public VirtualEntity(string id)
-        {
-            this.id = id;
-        }
-        
-        public object Save()
-        {
-            if (origin == null)
-            {
-                return new Entity.SaveData()
-                {
-                    blueprint = blueprint,
-                    type = type,
-                    id = id,
-                    isStatic = isStatic,
-                    isKicked = isKicked,
-                    position = position,
-                    rotation = rotation,
-                    gameAreaId = gameAreaId,
-                    ComponentsData = originalComponentsData
-                };
-            }
-            if (origin is ISavable savable)
-            {
-                return savable.Save();
-            }
-            return null;
-        }
-
-        public UniTask Load(object data)
-        {
-            if (data is Entity.SaveData saveData)
-            {
-                if (origin == null)
-                {
-                    id = saveData.id;
-                    blueprint = saveData.blueprint;
-                    type = saveData.type;
-                    isStatic = saveData.isStatic;
-                    isKicked = saveData.isKicked;
-                    position = saveData.position;
-                    rotation = saveData.rotation;
-                    gameAreaId = saveData.gameAreaId;
-                    originalComponentsData = saveData.ComponentsData;
-                    return UniTask.CompletedTask;
-                }
-                if (origin is ISavable savable)
-                {
-                    return savable.Load(data);
-                }
-                return UniTask.CompletedTask;
-            }
-            else
-            {
-                Console.Error("Entity", "Load", $"Unexpected data type: {data.GetType().Name}");
-            }
-            return UniTask.CompletedTask;
-        }
-    }
-    
     /// <summary>
     /// Base class for all game entities
     /// </summary>
     public class Entity : AsyncBehaviour, ISavable, IResettable
     {
+        [Version("1.0.0")]
+        public struct ComponentSaveData
+        {
+            public Type componentType;
+            public object data;
+        }
         
         [Serializable]
         [Version("1.0.0")]
         public struct SaveData
         {
-            public AssetReferenceT<EntityBlueprint> blueprint;
+            /// <summary>
+            /// Address of the blueprint
+            /// </summary>
+            public string blueprint;
+            public string placeAddress;
             public Type type;
             public string id;
             public bool isStatic;
@@ -110,11 +40,14 @@ namespace Metamatic.Framework.Workshop
             public Vector3 position;
             public Quaternion rotation;
             public string gameAreaId;
-            public EntityComponent.SaveData[] ComponentsData;
+            public string checkpointId;
+            // public Dictionary<Type, EntityData.SaveData> dataset; // TODO: Implements dataset instead of dataComponents?
+            public EntityData.SaveData[] dataComponents;
+            public ComponentSaveData[] components;
         }
         
         #region Static API
-        public static readonly SignedIndexedPool<Entity> EntitiesRegistry = new(200);
+        public static readonly SignedIndexedHashPool<Entity> EntitiesRegistry = new(200);
         public static readonly Dictionary<string, Token96Bit> EntitiesRegistrationTokens = new();
         public static readonly Dictionary<string, Action<Entity, bool>> EntitiesRegistrationEventListeners = new();
         
@@ -211,7 +144,12 @@ namespace Metamatic.Framework.Workshop
             {
                 EntitiesRegistrationEventListeners[id] = listener;
             }
-            EntitiesRegistrationEventListeners[id] = listener;
+            
+            if (TryGetEntityById(id, out var entity))
+            {
+                listener(entity, true);
+            }
+            
             return new DisposableAction(() =>
             {
                 if (EntitiesRegistrationEventListeners.TryGetValue(id, out var postExistingListener))
@@ -294,11 +232,12 @@ namespace Metamatic.Framework.Workshop
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
         public static async UniTask<Entity> Spawn(
-            AssetReferenceT<EntityBlueprint> blueprintRef,
+            string blueprint,
             Vector3 position = default,
             Quaternion rotation = default,
             string id = null,
             bool activate = false,
+            object saveData = default,
             Signal cancellationSignal = default
         )
         {
@@ -319,32 +258,29 @@ namespace Metamatic.Framework.Workshop
                     // TODO: Here we can check if the pool for blueprint exists and if it does, we can spawn from the pool
                     
                     /* Summon blueprint */
-                    summon = GameObjectFactory.SummonFromBlueprint<Entity>(blueprintRef);
+                    summon = GameObjectFactory.SummonFromBlueprint<Entity>(blueprint);
                     entity = await summon.Wait(cancellationSignal);
                     var entityTransform = entity.transform;
                     
                     entityTransform.position = position;
                     entityTransform.rotation = rotation;
 
-                    entity.Initialize(blueprintRef, id);
+                    entity.Initialize(blueprint, id);
 
                     cancellationSignal.ThrowIfRaised();
                     // Release blueprint and prefab after entity is destroyed
                     entity.OnEntityDismissedEvent += (reason) =>
                     {
-                        if (reason != DismissReason.Destroy)
-                        {
-                            // We can dispose blueprint and prefab only after entity is destroyed
-                            summon.Dispose();
-                        }
+                        // We can dispose blueprint and prefab only after entity is destroyed
+                        summon.Dispose();
                     };
-                    // Add entity to the dictionary
-                    
+                    // Load data
+                    await entity.Load(saveData);
                 }
                 catch (OperationCanceledException)
                 {
                     summon.Dispose();
-                    return null;
+                    throw;
                 }
             }
 
@@ -366,8 +302,8 @@ namespace Metamatic.Framework.Workshop
         #endregion
         
         #region Public API
-        public AssetReferenceT<EntityBlueprint> blueprint { get; private set; }
-        public readonly ObservableList<EntityComponent> Components = new ObservableList<EntityComponent>();
+        public string blueprint { get; private set; }
+        public readonly ObservableList<EntityData> DataComponents = new ObservableList<EntityData>();
         /// <summary>
         /// Determines that entity was not spawned dynamically
         /// </summary>
@@ -381,8 +317,7 @@ namespace Metamatic.Framework.Workshop
         /// Entity is marked as virtualized. It means that it is not in the world and can be returned back to the world.
         /// Even if entity is still in the world, this flag indicates that it already virtualized and can be safely destroyed.
         /// </summary>
-        public DismissReason isDismissed = DismissReason.None;
-        public bool isVirtualized { get; private set; }
+        public DismissReason isDismissed { get; private set; }= DismissReason.None;
         public event Action<DismissReason> OnEntityDismissedEvent;
 
         /// <summary>
@@ -404,6 +339,25 @@ namespace Metamatic.Framework.Workshop
             });
         }
         
+        public UniTask<DismissReason> WaitForDismissal(Signal cancellationSignal) {
+            if (isDismissed != DismissReason.None)
+            {
+                return UniTask.FromResult(isDismissed);
+            }
+            var completionSource = SafeUniTaskCompletionSource<DismissReason>.Create();
+            DisposableAction cancellationListener = default;
+            OnEntityDismissedEvent += (reason) =>
+            {
+                cancellationListener.Dispose();
+                completionSource.TrySetResult(reason);
+            };
+            cancellationListener = cancellationSignal.Register(() =>
+            {
+                completionSource.TrySetCanceled();
+            });
+            return completionSource.Task;
+        }
+        
         /// <summary>
         /// Dismiss entity with the specified reason. Entities created by the pool should be returned to the pool.
         /// Static entities can not be dismissed.
@@ -416,6 +370,7 @@ namespace Metamatic.Framework.Workshop
                 return;
             }
             isDismissed = reason;
+            TryUnregisterEntity(m_RegistrationToken, reason);
             m_ObservableGameArea.Clear();
             /* Clear its game area */
             OnEntityDismissedEvent?.Invoke(reason);
@@ -464,8 +419,6 @@ namespace Metamatic.Framework.Workshop
         {
             Console.Debug("Entity", "Virtualize", $"Virtualizing entity {id} in virtual world: ${GameSystem.virtualWorld}");;
             GameSystem.virtualWorld.Virtualize(this);
-            isVirtualized = true;
-            Dismiss(DismissReason.Abandon);
         }
 
         /// <summary>
@@ -473,12 +426,13 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         private void OnOutOfGameArea()
         {
-            /* Search for inactive game area */
+            /* Search for active game area */
             if (GameArea.TryFindIntersectArea(transform.position, true, out var area))
             {
                 Console.Debug("Debug1", "SetGameArea", $"Set game area {area} for entity {id}");
                 gameArea = area;
                 Virtualize();
+                Dismiss(DismissReason.Abandon);
             }
             else
             {
@@ -510,23 +464,23 @@ namespace Metamatic.Framework.Workshop
             await signal;
         }
         
-        public void RegisterComponent(EntityComponent component)
+        public void RegisterComponent(EntityData component)
         {
             if (!m_RegisteredComponents.ContainsKey(component.GetType()))
             {
                 m_RegisteredComponents.Add(component.GetType(), component);
-                Components.Add(component);
+                DataComponents.Add(component);
             }
         }
 
-        public void UnregisterComponent(EntityComponent component)
+        public void UnregisterComponent(EntityData component)
         {
             if (!m_RegisteredComponents.ContainsKey(component.GetType()))
             {
                 throw new InvalidOperationException($"Component of type {component.GetType().Name} is not registered");
             }
 
-            Components.Remove(component);
+            DataComponents.Remove(component);
         }
 
         public void RegisterAbility(EntityAbility ability)
@@ -564,15 +518,15 @@ namespace Metamatic.Framework.Workshop
         /// <param name="nextBlueprint"></param>
         /// <param name="nextId"></param>
         /// <returns></returns>
-        public string Initialize(AssetReferenceT<EntityBlueprint> nextBlueprint, string nextId)
+        public string Initialize(string address, string nextId)
         {
             this.id = nextId;
-            this.blueprint = nextBlueprint;
+            this.blueprint = address;
             this.isStatic = false;
             return this.id;
         }
 
-        public T ResolveComponent<T>() where T : EntityComponent
+        public T ResolveComponent<T>() where T : EntityData
         {
             if (m_RegisteredComponents.TryGetValue(typeof(T), out var component))
             {
@@ -592,7 +546,7 @@ namespace Metamatic.Framework.Workshop
             return null;
         }
 
-        public bool TryResolveComponent<T>(out T component) where T : EntityComponent
+        public bool TryResolveComponent<T>(out T component) where T : EntityData
         {
             if (m_RegisteredComponents.TryGetValue(typeof(T), out var entityComponent))
             {
@@ -642,8 +596,8 @@ namespace Metamatic.Framework.Workshop
         }
         private event Action OnEntityResetEvent;
         private event Action OnEntityUpdateEvent;
-        private readonly Dictionary<Type, EntityComponent> m_RegisteredComponents =
-            new Dictionary<Type, EntityComponent>();
+        private readonly Dictionary<Type, EntityData> m_RegisteredComponents =
+            new Dictionary<Type, EntityData>();
 
         private readonly Dictionary<Type, EntityAbility> m_RegisteredAbilities = new Dictionary<Type, EntityAbility>();
         private Vector3 m_InitialPosition;
@@ -657,16 +611,11 @@ namespace Metamatic.Framework.Workshop
             m_InitialPosition = transform.position;
             m_InitialRotation = transform.rotation;
             base.Awake();
-            Debug.Log("Объект находится в сцене: " + gameObject.scene.name);
 
 #if UNITY_EDITOR
             if (EditorUtility.IsPersistent(gameObject))
             {
                 Debug.Log("Это префаб-ассет (не инстанцированный объект в сцене)");
-            }
-            else
-            {
-                Debug.Log("Это экземпляр, находящийся в сцене");
             }
 #endif
         }
@@ -731,12 +680,7 @@ namespace Metamatic.Framework.Workshop
                 isStatic = false;
                 id = Guid.NewGuid().ToString();
             }
-            else
-            {
-                GameSystem.virtualWorld.TryHydrate(this);
-            }
-            
-            m_RegistrationToken = Entity.TryRegisterEntity(this);
+            GameSystem.virtualWorld.TryHydrate(this);
         }
 
         protected override void OnDestroy()
@@ -746,13 +690,12 @@ namespace Metamatic.Framework.Workshop
             
             Dismiss(DismissReason.Destroy);
             m_ObservableGameArea.Dispose();
-            Entity.TryUnregisterEntity(m_RegistrationToken, DismissReason.Destroy);
         }
         #endregion
 
         protected override async UniTask Run(Ready ready, Signal signal)
         {
-            using var announce = Dispatcher.global.Announce(this); // TODO: Do we still need this?
+            m_RegistrationToken = TryRegisterEntity(this);
             using var watchGameArea = m_ObservableGameArea.WatchAsync(OnGameAreaChange);
             await OnEntityRun(ready, signal);
         }
@@ -770,7 +713,21 @@ namespace Metamatic.Framework.Workshop
         public object Save()
         {
             var entityTransform = transform;
-            var componentsData = new EntityComponent.SaveData[Components.Count];
+            var dataComponents = new EntityData.SaveData[DataComponents.Count];
+            
+            // Get all game object's components which implements ISavable interface
+            var components = gameObject.GetComponents<MonoBehaviour>();
+            var savableComponents = new List<ISavable>();
+            foreach (var component in components)
+            {
+                if (component is ISavable savable and not EntityData and not Entity)
+                {
+                    savableComponents.Add(savable);
+                }
+            }
+            
+            var otherComponents = new ComponentSaveData[savableComponents.Count];
+            
             var gameAreaId = gameAreaIsSet ? gameArea.id : null;
             var saveData = new SaveData()
             {
@@ -782,12 +739,25 @@ namespace Metamatic.Framework.Workshop
                 position =  entityTransform.position,
                 rotation = entityTransform.rotation,
                 gameAreaId = gameAreaId,
-                ComponentsData = componentsData
+                checkpointId = null,
+                dataComponents = dataComponents,
+                components = otherComponents
             };
             var j = 0;
-            foreach (var component in Components)
+            foreach (var component in DataComponents)
             {
-                componentsData[j] = (EntityComponent.SaveData)component.Save();
+                dataComponents[j] = (EntityData.SaveData)component.Save();
+                j++;
+            }
+            
+            j = 0;
+            foreach(var savableComponent in savableComponents)
+            {
+                otherComponents[j] = new ComponentSaveData()
+                {
+                    componentType = savableComponent.GetType(),
+                    data = savableComponent.Save()
+                };
                 j++;
             }
 
@@ -815,10 +785,19 @@ namespace Metamatic.Framework.Workshop
             thisTransform.position = entityData.position;
             thisTransform.rotation = entityData.rotation;
             
-            foreach (var componentSaveData in entityData.ComponentsData)
+            foreach (var componentSaveData in entityData.dataComponents)
             {
-                var component = thisGameObject.GetOrAddComponent<EntityComponent>(componentSaveData.ComponentType);
+                var component = thisGameObject.GetOrAddComponent<EntityData>(componentSaveData.ComponentType);
                 component.Load(componentSaveData);
+            }
+
+            foreach (var componentData in entityData.components)
+            {
+                var component = thisGameObject.GetOrAddComponent<MonoBehaviour>(componentData.componentType);
+                if (component is ISavable savable)
+                {
+                    savable.Load(componentData.data);
+                }
             }
 
             return UniTask.CompletedTask;

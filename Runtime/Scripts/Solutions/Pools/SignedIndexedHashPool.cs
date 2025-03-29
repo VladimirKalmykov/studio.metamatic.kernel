@@ -13,10 +13,16 @@ namespace Metamatic
 
         // В одном массиве храним пары (Value, Used).
         private (T Value, bool Used, long Signature)[] m_Items;
-        private readonly Dictionary<T, Token96Bit> m_Map = new Dictionary<T, Token96Bit>();
+        
 
         // Стек освобождённых индексов
         private readonly Stack<int> m_FreeIndices;
+        
+        // Стек занятых интексов (для быстрого GetEnumerator)
+        private readonly List<int> m_UsedIndexes;
+        
+        // HashSet значений (для быстрого Contains)
+        private readonly HashSet<T> m_ItemsSet;
 
         private long m_LastSignature;
 
@@ -38,6 +44,8 @@ namespace Metamatic
 
             m_Items = new (T, bool, long)[initialCapacity];
             m_FreeIndices = new Stack<int>(initialCapacity);
+            m_UsedIndexes = new List<int>(initialCapacity);
+            m_ItemsSet = new HashSet<T>();
         }
 
         /// <summary>
@@ -56,8 +64,10 @@ namespace Metamatic
             {
                 int freeIndex = m_FreeIndices.Pop();
                 m_Items[freeIndex] = (item, true, m_LastSignature);
+                m_UsedIndexes.Add(freeIndex);
+                m_ItemsSet.Add(item);
                 var freeIndexToken = new Token96Bit(freeIndex, m_LastSignature);
-                m_Map[item] = freeIndexToken;
+                
                 OnAdd?.Invoke(item);
                 return freeIndexToken;
             }
@@ -68,9 +78,10 @@ namespace Metamatic
 
             int newIndex = m_Count;
             m_Items[newIndex] = (item, true, m_LastSignature);
+            m_UsedIndexes.Add(newIndex);
+            m_ItemsSet.Add(item);
             m_Count++;
             var token = new Token96Bit(newIndex, m_LastSignature);
-            m_Map[item] = token;
             OnAdd?.Invoke(item);
             return token;
         }
@@ -93,12 +104,14 @@ namespace Metamatic
             }
 
             ref var item = ref m_Items[index];
+            var value = item.Value;
             if (item.Signature == signature)
             {
                 m_Items[index] = (default!, false, 0);
-                m_Map.Remove(item.Value);
                 m_FreeIndices.Push(index);
-                OnRemove?.Invoke(item.Value);
+                m_UsedIndexes.Remove(index);
+                m_ItemsSet.Remove(value);
+                OnRemove?.Invoke(value);
                 return true;
             }
 
@@ -129,9 +142,10 @@ namespace Metamatic
 
             item = tmpItem.Value;
             m_Items[index] = (default!, false, 0);
-            m_Map.Remove(item);
+            m_UsedIndexes.Remove(index);
+            m_ItemsSet.Remove(item);
             m_FreeIndices.Push(index);
-            OnRemove?.Invoke(tmpItem.Value);
+            OnRemove?.Invoke(item);
             return true;
         }
         
@@ -143,17 +157,6 @@ namespace Metamatic
         public bool Remove(Token96Bit token, out T item)
         {
             return Remove(token.ID, token.Signature, out item);
-        }
-
-        // Remove by instance
-        public bool Remove(T instance)
-        {
-            if (m_Map.TryGetValue(instance, out var token))
-            {
-                return Remove(token.ID, token.Signature);
-            }
-
-            return false;
         }
 
         /// <summary>
@@ -223,7 +226,7 @@ namespace Metamatic
         
         public bool Contains(T instance)
         {
-            return m_Map.ContainsKey(instance);
+            return m_ItemsSet.Contains(instance);
         }
 
         /// <summary>
@@ -233,18 +236,26 @@ namespace Metamatic
         /// Т. е. общее число позиций (m_Count) минус количество освобождённых индексов.
         /// </remarks>
         // ReSharper disable once InconsistentNaming
-        public int Count => m_Map.Count;
+        public int Count => m_ItemsSet.Count;
         
         public IEnumerator<T> GetEnumerator()
         {
-            return m_Map.Keys.GetEnumerator();
+            foreach (var index in m_UsedIndexes)
+            {
+                yield return m_Items[index].Value;
+            }
         }
         
-        [Obsolete("Unstable", true)]
         public T[] ToArray()
         {
-            var array = new T[m_Map.Count];
-            m_Map.Keys.CopyTo(array, 0);
+            var array = new T[m_ItemsSet.Count];
+            int i = 0;
+            foreach (var item in this)
+            {
+                array[i] = item;
+                i++;
+            }
+
             return array;
         }
 

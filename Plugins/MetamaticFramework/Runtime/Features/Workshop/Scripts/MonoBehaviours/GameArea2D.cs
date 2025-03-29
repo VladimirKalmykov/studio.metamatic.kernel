@@ -9,6 +9,8 @@ namespace Metamatic.Framework.Workshop
         [SerializeField] public Bounds bounds;
 
 #if UNITY_EDITOR
+        public Observable<bool> EditorOnlyEditMode = new(false);
+        
         [DrawGizmo(GizmoType.NonSelected | GizmoType.Selected)]
         static void DrawGameAreaGizmos(GameArea2D area, GizmoType gizmoType)
         {

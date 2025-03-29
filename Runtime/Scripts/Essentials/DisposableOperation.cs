@@ -28,5 +28,10 @@ namespace Metamatic
         {
             m_CancellationSignalSource.TryRaise();
         }
+        
+        public static explicit operator DisposableAction(DisposableOperation disposableOperation)
+        {
+            return new DisposableAction(disposableOperation.Dispose);
+        }
     }
 }

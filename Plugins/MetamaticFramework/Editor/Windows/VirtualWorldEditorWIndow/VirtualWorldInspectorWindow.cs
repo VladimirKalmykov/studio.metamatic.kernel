@@ -7,12 +7,12 @@ using UnityEngine.UIElements;
 
 namespace Metamatic.Framework.Editor.VirtualWorldEditorWIndow
 {
-    public class VirtualWorldEditorWindow: AsyncEditorWindow
+    public class VirtualWorldInspectorWindow: AsyncEditorWindow
     {
         [UnityEditor.MenuItem ("Metamatic/Framework/Virtual World inspector")]
         public static void ShowWindow()
         {
-            GetWindow(typeof(VirtualWorldEditorWindow), false, "Virtual World Inspector");
+            GetWindow(typeof(VirtualWorldInspectorWindow), false, "Virtual World Inspector");
         }
         private TableView<VirtualEntity> m_EntitiesTable;
         

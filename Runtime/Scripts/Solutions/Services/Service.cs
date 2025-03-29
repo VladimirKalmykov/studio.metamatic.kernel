@@ -75,21 +75,50 @@ namespace Metamatic
 
         private static SignalSource m_StopGameSignal = default;
         
-        public static void StartGame()
+        /// <summary>
+        /// This method is called when game is completely load its data. At this stage all services can spawn their entities.
+        /// </summary>
+        public static async UniTask InternalPerformGameLoadedStageAsync(Signal stopOrCancelSignalSource)
         {
-            m_StopGameSignal = SignalSource.Create();
-            foreach (var service in AwakedServices)
+            var tasksList = ParamLessPool<List<UniTask>>.GetShared();
+            try
             {
-                service.Value.OnStartGame(m_StopGameSignal.Signal);
+                m_StopGameSignal = SignalSource.Create();
+
+                foreach (var service in AwakedServices)
+                {
+                    try
+                    {
+                        tasksList.Add(new AsyncWork(service.Value.OnGameLoaded, m_StopGameSignal.Signal).Task);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error("Service", "EmitGameLoadedEvent", e);
+                    }
+                }
+                
+                await UniTask.WhenAll(tasksList);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.Warning("Service", "EmitGameLoadedEvent", "Game loading was canceled");
+            }
+            catch (Exception e)
+            {
+                Console.Error("Service", "EmitGameLoadedEvent", e);
+            }
+            finally
+            {
+                ParamLessPool<List<UniTask>>.ReturnShared(tasksList);
             }
         }
 
-        public static void StopGame()
+        public static void EmitStopGameEvent()
         {
             m_StopGameSignal.TryRaise();
             foreach (var service in AwakedServices)
             {
-                service.Value.OnStopGame();
+                service.Value.OnGameStop();
             }
         }
         
@@ -336,12 +365,12 @@ namespace Metamatic
             #endif
         }
 
-        protected virtual void OnStartGame(Signal stopGameSignal)
+        protected virtual UniTask OnGameLoaded(Action ready, Signal stopGameSignal)
         {
-            
+            return UniTask.CompletedTask;
         }
 
-        protected virtual void OnStopGame()
+        protected virtual void OnGameStop()
         {
             
         }

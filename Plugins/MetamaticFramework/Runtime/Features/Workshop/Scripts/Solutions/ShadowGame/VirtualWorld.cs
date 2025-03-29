@@ -4,6 +4,8 @@ using System.Linq;
 using Cysharp.Threading.Tasks;
 using Metamatic.Framework.Workshop;
 using Metamatic.SaveSystem;
+using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Metamatic.Framework
 {
@@ -23,12 +25,14 @@ namespace Metamatic.Framework
         public struct SaveData
         {
             public string dateTime;
+            public VirtualPlace.SaveData[] places;
             public SaveServiceData[] services;
-            public Entity.SaveData[] entities;
         }
         
+        private readonly Dictionary<string, VirtualPlace> m_Places = new();
         private readonly Dictionary<Type, VirtualService> m_Services = new();
-        private readonly Dictionary<(Type, string), VirtualEntity> m_Entities = new(); // TODO: May be we shouldn't need to store type of entity
+        private readonly Dictionary<string, VirtualEntity> m_EntitiesRegistry = new();
+        private readonly Dictionary<string, Action<VirtualEntity, bool>> m_EntityListeners = new();
         #if UNITY_EDITOR
         public readonly ObservableList<VirtualEntity> ObservableEntitiesList = new();
         #endif
@@ -42,35 +46,16 @@ namespace Metamatic.Framework
         
         public void Virtualize(Entity entity)
         {
-            var virtualEntity = GetOrAddVirtualEntity(entity.GetType(), entity.id);
+            var placeAddress = GameSystem.GetPlaceAddress(entity.gameObject);
+            var virtualEntity = GetOrCreateVirtualEntity(placeAddress, entity.id, entity.transform.position, entity.blueprint);
             virtualEntity.Load(entity.Save());
-        }
-        
-        public async UniTaskVoid Materialize(VirtualEntity virtualEntity)
-        {
-            #if DEBUG
-            if (virtualEntity.isStatic)
-            {
-                throw new InvalidOperationException("Cannot materialize static entity");
-            }
-            #endif
-            Console.Verbose("VirtualWorld", "Materialize", $"Materializing entity {virtualEntity.id}");
-            var entity = await Entity.Spawn(virtualEntity.blueprint, virtualEntity.position, virtualEntity.rotation, id: virtualEntity.id);
-            /* Remove virtual entity from the registry */
-            
-            m_Entities.Remove((entity.GetType(), entity.id));
-#if UNITY_EDITOR
-            ObservableEntitiesList.Remove(virtualEntity);
-#endif
-            await entity.Load(virtualEntity.Save());
         }
         
         public bool TryHydrate(Entity entity)
         {
-            if (m_Entities.TryGetValue((entity.GetType(), entity.id), out var virtualEntity))
+            if (m_EntitiesRegistry.TryGetValue(entity.id, out var virtualEntity))
             {
                 Console.Verbose("VirtualWorld", "Hydrate", $"Hydrating entity {entity.id}");
-                m_Entities.Remove((entity.GetType(), entity.id));
                 entity.Load(virtualEntity.Save()).Forget();
                 return true;
             }
@@ -81,33 +66,65 @@ namespace Metamatic.Framework
         private async UniTaskVoid RunAsync(Signal cancellationSignal)
         {
             using var serviceSubscription = Service.WatchServices(OnServiceRegistered);
-            using var areasActivationSubscription = GameArea.WatchAreasActivation(OnAreaActivation);
+            using var placeWatcher = GameSystem.WatchPlaceActivationAsync(OnPlaceActivationAsync);
             await cancellationSignal;
         }
 
-        private void OnAreaActivation(GameArea gameArea)
+        public void RegisterVirtualEntity(VirtualEntity virtualEntity)
         {
-            // TODO: Consider to perform iteration async with UniTask.Yield() or UniTask.DelayFrame(); 
-            /* Iterate over all virtualized entities */
-            foreach (var virtualEntity in m_Entities.Values)
+            m_EntitiesRegistry[virtualEntity.id] = virtualEntity;
+            if (m_EntityListeners.TryGetValue(virtualEntity.id, out var listener))
             {
-                if (virtualEntity.origin == null)
-                {
-                    /* If entity is virtual, check if it is inside the active area */
-                    if (virtualEntity.gameAreaId == gameArea.id)
-                    {
-                        if (GameArea.IsIntersectedWithActiveAreas(virtualEntity.position))
-                        {
-                            if (virtualEntity.isStatic)
-                            {
-                                // Do nothing, because static entities will find its virtual entity in the registry by itself
-                                continue;
-                            }
-                            /* If entity is inside the active area, spawn it */
-                            Materialize(virtualEntity).Forget();
-                        }
-                    }
-                }
+                listener?.Invoke(virtualEntity, true);
+            }
+        }
+        
+        public void UnregisterVirtualEntity(VirtualEntity virtualEntity)
+        {
+            m_EntitiesRegistry.Remove(virtualEntity.id);
+            if (m_EntityListeners.TryGetValue(virtualEntity.id, out var listener))
+            {
+                listener?.Invoke(virtualEntity, false);
+            }
+        }
+        
+        public DisposableAction WatchEntityExists(string id, Action<VirtualEntity, bool> listener)
+        {
+            m_EntityListeners[id] += listener;
+            if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
+            {
+                listener?.Invoke(virtualEntity, true);
+            }
+            
+            return DisposableAction.Create(() =>
+            {
+                m_EntityListeners[id] -= listener;
+            });
+        }
+        
+        public DisposableAction WatchEntityExistsAsync(string id, Func<VirtualEntity, bool, Signal, UniTaskVoid> listener)
+        {
+            var css = SignalSource.Empty;
+            m_EntityListeners[id] += Handler;
+            
+            if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
+            {
+                css.TryRaise();
+                css = SignalSource.Create();
+                listener?.Invoke(virtualEntity, true, css.Signal);
+            }
+            
+            return DisposableAction.Create(() =>
+            {
+                m_EntityListeners[id] -= Handler;
+                css.Dispose();
+            });
+
+            void Handler(VirtualEntity entity, bool exists)
+            {
+                css.TryRaise();
+                css = SignalSource.Create();
+                listener?.Invoke(entity, exists, css.Signal);
             }
         }
 
@@ -117,31 +134,109 @@ namespace Metamatic.Framework
             GetOrCreateVirtualService(typeof(Service));
         }
 
+        /// <summary>
+        /// This handler is responsible for hibernating and waking up virtual places. It also creates virtual place if it does not exists.
+        /// </summary>
+        /// <param name="placeAddress"></param>
+        /// <param name="cancellationSignal"></param>
+        private async UniTaskVoid OnPlaceActivationAsync(string placeAddress, Signal cancellationSignal)
+        {
+            /* Create place if not exists */
+            if (!m_Places.TryGetValue(placeAddress, out var place))
+            {
+                // TODO: Code duplication. Reuse.
+                place = new VirtualPlace(this, placeAddress);
+                place.address = placeAddress;
+                m_Places.Add(placeAddress, place);
+            }
+
+            place.Wake();
+            await cancellationSignal;
+            place.Hibernate();
+        }
+        
+        public VirtualPlace GetOrCreatePlace(string placeAddress)
+        {
+            if (!m_Places.TryGetValue(placeAddress, out var place))
+            {
+                place = new VirtualPlace(this, placeAddress);
+                m_Places.Add(placeAddress, place);
+            }
+
+            return place;
+        }
+
         public VirtualService GetOrCreateVirtualService(Type type)
         {
             if (!m_Services.TryGetValue(type, out var service))
             {
-                service = new VirtualService(this, type);
-                service.InternalAwake();
+                service = new VirtualService(type);
                 m_Services.Add(type, service);
             }
 
             return service;
         }
         
-        public VirtualEntity GetOrAddVirtualEntity(Type type, string id)
+        public VirtualEntity CreateEntity(Vector3 position, string blueprintAddress)
         {
-            if (m_Entities.TryGetValue((type, id), out var virtualEntity))
+            var id = IdsGenerator.GenerateGuid();
+            return CreateEntity(id, position, blueprintAddress);
+        }
+        
+        public VirtualEntity CreateEntity(string id, Vector3 position, string blueprintAddress)
+        {
+            var placeAddress = GameSystem.activePlaceAddress;
+            return CreateEntity(placeAddress, id, position, blueprintAddress);
+        }
+
+        public VirtualEntity CreateEntity(string placeAddress, string id, Vector3 position, string blueprintAddress)
+        {
+            // Resolve place
+            if (!m_Places.TryGetValue(placeAddress, out var place))
             {
+                place = new VirtualPlace(this, placeAddress);
+                m_Places.Add(placeAddress, place);
+            }
+
+            return place.CreateEntity(id, position, blueprintAddress);
+        }
+        
+        public bool RemoveEntity(string id)
+        {
+            if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
+            {
+                virtualEntity.Release();
+                return true;
+            }
+
+            return false;
+        }
+        
+        public VirtualEntity GetOrCreateVirtualEntity(string placeAddress, string id, Vector3 position, string blueprintAddress)
+        {
+            if (String.IsNullOrEmpty(placeAddress))
+            {
+                placeAddress = GameSystem.LimbPlaceAddress;
+            }
+            if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
+            {
+                virtualEntity.position = position;
+                
+                if (virtualEntity.blueprint != blueprintAddress)
+                {
+                    Console.Error("VirtualWorld", $"Inconsistent blueprint address for entity {id}. Expected {virtualEntity.blueprint}, but got {blueprintAddress}");
+                }
+                virtualEntity.blueprint = blueprintAddress;
+                if (virtualEntity.placeAddress != placeAddress)
+                {
+                    Console.Error("VirtualWorld", $"Founded entity with id {id} has different place address {virtualEntity.placeAddress} than requested {placeAddress}");
+                    // TODO: Translate entity to another place?
+                }
+                virtualEntity.placeAddress = placeAddress;
                 return virtualEntity;
             }
 
-            virtualEntity = new VirtualEntity(id); // TODO: Probably it may be derived class of VirtualEntity
-            m_Entities[(type, id)] = virtualEntity;
-#if UNITY_EDITOR
-            ObservableEntitiesList.Add(virtualEntity);
-#endif
-            return virtualEntity;
+            return CreateEntity(placeAddress, id, position, blueprintAddress);
         }
 
         public object Save()
@@ -166,34 +261,32 @@ namespace Metamatic.Framework
                 }
             }
             
-            /* Save entities data */
-            var entitiesData = new Dictionary<string, Entity.SaveData>(); // TODO: Reuse list
-            
-            /* Collect material entities */
+            /* Force save to virtual world all material entities */
             foreach (var pairs in Entity.EntitiesRegistrationTokens)
             {
                 if (Entity.EntitiesRegistry.TryGet(pairs.Value, out var entity))
                 {
-                    entitiesData[entity.id] = (Entity.SaveData)(entity.Save());
+                    entity.Virtualize();
                 } else {
                     Console.Error("EntitiesService", $"Unexpected behaviour. Entity with id {pairs.Key} was not found in the registry");
                 }
             }
-            
+
+            var placeValues = m_Places.Values;
+            var placesData = new VirtualPlace.SaveData[placeValues.Count];
+            var j = 0;
             /* Collect virtual entities */
-            foreach (var virtualEntity in m_Entities.Values)
+            foreach (var place in placeValues)
             {
-                if (virtualEntity.origin == null) // TODO: Instad of compare to null, we can use some kind of flag
-                {
-                    entitiesData[virtualEntity.id] = (Entity.SaveData)(virtualEntity.Save());
-                }
+                placesData[j] = (VirtualPlace.SaveData)(place.Save());
+                j++;
             }
 
             var saveData = new SaveData
             {
                 dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 services = servicesData.ToArray(),
-                entities = entitiesData.Values.ToArray()
+                places = placesData
             };
 
             return saveData;
@@ -221,81 +314,28 @@ namespace Metamatic.Framework
                     }
                 }
                 await UniTask.WhenAll(tasks);
-                
-                var spawnEntitiesIds = new HashSet<string>();
             
-                /* Collect entity ids */
-                foreach (var entitySaveData in saveData.entities)
+                /* Collect entity ids from active place */
+                var activePlaceAddress = GameSystem.activePlaceAddress;
+                VirtualPlace.SaveData? activePlaceData = null;
+                var usedPlaceAddressed = new HashSet<string>();
+                var loadTasks = new List<UniTask>(); // Use pool
+                foreach (var place in saveData.places)
                 {
-                    spawnEntitiesIds.Add(entitySaveData.id);
-                }
-            
-                /* Farewell, old material entities */
-                foreach (var pairs in Entity.EntitiesRegistrationTokens)
-                {
-                    if (Entity.EntitiesRegistry.TryGet(pairs.Value, out var entity))
+                    usedPlaceAddressed.Add(place.address);
+                    var virtualPlace = GetOrCreatePlace(place.address);
+                    if (place.address == activePlaceAddress)
                     {
-                        if (entity.isStatic)
-                        {
-                            return;
-                        }
-                        // Remove only those entities that are not in the save data
-                        if (!spawnEntitiesIds.Contains(entity.id))
-                        {
-                            entity.Release();
-                        }
-                    }
-                }
-
-                var loadTasks = new List<UniTask>();
-                foreach (var entitySaveData in saveData.entities)
-                {
-                    loadTasks.Add(LoadEntity(entitySaveData));
-                }
-            
-                await UniTask.WhenAll(loadTasks);
-            }
-        }
-        
-        private async UniTask LoadEntity(Entity.SaveData entitySaveData)
-        {
-            Entity entity = null;
-            
-            // TODO: Crate Entity.RegisteredEntities property
-            if (Entity.EntitiesRegistrationTokens.TryGetValue(entitySaveData.id, out var token))
-            {
-                if (Entity.EntitiesRegistry.TryGet(token, out entity))
-                {
-                    // Ok, entity is found in the registry
-                    await entity.Load(entitySaveData);
-                    return;
-                }
-            }
-
-            /* If entity is not found in the registry, try to spawn it or crate virtual entity */
-            if (entity == null)
-            {
-                if (entitySaveData.isStatic)
-                {
-                    /* If entity is static, we can create virtual entity, because it is a part of the some scene and should not be spawned */
-                    await GetOrAddVirtualEntity(entitySaveData.type, entitySaveData.id).Load(entitySaveData);
-                }
-                else
-                {
-                    var entityPosition = entitySaveData.position;
-                    if (GameArea.IsIntersectedWithActiveAreas(entityPosition))
-                    {
-                        /* If entity is inside the game area, we can spawn it */
-                        entity = await Entity.Spawn(entitySaveData.blueprint, entitySaveData.position,
-                            entitySaveData.rotation, id: entitySaveData.id, activate: false);
-                        await entity.Load(entitySaveData);
+                        virtualPlace.Wake();
                     }
                     else
                     {
-                        /* Otherwise, virtualize entity */
-                        GetOrAddVirtualEntity(entitySaveData.type, entitySaveData.id).Load(entitySaveData);
+                        virtualPlace.Hibernate();
                     }
+                    loadTasks.Add(virtualPlace.Load(place));
                 }
+            
+                await UniTask.WhenAll(loadTasks);
             }
         }
 
@@ -308,7 +348,15 @@ namespace Metamatic.Framework
                 var key = service.Key;
                 var value = service.Value;
                 m_Services.Remove(key);
-                value.enabled = false;
+                value.Dispose();
+            }
+            
+            /* Dispose all places */
+            foreach (var place in m_Places.ToArray())
+            {
+                var key = place.Key;
+                var value = place.Value;
+                m_Places.Remove(key);
                 value.Dispose();
             }
         }

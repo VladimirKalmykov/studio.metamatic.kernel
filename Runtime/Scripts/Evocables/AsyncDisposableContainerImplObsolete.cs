@@ -9,19 +9,19 @@ namespace Metamatic
     /// Allows to create a disposable container that can form its content asynchronously from a given input value and initializer function.
     /// </summary>
     /// <typeparam name="TResult"></typeparam>
-    public readonly struct AsyncDisposableContainer<TResult>: IDisposable
+    public readonly struct AsyncDisposableContainerObsolete<TResult>: IDisposable
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static AsyncDisposableContainer<TResult> Create<TInput>(Func<Action<TResult>, TInput, Signal, UniTask> initializer,
+        public static AsyncDisposableContainerObsolete<TResult> Create<TInput>(Func<Action<TResult>, TInput, Signal, UniTask> initializer,
             TInput input)
         {
-            return AsyncDisposableContainerImpl<TResult>.Create(initializer, input);
+            return AsyncDisposableContainerImplObsolete<TResult>.Create(initializer, input);
         }
-        private readonly AsyncDisposableContainerImpl<TResult> m_Impl;
+        private readonly AsyncDisposableContainerImplObsolete<TResult> m_Impl;
         private readonly int m_Version;
         public bool isAlive => m_Impl != null && m_Impl.version == m_Version;
-        public AsyncDisposableContainerImpl<TResult> impl => m_Impl != null && m_Impl.version == m_Version ? m_Impl : null;
-        public AsyncDisposableContainer(AsyncDisposableContainerImpl<TResult> impl)
+        public AsyncDisposableContainerImplObsolete<TResult> impl => m_Impl != null && m_Impl.version == m_Version ? m_Impl : null;
+        public AsyncDisposableContainerObsolete(AsyncDisposableContainerImplObsolete<TResult> impl)
         {
             m_Impl = impl;
             m_Version = impl.version;
@@ -37,22 +37,28 @@ namespace Metamatic
             impl?.Return();
         }
     }
-    public class AsyncDisposableContainerImpl<TResult>: IResettable
+    public class AsyncDisposableContainerImplObsolete<TResult>: IResettable
     {
-        public static AsyncDisposableContainer<TResult> Create<TInput>(Func<Action<TResult>, TInput, Signal, UniTask> initializer,
+        public static AsyncDisposableContainerObsolete<TResult> Create<TInput>(Func<Action<TResult>, TInput, Signal, UniTask> initializer,
             TInput input)
         {
-            var container = ParamLessPool<AsyncDisposableContainerImpl<TResult>>.GetShared();
+            var container = ParamLessPool<AsyncDisposableContainerImplObsolete<TResult>>.GetShared();
             container.Initialize(initializer, input).Forget();
             
-            return new AsyncDisposableContainer<TResult>(container);
+            return new AsyncDisposableContainerObsolete<TResult>(container);
         }
+
+        private PreservedTask<TResult> m_PreservedTask = default;
+        private SafeUniTaskCompletionSource m_CompletionSource = default;
+        private TResult Result;
+        private SignalSource m_DisposeSignalSource = default;
+        private bool Resolved;
         
         private async UniTaskVoid Initialize<TInput>(Func<Action<TResult>, TInput, Signal, UniTask> initializer, TInput input)
         {
             try
             {
-                m_DisposeSignalSource = new SignalSource();
+                m_DisposeSignalSource = SignalSource.Create();
                 m_CompletionSource = SafeUniTaskCompletionSource.Create();
                 await initializer(SetResult, input, m_DisposeSignalSource.Signal);
             }
@@ -71,10 +77,7 @@ namespace Metamatic
             }
         }
         
-        protected SafeUniTaskCompletionSource m_CompletionSource = default;
-        protected TResult Result;
-        protected SignalSource m_DisposeSignalSource = default;
-        protected bool Resolved;
+        
         public int version { get; private set; }
         
         private void SetResult(TResult result)
@@ -101,7 +104,7 @@ namespace Metamatic
 
         internal void Return()
         {
-            ParamLessPool<AsyncDisposableContainerImpl<TResult>>.ReturnShared(this);
+            ParamLessPool<AsyncDisposableContainerImplObsolete<TResult>>.ReturnShared(this);
         }
 
         /// <summary>

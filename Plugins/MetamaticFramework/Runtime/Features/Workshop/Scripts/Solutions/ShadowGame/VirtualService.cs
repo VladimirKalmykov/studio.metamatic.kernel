@@ -4,23 +4,17 @@ using Metamatic.SaveSystem;
 
 namespace Metamatic.Framework
 {
-    public class VirtualService: VirtualBehaviour, ISavable
+    public class VirtualService: ISavable, IDisposable
     {
         public Type serviceType { get; }
-        public VirtualWorld virtualWorld { get; }
         protected Service OriginService;
         private object m_SaveData;
+        private event Action OnDispose;
         
-        public VirtualService(VirtualWorld virtualWorld, Type serviceType)
+        public VirtualService( Type serviceType)
         {
             this.serviceType = serviceType;
-            this.virtualWorld = virtualWorld;
-        }
-        
-        public async UniTaskVoid OnAwakeAsync(Signal cancellationSignal)
-        {
-            using var serviceSubscription = Service.WatchServiceAsync(serviceType, OnServiceSpawned);
-            await cancellationSignal;
+            OnDispose += Service.WatchServiceAsync(serviceType, OnServiceSpawned);
         }
         
         private async UniTaskVoid OnServiceSpawned(Service service, Signal cancellationSignal)
@@ -28,7 +22,6 @@ namespace Metamatic.Framework
             if (service is ISavable savable)
             {
                 /* Load cached service data to real service */
-                enabled = false;
                 savable.Load(m_SaveData);
                 m_SaveData = null;
                 OriginService = service;
@@ -36,7 +29,6 @@ namespace Metamatic.Framework
                 OriginService = null;
                 /* Save service data back to cache */
                 m_SaveData = savable.Save();
-                enabled = true;
             }
         }
 
@@ -57,6 +49,12 @@ namespace Metamatic.Framework
             }
             m_SaveData = data;
             return UniTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            OnDispose?.Invoke();
+            OnDispose = null;
         }
     }
 }

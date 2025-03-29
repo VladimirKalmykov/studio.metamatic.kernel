@@ -22,7 +22,7 @@ namespace Metamatic.Framework.Workshop
         public struct SaveData
         {
             public string dateTime;
-            public string place;
+            public string chapter;
             public object world;
         }
         
@@ -37,7 +37,10 @@ namespace Metamatic.Framework.Workshop
         private AsyncDisposableSummon<SceneInstance> m_MainMenuSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private AsyncDisposableSummon<SceneInstance> m_LoadGameSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private SceneInstance m_MainMenuSceneInstance;
+        private SceneInstance m_LoadingSceneInstance;
         private string m_CurrentChapterAddress;
+        
+        private Observable<bool> m_ObservableShowLoadingScene = new Observable<bool>(false);
         #endregion
 
         protected override async UniTask RunService(Ready ready, Signal signal)
@@ -81,12 +84,72 @@ namespace Metamatic.Framework.Workshop
                 m_StartSceneSummon.DisposeAsync().Forget();
             }
             
+            using var watchShowLoadingScene = m_ObservableShowLoadingScene.WatchAsync(OnShowLoadingSceneChanged, v => v);
+            
             /* Load load game scene */
             m_LoadGameSceneSummon = ResourcesSystem.LoadScene(loadGameScene, LoadSceneMode.Additive, activateOnLoad: false);
+            GameSystem.OnBeforeGameScenesLoad += OnBeforeGameScenesLoad;
+            GameSystem.OnBeforeGameStop += OnBeforeGameStop;
+            GameSystem.OnGameScenesActivated += OnGameScenesActivated;
+            GameSystem.OnGameStopped += OnGameStopped;
+            
             #if UNITY_EDITOR
             ProcessDevelopmentLoadingScenario().Forget();
             #endif
             await ready();
+            
+            GameSystem.OnGameStopped -= OnGameStopped;
+            GameSystem.OnGameScenesActivated -= OnGameScenesActivated;
+            GameSystem.OnBeforeGameStop -= OnBeforeGameStop;
+            GameSystem.OnBeforeGameScenesLoad -= OnBeforeGameScenesLoad;
+        }
+        
+        private async UniTaskVoid OnShowLoadingSceneChanged(bool show, Signal cancellationSignal)
+        {
+            try
+            {
+                m_LoadingSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
+                await m_LoadingSceneInstance.ActivateAsync().ToUniTask();
+                await cancellationSignal;
+            }
+            catch (OperationCanceledException)
+            {
+                // Skip
+            }
+            catch (Exception e)
+            {
+                Console.Error("Launcher", e);
+            }
+            finally
+            {
+                // Unload loading scene
+                await Addressables.UnloadSceneAsync(m_LoadingSceneInstance, false);
+            }
+        }
+        
+        private void OnBeforeGameScenesLoad(bool seamless)
+        {
+            // Unload main menu scene
+            Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
+            if (!seamless)
+            {
+                m_ObservableShowLoadingScene.Value = true;
+            }
+        }
+
+        private void OnBeforeGameStop()
+        {
+            m_ObservableShowLoadingScene.Value = true;
+        }
+        
+        private void OnGameScenesActivated()
+        {
+            m_ObservableShowLoadingScene.Value = false;
+        }
+        
+        private void OnGameStopped()
+        {
+            m_ObservableShowLoadingScene.Value = false;
         }
         
         #if UNITY_EDITOR
@@ -112,7 +175,7 @@ namespace Metamatic.Framework.Workshop
                 var saveData = new SaveData()
                 {
                     dateTime = DateTime.Now.ToString(),
-                    place = m_CurrentChapterAddress,
+                    chapter = m_CurrentChapterAddress,
                     world = worldData
                 };
                 Console.Debug("Launcher", $"Saving game data: {saveData}");
@@ -123,36 +186,40 @@ namespace Metamatic.Framework.Workshop
             }
         }
 
-        public async UniTask Load(string saveAddress = "latest", bool seamless = false, Signal signal = default)
+        public async UniTask<bool> Load(string saveAddress = "latest", bool seamless = false, Signal signal = default)
         {
+            if (!seamless)
+            {
+                
+            }
+
             try
             {
-                using var pending = PendingSystem.CreatePending("Load game");
+                using var pending = PendingSystem.CreateCriticalPending("Load game");
+                // Stop game
+                var stopGameTask = GameSystem.StopGame();
                 var saveData = await Repository.LocalStorage.Get<SaveData>(saveAddress, signal);
                 Console.Debug("Launcher", $"Loaded game data: {saveData}");
-            
-                if (GameSystem.isGameRunning)
+                var stopResult = await stopGameTask;
+
+                if (stopResult)
                 {
-                    if (!seamless)
-                    {
-                        GameSystem.ResetGame();
-                    }
+                    await GameSystem.LoadGame(saveData.chapter, saveData.world, seamless, signal);
+                    return true;
                 }
                 else
                 {
-                    GameSystem.PrepareGame();
+                    return false;
                 }
-            
-                await LaunchGame(saveData.place, seamless, signal);
-            
-                var worldData = saveData.world;
-            
-                await GameSystem.virtualWorld.Load(worldData);
-                GameSystem.StartGame();
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
             } catch (Exception e)
             {
                 // TODO: Fallback to error screen?
                 Console.Error("Launcher", e);
+                return false;
             }
         }
 
@@ -166,41 +233,16 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async UniTask LaunchGame(string addressOrGuid, bool seamless, Signal cancellationSignal) // Place place
+        public UniTask LaunchGame(string addressOrGuid, bool seamless, Signal cancellationSignal) // Place place
+        {
+            return GameSystem.LaunchGame(addressOrGuid, seamless, cancellationSignal);
+        }
+        
+        private async UniTask StopGameAsync()
         {
             try
             {
-                Console.Debug("Launcher", "Launching game.");
-                if (!GameSystem.PrepareGame())
-                {
-                    throw new Exception("Game is already running.");
-                }
-                // Activate load game scene
-                SceneInstance loadSceneInstance = default;
-                if (!seamless)
-                {
-                    loadSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
-                    loadSceneInstance.ActivateAsync().ToUniTask().Forget();
-                }
-
-                // Unload main menu scene
-                await Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
-                // Show load game scene
-                // Launch the game async
-                using var summonChapter = ResourcesSystem.Summon<Place>(addressOrGuid);
-                var chapter = await summonChapter.Wait(default);
-            
-                await GameSystem.ActivateScenes(chapter.baseScene, chapter.gameScene, seamless);
-                var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
-                await UniTask.WhenAll(servicesReadyTasks);
-                // Hide load game scene
-                if (!seamless)
-                {
-                    await Addressables.UnloadSceneAsync(loadSceneInstance, false);
-                }
-
-                m_CurrentChapterAddress = addressOrGuid;
-                GameSystem.StartGame();
+                await GameSystem.StopGame();
             } catch (Exception e)
             {
                 Console.Error("Launcher", e);

@@ -83,6 +83,9 @@ namespace Metamatic
         private readonly Observable<CameraController> m_CameraController = new();
         private Dictionary<CameraController, IDisposable> m_CameraWeightSubscriptions = new();
 
+        private Observable<ICinemachineCamera> m_ObservableCurrentVirtualCamera = new();
+        private Transform m_FollowTarget;
+
         /// <summary>
         /// Contains all active shakers that are currently shaking the camera.
         /// </summary>
@@ -108,7 +111,17 @@ namespace Metamatic
             using var monitoringShakeAmplitude = Monitoring.Create("ImpactService.Shake", "amplidute", () => shakeAmplitude);
             using var monitoringShakeFrequency = Monitoring.Create("ImpactService.Shake", "frequency", () => shakeFrequency);
 #endif
+            m_ObservableCurrentVirtualCamera.Value = GetCurrentVirtualCamera();
+            CinemachineCore.CameraActivatedEvent.AddListener(OnCameraActivated);
             await ready();
+            CinemachineCore.CameraActivatedEvent.RemoveListener(OnCameraActivated);
+        }
+        
+        
+        private void OnCameraActivated(ICinemachineCamera.ActivationEventParams activationParams)
+        {
+            var incomingCamera = activationParams.IncomingCamera;
+            m_ObservableCurrentVirtualCamera.Value = incomingCamera as CinemachineCamera;
         }
 
         #region Public methods
@@ -135,6 +148,11 @@ namespace Metamatic
             {
                 m_CameraController.SetValue(null);
             });
+        }
+        
+        public void FollowTarget(Transform target)
+        {
+            m_FollowTarget = target;
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

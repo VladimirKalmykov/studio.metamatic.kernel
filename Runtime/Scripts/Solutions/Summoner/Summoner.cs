@@ -58,7 +58,7 @@ namespace Metamatic
         public static AsyncSummon<T> Empty => new AsyncSummon<T>(Token96Bit.Empty, UniTask.FromResult<T>(default), null);
         private readonly Action<Token96Bit> m_Dispose;
         private readonly Token96Bit m_Token;
-        private readonly TaskLike<T> m_TaskLike;
+        private readonly PreservedTask<T> m_PreservedTask;
 #if DEBUG
         private readonly Container<bool> m_IsDisposed;
 #endif
@@ -71,13 +71,13 @@ namespace Metamatic
             m_IsDisposed = new Container<bool>(false);
             #endif
             m_Token = token;
-            this.m_TaskLike = new TaskLike<T>(task);
+            this.m_PreservedTask = new PreservedTask<T>(task);
             m_Dispose = dispose;
         }
 
-        public TaskLike<T>.CancellableTaskLike Wait(Signal cancellationSignal)
+        public PreservedTask<T>.CancellableTaskLike Wait(Signal cancellationSignal)
         {
-            return m_TaskLike.Wait(cancellationSignal);
+            return m_PreservedTask.Wait(cancellationSignal);
         }
 
         public void Dispose()
@@ -88,7 +88,7 @@ namespace Metamatic
                 throw new InvalidOperationException("Summon already disposed");
             }
             m_IsDisposed.value = true;
-            m_TaskLike.Dispose();
+            m_PreservedTask.Dispose();
             #endif
             m_Dispose?.Invoke(m_Token);
         }
@@ -104,31 +104,31 @@ namespace Metamatic
         public static AsyncDisposableSummon<T> Empty => new AsyncDisposableSummon<T>(Token96Bit.Empty, UniTask.FromResult<T>(default), null);
         private readonly Func<Token96Bit, UniTask> m_DisposeAsync;
         private readonly Token96Bit m_Token;
-        private readonly TaskLike<T> m_TaskLike;
+        private readonly PreservedTask<T> m_PreservedTask;
         
         public bool isEmpty => m_DisposeAsync == null;
 
         public AsyncDisposableSummon(Token96Bit token, UniTask<T> task, Func<Token96Bit, UniTask> disposeAsync)
         {
             m_Token = token;
-            m_TaskLike = new TaskLike<T>(task);
+            m_PreservedTask = new PreservedTask<T>(task);
             m_DisposeAsync = disposeAsync;
         }
 
-        public TaskLike<T>.CancellableTaskLike Wait(Signal cancellationSignal)
+        public PreservedTask<T>.CancellableTaskLike Wait(Signal cancellationSignal)
         {
-            return m_TaskLike.Wait(cancellationSignal);
+            return m_PreservedTask.Wait(cancellationSignal);
         }
         
         public UniTask<T> ToUniTask()
         {
-            return m_TaskLike.ToUniTask();
+            return m_PreservedTask.ToUniTask();
         }
 
         public UniTask DisposeAsync()
         {
             if (isEmpty) return UniTask.CompletedTask;
-            this.m_TaskLike.Dispose();
+            this.m_PreservedTask.Dispose();
             return m_DisposeAsync.Invoke(m_Token);
 
         }

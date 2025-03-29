@@ -14,7 +14,7 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         [SerializeField] private string m_BlueprintName;
         [SerializeField] private string m_DisplayName;
-        [SerializeField] private AssetReferenceT<Entity> m_Prefab;
+        
         [PreviewField]
         [SerializeField] private Sprite m_Preview;
 
@@ -26,10 +26,6 @@ namespace Metamatic.Framework.Workshop
         }
 
         public override string blueprintName => m_BlueprintName;
-        public override AsyncSummon<UnityEngine.Component> SummonPrefab(Signal cancellationSignal = default)
-        {
-            return ResourcesSystem.SummonConverted(m_Prefab, prefab => (UnityEngine.Component)prefab);
-        }
 
         public override UniTask<string> GetDisplayName(Signal cancellationSignal = default)
         {

@@ -1,5 +1,6 @@
 
 using System;
+using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -71,14 +72,21 @@ namespace Metamatic.Framework.Workshop
             return false;
         }
         
-        [SerializeField] private Vector3 m_SpawnPosition;
+        #if UNITY_EDITOR
+        [FormerlySerializedAs("m_EditMode")] public Observable<bool> EditorOnlyEditMode = new(false); 
+        #endif
+        
+        #region Serializable fields
+        [SerializeField] public Vector3 spawnPosition;
         [Tooltip("Is this checkpoint the default one? New game will start from this checkpoint.")]
         [SerializeField] private bool m_IsDefault;
         
         [SerializeField]
         public string id;
         
-        public Vector3 spawnPosition => m_SpawnPosition;
+        #endregion
+        
+        public Vector3 worldSpawnPosition => transform.TransformPoint(spawnPosition);
 
         private Action OnDestroyAction;
         private CheckpointTrigger m_CheckpointTrigger;

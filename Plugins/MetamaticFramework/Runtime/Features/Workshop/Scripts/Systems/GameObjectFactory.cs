@@ -10,7 +10,7 @@ namespace Metamatic.Framework
 {
     public static class GameObjectFactory
     {
-        private static readonly Dictionary<string, AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>> Pools = new();
+        private static readonly Dictionary<string, AsyncContainer<ConfigurablePool<UnityEngine.Component>>> Pools = new();
         private static readonly SignedIndexedPool<Action> SummonCancellationSignals = new(1000);
         
         public static AsyncSummon<T> SummonFromBlueprint<T>(AssetReferenceT<ScriptableBlueprint<T>> assetReference) where T: Component
@@ -22,14 +22,19 @@ namespace Metamatic.Framework
         {
             return SummonFromBlueprint<T>((AssetReference)assetReference);
         }
+
+        public static AsyncSummon<T> SummonFromBlueprint<T>(AssetReference assetReference) where T : Component
+        {
+            return SummonFromBlueprint<T>(assetReference.AssetGUID);
+        }
         
-        public static AsyncSummon<T> SummonFromBlueprint<T>(AssetReference assetReference) where T: Component
+        public static AsyncSummon<T> SummonFromBlueprint<T>(string address) where T: Component
         {
             var cancellationSignalSource = SignalSource.Create();
             var cancellationSignal = cancellationSignalSource.Signal;
             var token = SummonCancellationSignals.Add(cancellationSignalSource.TryRaise);
-            var poolContainer = GetOrAddPoolContainer(assetReference);
-            var task = poolContainer.GetContent(cancellationSignal).ContinueWith<ConfigurablePool<Component>, T>(pool =>
+            var poolContainer = GetOrAddPoolContainer(address);
+            var task = poolContainer.ToUniTask(cancellationSignal).ContinueWith<ConfigurablePool<Component>, T>(pool =>
             {
                 var summon = pool.Summon();
                 cancellationSignal.Register(summon.Dispose);
@@ -50,7 +55,7 @@ namespace Metamatic.Framework
             var cancellationSignal = cancellationSignalSource.Signal;
             var token = SummonCancellationSignals.Add(cancellationSignalSource.TryRaise);
             var poolContainer = GetOrAddPoolContainer(assetReference);
-            var task = poolContainer.GetContent(cancellationSignal).ContinueWith<ConfigurablePool<Component>, T>(pool =>
+            var task = poolContainer.ToUniTask(cancellationSignal).ContinueWith<ConfigurablePool<Component>, T>(pool =>
             {
                 var summon = pool.Summon();
                 cancellationSignal.Register(summon.Dispose);
@@ -80,7 +85,7 @@ namespace Metamatic.Framework
             }
             #endif
             ConfigurablePool<UnityEngine.Component> resolvedPool = null;
-            typedContainer.GetContent(cts.Signal).ContinueWith(pool =>
+            typedContainer.ToUniTask(cts.Signal).ContinueWith(pool =>
             {
                 try
                 {
@@ -118,7 +123,7 @@ namespace Metamatic.Framework
             }
 #endif
             ConfigurablePool<UnityEngine.Component> resolvedPool = null;
-            typedContainer.GetContent(cts.Signal).ContinueWith(pool =>
+            typedContainer.ToUniTask(cts.Signal).ContinueWith(pool =>
             {
                 try
                 {
@@ -147,21 +152,21 @@ namespace Metamatic.Framework
             }
         }
         
-        private static AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>> GetOrAddPoolContainer(AssetReference assetReference)
+        private static AsyncContainer<ConfigurablePool<UnityEngine.Component>> GetOrAddPoolContainer(AssetReference assetReference)
         {
             if (!Pools.TryGetValue(assetReference.AssetGUID, out var poolContainer))
             {
-                poolContainer = AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, assetReference);
+                poolContainer = AsyncContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, assetReference);
                 Pools.Add(assetReference.AssetGUID, poolContainer);
             }
             return poolContainer;
         }
         
-        private static AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>> GetOrAddPoolContainer(string id)
+        private static AsyncContainer<ConfigurablePool<UnityEngine.Component>> GetOrAddPoolContainer(string id)
         {
             if (!Pools.TryGetValue(id, out var poolContainer))
             {
-                poolContainer = AsyncDisposableContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, id);
+                poolContainer = AsyncContainer<ConfigurablePool<UnityEngine.Component>>.Create(InitializePoolForAsset, id);
                 Pools.Add(id, poolContainer);
             }
             return poolContainer;
@@ -238,9 +243,9 @@ namespace Metamatic.Framework
         
         private static async UniTask InitializePoolForBlueprint(Action<ConfigurablePool<UnityEngine.Component>> resolve, string runtimeKey, ScriptableBlueprint blueprint, Signal cancellationSignal)
         {
-            using var prefabSummon = blueprint.SummonPrefab(cancellationSignal);
+            using var prefabSummon = blueprint.SummonPrefabConverted(ConvertGameObjectToEntity);
             var prefab = await prefabSummon.Wait(cancellationSignal);
-            var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>((UnityEngine.Component)prefab, keepInactive: true, dontDestroyOnLoad: true), autoShrink: true);
+            var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>(prefab, keepInactive: true, dontDestroyOnLoad: true), autoShrink: true);
             resolve(pool);
             await cancellationSignal;
             pool.Dispose();
@@ -253,6 +258,11 @@ namespace Metamatic.Framework
                 poolContainer.Dispose();
                 Pools.Remove(runtimeKey);
             }
+        }
+        
+        private static Entity ConvertGameObjectToEntity(GameObject gameObject)
+        {
+            return gameObject.GetComponent<Entity>();
         }
         #endregion
     }
