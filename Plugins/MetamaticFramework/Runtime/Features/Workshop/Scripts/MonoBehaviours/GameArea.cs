@@ -129,6 +129,7 @@ namespace Metamatic.Framework.Workshop
             if (!m_AreaListeners.TryGetValue(id, out var listener))
             {
                 listener = new MicroEvent<GameArea, bool>();
+                m_AreaListeners[id] = listener;
             }
             var disposeListener = listener.Subscribe(action);
             
@@ -148,6 +149,7 @@ namespace Metamatic.Framework.Workshop
             SignalSource css = default;
             if (TryGetAreaById(id, out var area))
             {
+                css = SignalSource.Create();
                 action(area, area.isActive, css.Signal).Forget();
             }
             
@@ -161,6 +163,7 @@ namespace Metamatic.Framework.Workshop
             if (!m_AreaListeners.TryGetValue(id, out var listener))
             {
                 listener = new MicroEvent<GameArea, bool>();
+                m_AreaListeners[id] = listener;
             }
             
             var disposeListener = listener.Subscribe(SyncHandler);

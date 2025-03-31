@@ -124,11 +124,6 @@ namespace Metamatic.Framework
         
         internal void InternalDestroy(DismissReason reason)
         {
-            // Should dismiss materialized entity if it exists
-            if (m_MaterializedEntity.hasValue && !isStatic)
-            {
-                m_MaterializedEntity.value.Dematerialize(reason);
-            }
             this.place.world.InternalUnregisterVirtualEntity(this);
         }
 
@@ -203,8 +198,10 @@ namespace Metamatic.Framework
 
         protected async UniTaskVoid OnEnableAsync(Signal cancelSignal)
         {
-            using var watchMaterialized = m_MaterializedEntity.WatchAsync(OnMaterializedChangeAsync);
-            await cancelSignal;
+            {
+                using var watchMaterialized = m_MaterializedEntity.WatchAsync(OnMaterializedChangeAsync);
+                await cancelSignal;
+            }
             TryDematerialize(isAboutToDestroy ? DismissReason.Release : DismissReason.Abandon);
         }
         
@@ -285,6 +282,7 @@ namespace Metamatic.Framework
 
         private UniTaskVoid OnRelatedGameAreaActivated(GameArea area, bool isActive, Signal cancellationSignal)
         {
+            Console.Debug("SpawnEntityFindProblem", "GameAreaActivated", $"Game area '{area.id}' is activated: {isActive}");
             if (isActive)
             {
                 if (area.IsIntersected(position))
@@ -313,6 +311,10 @@ namespace Metamatic.Framework
 
         public void Materialize(Signal cancellationSignal)
         {
+            cancellationSignal.Register(() =>
+            {
+                Console.Debug("SpawnEntityFindProblem", "Materialize", "Materialization cancelled");
+            });
             if (m_MaterializedEntity.hasValue)
             {
                 Console.Error("VirtualEntity", "Materialize", $"Entity '{id}' is already materialized");
@@ -327,7 +329,7 @@ namespace Metamatic.Framework
 
         public void TryDematerialize(DismissReason reason)
         {
-            if (m_MaterializedEntity.hasValue)
+            if (m_MaterializedEntity.hasValue && !isStatic)
             {
                 m_MaterializedEntity.value.Dematerialize(reason);
             }

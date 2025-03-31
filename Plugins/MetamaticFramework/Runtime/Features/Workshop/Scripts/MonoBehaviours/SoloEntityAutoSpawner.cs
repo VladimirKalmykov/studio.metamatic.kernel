@@ -24,13 +24,13 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
         public float lastDismissedTime;
     }
     
-    [SerializeField] private AssetReferenceT<GameObject> blueprint;
+    [SerializeField] private AssetReferenceT<EntityBlueprint> blueprint;
     [Tooltip("If entity is destroyed, it will respawn after this duration.")]
     [SerializeField] private float respawnDuration = 5f;
     [Tooltip("Spawn delay in seconds. Entity will spawn after this duration.")]
     [SerializeField] private float randomSpawnDelay = 0f;
-    
-    private Observable<string> m_ObservableSpawnedEntityId;
+
+    private Observable<string> m_ObservableSpawnedEntityId = new Observable<string>();
     private float m_LastDismissedTime;
     
     private Observable<Entity> m_ObservableOwnedEntity = new Observable<Entity>();
@@ -47,6 +47,10 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
     private async UniTaskVoid OnGameLoaded(Signal stopSignal)
     {
         /* First, check if entities with ids in m_SpawnedEntities are already spawned. */
+        if (String.IsNullOrEmpty(m_ObservableSpawnedEntityId.value))
+        {
+            Spawn();
+        }
         using var observeEntity = m_ObservableSpawnedEntityId.WatchAsync(OnEntityIdChanged, id => !String.IsNullOrEmpty(id));
         await stopSignal;
     }
@@ -90,7 +94,7 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
 
     private void Spawn()
     {
-        m_ObservableSpawnedEntityId.value =
+        m_ObservableSpawnedEntityId.uniqValue =
             GameSystem.virtualWorld.CreateEntity(transform.position, blueprint.AssetGUID).id;
     }
 
