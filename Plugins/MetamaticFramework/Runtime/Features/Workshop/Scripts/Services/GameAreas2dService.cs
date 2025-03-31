@@ -25,7 +25,21 @@ namespace Metamatic.Framework.Workshop
         {
             m_Fov2dService = await Service.Resolve<FOV2DService>(signal);
             using var observeGameAreas = GameAreas.WatchEachLifecycle(OnArea2dAnnounce);
+            GameArea.OnAreasEnabled += OnAreaEnabled;
+            GameArea.OnAreasDisabled += OnAreaDisabled;
             await ready();
+            GameArea.OnAreasDisabled -= OnAreaDisabled;
+            GameArea.OnAreasEnabled -= OnAreaEnabled;
+        }
+        
+        private void OnAreaEnabled(GameArea gameArea)
+        {
+            RegisterGameArea(gameArea);
+        }
+        
+        private void OnAreaDisabled(GameArea gameArea)
+        {
+            UnregisterGameArea(gameArea);
         }
 
         private async UniTaskVoid OnArea2dAnnounce(GameArea gameArea, int index, Signal cancellationSignal)
@@ -35,20 +49,7 @@ namespace Metamatic.Framework.Workshop
             {
                 using var trackArea = m_Fov2dService.TrackArea(area2d, CameraFOVTracker2d.FovBoundsType.Full,
                     OnAreaFOVIntersection);
-
-                using var listenDeactivated = gameArea.SubscribeBeforeDeactivate(OnAreaBeforeDeactivate);
                 await cancellationSignal;
-            }
-        }
-
-        private void OnAreaBeforeDeactivate(GameArea area)
-        {
-            if (area is GameArea2D gameArea2D)
-            {
-                if (area.isFoundation)
-                {
-                    /* Virtualize area */
-                }
             }
         }
         
@@ -86,7 +87,7 @@ namespace Metamatic.Framework.Workshop
                 signalSource = SignalSource.Create();
                 // ...Here's activation
                 m_AreaActivationSignals.Add(gameArea.id, signalSource);
-                HandleTackErrors(gameArea.Activate(signalSource.Signal)).Forget();
+                gameArea.Activate(signalSource.Signal);
             }
             else if (m_DeactivateDebounceSignals.TryGetValue(gameArea.id, out var debounceSignalSource))
             {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using Metamatic.Framework.Workshop;
 using Metamatic.Systems;
@@ -16,16 +17,13 @@ namespace Metamatic.Framework
      */
     public static class GameSystem
     {
+        public enum GameLoadingType
+        {
+            Breaking,
+            Seamless
+        }
         public const string LimbPlaceAddress = "LIMB";
         public const string SystemPlaceAddress = "SYSTEM";
-        public enum Screen
-        {
-            Intro,
-            Loading,
-            MainMenu,
-            Game,
-        }
-        // TODO: Add loading list 
         
         #region Constants
         public const string ConfigSkipGameIntroKeyName = "Metamatic_ConfigSkipGameIntro";
@@ -41,12 +39,17 @@ namespace Metamatic.Framework
         #region Public API
 
         public static VirtualWorld virtualWorld => m_ObservableVirtualWorld.Value;
-        public static Observable<Screen> m_ObservableScreen = new Observable<Screen>(Screen.Intro);
+        public static Observable<GameAppStage> m_ObservableAppStage = new Observable<GameAppStage>(GameAppStage.Stopped);
         public static Observable<string> m_ActivePlaceAddress = new Observable<string>();
         public static bool isGameRunning { get; private set; }
         public static bool isGameLoaded { get; private set; }
-        public static event Action<bool> OnBeforeGameScenesLoad;
+        public static GameLoadingType loadingType { get; private set; }
+        public static event Action<bool> OnBeforeLoadGameScenes;
         public static event Action OnGameScenesActivated;
+        /// <summary>
+        /// Event is raised when the game is ready to start (scenes are loaded).
+        /// </summary>
+        public static event Action OnGameReady;
         public static event Action OnBeforeGameStop;
         public static event Action OnGameStopped;
         public static event Action OnGameIsLoading;
@@ -65,11 +68,30 @@ namespace Metamatic.Framework
         
         public static string activePlaceAddress => m_ActivePlaceAddress.Value;
         
-        private SignalSource m_StopGameSignalSource = default;
+        private static SignalSource m_StopGameSignalSource = default;
 
         static GameSystem()
         {
             
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void HandleExceptionsFrom(UniTask task)
+        {
+            InternalHandleExceptions(task).Forget();
+        }
+        
+        private static async UniTaskVoid InternalHandleExceptions(UniTask task)
+        {
+            try
+            {
+                await task;
+            }
+            catch (Exception e)
+            {
+                Console.Error("GameSystem", e);
+                FatalError(e);
+            }
         }
 
         /// <summary>
@@ -77,14 +99,9 @@ namespace Metamatic.Framework
         /// </summary>
         /// <param name="gameObject"></param>
         /// <returns></returns>
-        public static string GetPlaceAddress(GameObject gameObject)
+        public static string GetCurrentPlaceAddress()
         {
-            if (gameObject.scene == _CurrentGameSceneInstance.Scene)
-            {
-                return m_ActivePlaceAddress.Value ?? LimbPlaceAddress;
-            }
-
-            return LimbPlaceAddress;
+            return m_ActivePlaceAddress.Value ?? LimbPlaceAddress;
         }
         
         public static DisposableAction WatchPlaceActivationAsync(Func<string, Signal, UniTaskVoid> action)
@@ -94,6 +111,14 @@ namespace Metamatic.Framework
 
         public static void FatalError(Exception error)
         {
+            Console.Error("GameSystem", error);
+            OnFatalError?.Invoke(error); // TOOD: And what then?
+            StopGame().Forget();
+        }
+        
+        public static void FatalError(string message)
+        {
+            var error = new Exception(message);
             Console.Error("GameSystem", error);
             OnFatalError?.Invoke(error); // TOOD: And what then?
             StopGame().Forget();
@@ -136,6 +161,11 @@ namespace Metamatic.Framework
                 OnBeforeGameStop -= OnBeforeGameStopHandler;
             });
         }
+        
+        public static DisposableAction WatchGameAppStageAsync(Func<GameAppStage, Signal, UniTaskVoid> action)
+        {
+            return m_ObservableAppStage.WatchAsync(action);
+        }
 
         /// <summary>
         /// Start game from the scratch.
@@ -150,17 +180,28 @@ namespace Metamatic.Framework
             {
                 return false;
             }
-            OnGameIsLoading?.Invoke();
-            var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, cancellationSignal);
-            if (!initializationResult)
+            m_ObservableAppStage.uniqValue = GameAppStage.Loading;
+            try
             {
+                OnGameIsLoading?.Invoke();
+                var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, cancellationSignal);
+                if (!initializationResult)
+                {
+                    return false;
+                }
+                isGameLoaded = true;
+                _StopGameSignal.TryRaise();
+                _StopGameSignal = SignalSource.Create();
+                OnGameLoaded?.Invoke();
+                await Service.InternalPerformGameLoadedStageAsync(cancellationSignal);
+                m_ObservableAppStage.uniqValue = GameAppStage.Running;
+            } catch (Exception e)
+            {
+                Console.Error("GameSystem", e);
+                FatalError(e);
+                m_ObservableAppStage.uniqValue = GameAppStage.Error;
                 return false;
             }
-            isGameLoaded = true;
-            _StopGameSignal.TryRaise();
-            _StopGameSignal = SignalSource.Create();
-            OnGameLoaded?.Invoke();
-            await Service.InternalPerformGameLoadedStageAsync();
             return true;
         }
 
@@ -175,23 +216,34 @@ namespace Metamatic.Framework
         public static async UniTask<bool> LoadGame(string addressOrGuid, object worldData, bool seamless = false,
             Signal signal = default)
         {
-            if (isGameRunning && !seamless)
+            try
             {
+                if (isGameRunning && !seamless)
+                {
+                    return false;
+                }
+                OnGameIsLoading?.Invoke();
+                m_ObservableAppStage.uniqValue = GameAppStage.Loading;
+                var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, signal);
+                if (!initializationResult)
+                {
+                    return false;
+                }
+                await LoadWorld(worldData);
+                isGameLoaded = true;
+                _StopGameSignal.TryRaise();
+                _StopGameSignal = SignalSource.Create();
+                OnGameLoaded?.Invoke();
+                await Service.InternalPerformGameLoadedStageAsync(signal);
+                m_ObservableAppStage.uniqValue = GameAppStage.Running;
+                return true;
+            } catch (Exception e)
+            {
+                Console.Error("GameSystem", e);
+                FatalError(e);
+                m_ObservableAppStage.uniqValue = GameAppStage.Error;
                 return false;
             }
-            OnGameIsLoading?.Invoke();
-            var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, signal);
-            if (!initializationResult)
-            {
-                return false;
-            }
-            await LoadWorld(worldData);
-            isGameLoaded = true;
-            _StopGameSignal.TryRaise();
-            _StopGameSignal = SignalSource.Create();
-            OnGameLoaded?.Invoke();
-            Service.EmitGameLoadedEvent();
-            return true;
         }
 
         public static async UniTask LoadWorld(object data)
@@ -203,28 +255,14 @@ namespace Metamatic.Framework
         {
             try
             {
-                if (isGameRunning)
-                {
-                    if (!seamless)
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    // Create new virtual world
-                    m_ActivePlaceAddress.Value = addressOrGuid;
-                    m_ObservableVirtualWorld.Value = new VirtualWorld();
-                }
+                // Dispose previous virtual world, if exists
+                m_ObservableVirtualWorld.Value?.Dispose();
+                m_ActivePlaceAddress.Value = addressOrGuid;
+                m_ObservableVirtualWorld.Value = VirtualWorld.CreateNewCurrent();
                 isGameRunning = true;
                 isGameLoaded = false;
                 using var pending = PendingSystem.CreateCriticalPending("Start game");
-                OnBeforeGameScenesLoad?.Invoke(seamless);
-                
-                if (!seamless)
-                {
-                    // ShowLoadingScreen();
-                }
+                OnBeforeLoadGameScenes?.Invoke(seamless);
                 
                 // Show load game scene
                 // Launch the game async
@@ -252,24 +290,27 @@ namespace Metamatic.Framework
                 {
                     return false;
                 }
+                m_ObservableAppStage.uniqValue = GameAppStage.Unloading;
                 m_ActivePlaceAddress.Value = null;
                 _StopGameSignal.TryRaise();
                 isGameLoaded = false;
                 OnBeforeGameStop?.Invoke();
                 /* Emit stop game event to all services */
                 Service.EmitStopGameEvent();
-                virtualWorld.Dispose();
+                VirtualWorld.DisposeCurrent();
                 isGameRunning = false;
             
                 // Unload scenes
                 await UniTask.WhenAll(_CurrentBaseSceneSummon.DisposeAsync(), _CurrentGameSceneSummon.DisposeAsync());
             
                 OnGameStopped?.Invoke();
+                m_ObservableAppStage.uniqValue = GameAppStage.Stopped;
                 return true;
             } catch (Exception e)
             {
                 Console.Error("GameSystem", e);
                 FatalError(e);
+                m_ObservableAppStage.uniqValue = GameAppStage.Error;
                 return false;
             }
         }
@@ -316,7 +357,7 @@ namespace Metamatic.Framework
                     await _CurrentBaseSceneSummon.DisposeAsync();
                 }
                 
-                if (!trySeamless || (_CurrentGameSceneRef != null && _CurrentGameSceneRef != gameScene))
+                if (!trySeamless || (_CurrentGameSceneRef != gameScene))
                 {
                     _CurrentGameSceneInstance = default;
                     await _CurrentGameSceneSummon.DisposeAsync();
@@ -328,7 +369,7 @@ namespace Metamatic.Framework
                 _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Additive);
             
                 // Load game scene
-                _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentGameSceneRef, LoadSceneMode.Additive);
+                _CurrentGameSceneSummon = ResourcesSystem.LoadScene(_CurrentGameSceneRef, LoadSceneMode.Additive);
             
                 var (baseSceneInstance, gameSceneInstance) = await UniTask.WhenAll(_CurrentBaseSceneSummon.ToUniTask(), _CurrentGameSceneSummon.ToUniTask());
                 _CurrentBaseSceneInstance = baseSceneInstance;

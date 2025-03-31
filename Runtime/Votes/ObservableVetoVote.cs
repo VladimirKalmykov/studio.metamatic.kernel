@@ -1,4 +1,5 @@
 using System;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
@@ -47,6 +48,11 @@ namespace Metamatic
         public DisposableAction Watch(Action<bool> action)
         {
             return m_Result.Watch(action);
+        }
+        
+        public DisposableAction WatchAsync(Func<bool, Signal, UniTaskVoid> action)
+        {
+            return m_Result.WatchAsync(action);
         }
         
         private void SummingUp()

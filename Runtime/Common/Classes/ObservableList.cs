@@ -55,14 +55,7 @@ namespace Metamatic
         public DisposableAction WatchEachLifecycle(Func<T, int, Signal, UniTaskVoid> handler, Func<T, int, bool> filter = null)
         {
             var cssList = new List<SignalSource>();
-            void ForgetAsyncHandler(T item, int index, Signal signal)
-            {
-                if (filter != null && !filter(item, index))
-                    return;
-                var css = SignalSource.CreateLinked(signal);
-                cssList.Add(css);
-                handler(item, index, css.Signal).Forget();
-            }
+            
             /*
              * First, iterate over existing items and call the handler for each item.
              */
@@ -79,6 +72,15 @@ namespace Metamatic
                 cssList.ForEach(css => css.TryRaise());
                 OnItemAdded -= ForgetAsyncHandler;
             });
+            
+            void ForgetAsyncHandler(T item, int index, Signal signal)
+            {
+                if (filter != null && !filter(item, index))
+                    return;
+                var css = SignalSource.CreateLinked(signal);
+                cssList.Add(css);
+                handler(item, index, css.Signal).Forget();
+            }
         }
         
         private static UniTask DefaultHandler(T item, Signal signal)

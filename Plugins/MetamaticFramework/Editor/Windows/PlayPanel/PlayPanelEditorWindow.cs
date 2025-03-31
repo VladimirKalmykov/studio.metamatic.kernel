@@ -232,6 +232,7 @@ namespace Metamatic.Framework.Editor.PlayPanel
                 // Затем открываем дополнительные сцены в режиме Additive
                 foreach (string path in additiveScenePaths)
                 {
+                    if (String.IsNullOrEmpty(path)) continue;
                     EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
                 }
             }

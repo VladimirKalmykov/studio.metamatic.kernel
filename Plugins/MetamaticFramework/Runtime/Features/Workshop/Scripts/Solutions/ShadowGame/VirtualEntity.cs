@@ -19,11 +19,6 @@ namespace Metamatic.Framework
         /// </summary>
         public string placeAddress;
         /// <summary>
-        /// Optional checkpoint id. If specified, entity will be spawned related to this checkpoint instead of world position.
-        /// E.g. if you translate entity to another place you can specify checkpoint 'default' and entity will be spawned at this checkpoint.
-        /// </summary>
-        public string checkpointId;
-        /// <summary>
         /// Object world position
         /// </summary>
         public Vector3 position;
@@ -48,18 +43,37 @@ namespace Metamatic.Framework
         /// Id of the game area where entity was located when was materialized. It makes possible to spawn entity in the same game area when it's activated again.
         /// </summary>
         private Observable<string> m_ObservableGameAreaId = new();
+        private Observable<string> m_ObservableCheckpointId = new();
         private SignalSource m_DisableSignalSource = default;
-        private ObservableNullable<Entity> m_ObservableMaterialEntity = new();
         /// <summary>
         /// Determines if entity is being materialized right now
         /// </summary>
         public bool isBeingMaterialized { get; private set; } = false;
+        /// <summary>
+        /// Determines that virtual entity is about to be destroyed
+        /// </summary>
+        public bool isAboutToDestroy;
         
         public string gameAreaId
         {
             get => m_ObservableGameAreaId.value;
             set => m_ObservableGameAreaId.value = value;
         }
+
+        /// <summary>
+        /// Optional checkpoint id. If specified, entity will be spawned related to this checkpoint instead of world position.
+        /// E.g. if you translate entity to another place you can specify checkpoint 'default' and entity will be spawned at this checkpoint.
+        /// </summary>
+        public string checkpointId
+        {
+            get => m_ObservableCheckpointId.value;
+            set => m_ObservableCheckpointId.value = value;
+        }
+
+        /// <summary>
+        /// Helper property to fast get checkpoint object. E.g. if checkpointId is specified, you can get checkpoint object by this property.
+        /// </summary>
+        public Checkpoint checkpoint;
         
         public bool enabled
         {
@@ -97,7 +111,7 @@ namespace Metamatic.Framework
             this.id = id;
             blueprint = blueprintAddress;
 
-            if (GameArea.GetIntersectedGameArea(position, out var gameArea))
+            if (GameArea.TryGetIntersectedArea(position, true, out var gameArea))
             {
                 m_ObservableGameAreaId.value = gameArea.id;
             }
@@ -105,17 +119,22 @@ namespace Metamatic.Framework
         
         internal void InternalAwake()
         {
-            this.place.world.RegisterVirtualEntity(this);
+            this.place.world.InternalRegisterVirtualEntity(this);
         }
         
-        internal void InternalDestroy()
+        internal void InternalDestroy(DismissReason reason)
         {
-            this.place.world.UnregisterVirtualEntity(this);
+            // Should dismiss materialized entity if it exists
+            if (m_MaterializedEntity.hasValue && !isStatic)
+            {
+                m_MaterializedEntity.value.Dematerialize(reason);
+            }
+            this.place.world.InternalUnregisterVirtualEntity(this);
         }
 
-        internal void Release()
+        internal void Release(DismissReason reason)
         {
-            place.ReleaseEntity(this);
+            place.ReleaseEntity(this, reason);
         }
         
         public object Save()
@@ -123,6 +142,7 @@ namespace Metamatic.Framework
             return m_HasData
                 ? new Entity.SaveData()
                 {
+                    id = id,
                     blueprint = blueprint,
                     type = m_SaveData.type,
                     isStatic = isStatic,
@@ -131,7 +151,8 @@ namespace Metamatic.Framework
                     rotation = m_SaveData.rotation,
                     gameAreaId = m_ObservableGameAreaId.value,
                     checkpointId = checkpointId,
-                    dataComponents = m_SaveData.dataComponents
+                    dataComponents = m_SaveData.dataComponents,
+                    components = m_SaveData.components
                 }
                 : null;
         }
@@ -140,6 +161,13 @@ namespace Metamatic.Framework
         {
             if (data is Entity.SaveData saveData)
             {
+                #if DEBUG
+                if (id != saveData.id)
+                {
+                    Console.Error("Entity", "Load", $"Entity save data and virtual data mismatch - ids are different:{id} != {saveData.id}");
+                }
+                #endif
+                id = saveData.id;
                 m_SaveData = saveData;
                 m_HasData = true;
                 blueprint = saveData.blueprint;
@@ -168,14 +196,24 @@ namespace Metamatic.Framework
             m_MaterializedEntity.value = entity;
         }
 
+        public UniTask<Entity> WaitForMaterialization(Signal cancellationSignal)
+        {
+            return m_MaterializedEntity.WhenHasValue(cancellationSignal);
+        }
+
         protected async UniTaskVoid OnEnableAsync(Signal cancelSignal)
         {
             using var watchMaterialized = m_MaterializedEntity.WatchAsync(OnMaterializedChangeAsync);
             await cancelSignal;
-            TryDematerialize();
+            TryDematerialize(isAboutToDestroy ? DismissReason.Release : DismissReason.Abandon);
         }
         
-        private async UniTaskVoid OnMaterializedChangeAsync(Entity entity, bool hasEntity, Signal cancelSignal)
+        public DisposableAction WatchMaterializedEntityChange(Action<Entity, bool> action)
+        {
+            return m_MaterializedEntity.Watch(action);
+        }
+        
+        private async UniTaskVoid OnMaterializedChangeAsync(Entity entity, bool hasEntity, Signal cancellationSignal)
         {
             if (!hasEntity && !isKicked)
             {
@@ -183,23 +221,23 @@ namespace Metamatic.Framework
                 {
                     // Should be materialized in the specified game area
                     using var observeGameAreaId = m_ObservableGameAreaId.WatchAsync(OnGameAreaIdChangeAsync);
-                    await cancelSignal;
+                    await cancellationSignal;
                 }
                 else
                 {
-                    // Should be materialized on the specified checkpoint
+                    using var observeCheckpointId = m_ObservableCheckpointId.WatchAsync(OnCheckpointIdChangeAsync);
+                    await cancellationSignal;
                 }
-                
             }
         }
 
-        private async UniTaskVoid OnGameAreaIdChangeAsync(string gameAreaId, Signal cancelSignal)
+        private async UniTaskVoid OnGameAreaIdChangeAsync(string gameAreaId, Signal cancellationSignal)
         {
             if (String.IsNullOrEmpty(gameAreaId) || !GameArea.Exists(gameAreaId))
             {
                 Console.Debug("VirtualEntity", "FindNewGameArea", id, $"Find new game area");
                 // Find intersected game area
-                if (GameArea.GetIntersectedGameArea(position, out var newArea))
+                if (GameArea.TryGetIntersectedArea(position, true, out var newArea))
                 {
                     // Change virtual entity's game area
                     m_ObservableGameAreaId.value = newArea.id;
@@ -213,7 +251,35 @@ namespace Metamatic.Framework
             else
             {
                 using var watchArea = GameArea.WatchGameAreaActivationAsync(gameAreaId, OnRelatedGameAreaActivated);
-                await cancelSignal;
+                await cancellationSignal;
+            }
+        }
+
+        private async UniTaskVoid OnCheckpointIdChangeAsync(string checkpointId, Signal cancellationSignal)
+        {
+            if (checkpoint != null || Checkpoint.TryGetCheckpoint(checkpointId, out checkpoint))
+            {
+                using var watchCheckpointActivation = checkpoint.WatchActivationAsync(OnCheckpointActivationAsync);
+                await cancellationSignal;
+            }
+            else
+            {
+                Console.Error("VirtualEntity", "OnCheckpointIdChangeAsync", $"Can not find checkpoint '{checkpointId}'");
+                GameSystem.FatalError($"Checkpoint '{checkpointId}' not found");
+            }
+        }
+        
+        private async UniTaskVoid OnCheckpointActivationAsync(bool isActivated, Signal cancelSignal)
+        {
+            if (isActivated)
+            {
+                await UniTaskEventLoop.Shared.Yield(cancelSignal);
+                var entity = await Entity.Spawn(blueprint, checkpoint.worldSpawnPosition,
+                    Quaternion.identity, id, false, Save(), cancelSignal);
+                entity.transform.position = checkpoint.worldSpawnPosition;
+                entity.InternalBindToVirtualEntity(this);
+                InternalBindToMaterializedEntity(entity);
+                entity.gameObject.SetActive(true);
             }
         }
 
@@ -229,7 +295,7 @@ namespace Metamatic.Framework
                 {
                     // Oh, no! Entity is out of the game area.
                     // We need find another game area where entity can be materialized.
-                    if (GameArea.GetIntersectedGameArea(position, out var newArea))
+                    if (GameArea.TryGetIntersectedArea(position, true, out var newArea))
                     {
                         // Change virtual entity's game area
                         m_ObservableGameAreaId.value = newArea.id;
@@ -241,6 +307,8 @@ namespace Metamatic.Framework
                     }
                 }
             }
+
+            return new UniTaskVoid();
         }
 
         public void Materialize(Signal cancellationSignal)
@@ -257,11 +325,22 @@ namespace Metamatic.Framework
             InternalMaterializeAsync(cancellationSignal).Forget();
         }
 
-        public void TryDematerialize()
+        public void TryDematerialize(DismissReason reason)
         {
             if (m_MaterializedEntity.hasValue)
             {
-                m_MaterializedEntity.value.Release();
+                m_MaterializedEntity.value.Dematerialize(reason);
+            }
+        }
+        
+        /// <summary>
+        /// Enable entity if it's VirtualPlace is not hibernated
+        /// </summary>
+        public void EnableIfNotHybernated()
+        {
+            if (!place.hibernated)
+            {
+                enabled = true;
             }
         }
         
@@ -270,8 +349,11 @@ namespace Metamatic.Framework
             isBeingMaterialized = true;
             try
             {
-                m_MaterializedEntity.value = await Entity.Spawn(blueprint, position,
-                    Quaternion.identity, id, true, Save(), cancellationSignal);
+                var entity = await Entity.Spawn(blueprint, position,
+                    Quaternion.identity, id, false, Save(), cancellationSignal);
+                entity.InternalBindToVirtualEntity(this);
+                InternalBindToMaterializedEntity(entity);
+                entity.gameObject.SetActive(true);
             }
             catch (Exception e)
             {
@@ -282,6 +364,19 @@ namespace Metamatic.Framework
             {
                 isBeingMaterialized = false;
             }
+        }
+        
+        public void InternalBindToMaterializedEntity(Entity entity)
+        {
+            #if DEBUG
+            if (m_MaterializedEntity.hasValue)
+            {
+                Console.Error("VirtualEntity", "InternalBindToMaterializedEntity", "Entity is already bound");
+                GameSystem.FatalError(new Exception("Entity is already bound"));
+            }
+            #endif
+            m_MaterializedEntity.value = entity;
+            entity.SubscribeDismissNoReasonOnce(m_MaterializedEntity.Clear);
         }
     }
 }

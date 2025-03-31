@@ -84,12 +84,17 @@ namespace Metamatic
             try
             {
                 m_StopGameSignal = SignalSource.Create();
+                stopOrCancelSignalSource.Register(m_StopGameSignal.TryRaise);
 
                 foreach (var service in AwakedServices)
                 {
                     try
                     {
+                        #if DEBUG
+                        tasksList.Add(CarryOnServiceLoadStageReady(service.Value, m_StopGameSignal.Signal));
+                        #else
                         tasksList.Add(new AsyncWork(service.Value.OnGameLoaded, m_StopGameSignal.Signal).Task);
+                        #endif
                     }
                     catch (Exception e)
                     {
@@ -110,6 +115,23 @@ namespace Metamatic
             finally
             {
                 ParamLessPool<List<UniTask>>.ReturnShared(tasksList);
+            }
+        }
+
+        private static async UniTask CarryOnServiceLoadStageReady(Service service, Signal cancellationSignal)
+        {
+            using var serviceLoadPending = PendingSystem.CreateCriticalPending($"Service {service.name} load");
+            try
+            {
+                var asyncWork = new AsyncWork(service.OnGameLoaded, m_StopGameSignal.Signal);
+                await asyncWork;
+            } catch (OperationCanceledException)
+            {
+                // Skip
+            }
+            catch (Exception e)
+            {
+                Console.Error("Service", "CarryOnServiceLoadStageReady", e);
             }
         }
 

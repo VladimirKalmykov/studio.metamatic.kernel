@@ -29,10 +29,31 @@ namespace Metamatic.Framework
             public SaveServiceData[] services;
         }
         
+        public static VirtualWorld Current { get; private set; }
+        
+        public static VirtualWorld CreateNewCurrent()
+        {
+            if (Current != null)
+            {
+                Current.Dispose();
+            }
+            Current = new VirtualWorld();
+            return Current;
+        }
+
+        public static void DisposeCurrent()
+        {
+            if (Current != null)
+            {
+                Current.Dispose();
+                Current = null;
+            }
+        }
+        
         private readonly Dictionary<string, VirtualPlace> m_Places = new();
         private readonly Dictionary<Type, VirtualService> m_Services = new();
         private readonly Dictionary<string, VirtualEntity> m_EntitiesRegistry = new();
-        private readonly Dictionary<string, Action<VirtualEntity, bool>> m_EntityListeners = new();
+        private readonly Dictionary<string, MicroEvent<VirtualEntity, bool>> m_EntityListeners = new();
         #if UNITY_EDITOR
         public readonly ObservableList<VirtualEntity> ObservableEntitiesList = new();
         #endif
@@ -44,23 +65,56 @@ namespace Metamatic.Framework
             RunAsync(m_DisposeSignalSource.Signal).Forget();
         }
         
+        public bool HasEntity(string id)
+        {
+            return m_EntitiesRegistry.ContainsKey(id);
+        }
+        
+        public bool ReleaseEntity(string id, DismissReason reason)
+        {
+            if (m_EntitiesRegistry.TryGetValue(id, out var entity))
+            {
+                entity.Release(reason);
+                return true;
+            }
+
+            return false;
+        }
+        
+        public bool TryGetEntity(string id, out VirtualEntity entity)
+        {
+            return m_EntitiesRegistry.TryGetValue(id, out entity);
+        }
+        
+        /// <summary>
+        /// Virtualize entity. It will be saved to virtual world and can be restored later.
+        /// Material entity will not be removed. To remove it use entity.Dematerialize method.
+        /// </summary>
+        /// <param name="entity"></param>
         public void Virtualize(Entity entity)
         {
-            var placeAddress = GameSystem.GetPlaceAddress(entity.gameObject);
+            var placeAddress = GameSystem.GetCurrentPlaceAddress();
             var virtualEntity = GetOrCreateVirtualEntity(placeAddress, entity.id, entity.transform.position, entity.blueprint);
             virtualEntity.Load(entity.Save());
         }
         
         public bool TryHydrate(Entity entity)
         {
-            if (m_EntitiesRegistry.TryGetValue(entity.id, out var virtualEntity))
+            if (!m_EntitiesRegistry.TryGetValue(entity.id, out var virtualEntity))
             {
-                Console.Verbose("VirtualWorld", "Hydrate", $"Hydrating entity {entity.id}");
-                entity.Load(virtualEntity.Save()).Forget();
-                return true;
+                // Create virtual entity
+                virtualEntity = CreateEntity(GameSystem.activePlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true);
+                virtualEntity.Load(entity.Save()).Forget();
             }
-
-            return false;
+            else
+            {
+                GameSystem.HandleExceptionsFrom(entity.Load(virtualEntity.Save()));
+            }
+            entity.InternalBindToVirtualEntity(virtualEntity);
+            virtualEntity.InternalBindToMaterializedEntity(entity);
+            virtualEntity.EnableIfNotHybernated();
+            Console.Verbose("VirtualWorld", "Hydrate", $"Hydrating entity {entity.id}");
+            return true;
         }
         
         private async UniTaskVoid RunAsync(Signal cancellationSignal)
@@ -70,27 +124,34 @@ namespace Metamatic.Framework
             await cancellationSignal;
         }
 
-        public void RegisterVirtualEntity(VirtualEntity virtualEntity)
+        public void InternalRegisterVirtualEntity(VirtualEntity virtualEntity)
         {
             m_EntitiesRegistry[virtualEntity.id] = virtualEntity;
             if (m_EntityListeners.TryGetValue(virtualEntity.id, out var listener))
             {
-                listener?.Invoke(virtualEntity, true);
+                listener.Emit(virtualEntity, true);
             }
         }
         
-        public void UnregisterVirtualEntity(VirtualEntity virtualEntity)
+        public void InternalUnregisterVirtualEntity(VirtualEntity virtualEntity)
         {
             m_EntitiesRegistry.Remove(virtualEntity.id);
             if (m_EntityListeners.TryGetValue(virtualEntity.id, out var listener))
             {
-                listener?.Invoke(virtualEntity, false);
+                listener.Emit(virtualEntity, false);
             }
         }
         
+        
         public DisposableAction WatchEntityExists(string id, Action<VirtualEntity, bool> listener)
         {
-            m_EntityListeners[id] += listener;
+            if (!m_EntityListeners.TryGetValue(id, out var listeners))
+            {
+                listeners = new MicroEvent<VirtualEntity, bool>();
+                m_EntityListeners.Add(id, listeners);
+            }
+
+            var disposeListener = listeners.Subscribe(listener);
             if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
             {
                 listener?.Invoke(virtualEntity, true);
@@ -98,14 +159,24 @@ namespace Metamatic.Framework
             
             return DisposableAction.Create(() =>
             {
-                m_EntityListeners[id] -= listener;
+                disposeListener.Dispose();
+                if (listeners.isEmpty)
+                {
+                    m_EntityListeners.Remove(id);
+                }
             });
         }
         
         public DisposableAction WatchEntityExistsAsync(string id, Func<VirtualEntity, bool, Signal, UniTaskVoid> listener)
         {
             var css = SignalSource.Empty;
-            m_EntityListeners[id] += Handler;
+            if (!m_EntityListeners.TryGetValue(id, out var listeners))
+            {
+                listeners = new MicroEvent<VirtualEntity, bool>();
+                m_EntityListeners.Add(id, listeners);
+            }
+            
+            var disposeListener = listeners.Subscribe(Handler);
             
             if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
             {
@@ -113,10 +184,18 @@ namespace Metamatic.Framework
                 css = SignalSource.Create();
                 listener?.Invoke(virtualEntity, true, css.Signal);
             }
+            else
+            {
+                listener?.Invoke(null, false, css.Signal);
+            }
             
             return DisposableAction.Create(() =>
             {
-                m_EntityListeners[id] -= Handler;
+                disposeListener.Dispose();
+                if (listeners.isEmpty)
+                {
+                    m_EntityListeners.Remove(id);
+                }
                 css.Dispose();
             });
 
@@ -150,7 +229,7 @@ namespace Metamatic.Framework
                 m_Places.Add(placeAddress, place);
             }
 
-            place.Wake();
+            place.Wake().Forget(); // TODO: Check if it is necessary to await
             await cancellationSignal;
             place.Hibernate();
         }
@@ -176,20 +255,24 @@ namespace Metamatic.Framework
 
             return service;
         }
-        
-        public VirtualEntity CreateEntity(Vector3 position, string blueprintAddress)
+
+        public VirtualEntity CreateEntity(
+            Vector3 position,
+            string blueprintAddress
+        )
         {
-            var id = IdsGenerator.GenerateGuid();
-            return CreateEntity(id, position, blueprintAddress);
-        }
-        
-        public VirtualEntity CreateEntity(string id, Vector3 position, string blueprintAddress)
-        {
-            var placeAddress = GameSystem.activePlaceAddress;
-            return CreateEntity(placeAddress, id, position, blueprintAddress);
+            return CreateEntity(GameSystem.GetCurrentPlaceAddress(), IdsGenerator.GenerateGuid(), position, blueprintAddress);
         }
 
-        public VirtualEntity CreateEntity(string placeAddress, string id, Vector3 position, string blueprintAddress)
+        public VirtualEntity CreateEntity(
+            string placeAddress,
+            string id,
+            Vector3 position,
+            string blueprintAddress,
+            string checkpointId = null,
+            Checkpoint checkpoint = null,
+            bool dontEnable = false
+        )
         {
             // Resolve place
             if (!m_Places.TryGetValue(placeAddress, out var place))
@@ -198,18 +281,7 @@ namespace Metamatic.Framework
                 m_Places.Add(placeAddress, place);
             }
 
-            return place.CreateEntity(id, position, blueprintAddress);
-        }
-        
-        public bool RemoveEntity(string id)
-        {
-            if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
-            {
-                virtualEntity.Release();
-                return true;
-            }
-
-            return false;
+            return place.CreateEntity(id, position, blueprintAddress, checkpointId: checkpointId, checkpoint: checkpoint, dontEnable: dontEnable);
         }
         
         public VirtualEntity GetOrCreateVirtualEntity(string placeAddress, string id, Vector3 position, string blueprintAddress)
@@ -326,7 +398,7 @@ namespace Metamatic.Framework
                     var virtualPlace = GetOrCreatePlace(place.address);
                     if (place.address == activePlaceAddress)
                     {
-                        virtualPlace.Wake();
+                        await virtualPlace.Wake();
                     }
                     else
                     {

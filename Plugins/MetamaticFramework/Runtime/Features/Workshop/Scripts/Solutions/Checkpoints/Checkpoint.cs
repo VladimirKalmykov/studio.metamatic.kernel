@@ -1,5 +1,7 @@
 
 using System;
+using Cysharp.Threading.Tasks;
+using Metamatic.Exceptions;
 using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -87,20 +89,40 @@ namespace Metamatic.Framework.Workshop
         #endregion
         
         public Vector3 worldSpawnPosition => transform.TransformPoint(spawnPosition);
-
+        private Observable<bool> m_ObservableIsActivated = new(false);
         private Action OnDestroyAction;
         private CheckpointTrigger m_CheckpointTrigger;
         private Token96Bit m_ReleaseToken;
+        private bool m_GameAreaResolved;
+        public GameArea m_GameArea;
+
+        public GameArea gameArea
+        {
+            get
+            {
+                if (!m_GameAreaResolved)
+                {
+                    m_GameArea = transform.parent.GetComponent<GameArea>();
+                    m_GameAreaResolved = true;
+                }
+
+                return m_GameArea;
+            }
+        }
 
         private void Awake()
         {
             m_ReleaseToken = s_Checkpoints.Add(this);
             m_CheckpointTrigger = GetComponent<CheckpointTrigger>();
             
-            if (transform.parent != null && transform.parent.TryGetComponent(out GameArea gameArea))
+            #if DEBUG
+            if (transform.parent == null || gameArea == null)
             {
-                OnDestroyAction += gameArea.WatchActivatedChange(WatchAreaActivatedChange);
+                GameSystem.FatalError("Checkpoint must be a child of GameArea");
             }
+            #endif
+            
+            OnDestroyAction += gameArea.WatchActivatedChange(WatchAreaActivatedChange);
         }
 
         private void OnDestroy()
@@ -124,6 +146,7 @@ namespace Metamatic.Framework.Workshop
             {
                 m_CheckpointTrigger.Deactivate();
             }
+            m_ObservableIsActivated.Value = isActivated;
         }
 
         /// <summary>
@@ -133,6 +156,16 @@ namespace Metamatic.Framework.Workshop
         public void OnTrigger(Entity entity)
         {
             OnTriggerAll?.Invoke(this, entity);
+        }
+        
+        /// <summary>
+        /// Watch for activated change. Checkpoint is activated when the area is activated which contains this checkpoint.
+        /// </summary>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public DisposableAction WatchActivationAsync(Func<bool, Signal, UniTaskVoid> action)
+        {
+            return m_ObservableIsActivated.WatchAsync(action);
         }
         
 #if UNITY_EDITOR

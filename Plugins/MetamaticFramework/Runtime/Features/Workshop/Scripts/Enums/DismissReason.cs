@@ -38,8 +38,9 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         Logic,
         /// <summary>
-        /// The object has left the play area, or unforeseen circumstances have occurred.
+        /// Unforeseen circumstances have occurred.
         /// </summary>
-        Exception
+        Exception,
+        LeaveGameArea
     }
 }

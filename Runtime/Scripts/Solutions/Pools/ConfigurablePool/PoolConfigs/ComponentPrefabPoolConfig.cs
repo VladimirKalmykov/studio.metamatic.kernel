@@ -19,7 +19,9 @@ namespace Metamatic
         }
         public T OnCreate()
         {
+            Prefab.gameObject.SetActive(!m_KeepInactive);
             var instance = UnityEngine.Object.Instantiate(Prefab);
+            instance.gameObject.SetActive(!m_KeepInactive);
             if (m_DontDestroyOnLoad)
             {
                 // Make sure the instance is not destroyed when the scene is changed
@@ -31,10 +33,7 @@ namespace Metamatic
 
         public virtual void OnGet(T instance)
         {
-            if (!m_KeepInactive)
-            {
-                instance.gameObject.SetActive(true);
-            }
+            instance.gameObject.SetActive(!m_KeepInactive);
         }
 
         public virtual void OnReturn(T instance)

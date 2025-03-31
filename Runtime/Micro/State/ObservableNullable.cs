@@ -67,6 +67,32 @@ namespace Metamatic
                 cancellationSignalSource.TryRaise();
             });
         }
+
+        public UniTask<T> WhenHasValue(Signal cancellationSignal)
+        {
+            if (m_HasValue)
+            {
+                return UniTask.FromResult(m_Value);
+            }
+
+            var tcs = SafeUniTaskCompletionSource<T>.Create();
+            DisposableAction registration = default;
+            DisposableAction disposeWatch = default;
+            disposeWatch = Watch(OnChangeHandler);
+            registration = cancellationSignal.Register(disposeWatch);
+            
+            void OnChangeHandler(T nextValue, bool nextHasValue)
+            {
+                if (nextHasValue)
+                {
+                    disposeWatch.Dispose();
+                    registration.Dispose();
+                    tcs.TrySetResult(nextValue);
+                }
+            }
+            
+            return tcs.Task;
+        }
         
         protected void ApplyChange(T newValue, bool newHasValue)
         {

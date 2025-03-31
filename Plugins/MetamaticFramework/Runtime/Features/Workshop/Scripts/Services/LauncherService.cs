@@ -39,8 +39,6 @@ namespace Metamatic.Framework.Workshop
         private SceneInstance m_MainMenuSceneInstance;
         private SceneInstance m_LoadingSceneInstance;
         private string m_CurrentChapterAddress;
-        
-        private Observable<bool> m_ObservableShowLoadingScene = new Observable<bool>(false);
         #endregion
 
         protected override async UniTask RunService(Ready ready, Signal signal)
@@ -84,72 +82,49 @@ namespace Metamatic.Framework.Workshop
                 m_StartSceneSummon.DisposeAsync().Forget();
             }
             
-            using var watchShowLoadingScene = m_ObservableShowLoadingScene.WatchAsync(OnShowLoadingSceneChanged, v => v);
-            
             /* Load load game scene */
             m_LoadGameSceneSummon = ResourcesSystem.LoadScene(loadGameScene, LoadSceneMode.Additive, activateOnLoad: false);
-            GameSystem.OnBeforeGameScenesLoad += OnBeforeGameScenesLoad;
-            GameSystem.OnBeforeGameStop += OnBeforeGameStop;
-            GameSystem.OnGameScenesActivated += OnGameScenesActivated;
-            GameSystem.OnGameStopped += OnGameStopped;
+
+            using var watchGameAppStage = GameSystem.WatchGameAppStageAsync(OnGameAppStageChange);
             
             #if UNITY_EDITOR
             ProcessDevelopmentLoadingScenario().Forget();
             #endif
             await ready();
-            
-            GameSystem.OnGameStopped -= OnGameStopped;
-            GameSystem.OnGameScenesActivated -= OnGameScenesActivated;
-            GameSystem.OnBeforeGameStop -= OnBeforeGameStop;
-            GameSystem.OnBeforeGameScenesLoad -= OnBeforeGameScenesLoad;
         }
         
-        private async UniTaskVoid OnShowLoadingSceneChanged(bool show, Signal cancellationSignal)
+        private async UniTaskVoid OnGameAppStageChange(GameAppStage stage, Signal cancellationSignal)
         {
             try
             {
-                m_LoadingSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
-                await m_LoadingSceneInstance.ActivateAsync().ToUniTask();
-                await cancellationSignal;
-            }
-            catch (OperationCanceledException)
-            {
-                // Skip
-            }
-            catch (Exception e)
+                switch (stage)
+                {
+                    case GameAppStage.Stopped:
+                    {
+                        m_MainMenuSceneInstance.ActivateAsync();
+                        await cancellationSignal;
+                        Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
+                        break;
+                    }
+                    case GameAppStage.Loading:
+                    case GameAppStage.Reloading:
+                        m_LoadingSceneInstance = await m_LoadGameSceneSummon.Wait(cancellationSignal);
+                        m_LoadingSceneInstance.ActivateAsync();
+                        await cancellationSignal;
+                        await Addressables.UnloadSceneAsync(m_LoadingSceneInstance, false);
+                        break;
+                    case GameAppStage.Unloading:
+                        // Do nothing, show black screen
+                        break;
+                    case GameAppStage.Running:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(stage), stage, null);
+                }
+            } catch (Exception e)
             {
                 Console.Error("Launcher", e);
             }
-            finally
-            {
-                // Unload loading scene
-                await Addressables.UnloadSceneAsync(m_LoadingSceneInstance, false);
-            }
-        }
-        
-        private void OnBeforeGameScenesLoad(bool seamless)
-        {
-            // Unload main menu scene
-            Addressables.UnloadSceneAsync(m_MainMenuSceneInstance, false);
-            if (!seamless)
-            {
-                m_ObservableShowLoadingScene.Value = true;
-            }
-        }
-
-        private void OnBeforeGameStop()
-        {
-            m_ObservableShowLoadingScene.Value = true;
-        }
-        
-        private void OnGameScenesActivated()
-        {
-            m_ObservableShowLoadingScene.Value = false;
-        }
-        
-        private void OnGameStopped()
-        {
-            m_ObservableShowLoadingScene.Value = false;
         }
         
         #if UNITY_EDITOR

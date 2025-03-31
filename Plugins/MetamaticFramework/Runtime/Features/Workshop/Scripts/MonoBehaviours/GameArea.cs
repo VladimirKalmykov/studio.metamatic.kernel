@@ -10,6 +10,7 @@ using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using Sirenix.OdinInspector;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
 namespace Metamatic.Framework.Workshop
@@ -21,7 +22,10 @@ namespace Metamatic.Framework.Workshop
         public static event Action<GameArea> OnAreasActivatedEvent;
         public static event Action<GameArea> OnAreasDeactivatedEvent;
         
-        private static readonly Dictionary<string, Action<GameArea, bool>> m_AreaListeners = new ();
+        private static readonly Dictionary<string, MicroEvent<GameArea, bool>> m_AreaListeners = new ();
+        
+        public static event Action<GameArea> OnAreasEnabled;
+        public static event Action<GameArea> OnAreasDisabled;
         
         public static bool Exists(string id)
         {
@@ -55,21 +59,6 @@ namespace Metamatic.Framework.Workshop
             return false;
         }
         
-        public static bool GetIntersectedGameArea(Vector3 position, out GameArea area)
-        {
-            foreach (var activeArea in AllAreas)
-            {
-                if (activeArea.IsIntersected(position))
-                {
-                    area = activeArea;
-                    return true;
-                }
-            }
-
-            area = null;
-            return false;
-        }
-        
         /// <summary>
         /// Finds intersected area by position.
         /// </summary>
@@ -77,13 +66,14 @@ namespace Metamatic.Framework.Workshop
         /// <param name="includingInactive"></param>
         /// <param name="area"></param>
         /// <returns></returns>
-        public static bool TryFindIntersectArea(Vector3 position, bool includingInactive, out GameArea area)
+        public static bool TryGetIntersectedArea(Vector3 position, bool includingInactive, out GameArea area)
         {
-            foreach (var activeArea in ActiveAreas)
+            // TODO: Use some kind of quadtree for optimization
+            foreach (var nextArea in AllAreas)
             {
-                if ((includingInactive || activeArea.isActive) && activeArea.IsIntersected(position))
+                if ((includingInactive || nextArea.isActive) && nextArea.IsIntersected(position))
                 {
-                    area = activeArea;
+                    area = nextArea;
                     return true;
                 }
             }
@@ -135,9 +125,21 @@ namespace Metamatic.Framework.Workshop
                     action(area, false);
                 }
             }
-            m_AreaListeners[id] += action;
+
+            if (!m_AreaListeners.TryGetValue(id, out var listener))
+            {
+                listener = new MicroEvent<GameArea, bool>();
+            }
+            var disposeListener = listener.Subscribe(action);
             
-            return new DisposableAction(() => m_AreaListeners[id] -= action);
+            return new DisposableAction(() =>
+            {
+                disposeListener.Dispose();
+                if (listener.isEmpty)
+                {
+                    m_AreaListeners.Remove(id);
+                }
+            });
         }
 
         public static DisposableAction WatchGameAreaActivationAsync(string id,
@@ -156,12 +158,21 @@ namespace Metamatic.Framework.Workshop
                 action(gameArea, isActive, css.Signal).Forget();
             }
             
-            m_AreaListeners[id] += SyncHandler;
+            if (!m_AreaListeners.TryGetValue(id, out var listener))
+            {
+                listener = new MicroEvent<GameArea, bool>();
+            }
+            
+            var disposeListener = listener.Subscribe(SyncHandler);
             
             return new DisposableAction(() =>
             {
                 css.Dispose();
-                m_AreaListeners[id] -= SyncHandler;
+                disposeListener.Dispose();
+                if (listener.isEmpty)
+                {
+                    m_AreaListeners.Remove(id);
+                }
             });
         }
 
@@ -182,6 +193,7 @@ namespace Metamatic.Framework.Workshop
         private bool m_FactualIsActiveInEditor = false;
 #endif
 
+        private ObservableVetoVote ActivateVote = new ObservableVetoVote(false);
         public bool isActive { get; private set; } = false;
 
         public enum ResourceMode
@@ -218,6 +230,8 @@ namespace Metamatic.Framework.Workshop
         public event Action<Entity> OnEntityRegistered;
         public event Action<Entity> OnEntityUnregistered;
 
+        private SignalSource m_DisableSignalSource = default;
+
         #region Mono
         private void OnEnable()
         {
@@ -227,20 +241,30 @@ namespace Metamatic.Framework.Workshop
                 EditorOnlyActivate();
             }
 #endif
-            GameAreas2dService.RegisterGameArea(this);
+            m_DisableSignalSource.Dispose();
+            m_DisableSignalSource = SignalSource.Create();
+            EnableAsync(m_DisableSignalSource.Signal).Forget();
         }
 
         private void OnDisable()
         {
+            m_DisableSignalSource.TryRaise();
 #if UNITY_EDITOR
             if (!Application.isPlaying && isActiveInEditor)
             {
                 EditorOnlyDeactivate();
             }
 #endif
-            GameAreas2dService.UnregisterGameArea(this);
         }
         #endregion
+
+        private async UniTaskVoid EnableAsync(Signal disableSignal)
+        {
+            using var watchActivationVote = ActivateVote.WatchAsync(InternalActivateAsync);
+            OnAreasEnabled?.Invoke(this);
+            await disableSignal;
+            OnAreasDisabled?.Invoke(this);
+        }
 
         private void GenerateUniqueId(bool force = false)
         {
@@ -397,77 +421,105 @@ namespace Metamatic.Framework.Workshop
 
         #endregion
 
-        private void InternalBeforeDeactivate()
+        private void InternalAfterDeactivate()
         {
             /* Move all entities to the virtual world */
             if (isFoundation)
             {
                 foreach (var entity in m_RegisteredEntities.Values.ToArray())
                 {
-                    entity.Virtualize();
+                    entity.Dematerialize(DismissReason.Abandon);
                 }
             }
         }
-        
-        public async UniTask Activate(Signal cancellationSignal)
+
+        private async UniTaskVoid InternalActivateAsync(bool shouldActivate, Signal cancellationSignal)
         {
-            if (isActive)
+            if (shouldActivate)
             {
-                Console.Exception("GameArea", "Already active");
-                return;
-            }
-
-            isActive = true;
-            ActiveAreas.Add(this);
-            if (m_AreaListeners.TryGetValue(id, out var listener))
-            {
-                listener?.Invoke(this, true);
-            }
-            OnAreasActivatedEvent?.Invoke(this);
-            OnActivatedChangeEvent?.Invoke(true);
-
-            try
-            {
-                if (m_ResourceMode == ResourceMode.Prefab)
+                isActive = true;
+                ActiveAreas.Add(this);
+                if (m_AreaListeners.TryGetValue(id, out var listener))
                 {
-                    if (m_Prefab == null)
+                    listener.Emit(this, true);
+                }
+                OnAreasActivatedEvent?.Invoke(this);
+                OnActivatedChangeEvent?.Invoke(true);
+
+                try
+                {
+                    if (m_ResourceMode == ResourceMode.Prefab)
                     {
-                        Console.Exception("GameArea", "Prefab is not set");
-                        return;
-                    }
+                        if (m_Prefab == null)
+                        {
+                            Console.Exception("GameArea", "Prefab is not set");
+                            return;
+                        }
 
-                    await ActivatePrefab(cancellationSignal);
-                }
-                else if (m_ResourceMode == ResourceMode.AddictiveScene)
-                {
-                    if (m_AddictiveScene == null)
+                        await ActivatePrefab(cancellationSignal);
+                    }
+                    else if (m_ResourceMode == ResourceMode.AddictiveScene)
                     {
-                        Console.Exception("GameArea", "Scene is not set");
-                        return;
-                    }
+                        if (m_AddictiveScene == null)
+                        {
+                            Console.Exception("GameArea", "Scene is not set");
+                            return;
+                        }
 
-                    await ActivateScene(cancellationSignal);
+                        await ActivateScene(cancellationSignal);
+                    }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                // Skip
-            }
-            catch (Exception e)
-            {
-                Console.Exception("GameArea", e);
-            }
-            finally
-            {
-                isActive = false;
-                ActiveAreas.Remove(this);
-                if (m_AreaListeners.TryGetValue(id, out var deactivateListener))
+                catch (OperationCanceledException)
                 {
-                    deactivateListener?.Invoke(this, false);
+                    // Skip
                 }
-                OnAreasDeactivatedEvent?.Invoke(this);
-                OnActivatedChangeEvent?.Invoke(false);
+                catch (Exception e)
+                {
+                    Console.Exception("GameArea", e);
+                }
             }
+        }
+
+        /// <summary>
+        /// Activate the area and get disposable action to deactivate it.
+        /// </summary>
+        /// <returns></returns>
+        public DisposableAction Activate()
+        {
+            return ActivateVote.Vote(true);
+        }
+
+        /// <summary>
+        /// Activate the area for a certain amount of time. After the time is up, the area will be deactivated (if there are no other activations).
+        /// </summary>
+        /// <param name="seconds"></param>
+        public void Activate(float seconds)
+        {
+            var activation = ActivateVote.Vote(true);
+            UniTask.Delay(TimeSpan.FromSeconds(seconds)).ContinueWith(activation.Dispose).Forget();
+        }
+        
+        /// <summary>
+        /// Activate the area with cancellation signal. Area will be deactivated when the signal is raised.
+        /// </summary>
+        /// <param name="cancellationSignal"></param>
+        public void Activate(Signal cancellationSignal)
+        {
+            var activation = ActivateVote.Vote(true);
+            cancellationSignal.Register(activation.Dispose);
+        }
+
+        private void InternalDeactivate()
+        {
+            isActive = false;
+            ActiveAreas.Remove(this);
+            if (m_AreaListeners.TryGetValue(id, out var deactivateListener))
+            {
+                deactivateListener.Emit(this, false);
+            }
+            OnAreasDeactivatedEvent?.Invoke(this);
+            OnActivatedChangeEvent?.Invoke(false);
+            InternalAfterDeactivate();
         }
         
         private async UniTask ActivatePrefab(Signal cancellationSignal)
@@ -479,8 +531,9 @@ namespace Metamatic.Framework.Workshop
             var thisTransform = transform;
             var instance = Instantiate(prefab, thisTransform);
             await cancellationSignal;
-            InternalBeforeDeactivate();
             OnBeforeDeactivateEvent?.Invoke(this);
+            InternalDeactivate();
+            
             Destroy(instance.gameObject);
         }
         
@@ -490,8 +543,8 @@ namespace Metamatic.Framework.Workshop
             await using var sceneSummon = ResourcesSystem.LoadScene(m_AddictiveScene, LoadSceneMode.Additive);
             await sceneSummon.Wait(cancellationSignal);
             await cancellationSignal;
-            InternalBeforeDeactivate();
             OnBeforeDeactivateEvent?.Invoke(this);
+            InternalDeactivate();
         }
         
         public DisposableAction SubscribeBeforeDeactivate(Action<GameArea> handler)

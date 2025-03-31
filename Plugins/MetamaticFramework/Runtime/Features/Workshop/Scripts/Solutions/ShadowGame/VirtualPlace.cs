@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 using Metamatic.Exceptions;
 using Metamatic.Framework;
@@ -21,11 +22,12 @@ namespace Metamatic.Framework
         
         public string address;
         public object data;
+
         /// <summary>
         /// Means that all place data is placed to `data` property without extracting it to separate fields
         /// You can not interact with hibernated (e.g. add entities) place except saving and loading.
         /// </summary>
-        public bool hibernated;
+        public bool hibernated = true;
         
         private readonly Dictionary<string, VirtualEntity> m_Entities = new();
         private SignalSource m_WakeCancellationSignalSource = default;
@@ -39,15 +41,20 @@ namespace Metamatic.Framework
         
         public void Hibernate()
         {
-            if (hibernated) return;
+            if (hibernated)
+            {
+                GameSystem.FatalError(new Exception("Can't hibernate already hibernated place"));
+                return;
+            }
             hibernated = true;
-            this.data = Save();
             
             /* Release all entities */
-            foreach (var pair in m_Entities)
+            foreach (var pair in m_Entities.ToArray())
             {
-                pair.Value.InternalDestroy();
+                pair.Value.Release(DismissReason.Abandon);
             }
+            
+            this.data = Save();
             
             m_Entities.Clear();
         }
@@ -124,7 +131,7 @@ namespace Metamatic.Framework
                     // Remove only those entities that are not in the save data
                     if (!spawnEntitiesIds.Contains(entity.id))
                     {
-                        asyncTasks.Add(ReleaseEntity(entity.id));
+                        ReleaseEntity(entity.id, DismissReason.Release);
                     }
                     else
                     {
@@ -143,11 +150,18 @@ namespace Metamatic.Framework
             }
         }
 
-        public VirtualEntity CreateEntity(string id, Vector3 position, string blueprintAddress) 
+        public VirtualEntity CreateEntity(string id, Vector3 position, string blueprintAddress, string checkpointId = null, Checkpoint checkpoint = null, bool dontEnable = false) 
         {
             var entity = new VirtualEntity(this, id, position, blueprintAddress);
+            entity.checkpoint = checkpoint;
+            entity.checkpointId = checkpointId;
+            entity.placeAddress = address;
             entity.InternalAwake();
             m_Entities.Add(entity.id, entity);
+            if (!dontEnable && !hibernated)
+            {
+                entity.enabled = true;
+            }
             return entity;
         }
 
@@ -158,22 +172,27 @@ namespace Metamatic.Framework
             
             entity.InternalAwake();
             m_Entities.Add(entity.id, entity);
+            if (!hibernated)
+            {
+                entity.enabled = true;
+            }
             return entity;
         }
 
-        public void ReleaseEntity(string id)
+        public void ReleaseEntity(string id, DismissReason reason)
         {
             if (m_Entities.TryGetValue(id, out var entity))
             {
-                ReleaseEntity(entity);
+                ReleaseEntity(entity, reason);
             }
         }
         
-        public void ReleaseEntity(VirtualEntity entity)
+        public void ReleaseEntity(VirtualEntity virtualEntity, DismissReason reason)
         {
-            entity.enabled = false;
-            entity.InternalDestroy();
-            m_Entities.Remove(entity.id);
+            m_Entities.Remove(virtualEntity.id);
+            virtualEntity.isAboutToDestroy = true;
+            virtualEntity.enabled = false;
+            virtualEntity.InternalDestroy(reason);
         }
 
         public void Dispose()
@@ -183,10 +202,11 @@ namespace Metamatic.Framework
             {
                 return;
             }
+            hibernated = true;
             /* Dispose all entities */
             foreach (var pair in m_Entities)
             {
-                pair.Value.InternalDestroy();
+                pair.Value.InternalDestroy(DismissReason.Release);
             }
         }
         
@@ -198,7 +218,7 @@ namespace Metamatic.Framework
             /* Enable all entities */
             foreach (var pair in m_Entities)
             {
-                pair.Value.InternalEnable();
+                pair.Value.enabled = true;
             }
 
             await cancellationSignal;

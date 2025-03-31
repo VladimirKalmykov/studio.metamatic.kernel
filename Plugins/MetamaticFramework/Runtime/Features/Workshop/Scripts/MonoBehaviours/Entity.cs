@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
+using Metamatic.Exceptions;
 using Metamatic.SaveSystem;
 using Sirenix.OdinInspector;
 #if UNITY_EDITOR
@@ -312,6 +313,7 @@ namespace Metamatic.Framework.Workshop
         /// The entity is kicked from the world. It means that it should be virtualized and stay in the virtual world until it will be revived.
         /// </summary>
         public bool isKicked { get; private set; }
+        public VirtualEntity virtualEntity { get; private set; }
 
         /// <summary>
         /// Entity is marked as virtualized. It means that it is not in the world and can be returned back to the world.
@@ -337,6 +339,38 @@ namespace Metamatic.Framework.Workshop
             {
                 dismissedTaskCs.TrySetCanceled();
             });
+        }
+        
+        public DisposableAction SubscribeDismissOnce(Action<DismissReason> handler)
+        {
+            if (isDismissed != DismissReason.None)
+            {
+                handler(isDismissed);
+                return DisposableAction.Empty;
+            }
+            void Handler(DismissReason reason)
+            {
+                handler(reason);
+                OnEntityDismissedEvent -= Handler;
+            }
+            OnEntityDismissedEvent += Handler;
+            return new DisposableAction(() => OnEntityDismissedEvent -= Handler);
+        }
+        
+        public DisposableAction SubscribeDismissNoReasonOnce(Action handler)
+        {
+            if (isDismissed != DismissReason.None)
+            {
+                handler();
+                return DisposableAction.Empty;
+            }
+            void Handler(DismissReason reason)
+            {
+                handler();
+                OnEntityDismissedEvent -= Handler;
+            }
+            OnEntityDismissedEvent += Handler;
+            return new DisposableAction(() => OnEntityDismissedEvent -= Handler);
         }
         
         public UniTask<DismissReason> WaitForDismissal(Signal cancellationSignal) {
@@ -369,6 +403,7 @@ namespace Metamatic.Framework.Workshop
             {
                 return;
             }
+
             isDismissed = reason;
             TryUnregisterEntity(m_RegistrationToken, reason);
             m_ObservableGameArea.Clear();
@@ -397,7 +432,7 @@ namespace Metamatic.Framework.Workshop
         /// <param name="reason"></param>
         public void Kill(KillReason reason)
         {
-            Dismiss(DismissReason.Kill);
+            GameSystem.virtualWorld.ReleaseEntity(id, DismissReason.Kill);
         }
         
         /// <summary>
@@ -421,18 +456,45 @@ namespace Metamatic.Framework.Workshop
             GameSystem.virtualWorld.Virtualize(this);
         }
 
+        public void Dematerialize(DismissReason reason)
+        {
+            switch (reason)
+            {
+                case DismissReason.Release:
+                case DismissReason.Kill:
+                    // Do not virtualize entity if it is killed or released
+                        break;
+                default:
+                    Virtualize();
+                    break;
+            }
+            
+            Dismiss(reason);
+        }
+
         /// <summary>
         /// This method is called when the entity is out of any active game area
         /// </summary>
         private void OnOutOfGameArea()
         {
             /* Search for active game area */
-            if (GameArea.TryFindIntersectArea(transform.position, true, out var area))
+            if (GameArea.TryGetIntersectedArea(transform.position, true, out var area))
             {
                 Console.Debug("Debug1", "SetGameArea", $"Set game area {area} for entity {id}");
                 gameArea = area;
-                Virtualize();
-                Dismiss(DismissReason.Abandon);
+                if (!area.isActive)
+                {
+                    if (isStatic)
+                    {
+                        var thisTransform = transform;
+                        thisTransform.position = m_InitialPosition;
+                        thisTransform.rotation = m_InitialRotation;
+                    }
+                    else
+                    {
+                        Dematerialize(DismissReason.Abandon);
+                    }
+                }
             }
             else
             {
@@ -449,7 +511,7 @@ namespace Metamatic.Framework.Workshop
                 {
                     // Kill, because object is out of any areas
                     // TODO: Are you sure that you want to kill the entity?
-                    Kill(KillReason.Exception);
+                    Kill(KillReason.LeaveGameArea);
                 }
             }
         }
@@ -580,6 +642,7 @@ namespace Metamatic.Framework.Workshop
             isKicked = false;
             m_ObservableGameArea.Clear();
             isDismissed = DismissReason.None;
+            virtualEntity = null;
             
             OnEntityResetEvent?.Invoke();
             OnEntityReset();
@@ -680,7 +743,11 @@ namespace Metamatic.Framework.Workshop
                 isStatic = false;
                 id = Guid.NewGuid().ToString();
             }
-            GameSystem.virtualWorld.TryHydrate(this);
+
+            if (virtualEntity == null)
+            {
+                GameSystem.virtualWorld.TryHydrate(this);
+            }
         }
 
         protected override void OnDestroy()
@@ -766,6 +833,10 @@ namespace Metamatic.Framework.Workshop
 
         public UniTask Load(object data)
         {
+            if (data == null)
+            {
+                return UniTask.CompletedTask;
+            }
             var entityData = (SaveData)data;
             var thisGameObject = gameObject;
             var thisTransform = transform;
@@ -801,6 +872,17 @@ namespace Metamatic.Framework.Workshop
             }
 
             return UniTask.CompletedTask;
+        }
+
+        public void InternalBindToVirtualEntity(VirtualEntity virtualEntity)
+        {
+            #if DEBUG
+            if (this.virtualEntity != null)
+            {
+                GameSystem.FatalError($"Entity {id} is already bound to virtual entity");
+            }
+            #endif
+            this.virtualEntity = virtualEntity;
         }
 
         public void Reset()

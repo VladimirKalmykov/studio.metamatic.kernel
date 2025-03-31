@@ -1,8 +1,19 @@
 using System;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
+    public readonly struct PendingStats
+    {
+        private readonly InternalPending m_InternalPending;
+        public string comment => m_InternalPending.Comment;
+        
+        public PendingStats(InternalPending internalPending)
+        {
+            m_InternalPending = internalPending;
+        }
+    }
     public readonly struct Pending: IDisposable
     {
         // ReSharper disable once InconsistentNaming
@@ -58,6 +69,7 @@ namespace Metamatic
         public Pending CreatePending(string comment = null)
         {
             var newPending = ParamLessPool<InternalPending>.GetShared();
+            newPending.Initialize(comment);
             var token = m_Pendings.Add(newPending);
             OnPendingStateChanged?.Invoke();
             m_PendingStatus.uniqValue = true;
@@ -78,6 +90,28 @@ namespace Metamatic
         
         public DisposableAction WatchPendingAsync(Func<bool, Signal, UniTaskVoid> handler) {
             return m_PendingStatus.WatchAsync(handler);
+        }
+
+        /// <summary>
+        /// You get all pending stats as array at initial call and every time when pending state changed.
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public DisposableAction WatchPendingStatsAsArray(Action<PendingStats[]> handler)
+        {
+            handler(m_Pendings.ToArray().Select(p => new PendingStats(p)).ToArray());
+
+            OnPendingStateChanged += OnStatsChange;
+
+            return DisposableAction.Create(() =>
+            {
+                OnPendingStateChanged -= OnStatsChange;
+            });
+            
+            void OnStatsChange()
+            {
+                handler(m_Pendings.ToArray().Select(p => new PendingStats(p)).ToArray());
+            }
         }
     }
     
@@ -112,6 +146,16 @@ namespace Metamatic
         public static DisposableAction WatchCriticalPending(Action<bool> handler)
         {
             return CriticalPendingTracker.WatchPending(handler);
+        }
+        
+        public static DisposableAction WatchPendingStatsAsArray(Action<PendingStats[]> handler)
+        {
+            return CommonPendingTracker.WatchPendingStatsAsArray(handler);
+        }
+        
+        public static DisposableAction WatchCriticalPendingStatsAsArray(Action<PendingStats[]> handler)
+        {
+            return CriticalPendingTracker.WatchPendingStatsAsArray(handler);
         }
     }
 }

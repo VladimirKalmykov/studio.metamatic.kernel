@@ -1,4 +1,5 @@
  using System;
+ using System.Collections.Generic;
  using System.Data;
  using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
@@ -47,7 +48,7 @@ namespace Metamatic
         {
             set {
                 /* Compare old value with new value */
-                if (GetValue().Equals(value)) return;
+                if (EqualityComparer<TValue>.Default.Equals(GetValue(), value)) return;
                 SetValue(value);
             }
         }

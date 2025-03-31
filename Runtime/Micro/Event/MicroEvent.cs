@@ -110,4 +110,29 @@ namespace Metamatic
             return tcs.Task;
         }
     }
+    
+    public class MicroEvent<T1, T2>
+    {
+        private List<Action<T1, T2>> m_EventHandlers = new List<Action<T1, T2>>();
+        
+        public bool isEmpty => m_EventHandlers.Count == 0;
+        
+        public DisposableAction Subscribe(Action<T1, T2> handler)
+        {
+            m_EventHandlers.Add(handler);
+            return new DisposableAction(() =>
+            {
+                m_EventHandlers.Remove(handler);
+            });
+        }
+        
+        public void Emit(T1 arg1, T2 arg2)
+        {
+            var handlers = m_EventHandlers.ToArray();
+            foreach (var handler in handlers)
+            {
+                handler(arg1, arg2);
+            }
+        }
+    }
 }
