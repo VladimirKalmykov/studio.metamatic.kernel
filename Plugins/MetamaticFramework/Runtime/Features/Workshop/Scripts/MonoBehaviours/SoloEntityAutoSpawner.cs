@@ -32,19 +32,18 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
 
     private Observable<string> m_ObservableSpawnedEntityId = new Observable<string>();
     private float m_LastDismissedTime;
-    
-    private Observable<Entity> m_ObservableOwnedEntity = new Observable<Entity>();
 
     private TimeService m_TimeService;
     
     protected override async UniTask Run(Ready ready, Signal signal)
     {
+        var entity = GetComponent<Entity>();
         m_TimeService = await Service.Resolve<TimeService>(signal);
-        using var gameWatcher = GameSystem.WatchGameLoadedAsync(OnGameLoaded);
+        using var watchHydration = entity.WatchHydratedAsync(OnEntityHydrated);
         await ready();
     }
-
-    private async UniTaskVoid OnGameLoaded(Signal stopSignal)
+    
+    private async UniTaskVoid OnEntityHydrated(Signal dehydrateSignal)
     {
         /* First, check if entities with ids in m_SpawnedEntities are already spawned. */
         if (String.IsNullOrEmpty(m_ObservableSpawnedEntityId.value))
@@ -52,7 +51,7 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
             Spawn();
         }
         using var observeEntity = m_ObservableSpawnedEntityId.WatchAsync(OnEntityIdChanged, id => !String.IsNullOrEmpty(id));
-        await stopSignal;
+        await dehydrateSignal;
     }
     
     private async UniTaskVoid OnEntityIdChanged(string id, Signal stopSignal)
@@ -65,6 +64,10 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
     {
         if (!exists)
         {
+            if (m_LastDismissedTime == 0f)
+            {
+                m_LastDismissedTime = m_TimeService.time;
+            }
             using var createSchedule = ScheduleCreateEntity();
             await createdSignal;
         }
@@ -79,7 +82,14 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
     {
         try
         {
-            await PlayerLoop.Delay(respawnDuration + Random.Range(0, randomSpawnDelay), signal: cancellationSignal);
+            var timeDiff = m_TimeService.time - m_LastDismissedTime;
+
+            var delay = (respawnDuration + Random.Range(0, randomSpawnDelay)) - timeDiff;
+            if (delay > 0)
+            {
+                await PlayerLoop.Delay(delay, signal: cancellationSignal);
+            }
+            m_LastDismissedTime = 0f;
             Spawn();
         }
         catch (OperationCanceledException)
@@ -100,11 +110,13 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
 
     public object Save()
     {
-        return new SaveData
+        var data = new SaveData
         {
             spawnedEntityId = m_ObservableSpawnedEntityId.value,
             lastDismissedTime = m_LastDismissedTime
         };
+        
+        return data;
     }
 
     public UniTask Load(object data)

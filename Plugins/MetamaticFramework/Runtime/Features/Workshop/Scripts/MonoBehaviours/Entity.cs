@@ -665,7 +665,37 @@ namespace Metamatic.Framework.Workshop
         private readonly Dictionary<Type, EntityAbility> m_RegisteredAbilities = new Dictionary<Type, EntityAbility>();
         private Vector3 m_InitialPosition;
         private Quaternion m_InitialRotation;
+        public event Action OnHydrated;
         #endregion
+        
+        /// <summary>
+        /// Watch entity hydrated event (when its virtual entity is synchronized with it). Signal will be raised when entity is dehydrated (not implemented yet) or watcher is disposed.
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public DisposableAction WatchHydratedAsync(Func<Signal, UniTaskVoid> handler)
+        {
+            SignalSource css = default;
+            if (virtualEntity != null)
+            {
+                css = SignalSource.Create();
+                handler(css.Signal).Forget();
+                return DisposableAction.Create(css.TryRaise);
+            }
+            void Handler()
+            {
+                css.TryRaise();
+                css = SignalSource.Create();
+                handler(css.Signal).Forget();
+                OnHydrated -= Handler;
+            }
+            OnHydrated += Handler;
+            return new DisposableAction(() =>
+            {
+                OnHydrated -= Handler;
+                css.TryRaise();
+            });
+        }
         
         #region Mono
         
@@ -746,7 +776,19 @@ namespace Metamatic.Framework.Workshop
 
             if (virtualEntity == null)
             {
-                GameSystem.virtualWorld.TryHydrate(this);
+                InternalTryHydrateVirtualEntity().Forget();
+            }
+        }
+        
+        private async UniTaskVoid InternalTryHydrateVirtualEntity()
+        {
+            try
+            {
+                await GameSystem.virtualWorld.TryHydrate(this);
+                OnHydrated?.Invoke();
+            } catch (Exception e)
+            {
+                Console.Error("Entity", "InternalTryHydrateVirtualEntity", $"Error while hydrating virtual entity: {e}");
             }
         }
 
@@ -883,6 +925,7 @@ namespace Metamatic.Framework.Workshop
             }
             #endif
             this.virtualEntity = virtualEntity;
+            OnHydrated?.Invoke();
         }
 
         public void Reset()

@@ -2,6 +2,7 @@
 using System;
 using Cysharp.Threading.Tasks;
 using Metamatic.Exceptions;
+using Sirenix.OdinInspector;
 using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -87,6 +88,8 @@ namespace Metamatic.Framework.Workshop
         public string id;
         
         #endregion
+
+        public event Action<Entity> OnTrigger;
         
         public Vector3 worldSpawnPosition => transform.TransformPoint(spawnPosition);
         private Observable<bool> m_ObservableIsActivated = new(false);
@@ -94,7 +97,8 @@ namespace Metamatic.Framework.Workshop
         private CheckpointTrigger m_CheckpointTrigger;
         private Token96Bit m_ReleaseToken;
         private bool m_GameAreaResolved;
-        public GameArea m_GameArea;
+        [ShowInInspector, ReadOnly]
+        public GameArea m_GameArea { get; private set; }
 
         public GameArea gameArea
         {
@@ -153,9 +157,16 @@ namespace Metamatic.Framework.Workshop
         /// 
         /// </summary>
         /// <param name="entity"></param>
-        public void OnTrigger(Entity entity)
+        public void Trigger(Entity entity)
         {
+            OnTrigger?.Invoke(entity);
             OnTriggerAll?.Invoke(this, entity);
+        }
+        
+        public DisposableAction SubscribeTrigger(Action<Entity> action)
+        {
+            OnTrigger += action;
+            return new DisposableAction(() => { OnTrigger -= action; });
         }
         
         /// <summary>

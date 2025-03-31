@@ -159,6 +159,7 @@ namespace Metamatic.Framework
             {
                 OnGameLoaded -= OnGameLoadedHandler;
                 OnBeforeGameStop -= OnBeforeGameStopHandler;
+                m_StopSignalSource.Dispose();
             });
         }
         
@@ -170,11 +171,11 @@ namespace Metamatic.Framework
         /// <summary>
         /// Start game from the scratch.
         /// </summary>
-        /// <param name="addressOrGuid"></param>
+        /// <param name="placeAddress"></param>
         /// <param name="seamless"></param>
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
-        public static async UniTask<bool> LaunchGame(string addressOrGuid, bool seamless, Signal cancellationSignal)
+        public static async UniTask<bool> LaunchGame(string placeAddress, bool seamless, Signal cancellationSignal)
         {
             if (isGameRunning && !seamless)
             {
@@ -184,7 +185,7 @@ namespace Metamatic.Framework
             try
             {
                 OnGameIsLoading?.Invoke();
-                var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, cancellationSignal);
+                var initializationResult = await InternalInitializeGame(placeAddress, seamless, cancellationSignal);
                 if (!initializationResult)
                 {
                     return false;
@@ -258,18 +259,46 @@ namespace Metamatic.Framework
                 // Dispose previous virtual world, if exists
                 m_ObservableVirtualWorld.Value?.Dispose();
                 m_ActivePlaceAddress.Value = addressOrGuid;
-                m_ObservableVirtualWorld.Value = VirtualWorld.CreateNewCurrent();
+                if (!seamless)
+                {
+                    m_ObservableVirtualWorld.Value = VirtualWorld.CreateNewCurrent();
+                }
                 isGameRunning = true;
                 isGameLoaded = false;
-                using var pending = PendingSystem.CreateCriticalPending("Start game");
+                using var pending = PendingSystem.CreateCriticalPending("Initialize place scenes");
                 OnBeforeLoadGameScenes?.Invoke(seamless);
                 
                 // Show load game scene
                 // Launch the game async
                 using var summonChapter = ResourcesSystem.Summon<Place>(addressOrGuid);
                 var chapter = await summonChapter.Wait(default);
+                
+                // Activate scenes
+                if (!seamless || _CurrentBaseSceneRef != chapter.baseScene)
+                {
+                    // Unload previous base scene
+                    _CurrentBaseSceneInstance = default;
+                    await _CurrentBaseSceneSummon.DisposeAsync();
+                }
+                
+                if (!seamless || (_CurrentGameSceneRef != chapter.gameScene))
+                {
+                    _CurrentGameSceneInstance = default;
+                    await _CurrentGameSceneSummon.DisposeAsync();
+                }
+                _CurrentGameSceneRef = chapter.gameScene;
+                _CurrentBaseSceneRef = chapter.baseScene;
             
-                await ActivateScenes(chapter.baseScene, chapter.gameScene, seamless);
+                // Load base scene
+                _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Additive);
+            
+                // Load game scene
+                _CurrentGameSceneSummon = ResourcesSystem.LoadScene(_CurrentGameSceneRef, LoadSceneMode.Additive);
+            
+                var (baseSceneInstance, gameSceneInstance) = await UniTask.WhenAll(_CurrentBaseSceneSummon.ToUniTask(), _CurrentGameSceneSummon.ToUniTask());
+                _CurrentBaseSceneInstance = baseSceneInstance;
+                _CurrentGameSceneInstance = gameSceneInstance;
+                
                 var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
                 await UniTask.WhenAll(servicesReadyTasks);
 
@@ -308,9 +337,13 @@ namespace Metamatic.Framework
                 return true;
             } catch (Exception e)
             {
+                // Unload all scenes
+                await _CurrentBaseSceneSummon.DisposeAsync();
+                await _CurrentGameSceneSummon.DisposeAsync();
                 Console.Error("GameSystem", e);
                 FatalError(e);
                 m_ObservableAppStage.uniqValue = GameAppStage.Error;
+                
                 return false;
             }
         }
@@ -344,45 +377,6 @@ namespace Metamatic.Framework
             }
 
             return tsc.Task;
-        }
-        
-        public static async UniTask ActivateScenes(AssetReference baseScene, AssetReference gameScene = null, bool trySeamless = false)
-        {
-            try
-            {
-                if (!trySeamless || _CurrentBaseSceneRef != baseScene)
-                {
-                    // Unload previous base scene
-                    _CurrentBaseSceneInstance = default;
-                    await _CurrentBaseSceneSummon.DisposeAsync();
-                }
-                
-                if (!trySeamless || (_CurrentGameSceneRef != gameScene))
-                {
-                    _CurrentGameSceneInstance = default;
-                    await _CurrentGameSceneSummon.DisposeAsync();
-                }
-                _CurrentGameSceneRef = gameScene;
-                _CurrentBaseSceneRef = baseScene;
-            
-                // Load base scene
-                _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Additive);
-            
-                // Load game scene
-                _CurrentGameSceneSummon = ResourcesSystem.LoadScene(_CurrentGameSceneRef, LoadSceneMode.Additive);
-            
-                var (baseSceneInstance, gameSceneInstance) = await UniTask.WhenAll(_CurrentBaseSceneSummon.ToUniTask(), _CurrentGameSceneSummon.ToUniTask());
-                _CurrentBaseSceneInstance = baseSceneInstance;
-                _CurrentGameSceneInstance = gameSceneInstance;
-                
-            } catch (Exception e)
-            {
-                Console.Error("GameSystem", e);
-                
-                // Unload all scenes
-                await _CurrentBaseSceneSummon.DisposeAsync();
-                await _CurrentGameSceneSummon.DisposeAsync();
-            }
         }
         #endregion
         

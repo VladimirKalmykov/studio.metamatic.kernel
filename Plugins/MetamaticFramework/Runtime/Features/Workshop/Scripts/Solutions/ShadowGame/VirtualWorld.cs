@@ -98,23 +98,22 @@ namespace Metamatic.Framework
             virtualEntity.Load(entity.Save());
         }
         
-        public bool TryHydrate(Entity entity)
+        public async UniTask TryHydrate(Entity entity)
         {
             if (!m_EntitiesRegistry.TryGetValue(entity.id, out var virtualEntity))
             {
                 // Create virtual entity
                 virtualEntity = CreateEntity(GameSystem.activePlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true);
-                virtualEntity.Load(entity.Save()).Forget();
+                await virtualEntity.Load(entity.Save());
             }
             else
             {
-                GameSystem.HandleExceptionsFrom(entity.Load(virtualEntity.Save()));
+                await entity.Load(virtualEntity.Save());
             }
             entity.InternalBindToVirtualEntity(virtualEntity);
             virtualEntity.InternalBindToMaterializedEntity(entity);
             virtualEntity.EnableIfNotHybernated();
             Console.Verbose("VirtualWorld", "Hydrate", $"Hydrating entity {entity.id}");
-            return true;
         }
         
         private async UniTaskVoid RunAsync(Signal cancellationSignal)
@@ -169,7 +168,7 @@ namespace Metamatic.Framework
         
         public DisposableAction WatchEntityExistsAsync(string id, Func<VirtualEntity, bool, Signal, UniTaskVoid> listener)
         {
-            var css = SignalSource.Empty;
+            var css = SignalSource.Create();
             if (!m_EntityListeners.TryGetValue(id, out var listeners))
             {
                 listeners = new MicroEvent<VirtualEntity, bool>();
@@ -180,8 +179,6 @@ namespace Metamatic.Framework
             
             if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
             {
-                css.TryRaise();
-                css = SignalSource.Create();
                 listener?.Invoke(virtualEntity, true, css.Signal);
             }
             else

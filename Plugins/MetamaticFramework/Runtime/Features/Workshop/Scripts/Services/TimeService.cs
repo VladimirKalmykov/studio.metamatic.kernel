@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
 {
+    /// <summary>
+    /// Provide time that can be saved and loaded within the game.
+    /// </summary>
     public class TimeService: Service, ISavable
     {
         [SerializeField] private float m_DefaultTime = 0f;

@@ -213,6 +213,11 @@ namespace Metamatic.Framework.Workshop
             return GameSystem.LaunchGame(addressOrGuid, seamless, cancellationSignal);
         }
         
+        public UniTask PlaySpecialScene(string sceneAddress, bool addictive, Signal cancellationSignal = default)
+        {
+            throw new NotImplementedException();
+        }
+        
         private async UniTask StopGameAsync()
         {
             try

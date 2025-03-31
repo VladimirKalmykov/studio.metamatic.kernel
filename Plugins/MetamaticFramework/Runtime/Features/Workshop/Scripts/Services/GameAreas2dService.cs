@@ -114,7 +114,7 @@ namespace Metamatic.Framework.Workshop
         {
             try
             {
-                await PlayerLoop.Delay(TimeSpan.FromSeconds(3), signal: cancellationSignalSource.Signal);
+                await PlayerLoop.Delay(TimeSpan.FromSeconds(0), signal: cancellationSignalSource.Signal);
                 deactivateSignal.TryRaise();
                 m_AreaActivationSignals.Remove(gameAreaId);
                 cancellationSignalSource.Dispose();

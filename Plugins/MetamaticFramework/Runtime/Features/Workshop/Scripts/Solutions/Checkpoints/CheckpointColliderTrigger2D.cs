@@ -3,8 +3,11 @@ using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
 {
+    /// <summary>
+    /// Triggers checkpoint when player enters the collider (Collider must be trigger).
+    /// </summary>
     [RequireComponent(typeof(Collider2D))]
-    public class CheckpointTrigger2D: CheckpointTrigger
+    public class CheckpointColliderTrigger2D: CheckpointTrigger
     {
         private void OnEnable()
         {
@@ -21,7 +24,7 @@ namespace Metamatic.Framework.Workshop
         {
             if (PlayerSystem.IsPlayer(other.gameObject, out var entity))
             {
-                Checkpoint.OnTrigger(entity);
+                Checkpoint.Trigger(entity);
             }
         }
     }

@@ -212,7 +212,7 @@ namespace Metamatic.Framework
         
         private async UniTaskVoid OnMaterializedChangeAsync(Entity entity, bool hasEntity, Signal cancellationSignal)
         {
-            if (!hasEntity && !isKicked)
+            if (!hasEntity && !isKicked && !isStatic) // TODO: Watch kicked, because it can be changed anytime
             {
                 if (String.IsNullOrEmpty(checkpointId))
                 {
@@ -311,10 +311,6 @@ namespace Metamatic.Framework
 
         public void Materialize(Signal cancellationSignal)
         {
-            cancellationSignal.Register(() =>
-            {
-                Console.Debug("SpawnEntityFindProblem", "Materialize", "Materialization cancelled");
-            });
             if (m_MaterializedEntity.hasValue)
             {
                 Console.Error("VirtualEntity", "Materialize", $"Entity '{id}' is already materialized");
@@ -351,6 +347,13 @@ namespace Metamatic.Framework
             isBeingMaterialized = true;
             try
             {
+                #if DEBUG
+                if (blueprint == null)
+                {
+                    Console.Error("VirtualEntity", "InternalMaterializeAsync", $"Blueprint for entity {id} is not specified!");
+                    return;
+                }
+                #endif
                 var entity = await Entity.Spawn(blueprint, position,
                     Quaternion.identity, id, false, Save(), cancellationSignal);
                 entity.InternalBindToVirtualEntity(this);
