@@ -1,67 +1,33 @@
-using System.Collections.Generic;
-using Cysharp.Threading.Tasks;
-using Metamatic.UIElements;
+
 using UnityEngine.UIElements;
 
-namespace Metamatic.UIToolKit
+namespace Metamatic.UIToolKit.VisualElements
 {
-    public class ToggleButton<T>: AsyncVisualElement
+    public class ToggleButton: Button
     {
-        private readonly Dictionary<T, VisualElement> m_Choices = new Dictionary<T, VisualElement>();
-        private Observable<T> m_Value;
-        public ToggleButton()
-        {
-            m_Value = new Observable<T>();
-            AddToClassList("MetamaticUIKit_ToggleButton");
-        }
+        private bool m_Value;
 
-        public ToggleButton(Observable<T> observableValue)
+        public bool value
         {
-            m_Value = observableValue;
-            AddToClassList("MetamaticUIKit_ToggleButton");
-        }
-
-        public void AddChoice(string choice, T value)
-        {
-            var choiceElement = new VisualElement();
-            choiceElement.AddToClassList("MetamaticUIKit_ToggleButtonChoice");
-            choiceElement.Add(new Label(choice));
-            
-            choiceElement.RegisterCallback<ClickEvent>(evt =>
+            get => m_Value;
+            set
             {
-                m_Value.Value = value;
-            });
-            
-            if (m_Value.Value.Equals(value))
-            {
-                choiceElement.AddToClassList("MetamaticUIKit_ToggleButtonChoiceSelected");
-            }
-            m_Choices.Add(value, choiceElement);
-            hierarchy.Add(choiceElement);
-        }
-
-        public override async UniTask OnAttachedAsync(Signal detachSignal)
-        {
-            using var watchSelectedValue = m_Value.Watch(InternalOnValueChanged);
-            await detachSignal;
-        }
-        
-        private void InternalOnValueChanged(T value)
-        {
-            foreach (var choice in m_Choices)
-            {
-                choice.Value.RemoveFromClassList("MetamaticUIKit_ToggleButtonChoiceSelected");
-            }
-
-            if (m_Choices.TryGetValue(value, out var activeChoice))
-            {
-                activeChoice.AddToClassList("MetamaticUIKit_ToggleButtonChoiceSelected");
+                if (m_Value == value) return;
+                m_Value = value;
+                if (m_Value)
+                {
+                    AddToClassList("Active");
+                }
+                else
+                {
+                    RemoveFromClassList("Active");
+                }
             }
         }
         
-        public DisposableAction AddValueChangedCallback(System.Action<T> callback)
+        public ToggleButton(): base()
         {
-            return m_Value.Watch(callback, true);
+            AddToClassList("MetamaticUIKit_ToggleButton");
         }
     }
 }

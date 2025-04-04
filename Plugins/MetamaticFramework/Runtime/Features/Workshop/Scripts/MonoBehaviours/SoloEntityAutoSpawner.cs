@@ -43,6 +43,10 @@ public class SoloEntityAutoSpawner : AsyncBehaviour, ISavable
         await ready();
     }
     
+    /// <summary>
+    /// Entity is hydrated. It guarantees that entity load virtual or saved data
+    /// </summary>
+    /// <param name="dehydrateSignal"></param>
     private async UniTaskVoid OnEntityHydrated(Signal dehydrateSignal)
     {
         /* First, check if entities with ids in m_SpawnedEntities are already spawned. */

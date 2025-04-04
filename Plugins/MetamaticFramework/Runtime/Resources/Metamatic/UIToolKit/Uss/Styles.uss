@@ -1,5 +1,6 @@
 :root {
     --MetamaticUIKit_TextColor: #f0f0f0;
+    --MetamaticUIKit_TextColorInverse: #1a1a1a;
     --MetamaticUIKit_BackgroundColor: #1e1e1e;
     --MetamaticUIKit_InputColor: #161616;
     --MetamaticUIKit_BorderColor: #282828;
@@ -265,4 +266,14 @@
     padding: 6px 0;
     color: var(--MetamaticUIKit_TextColor);
     overflow: hidden;
+}
+
+.MetamaticUIKit_ToggleButton {
+    padding: 3px 9px;
+}
+
+/* Toggle button */
+.MetamaticUIKit_ToggleButton.Active {
+    background-color: var(--MetamaticUIKit_IndicatorActiveColor);
+    color: var(--MetamaticUIKit_TextColorInverse);
 }

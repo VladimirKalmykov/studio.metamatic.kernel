@@ -78,5 +78,10 @@ namespace Metamatic
                 cancellationSignalSource.TryRaise();
             });
         }
+        
+        public bool HasFlag(TValue flag)
+        {
+            return Value.HasFlag(flag);
+        }
     }
 }
