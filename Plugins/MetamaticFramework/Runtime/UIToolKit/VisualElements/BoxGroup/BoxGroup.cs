@@ -17,7 +17,7 @@ namespace Metamatic.UIToolKit
         // ReSharper disable once ConvertToAutoProperty
         public override VisualElement contentContainer => m_Content;
         
-        public BoxGroup(string text = "Header")
+        public BoxGroup(string text = "Header", int innerPadding = 0)
         {
             styleSheets.Add(UIToolKitCore.styleSheet);
             AddToClassList("MetamaticUIKit_BoxGroup");
@@ -26,11 +26,19 @@ namespace Metamatic.UIToolKit
             header.AddToClassList("MetamaticUIKit_BoxGroupHeader");
             
             m_HeaderLabel = new Label(text);
+            
             header.Add(m_HeaderLabel);
             
             hierarchy.Add(header);
             
             m_Content = new VisualElement();
+            if (innerPadding > 0)
+            {
+                m_Content.style.paddingLeft = innerPadding;
+                m_Content.style.paddingRight = innerPadding;
+                m_Content.style.paddingTop = innerPadding;
+                m_Content.style.paddingBottom = innerPadding;
+            }
             m_Content.AddToClassList("MetamaticUIKit_BoxGroupContent");
             hierarchy.Add(m_Content);
         }

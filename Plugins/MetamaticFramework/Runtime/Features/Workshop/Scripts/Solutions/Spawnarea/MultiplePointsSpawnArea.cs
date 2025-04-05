@@ -9,6 +9,12 @@ namespace Metamatic.Framework.Workshop
     {
         [ShowInInspector]
         [SerializeField] private List<Spawnpoint> m_Spawnpoints = new();
+        
+        #if UNITY_EDITOR
+        [SerializeField] [HideInInspector] public bool editor_ShowGrid = false;
+        [SerializeField] [HideInInspector] public bool editor_SnapToGrid = false;
+        [SerializeField] [HideInInspector] public Grid2DSettings editor_GridSettings = default;
+        #endif
 
         public IReadOnlyList<Spawnpoint> GetSpawnpoints() => m_Spawnpoints;
 

@@ -4,6 +4,7 @@ using Metamatic.EditorTools;
 using Metamatic.UIToolKit;
 using Metamatic.UIToolKit.VisualElements;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Button = UnityEngine.UIElements.Button;
@@ -40,7 +41,15 @@ namespace Metamatic.Framework.Workshop
 
             var ugui = new IMGUIContainer(OnInspectorGUI);
             root.Add(ugui);
-            root.Add(CreateControlsElement());
+            
+            var container = new VisualElement();
+            container.AddToClassList(UIToolKitCore.Tailwind.Column);
+            container.style.marginTop = 12;
+            
+            container.Add(CreateControlsElement());
+            container.Add(CreateGridControlElement());
+            
+            root.Add(container);
 
             return root;
         }
@@ -52,17 +61,19 @@ namespace Metamatic.Framework.Workshop
                 style =
                 {
                     flexDirection = FlexDirection.Row,
-                    marginBottom = 5
+                    marginBottom = 6
                 }
             };
-
+            
+            // Toggle Edit Mode
             m_ToggleEditButton = new ToggleButton { text = "Edit Points" };
             m_ToggleEditButton.clicked += () =>
             {
                 m_ObservableMode.value = m_ObservableMode.HasFlag(Mode.Edit) ? Mode.None : Mode.Edit;
                 SceneView.RepaintAll();
             };
-
+            
+            // Toggle Add Mode
             m_AddPointButton = new ToggleButton { text = "Add Point" };
             m_AddPointButton.clicked += () =>
             {
@@ -70,6 +81,7 @@ namespace Metamatic.Framework.Workshop
                 SceneView.RepaintAll();
             };
 
+            // Delete Point Button
             m_DeletePointButton = new Button { text = "Delete Selected", style = { display = DisplayStyle.None } };
             m_DeletePointButton.clicked += DeleteSelectedPoint;
 
@@ -83,6 +95,63 @@ namespace Metamatic.Framework.Workshop
             }
 
             return controls;
+        }
+        
+        private VisualElement CreateGridControlElement()
+        {
+            var gridControls = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Column,
+                    marginBottom = 6
+                }
+            };
+
+            // Toggle grid
+            var gridSettings = new GridSettingsBoxGroup();
+            gridSettings.OnValueChanged += settings =>
+            {
+                spawnArea.editor_GridSettings = settings;
+                EditorUtility.SetDirty(spawnArea);
+                SceneView.RepaintAll();
+            };
+            var gridToggle = new Toggle("Show grid");
+            gridToggle.value = spawnArea.editor_ShowGrid;
+            gridToggle.RegisterValueChangedCallback(evt =>
+            {
+                // Set the grid settings default values if it has type default values
+                var settings = spawnArea.editor_GridSettings;
+                if (settings.gridSize.x == 0 && settings.gridSize.y == 0)
+                {
+                    settings.gridSize = new Vector2(3, 3);
+                    settings.appearance = Grid2DSettings.AppearanceType.Dots;
+                }
+                if (settings.color == default)
+                {
+                    settings.color = new Color(0f, 0.37f, 1f, 0.64f);
+                }
+                if (settings.cellSize.x == 0 && settings.cellSize.y == 0)
+                {
+                    settings.cellSize = new Vector2(1f, 1f);
+                }
+                
+                spawnArea.editor_GridSettings = settings;
+                spawnArea.editor_ShowGrid = evt.newValue;
+                gridSettings.value = spawnArea.editor_GridSettings;
+                gridSettings.style.display = evt.newValue ? DisplayStyle.Flex : DisplayStyle.None;
+                SceneView.RepaintAll();
+            });
+            gridControls.Add(gridToggle);
+            
+            // Grid settings
+            
+            gridSettings.style.display = spawnArea.editor_ShowGrid ? DisplayStyle.Flex : DisplayStyle.None;
+            gridSettings.style.marginLeft = 3;
+            gridSettings.value = spawnArea.editor_GridSettings;
+            gridControls.Add(gridSettings);
+            
+            return gridControls;
         }
 
         protected override async UniTask OnEnableAsync(Signal cancellationSignal)
@@ -105,6 +174,15 @@ namespace Metamatic.Framework.Workshop
         {
             if (spawnArea == null) return;
 
+            if (spawnArea.editor_ShowGrid)
+            {
+                var gridSettings = spawnArea.editor_GridSettings;
+                EditorSceneGuiHelpers.DrawGrid2D(
+                    spawnArea.transform.position, 
+                    gridSettings
+                );
+            }
+            
             Event e = Event.current;
             if (m_ObservableMode.HasFlag(Mode.Add) && e.type == EventType.MouseDown && e.button == 0 && !e.alt)
             {

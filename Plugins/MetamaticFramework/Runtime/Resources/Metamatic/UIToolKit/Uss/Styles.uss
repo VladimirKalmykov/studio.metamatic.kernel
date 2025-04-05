@@ -1,11 +1,13 @@
 :root {
     --MetamaticUIKit_TextColor: #f0f0f0;
+    --MetamaticUIKit_LabelColor: #8F8F8F;
     --MetamaticUIKit_TextColorInverse: #1a1a1a;
     --MetamaticUIKit_BackgroundColor: #1e1e1e;
     --MetamaticUIKit_InputColor: #161616;
     --MetamaticUIKit_BorderColor: #282828;
     --MetamaticUIKit_BorderLightColor: #3a3a3a;
     --MetamaticUIKit_PanelBackgroundColor: #222222;
+    --MetamaticUIKit_InspectorPanelBackgroundColor: #3C3C3C;
     --MetamaticUIKit_TransclucentPanelBackgroundColor: rgba(34, 34, 34, 0.8);
     --MetamaticUIKit_PanelInactiveBackgroundColor: #1a1a1a;
     --MetamaticUIKit_IndicatorUnactiveColor: #4d4d4d;
@@ -109,17 +111,18 @@
 }
 
 .MetamaticUIKit_BoxGroup .MetamaticUIKit_BoxGroupHeader Label {
-    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+    background-color: var(--MetamaticUIKit_InspectorPanelBackgroundColor);
+    color: var(--MetamaticUIKit_LabelColor);
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
-    padding: 6px 6px;
+    padding: 2px 8px 0 8px;
     margin: 0;
 }
 
 .MetamaticUIKit_BoxGroup .MetamaticUIKit_BoxGroupContent {
     flex-direction: column;
     padding: 0;
-    background-color: var(--MetamaticUIKit_PanelBackgroundColor);
+    background-color: var(--MetamaticUIKit_InspectorPanelBackgroundColor);
     border-top-right-radius: 3px;
     border-bottom-left-radius: 3px;
     border-bottom-right-radius: 3px;
