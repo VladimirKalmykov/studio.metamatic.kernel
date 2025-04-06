@@ -61,7 +61,7 @@ namespace Metamatic.Framework
         private static AsyncDisposableSummon<SceneInstance> _CurrentGameSceneSummon =
             AsyncDisposableSummon<SceneInstance>.Empty;
 
-        private static SignalSource _StopGameSignal;
+        private static SignalSource _StopGameSignalSource;
         private static SceneInstance _CurrentBaseSceneInstance;
         private static SceneInstance _CurrentGameSceneInstance;
         public static event Action<Exception> OnFatalError;
@@ -175,7 +175,7 @@ namespace Metamatic.Framework
         /// <param name="seamless"></param>
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
-        public static async UniTask<bool> LaunchGame(string placeAddress, bool seamless, Signal cancellationSignal)
+        public static async UniTask<bool> LaunchGame(string placeAddress, bool seamless)
         {
             if (isGameRunning && !seamless)
             {
@@ -184,17 +184,19 @@ namespace Metamatic.Framework
             m_ObservableAppStage.uniqValue = GameAppStage.Loading;
             try
             {
+                _StopGameSignalSource.TryRaise();
+                _StopGameSignalSource = SignalSource.Create();
                 OnGameIsLoading?.Invoke();
-                var initializationResult = await InternalInitializeGame(placeAddress, seamless, cancellationSignal);
+                var initializationResult = await InternalInitializeGame(placeAddress, seamless, _StopGameSignalSource.Signal);
                 if (!initializationResult)
                 {
                     return false;
                 }
                 isGameLoaded = true;
-                _StopGameSignal.TryRaise();
-                _StopGameSignal = SignalSource.Create();
+                
+                
                 OnGameLoaded?.Invoke();
-                await Service.InternalPerformGameLoadedStageAsync(cancellationSignal);
+                await Service.InternalPerformPlaceLoadedStageAsync(placeAddress, _StopGameSignalSource.Signal);
                 m_ObservableAppStage.uniqValue = GameAppStage.Running;
             } catch (Exception e)
             {
@@ -214,8 +216,7 @@ namespace Metamatic.Framework
         /// <param name="seamless"></param>
         /// <param name="signal"></param>
         /// <returns></returns>
-        public static async UniTask<bool> LoadGame(string addressOrGuid, object worldData, bool seamless = false,
-            Signal signal = default)
+        public static async UniTask<bool> LoadGame(string addressOrGuid, object worldData, bool seamless = false)
         {
             try
             {
@@ -223,19 +224,20 @@ namespace Metamatic.Framework
                 {
                     return false;
                 }
+                _StopGameSignalSource.TryRaise();
+                _StopGameSignalSource = SignalSource.Create();
                 OnGameIsLoading?.Invoke();
                 m_ObservableAppStage.uniqValue = GameAppStage.Loading;
-                var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, signal);
+                var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, _StopGameSignalSource.Signal);
                 if (!initializationResult)
                 {
                     return false;
                 }
                 await LoadWorld(worldData);
                 isGameLoaded = true;
-                _StopGameSignal.TryRaise();
-                _StopGameSignal = SignalSource.Create();
+                
                 OnGameLoaded?.Invoke();
-                await Service.InternalPerformGameLoadedStageAsync(signal);
+                await Service.InternalPerformPlaceLoadedStageAsync(addressOrGuid, _StopGameSignalSource.Signal);
                 m_ObservableAppStage.uniqValue = GameAppStage.Running;
                 return true;
             } catch (Exception e)
@@ -321,7 +323,7 @@ namespace Metamatic.Framework
                 }
                 m_ObservableAppStage.uniqValue = GameAppStage.Unloading;
                 m_ActivePlaceAddress.Value = null;
-                _StopGameSignal.TryRaise();
+                _StopGameSignalSource.TryRaise();
                 isGameLoaded = false;
                 OnBeforeGameStop?.Invoke();
                 /* Emit stop game event to all services */

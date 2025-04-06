@@ -75,5 +75,23 @@ namespace Metamatic.Framework.Workshop
             spawnpoint = m_Spawnpoints[Random.Range(0, m_Spawnpoints.Count)];
             return true;
         }
+
+        public override IEnumerator<Spawnpoint> GetEnumerator()
+        {
+            foreach (var spawnpoint in m_Spawnpoints)
+            {
+                yield return spawnpoint;
+            }
+        }
+
+        public override bool TryGetSpawnPoint(string spawnpointId, out Spawnpoint spawnpoint)
+        {
+            spawnpoint = m_Spawnpoints.FirstOrDefault(sp => sp.id == spawnpointId);
+            if (spawnpoint != null && spawnpoint.id != null)
+            {
+                return true;
+            }
+            return false;
+        }
     }
 }

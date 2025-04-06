@@ -10,7 +10,6 @@ using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
-    [RequireService(typeof(SpawnService))]
     public abstract class SpawnArea: MonoBehaviour
     {
         [Tooltip("Unique identifier of the spawn area")]
@@ -20,6 +19,8 @@ namespace Metamatic.Framework.Workshop
         #region Abstract Methods
 
         public abstract bool TryGetSpawnpoint(out Spawnpoint spawnpoint);
+        public abstract IEnumerator<Spawnpoint> GetEnumerator();
+        public abstract bool TryGetSpawnPoint(string spawnpointId, out Spawnpoint spawnpoint);
         #endregion
         
 #if UNITY_EDITOR

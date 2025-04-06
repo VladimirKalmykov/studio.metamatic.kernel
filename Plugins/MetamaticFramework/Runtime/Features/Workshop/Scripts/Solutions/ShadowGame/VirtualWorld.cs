@@ -16,7 +16,6 @@ namespace Metamatic.Framework
         public class SaveServiceData
         {
             public Type serviceType;
-            public Type dataType;
             public object data;
         }
 
@@ -58,6 +57,9 @@ namespace Metamatic.Framework
         public readonly ObservableList<VirtualEntity> ObservableEntitiesList = new();
         #endif
         private SignalSource m_DisposeSignalSource;
+        
+        // Get ability to iterate over all servies
+        public IEnumerable<VirtualService> services => m_Services.Values;
 
         public VirtualWorld()
         {
@@ -103,12 +105,16 @@ namespace Metamatic.Framework
             if (!m_EntitiesRegistry.TryGetValue(entity.id, out var virtualEntity))
             {
                 // Create virtual entity
-                virtualEntity = CreateEntity(GameSystem.activePlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true);
-                await virtualEntity.Load(entity.Save());
+                virtualEntity = CreateEntity(GameSystem.activePlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true, alwaysPlayVirtualLogic: entity.alwaysPlayVirtualLogic);
+                if (entity.alwaysPlayVirtualLogic)
+                {
+                    await virtualEntity.Load(entity.Save());
+                }
+                entity.InternalMarkMaterialized();
             }
             else
             {
-                await entity.Load(virtualEntity.Save());
+                await entity.Materialize(virtualEntity.Save());
             }
             entity.InternalBindToVirtualEntity(virtualEntity);
             virtualEntity.InternalBindToMaterializedEntity(entity);
@@ -141,7 +147,12 @@ namespace Metamatic.Framework
             }
         }
         
-        
+        /// <summary>
+        /// Listener will be triggered when entity with id is created or destroyed.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="listener"></param>
+        /// <returns></returns>
         public DisposableAction WatchEntityExists(string id, Action<VirtualEntity, bool> listener)
         {
             if (!m_EntityListeners.TryGetValue(id, out var listeners))
@@ -154,6 +165,10 @@ namespace Metamatic.Framework
             if (m_EntitiesRegistry.TryGetValue(id, out var virtualEntity))
             {
                 listener?.Invoke(virtualEntity, true);
+            }
+            else
+            {
+                listener?.Invoke(null, false);
             }
             
             return DisposableAction.Create(() =>
@@ -201,6 +216,41 @@ namespace Metamatic.Framework
                 css.TryRaise();
                 css = SignalSource.Create();
                 listener?.Invoke(entity, exists, css.Signal);
+            }
+        }
+        
+        public UniTask WaitEntityNotExists(string id, Signal cancellationSignal)
+        {
+            if (!m_EntitiesRegistry.ContainsKey(id))
+            {  
+                return UniTask.CompletedTask;
+            }
+            var tcs = SafeUniTaskCompletionSource.Create();
+            
+            if (!m_EntityListeners.TryGetValue(id, out var listeners))
+            {
+                listeners = new MicroEvent<VirtualEntity, bool>();
+                m_EntityListeners.Add(id, listeners);
+            }
+
+            Action onDispose = null;
+            
+            onDispose += listeners.Subscribe(Handler);
+            onDispose += cancellationSignal.Register(() =>
+            {
+                onDispose?.Invoke();
+                tcs.TrySetCanceled();
+            });
+            
+            return tcs.Task;
+            
+            void Handler(VirtualEntity entity, bool exists)
+            {
+                if (!exists)
+                {
+                    tcs.TrySetResult();
+                    onDispose?.Invoke();
+                }
             }
         }
 
@@ -268,7 +318,8 @@ namespace Metamatic.Framework
             string blueprintAddress,
             string checkpointId = null,
             Checkpoint checkpoint = null,
-            bool dontEnable = false
+            bool dontEnable = false,
+            bool alwaysPlayVirtualLogic = false
         )
         {
             // Resolve place
@@ -278,7 +329,7 @@ namespace Metamatic.Framework
                 m_Places.Add(placeAddress, place);
             }
 
-            return place.CreateEntity(id, position, blueprintAddress, checkpointId: checkpointId, checkpoint: checkpoint, dontEnable: dontEnable);
+            return place.CreateEntity(id, position, blueprintAddress, checkpointId: checkpointId, checkpoint: checkpoint, dontEnable: dontEnable, alwaysPlayVirtualLogic: alwaysPlayVirtualLogic);
         }
         
         public VirtualEntity GetOrCreateVirtualEntity(string placeAddress, string id, Vector3 position, string blueprintAddress)
@@ -323,7 +374,6 @@ namespace Metamatic.Framework
                         servicesData.Add(new SaveServiceData
                         {
                             serviceType = service.serviceType, // TODO: Проблема обратного преобразования, если сервис переименуется
-                            dataType = data.GetType(), // TODO: Рудимент, тип данных сохраняется через конвертер (но нужно проверить)
                             data = data
                         });
                     }
@@ -379,7 +429,7 @@ namespace Metamatic.Framework
                     else
                     {
                         Console.Error("Launcher", $"Service not found: {serviceData.serviceType}");
-                        var virtualService = GetOrCreateVirtualService(serviceData.serviceType).Load(serviceData.data);
+                        GetOrCreateVirtualService(serviceData.serviceType).Load(serviceData.data);
                     }
                 }
                 await UniTask.WhenAll(tasks);

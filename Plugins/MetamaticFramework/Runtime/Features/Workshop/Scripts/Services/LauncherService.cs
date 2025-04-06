@@ -1,17 +1,17 @@
 using System;
 using Metamatic.Systems;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
+using Cysharp.Threading.Tasks;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
-    using System.Linq;
-    using Cysharp.Threading.Tasks;
-
     /// <summary>
     /// Launcher is responsible for saving, loading the game, and start game from the beginning.
     /// </summary>
@@ -22,7 +22,7 @@ namespace Metamatic.Framework.Workshop
         public struct SaveData
         {
             public string dateTime;
-            public string chapter;
+            [FormerlySerializedAs("chapter")] public string place;
             public object world;
         }
         
@@ -82,7 +82,7 @@ namespace Metamatic.Framework.Workshop
                 m_StartSceneSummon.DisposeAsync().Forget();
             }
             
-            /* Load load game scene */
+            /* Load game scene */
             m_LoadGameSceneSummon = ResourcesSystem.LoadScene(loadGameScene, LoadSceneMode.Additive, activateOnLoad: false);
 
             using var watchGameAppStage = GameSystem.WatchGameAppStageAsync(OnGameAppStageChange);
@@ -135,7 +135,7 @@ namespace Metamatic.Framework.Workshop
             if (String.IsNullOrEmpty(forceLoadPlaceAddress)) return;
             
             await UniTask.Delay(1000);
-            LaunchGame(forceLoadPlaceAddress, false, default).Forget();
+            LaunchGame(forceLoadPlaceAddress, false).Forget();
             #endif
         }
         #endif
@@ -150,7 +150,7 @@ namespace Metamatic.Framework.Workshop
                 var saveData = new SaveData()
                 {
                     dateTime = DateTime.Now.ToString(),
-                    chapter = m_CurrentChapterAddress,
+                    place = m_CurrentChapterAddress,
                     world = worldData
                 };
                 Console.Debug("Launcher", $"Saving game data: {saveData}");
@@ -163,11 +163,6 @@ namespace Metamatic.Framework.Workshop
 
         public async UniTask<bool> Load(string saveAddress = "latest", bool seamless = false, Signal signal = default)
         {
-            if (!seamless)
-            {
-                
-            }
-
             try
             {
                 using var pending = PendingSystem.CreateCriticalPending("Load game");
@@ -179,7 +174,7 @@ namespace Metamatic.Framework.Workshop
 
                 if (stopResult)
                 {
-                    await GameSystem.LoadGame(saveData.chapter, saveData.world, seamless, signal);
+                    await GameSystem.LoadGame(saveData.place, saveData.world, seamless);
                     return true;
                 }
                 else
@@ -198,9 +193,9 @@ namespace Metamatic.Framework.Workshop
             }
         }
 
-        public UniTask LaunchGame(AssetReferenceT<Place> chapterReferenceT, bool seamless, Signal cancellationSignal) // Place place
+        public UniTask LaunchGame(AssetReferenceT<Place> chapterReferenceT, bool seamless)
         {
-            return LaunchGame(chapterReferenceT.AssetGUID, seamless, cancellationSignal);
+            return LaunchGame(chapterReferenceT.AssetGUID, seamless);
         }
 
         /// <summary>
@@ -208,9 +203,9 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public UniTask LaunchGame(string addressOrGuid, bool seamless, Signal cancellationSignal) // Place place
+        public UniTask LaunchGame(string addressOrGuid, bool seamless)
         {
-            return GameSystem.LaunchGame(addressOrGuid, seamless, cancellationSignal);
+            return GameSystem.LaunchGame(addressOrGuid, seamless);
         }
         
         public UniTask PlaySpecialScene(string sceneAddress, bool addictive, Signal cancellationSignal = default)

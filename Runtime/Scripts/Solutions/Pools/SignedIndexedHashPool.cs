@@ -1,3 +1,5 @@
+using Cysharp.Threading.Tasks;
+
 namespace Metamatic
 {
     using System;
@@ -29,8 +31,8 @@ namespace Metamatic
         // Текущее фактическое число позиций (верхняя граница).
         private int m_Count;
         
-        public event Action<T> OnAdd;
-        public event Action<T> OnRemove;
+        public event Action<int, T> OnAdd;
+        public event Action<int, T> OnRemove;
 
         /// <summary>
         /// Создаёт пул с начальным размером массива.
@@ -68,7 +70,7 @@ namespace Metamatic
                 m_ItemsSet.Add(item);
                 var freeIndexToken = new Token96Bit(freeIndex, m_LastSignature);
                 
-                OnAdd?.Invoke(item);
+                OnAdd?.Invoke(freeIndex, item);
                 return freeIndexToken;
             }
 
@@ -82,7 +84,7 @@ namespace Metamatic
             m_ItemsSet.Add(item);
             m_Count++;
             var token = new Token96Bit(newIndex, m_LastSignature);
-            OnAdd?.Invoke(item);
+            OnAdd?.Invoke(newIndex, item);
             return token;
         }
 
@@ -111,7 +113,7 @@ namespace Metamatic
                 m_FreeIndices.Push(index);
                 m_UsedIndexes.Remove(index);
                 m_ItemsSet.Remove(value);
-                OnRemove?.Invoke(value);
+                OnRemove?.Invoke(index, value);
                 return true;
             }
 
@@ -145,7 +147,7 @@ namespace Metamatic
             m_UsedIndexes.Remove(index);
             m_ItemsSet.Remove(item);
             m_FreeIndices.Push(index);
-            OnRemove?.Invoke(item);
+            OnRemove?.Invoke(index, item);
             return true;
         }
         
@@ -227,6 +229,54 @@ namespace Metamatic
         public bool Contains(T instance)
         {
             return m_ItemsSet.Contains(instance);
+        }
+
+        /// <summary>
+        /// Watch every item async.
+        /// </summary>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public DisposableAction WatchEveryAsync(Func<T, Signal, UniTaskVoid> action)
+        {
+            var listeners = ParamLessPool<Dictionary<int, SignalSource>>.GetShared();
+            foreach (var index in m_UsedIndexes)
+            {
+                var css = SignalSource.Create();
+                action(m_Items[index].Value, css.Signal).Forget();
+                listeners[index] = css;
+            }
+
+            OnRemove += RemoveHandler;
+            OnAdd += AddHandler;
+
+            return DisposableAction.Create(() =>
+            {
+                OnRemove -= RemoveHandler;
+                OnAdd -= AddHandler;
+                
+                foreach (var css in listeners)
+                {
+                    css.Value.TryRaise();
+                }
+                
+                listeners.Clear();
+                ParamLessPool<Dictionary<int, SignalSource>>.ReturnShared(listeners);
+            });
+            
+            void AddHandler(int index, T value)
+            {
+                var css = SignalSource.Create();
+                action(value, css.Signal).Forget();
+                listeners[index] = css;
+            }
+            
+            void RemoveHandler(int index, T value)
+            {
+                if (listeners.TryGetValue(index, out var css))
+                {
+                    css.TryRaise();
+                }
+            }
         }
 
         /// <summary>

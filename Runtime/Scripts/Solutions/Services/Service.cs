@@ -16,6 +16,7 @@ namespace Metamatic
         private static readonly Dictionary<Type, Service> EnabledServices = new ();
         private static readonly Dictionary<Type, List<Action<Service, bool>>> ServiceObservers = new ();
         
+        // ReSharper disable once InconsistentNaming
         public static IReadOnlyDictionary<Type, Service> Services => EnabledServices;
         
         private static event Action<Type, Service> OnServiceRegistered; 
@@ -27,10 +28,12 @@ namespace Metamatic
         public static async UniTask<T> Resolve<T>(Signal signal = default, float timeout = 10f)
             where T : Service
         {
+            #if DEBUG
             using var stagnationCheck = StagnationCatcher.Create(50f, () =>
             {
                 Console.Warning("Stagnation", "Service", $"Service {typeof(T)} resolving is stuck");
             });
+            #endif
             var service = await ResolveInternal<T>(signal, timeout);
             await service.Demand(signal);
             return service;
@@ -73,27 +76,27 @@ namespace Metamatic
             return tcs.Task;
         }
 
-        private static SignalSource m_StopGameSignal = default;
+        private static SignalSource _StopGameSignal;
         
         /// <summary>
         /// This method is called when game is completely load its data. At this stage all services can spawn their entities.
         /// </summary>
-        public static async UniTask InternalPerformGameLoadedStageAsync(Signal stopOrCancelSignalSource)
+        public static async UniTask InternalPerformPlaceLoadedStageAsync(string placeAddress, Signal stopOrCancelSignalSource)
         {
             var tasksList = ParamLessPool<List<UniTask>>.GetShared();
             try
             {
-                m_StopGameSignal = SignalSource.Create();
-                stopOrCancelSignalSource.Register(m_StopGameSignal.TryRaise);
+                _StopGameSignal = SignalSource.Create();
+                stopOrCancelSignalSource.Register(_StopGameSignal.TryRaise);
 
                 foreach (var service in AwakedServices)
                 {
                     try
                     {
                         #if DEBUG
-                        tasksList.Add(CarryOnServiceLoadStageReady(service.Value, m_StopGameSignal.Signal));
+                        tasksList.Add(CarryOnServiceLoadStageReady(service.Value, placeAddress, _StopGameSignal.Signal));
                         #else
-                        tasksList.Add(new AsyncWork(service.Value.OnGameLoaded, m_StopGameSignal.Signal).Task);
+                        tasksList.Add(new AsyncWorkWithParam<string>(service.Value.OnGameLoaded, placeAddress, m_StopGameSignal.Signal).Task);
                         #endif
                     }
                     catch (Exception e)
@@ -118,12 +121,12 @@ namespace Metamatic
             }
         }
 
-        private static async UniTask CarryOnServiceLoadStageReady(Service service, Signal cancellationSignal)
+        private static async UniTask CarryOnServiceLoadStageReady(Service service, string placeAddress, Signal cancellationSignal)
         {
             using var serviceLoadPending = PendingSystem.CreateCriticalPending($"Service {service.name} load");
             try
             {
-                var asyncWork = new AsyncWork(service.OnGameLoaded, m_StopGameSignal.Signal);
+                var asyncWork = new AsyncWorkWithParam<string>(service.OnPlaceLoaded, placeAddress, cancellationSignal);
                 await asyncWork;
             } catch (OperationCanceledException)
             {
@@ -137,7 +140,7 @@ namespace Metamatic
 
         public static void EmitStopGameEvent()
         {
-            m_StopGameSignal.TryRaise();
+            _StopGameSignal.TryRaise();
             foreach (var service in AwakedServices)
             {
                 service.Value.OnGameStop();
@@ -387,7 +390,7 @@ namespace Metamatic
             #endif
         }
 
-        protected virtual UniTask OnGameLoaded(Action ready, Signal stopGameSignal)
+        protected virtual UniTask OnPlaceLoaded(Action ready, string placeAddress, Signal stopGameSignal)
         {
             return UniTask.CompletedTask;
         }

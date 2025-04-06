@@ -16,7 +16,7 @@ namespace Metamatic.Framework.Workshop
     /// <summary>
     /// Base class for all game entities
     /// </summary>
-    public class Entity : AsyncBehaviour, ISavable, IResettable
+    public sealed class Entity : AsyncBehaviour, ISavable, IResettable
     {
         [Version("1.0.0")]
         public struct ComponentSaveData
@@ -45,6 +45,7 @@ namespace Metamatic.Framework.Workshop
             // public Dictionary<Type, EntityData.SaveData> dataset; // TODO: Implements dataset instead of dataComponents?
             public EntityData.SaveData[] dataComponents;
             public ComponentSaveData[] components;
+            public EntityLogic.SaveData[] logics;
         }
         
         #region Static API
@@ -276,7 +277,7 @@ namespace Metamatic.Framework.Workshop
                         summon.Dispose();
                     };
                     // Load data
-                    await entity.Load(saveData);
+                    await entity.Materialize(saveData);
                 }
                 catch (OperationCanceledException)
                 {
@@ -299,6 +300,9 @@ namespace Metamatic.Framework.Workshop
 
         [Tooltip("Unique identifier of the entity")]
         [ReadOnly] public string id;
+        
+        [Tooltip("Always play virtual logic even if entity is materialized (Experimental)")]
+        public bool alwaysPlayVirtualLogic = false;
 
         #endregion
         
@@ -314,6 +318,15 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         public bool isKicked { get; private set; }
         public VirtualEntity virtualEntity { get; private set; }
+        /// <summary>
+        /// The event should be raised when entity data is loaded
+        /// </summary>
+        public event Action OnMaterialized;
+        /// <summary>
+        /// The event should be raised before entity saves its data when it is going to be dematerialized 
+        /// </summary>
+        public event Action OnBeforeDematerialize;
+        public bool loaded { get; private set; }
 
         /// <summary>
         /// Entity is marked as virtualized. It means that it is not in the world and can be returned back to the world.
@@ -339,6 +352,43 @@ namespace Metamatic.Framework.Workshop
             {
                 dismissedTaskCs.TrySetCanceled();
             });
+        }
+
+        /// <summary>
+        /// Watch entity materialization lifecycle. Signal will be raised when entity is dematerialized.
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public DisposableAction WatchMaterializedAsync(Func<Signal, UniTaskVoid> handler)
+        {
+            SignalSource css = default;
+            if (loaded)
+            {
+                css = SignalSource.Create();
+                handler(css.Signal).Forget();
+            }
+
+            OnMaterialized += MaterializedHandler;
+            OnBeforeDematerialize += DematerializedHandler;
+            
+            return new DisposableAction(() =>
+            {
+                OnMaterialized -= MaterializedHandler;
+                OnBeforeDematerialize -= DematerializedHandler;
+                css.TryRaise();
+            });
+
+            void MaterializedHandler()
+            {
+                css.Dispose();
+                css = SignalSource.Create();
+                handler(css.Signal).Forget();
+            }
+            
+            void DematerializedHandler()
+            {
+                css.TryRaise();
+            }
         }
         
         public DisposableAction SubscribeDismissOnce(Action<DismissReason> handler)
@@ -458,6 +508,9 @@ namespace Metamatic.Framework.Workshop
 
         public void Dematerialize(DismissReason reason)
         {
+            Console.Debug("Entity", "Dematerialize", $"Dematerializing entity {id}");
+            OnBeforeDematerialize?.Invoke();
+            loaded = false;
             switch (reason)
             {
                 case DismissReason.Release:
@@ -645,13 +698,11 @@ namespace Metamatic.Framework.Workshop
             virtualEntity = null;
             
             OnEntityResetEvent?.Invoke();
-            OnEntityReset();
         }
         
         #endregion
         
         #region Private API
-        
         private Token96Bit m_RegistrationToken;
         private void GenerateUniqueId()
         {
@@ -711,12 +762,6 @@ namespace Metamatic.Framework.Workshop
                 Debug.Log("Это префаб-ассет (не инстанцированный объект в сцене)");
             }
 #endif
-        }
-
-        // TODO: Update entity according to its LOD level
-        protected virtual void Update()
-        {
-            OnEntityUpdateEvent?.Invoke();
         }
 
         private void FixedUpdate()
@@ -796,7 +841,14 @@ namespace Metamatic.Framework.Workshop
         {
             base.OnDestroy();
             // TODO: Here need to add some protected from destroying the entity without its virtualization. Check to kill. Reason of destruction.
-            
+
+            if (loaded)
+            {
+                // Force call dematerialize if it's not dematerialized yet to stop every subscription
+                Console.Debug("Entity", "OnDestroy", $"Force dematerializing entity {id}");
+                loaded = false;
+                OnBeforeDematerialize?.Invoke();
+            }
             Dismiss(DismissReason.Destroy);
             m_ObservableGameArea.Dispose();
         }
@@ -806,17 +858,7 @@ namespace Metamatic.Framework.Workshop
         {
             m_RegistrationToken = TryRegisterEntity(this);
             using var watchGameArea = m_ObservableGameArea.WatchAsync(OnGameAreaChange);
-            await OnEntityRun(ready, signal);
-        }
-
-        protected virtual UniTask OnEntityRun(Ready ready, Signal signal)
-        {
-            return ready();
-        }
-
-        protected virtual void OnEntityReset()
-        {
-            
+            await ready();
         }
 
         public object Save()
@@ -827,9 +869,14 @@ namespace Metamatic.Framework.Workshop
             // Get all game object's components which implements ISavable interface
             var components = gameObject.GetComponents<MonoBehaviour>();
             var savableComponents = new List<ISavable>();
+            var logics = new List<EntityLogic.SaveData>();
             foreach (var component in components)
             {
-                if (component is ISavable savable and not EntityData and not Entity)
+                if (component is EntityLogic entityLogic)
+                {
+                    var logicSaveData = entityLogic.InternalSaveEntityLogic();
+                    logics.Add(logicSaveData);
+                } else if (component is ISavable savable and not EntityData and not Entity)
                 {
                     savableComponents.Add(savable);
                 }
@@ -850,7 +897,8 @@ namespace Metamatic.Framework.Workshop
                 gameAreaId = gameAreaId,
                 checkpointId = null,
                 dataComponents = dataComponents,
-                components = otherComponents
+                components = otherComponents,
+                logics = logics.ToArray()
             };
             var j = 0;
             foreach (var component in DataComponents)
@@ -873,11 +921,44 @@ namespace Metamatic.Framework.Workshop
             return saveData;
         }
 
-        public UniTask Load(object data)
+        /// <summary>
+        /// Save data within materializing
+        /// </summary>
+        /// <param name="data"></param>
+        public async UniTask Materialize(object data)
+        {
+#if DEBUG
+            if (loaded)
+            {
+                Console.Error("Entity", "Cannot materialize entity", $"Entity {id} is already materialized");
+            }
+#endif
+            await Load(data);
+            OnMaterialized?.Invoke();
+            loaded = true;
+        }
+
+        /// <summary>
+        /// This method is called when entity (probably static) has no virtual entity so it should be considered as materialized because there is no virtual data for it.
+        /// Ensure that you call this method only after game place is loaded to be sure that entity is not virtualized for real.
+        /// </summary>
+        public void InternalMarkMaterialized()
+        {
+            #if DEBUG
+            if (loaded)
+            {
+                Console.Error("Entity", "Cannot mark entity as materialized", $"Entity {id} is already materialized");
+            }
+            #endif
+            OnMaterialized?.Invoke();
+            loaded = true;
+        }
+
+        public async UniTask Load(object data)
         {
             if (data == null)
             {
-                return UniTask.CompletedTask;
+                return;
             }
             var entityData = (SaveData)data;
             var thisGameObject = gameObject;
@@ -897,23 +978,41 @@ namespace Metamatic.Framework.Workshop
             }
             thisTransform.position = entityData.position;
             thisTransform.rotation = entityData.rotation;
-            
-            foreach (var componentSaveData in entityData.dataComponents)
-            {
-                var component = thisGameObject.GetOrAddComponent<EntityData>(componentSaveData.ComponentType);
-                component.Load(componentSaveData);
-            }
 
-            foreach (var componentData in entityData.components)
+            var loadingTasks = ParamLessPool<List<UniTask>>.GetShared();
+            try
             {
-                var component = thisGameObject.GetOrAddComponent<MonoBehaviour>(componentData.componentType);
-                if (component is ISavable savable)
+                foreach (var componentSaveData in entityData.dataComponents)
                 {
-                    savable.Load(componentData.data);
+                    var component = thisGameObject.GetOrAddComponent<EntityData>(componentSaveData.ComponentType);
+                    loadingTasks.Add(component.Load(componentSaveData));
                 }
-            }
 
-            return UniTask.CompletedTask;
+                foreach (var componentData in entityData.components)
+                {
+                    var component = thisGameObject.GetOrAddComponent<MonoBehaviour>(componentData.componentType);
+                    if (component is ISavable savable)
+                    {
+                        loadingTasks.Add(savable.Load(componentData.data));
+                    }
+                }
+            
+                foreach (var logicData in entityData.logics)
+                {
+                    var component = thisGameObject.GetOrAddComponent<EntityLogic>(logicData.componentType);
+                    loadingTasks.Add(component.InternalLoadEntityLogic(logicData));
+                }
+                await UniTask.WhenAll(loadingTasks);
+            }
+            catch (Exception e)
+            {
+                Console.Debug("Entity", "Load", $"Error while loading entity {id}: {e}");
+            }
+            finally
+            {
+                loadingTasks.Clear();
+                ParamLessPool<List<UniTask>>.ReturnShared(loadingTasks);
+            }
         }
 
         public void InternalBindToVirtualEntity(VirtualEntity virtualEntity)

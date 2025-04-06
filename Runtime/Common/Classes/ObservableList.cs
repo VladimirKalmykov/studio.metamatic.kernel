@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
@@ -32,29 +32,30 @@ namespace Metamatic
         
         public DisposableAction WatchEach(Action<T, int> handler, Func<T, int, bool> filter = null)
         {
-            void ForgetHandler(T item, int index, Signal signal)
-            {
-                if (filter != null && !filter(item, index))
-                    return;
-                handler(item, index);
-            }
             for (var i = 0; i < m_List.Count; i++)
             {
                 var item = m_List[i];
                 if (filter != null && !filter(item, i))
                     continue;
-                ForgetHandler(item, i, m_CancellationTokens[item].Signal);
+                AddHandler(item, i, m_CancellationTokens[item].Signal);
             }
-            OnItemAdded += ForgetHandler;
+            OnItemAdded += AddHandler;
             return new DisposableAction(() =>
             {
-                OnItemAdded -= ForgetHandler;
+                OnItemAdded -= AddHandler;
             });
+
+            void AddHandler(T item, int index, Signal signal)
+            {
+                if (filter != null && !filter(item, index))
+                    return;
+                handler(item, index);
+            }
         }
         
         public DisposableAction WatchEachLifecycle(Func<T, int, Signal, UniTaskVoid> handler, Func<T, int, bool> filter = null)
         {
-            var cssList = new List<SignalSource>();
+            var cssList = ParamLessPool<List<SignalSource>>.GetShared();
             
             /*
              * First, iterate over existing items and call the handler for each item.
@@ -70,6 +71,7 @@ namespace Metamatic
             return new DisposableAction(() =>
             {
                 cssList.ForEach(css => css.TryRaise());
+                ParamLessPool<List<SignalSource>>.ReturnShared(cssList);
                 OnItemAdded -= ForgetAsyncHandler;
             });
             
@@ -94,15 +96,20 @@ namespace Metamatic
         /// <param name="items"></param>
         public void Synchronize(IEnumerable<T> items)
         {
-            /* Remove items that are not in the new list and add that are not in this list */
-            for (var i = m_List.Count - 1; i >= 0; i--)
+            // Сбор нового набора элементов в HashSet для быстрого поиска.
+            var newItemsSet = new HashSet<T>(items);
+    
+            // Удаляем из m_List все элементы, которых нет в новом наборе.
+            for (int i = m_List.Count - 1; i >= 0; i--)
             {
-                var item = m_List[i];
-                if (!items.Contains(item))
+                if (!newItemsSet.Contains(m_List[i]))
                 {
-                    Remove(item);
+                    Remove(m_List[i]);
                 }
             }
+    
+            // Добавляем в m_List элементы из нового набора, которых там ещё нет.
+            // При этом перебор выполняется по исходной последовательности, чтобы сохранить порядок.
             foreach (var item in items)
             {
                 TryAdd(item);
@@ -115,27 +122,29 @@ namespace Metamatic
         /// <param name="items"></param>
         public void Synchronize(T[] items)
         {
-            /* Remove items that are not in the new list and add that are not in this list */
-            for (var i = m_List.Count - 1; i >= 0; i--)
+            // Удаляем из m_List все элементы, которых нет в новом массиве.
+            for (int i = m_List.Count - 1; i >= 0; i--)
             {
-                var item = m_List[i];
-                if (!items.Contains(item))
+                if (Array.IndexOf(items, m_List[i]) < 0)
                 {
-                    Remove(item);
+                    Remove(m_List[i]);
                 }
             }
-            foreach (var item in items)
+    
+            // Добавляем в m_List элементы из нового массива, которых там ещё нет.
+            for (int i = 0; i < items.Length; i++)
             {
-                TryAdd(item);
+                TryAdd(items[i]);
             }
         }
         
         public void Synchronize(List<T> items)
         {
+            var newItemsSet = new HashSet<T>(items);
             for (var i = m_List.Count - 1; i >= 0; i--)
             {
                 var item = m_List[i];
-                if (!items.Contains(item))
+                if (!newItemsSet.Contains(item))
                 {
                     Remove(item);
                 }

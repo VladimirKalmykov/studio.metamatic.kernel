@@ -120,7 +120,7 @@ namespace Metamatic.Framework.Workshop
         }
     }
     
-    public abstract class EntityComponent<T>: EntityData
+    public abstract class EntityData<T>: EntityData
     {
         public T State;
         public delegate void StateModifier(ref T state);

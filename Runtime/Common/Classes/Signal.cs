@@ -252,7 +252,7 @@ namespace Metamatic
             var someCanBeCancelled = false;
             foreach (var signal in signals)
             {
-                if (signal.IsCancellationRequested)
+                if (signal.isRaised)
                 {
                     return new SignalSource();
                 } else if (signal.CanBeCanceled)

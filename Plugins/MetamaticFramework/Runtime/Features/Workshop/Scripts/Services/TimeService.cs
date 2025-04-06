@@ -1,3 +1,4 @@
+using System;
 using Cysharp.Threading.Tasks;
 using Metamatic.SaveSystem;
 using UnityEngine;
@@ -35,6 +36,29 @@ namespace Metamatic.Framework.Workshop
         }
 
         private bool m_WasLoaded;
+
+        /// <summary>
+        /// Schedule an action to be executed after a delay.
+        /// </summary>
+        /// <param name="delay"></param>
+        /// <param name="onComplete"></param>
+        /// <returns></returns>
+        public DisposableAction Schedule(float delay, Action onComplete)
+        {
+            var css = SignalSource.Create();
+            PlayerLoop.Delay(delay, PlayerLoopTiming.EarlyUpdate, css.Signal).ContinueWith(onComplete).Forget();
+            return DisposableAction.Create(css.Dispose);
+        }
+        
+        public void ScheduleAtTime(float time, Action onComplete, Signal cancellationSignal)
+        {
+            if (time < this.time)
+            {
+                onComplete();
+                return;
+            }
+            PlayerLoop.Delay(time - this.time, PlayerLoopTiming.EarlyUpdate, cancellationSignal).ContinueWith(onComplete).Forget();
+        }
         
         protected override UniTask RunService(Ready ready, Signal signal)
         {

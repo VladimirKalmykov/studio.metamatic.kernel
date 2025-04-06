@@ -18,6 +18,7 @@ namespace Metamatic.Framework
         {
             public string address;
             public Entity.SaveData[] entities;
+            public VirtualWorld.SaveServiceData[] services;
         }
         
         public string address;
@@ -89,6 +90,23 @@ namespace Metamatic.Framework
                 saveData.entities[i] = (Entity.SaveData)pair.Value.Save();
                 i++;
             }
+
+            // Save services
+            var services = new List<VirtualWorld.SaveServiceData>();
+            foreach (var service in world.services)
+            {
+                var serviceData = service.SaveToPlace(address);
+                if (serviceData != null)
+                {
+                    var serviceType = service.serviceType;
+                    var saveServiceData = new VirtualWorld.SaveServiceData()
+                    {
+                        serviceType = serviceType,
+                        data = serviceData
+                    };
+                }
+            }
+            saveData.services = services.ToArray();
             
             return saveData;
         }
@@ -147,15 +165,30 @@ namespace Metamatic.Framework
                         CreateEntity(entitySaveData);
                     }
                 }
+                
+                /* Load services */
+                foreach (var serviceData in saveData.services)
+                {
+                    var service = world.GetOrCreateVirtualService(serviceData.serviceType);
+                    if (service != null) // TODO: This condition is useless. Isn't it?
+                    {
+                        await service.LoadFromPlace(address, serviceData.data);
+                    }
+                    else
+                    {
+                        Console.Warning("VirtualPlace", $"Service {serviceData.serviceType} not found");
+                    }
+                }
             }
         }
 
-        public VirtualEntity CreateEntity(string id, Vector3 position, string blueprintAddress, string checkpointId = null, Checkpoint checkpoint = null, bool dontEnable = false) 
+        public VirtualEntity CreateEntity(string id, Vector3 position, string blueprintAddress, string checkpointId = null, Checkpoint checkpoint = null, bool dontEnable = false, bool alwaysPlayVirtualLogic = false) 
         {
             var entity = new VirtualEntity(this, id, position, blueprintAddress);
             entity.checkpoint = checkpoint;
             entity.checkpointId = checkpointId;
             entity.placeAddress = address;
+            entity.alwaysPlayVirtualLogic = alwaysPlayVirtualLogic;
             entity.InternalAwake();
             m_Entities.Add(entity.id, entity);
             if (!dontEnable && !hibernated)

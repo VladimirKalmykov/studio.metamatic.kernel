@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Metamatic.Framework.Workshop;
 using Metamatic.SaveSystem;
@@ -38,13 +39,6 @@ namespace Metamatic.Framework
         /// Is entity removed from scene manually. It can be spawned again only by manual action.
         /// </summary>
         public bool isKicked;
-
-        /// <summary>
-        /// Id of the game area where entity was located when was materialized. It makes possible to spawn entity in the same game area when it's activated again.
-        /// </summary>
-        private Observable<string> m_ObservableGameAreaId = new();
-        private Observable<string> m_ObservableCheckpointId = new();
-        private SignalSource m_DisableSignalSource = default;
         /// <summary>
         /// Determines if entity is being materialized right now
         /// </summary>
@@ -53,6 +47,23 @@ namespace Metamatic.Framework
         /// Determines that virtual entity is about to be destroyed
         /// </summary>
         public bool isAboutToDestroy;
+        /// <summary>
+        /// Determines if virtual logic should be always played even if entity is materialized.
+        /// </summary>
+        public bool alwaysPlayVirtualLogic;
+        
+        /// <summary>
+        /// Id of the game area where entity was located when was materialized. It makes possible to spawn entity in the same game area when it's activated again.
+        /// </summary>
+        private Observable<string> m_ObservableGameAreaId = new();
+        private Observable<string> m_ObservableCheckpointId = new();
+        private SignalSource m_DisableSignalSource = default;
+    
+        /// <summary>
+        /// Contains all entity logics. It is used to play entity logic when entity is virtualized.
+        /// </summary>
+        private EntityLogic.SaveData[] m_Logics;
+        private Dictionary<Type, VirtualEntityLogic> m_VirtualEntityLogics = new(); // TODO: Use pool
         
         public string gameAreaId
         {
@@ -109,6 +120,7 @@ namespace Metamatic.Framework
         {
             this.place = place;
             this.id = id;
+            this.position = position;
             blueprint = blueprintAddress;
 
             if (GameArea.TryGetIntersectedArea(position, true, out var gameArea))
@@ -134,22 +146,38 @@ namespace Metamatic.Framework
         
         public object Save()
         {
-            return m_HasData
-                ? new Entity.SaveData()
+            if (!m_HasData)
+            {
+                return null;
+            }
+
+            /* Collect data from all entity logics */
+            if (m_Logics != null)
+            {
+                for (int i = 0; i < m_Logics.Length; i++)
                 {
-                    id = id,
-                    blueprint = blueprint,
-                    type = m_SaveData.type,
-                    isStatic = isStatic,
-                    isKicked = isKicked,
-                    position = position,
-                    rotation = m_SaveData.rotation,
-                    gameAreaId = m_ObservableGameAreaId.value,
-                    checkpointId = checkpointId,
-                    dataComponents = m_SaveData.dataComponents,
-                    components = m_SaveData.components
+                    var logic = m_Logics[i];
+                    if (m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
+                    {
+                        logic.data = virtualLogic.Save();
+                    }
                 }
-                : null;
+            }
+            return new Entity.SaveData()
+            {
+                id = id,
+                blueprint = blueprint,
+                type = m_SaveData.type,
+                isStatic = isStatic,
+                isKicked = isKicked,
+                position = position,
+                rotation = m_SaveData.rotation,
+                gameAreaId = m_ObservableGameAreaId.value,
+                checkpointId = checkpointId,
+                dataComponents = m_SaveData.dataComponents,
+                components = m_SaveData.components,
+                logics = m_Logics,
+            };
         }
 
         public UniTask Load(object data)
@@ -171,6 +199,7 @@ namespace Metamatic.Framework
                 position = saveData.position;
                 checkpointId = saveData.checkpointId;
                 m_ObservableGameAreaId.uniqValue = saveData.gameAreaId;
+                m_Logics = saveData.logics;
                 
                 return UniTask.CompletedTask;
             }
@@ -180,15 +209,18 @@ namespace Metamatic.Framework
             }
             return UniTask.CompletedTask;
         }
-
-        public void Hydrate(Entity entity)
+        
+        private async UniTaskVoid WithErrorHandling(UniTask task)
         {
-            var data = Save();
-            if (data != null)
+            try
             {
-                entity.Load(Save()); // TODO: Await load?
+                await task;
             }
-            m_MaterializedEntity.value = entity;
+            catch (Exception e)
+            {
+                Console.Error("VirtualEntity", "WithErrorHandling", e);
+                GameSystem.FatalError(new Exception($"Entity {id} materialization failed"));
+            }
         }
 
         public UniTask<Entity> WaitForMaterialization(Signal cancellationSignal)
@@ -196,11 +228,16 @@ namespace Metamatic.Framework
             return m_MaterializedEntity.WhenHasValue(cancellationSignal);
         }
 
-        protected async UniTaskVoid OnEnableAsync(Signal cancelSignal)
+        protected async UniTaskVoid OnEnableAsync(Signal cancellationSignal)
         {
             {
                 using var watchMaterialized = m_MaterializedEntity.WatchAsync(OnMaterializedChangeAsync);
-                await cancelSignal;
+                if (alwaysPlayVirtualLogic)
+                {
+                    /* Play entity logic */
+                    PlayVirtualLogic(cancellationSignal);
+                }
+                await cancellationSignal;
             }
             TryDematerialize(isAboutToDestroy ? DismissReason.Release : DismissReason.Abandon);
         }
@@ -212,19 +249,53 @@ namespace Metamatic.Framework
         
         private async UniTaskVoid OnMaterializedChangeAsync(Entity entity, bool hasEntity, Signal cancellationSignal)
         {
+            Action observeDisposable = null;
             if (!hasEntity && !isKicked && !isStatic) // TODO: Watch kicked, because it can be changed anytime
             {
                 if (String.IsNullOrEmpty(checkpointId))
                 {
                     // Should be materialized in the specified game area
-                    using var observeGameAreaId = m_ObservableGameAreaId.WatchAsync(OnGameAreaIdChangeAsync);
-                    await cancellationSignal;
+                    observeDisposable = m_ObservableGameAreaId.WatchAsync(OnGameAreaIdChangeAsync);
                 }
                 else
                 {
-                    using var observeCheckpointId = m_ObservableCheckpointId.WatchAsync(OnCheckpointIdChangeAsync);
-                    await cancellationSignal;
+                    observeDisposable = m_ObservableCheckpointId.WatchAsync(OnCheckpointIdChangeAsync);
                 }
+            }
+
+            if (!alwaysPlayVirtualLogic && !hasEntity && m_Logics != null)
+            {
+                /* Play entity logic */
+                PlayVirtualLogic(cancellationSignal);
+            }
+            await cancellationSignal;
+            observeDisposable?.Invoke();
+        }
+
+        private void PlayVirtualLogic(Signal cancellationSignal)
+        {
+            foreach (var logic in m_Logics)
+            {
+                if (!m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
+                {
+                    virtualLogic = (VirtualEntityLogic)Activator.CreateInstance(logic.entityLogicType);
+                    m_VirtualEntityLogics.Add(logic.componentType, virtualLogic);
+                }
+                RunVirtualLogic(virtualLogic, logic, cancellationSignal).Forget();
+            }
+        }
+
+        private async UniTaskVoid RunVirtualLogic(VirtualEntityLogic virtualLogic, EntityLogic.SaveData saveData, Signal cancellationSignal)
+        {
+            try
+            {
+                await virtualLogic.Load(saveData.data);
+                cancellationSignal.ThrowIfRaised();
+                virtualLogic.Run(cancellationSignal).Forget();
+            } catch (Exception e)
+            {
+                Console.Error("VirtualEntity", "RunVirtualLogic", e);
+                GameSystem.FatalError(new Exception($"Virtual logic '{virtualLogic.GetType().Name}' failed"));
             }
         }
 
@@ -323,6 +394,10 @@ namespace Metamatic.Framework
             InternalMaterializeAsync(cancellationSignal).Forget();
         }
 
+        /// <summary>
+        /// Dematerialize entity if it's materialized and not static
+        /// </summary>
+        /// <param name="reason"></param>
         public void TryDematerialize(DismissReason reason)
         {
             if (m_MaterializedEntity.hasValue && !isStatic)

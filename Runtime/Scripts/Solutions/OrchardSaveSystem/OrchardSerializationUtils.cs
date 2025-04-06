@@ -26,6 +26,7 @@ namespace Metamatic.SaveSystem
             var vector2Converter = new Vector2JsonConverter();
             var vector3Converter = new Vector3JsonConverter();
             var quaternionConverter = new QuaternionJsonConverter();
+            var dictionaryConverter = new DictionaryVersionControlConverter();
 
             // Resolvers
             
@@ -42,7 +43,8 @@ namespace Metamatic.SaveSystem
                     assetReferenceConverter,
                     vector2Converter,
                     vector3Converter,
-                    quaternionConverter
+                    quaternionConverter,
+                    dictionaryConverter
                 }
             };
 
@@ -71,6 +73,7 @@ namespace Metamatic.SaveSystem
             var vector2Converter = new Vector2JsonConverter();
             var vector3Converter = new Vector3JsonConverter();
             var quaternionConverter = new QuaternionJsonConverter();
+            var dictionaryConverter = new DictionaryVersionControlConverter();
 
             // 2) Настраиваем JsonSerializerSettings
             var settings = new JsonSerializerSettings
@@ -83,7 +86,8 @@ namespace Metamatic.SaveSystem
                     assetReferenceConverter,
                     vector2Converter,
                     vector3Converter,
-                    quaternionConverter
+                    quaternionConverter,
+                    dictionaryConverter
                 }
                 // Можно добавить и другие настройки: TypeNameHandling, MissingMemberHandling и т. п.
             };

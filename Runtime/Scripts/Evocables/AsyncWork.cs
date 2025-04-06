@@ -44,6 +44,42 @@ namespace Metamatic
         }
     }
     
+    public readonly struct AsyncWorkWithParam<TParam>
+    {
+        private readonly SafeUniTaskCompletionSource m_CompletionSource;
+        [UsedImplicitly]
+        // ReSharper disable once InconsistentNaming
+        public UniTask Task => m_CompletionSource.Task;
+        
+        public AsyncWorkWithParam(Func<Action, TParam, Signal, UniTask> action, TParam param, Signal cancellationSignal)
+        {
+            m_CompletionSource = SafeUniTaskCompletionSource.Create();
+            InternalProcess(action, param, cancellationSignal).Forget();
+        }
+
+        private async UniTaskVoid InternalProcess(Func<Action, TParam, Signal, UniTask> action, TParam param, Signal cancellationSignal)
+        {
+            try
+            {
+                await action(m_CompletionSource.TrySetResultSilently, param, cancellationSignal);
+                m_CompletionSource.TrySetResultSilently();
+            }
+            catch (OperationCanceledException)
+            {
+                m_CompletionSource.TrySetCanceled();
+            } catch (Exception e)
+            {
+                m_CompletionSource.TrySetException(e);
+            }
+        }
+        
+        // GetAwaiter is required for await keyword to work
+        public UniTask.Awaiter GetAwaiter()
+        {
+            return Task.GetAwaiter();
+        }
+    }
+    
     public readonly struct AsyncWork<T> where T: struct
     {
         private readonly SafeUniTaskCompletionSource<T> m_CompletionSource;
