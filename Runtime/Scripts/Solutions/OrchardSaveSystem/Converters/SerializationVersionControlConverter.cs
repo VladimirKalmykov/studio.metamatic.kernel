@@ -128,6 +128,13 @@ namespace Metamatic.SaveSystem
                 return null;
             }
 
+            #if DEBUG
+            if (contract.DefaultCreator == null)
+            {
+                Console.Error("SerializationVersionControl", $"Type {targetType} does not have a default constructor! Probably you forgot to add parameterless constructor to the class?");
+                throw new Exception($"Type {targetType} does not have a default constructor! Probably you forgot to add parameterless constructor to the class?");
+            }
+            #endif
             // Создаем экземпляр с помощью DefaultCreator контракта
             object instance = contract.DefaultCreator();
             // Перебираем свойства, определенные контрактом
@@ -159,8 +166,16 @@ namespace Metamatic.SaveSystem
 
         public override bool CanConvert(Type objectType)
         {
+            // Не обрабатываем примитивы и строки
+            if (objectType.IsPrimitive || objectType == typeof(string))
+                return false;
+    
+            // Исключаем типы списков List<T>
+            if (objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(List<>))
+                return false;
+
             return objectType == typeof(object) || (VersionAttribute.GetVersion(objectType, "0") != "0" ||
-                              DerivedVersionControlAttribute.IsDerivedVersionControl(objectType));
+                                                    DerivedVersionControlAttribute.IsDerivedVersionControl(objectType));
         }
 
         private static object Migrate(Type type, string version, object data)

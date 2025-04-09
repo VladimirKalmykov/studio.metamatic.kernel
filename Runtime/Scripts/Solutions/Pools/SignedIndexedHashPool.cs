@@ -308,6 +308,20 @@ namespace Metamatic
 
             return array;
         }
+        
+        public bool Dequeue(out T item)
+        {
+            if (m_UsedIndexes.Count == 0)
+            {
+                item = default!;
+                return false;
+            }
+
+            var index = m_UsedIndexes[0];
+            item = m_Items[index].Value;
+            Remove(index, m_Items[index].Signature);
+            return true;
+        }
 
         /// <summary>
         /// Увеличивает размер внутреннего массива в 2 раза (пока не достигнем MaxArrayLength).

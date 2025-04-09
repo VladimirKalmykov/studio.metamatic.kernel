@@ -33,7 +33,7 @@ namespace Metamatic.Framework.Workshop
             /// Address of the blueprint
             /// </summary>
             public string blueprint;
-            public string placeAddress;
+            // ReSharper disable once InconsistentNaming
             public Type type;
             public string id;
             public bool isStatic;
@@ -508,6 +508,10 @@ namespace Metamatic.Framework.Workshop
 
         public void Dematerialize(DismissReason reason)
         {
+            if (isDismissed != DismissReason.None)
+            {
+                return;
+            }
             Console.Debug("Entity", "Dematerialize", $"Dematerializing entity {id}");
             OnBeforeDematerialize?.Invoke();
             loaded = false;

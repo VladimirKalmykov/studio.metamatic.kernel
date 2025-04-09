@@ -678,6 +678,8 @@ namespace Metamatic.MicroBehaviours
                 NativeArray<FovBoundsType> areasResults =
                     new NativeArray<FovBoundsType>(iterableTrackedAreas.Count, Allocator.TempJob);
 
+                JobHandle trackObjectsJobHandle = default;
+                JobHandle trackAreasJobHandle = default;
                 try
                 {
 
@@ -699,7 +701,7 @@ namespace Metamatic.MicroBehaviours
                         mapBoundsTypeToRectsEndIndex = mapBoundsTypeToRectsEndIndex,
                         mapBoundsTypesToRectIndexesBoundTypes = mapBoundsTypesToRectIndexesBoundTypes
                     };
-                    var objectsJobHandle = trackObjectsJob.Schedule(iterableTrackedObjects.Count, 64);
+                    trackObjectsJobHandle = trackObjectsJob.Schedule(iterableTrackedObjects.Count, 64);
 
                     /* Tracking areas */
                     for (var i = 0; i < iterableTrackedAreas.Count; i++)
@@ -721,13 +723,13 @@ namespace Metamatic.MicroBehaviours
                         mapBoundsTypesToRectIndexesBoundTypes = mapBoundsTypesToRectIndexesBoundTypes,
                         intersectedRectsResult = intersectedRectsResult
                     };
-                    var areasJobHandle = trackAreasJob.Schedule(iterableTrackedAreas.Count, 64, objectsJobHandle);
+                    trackAreasJobHandle = trackAreasJob.Schedule(iterableTrackedAreas.Count, 64, trackObjectsJobHandle);
 
                     /* Wait for jobs to complete */
-                    await UniTask.WaitUntil(() => areasJobHandle.IsCompleted && objectsJobHandle.IsCompleted,
-                        PlayerLoopTiming.Update, signal);
-                    areasJobHandle.Complete();
-                    objectsJobHandle.Complete();
+                    await UniTask.WaitUntil(() => signal.isRaised || (trackAreasJobHandle.IsCompleted && trackObjectsJobHandle.IsCompleted),
+                        PlayerLoopTiming.Update);
+                    trackAreasJobHandle.Complete();
+                    trackObjectsJobHandle.Complete();
                     signal.ThrowIfRaised();
 
                     /* Parse objects job result */
@@ -766,7 +768,8 @@ namespace Metamatic.MicroBehaviours
                 }
                 catch (OperationCanceledException)
                 {
-                    break;
+                    trackAreasJobHandle.Complete();
+                    trackObjectsJobHandle.Complete();
                 }
                 finally
                 {

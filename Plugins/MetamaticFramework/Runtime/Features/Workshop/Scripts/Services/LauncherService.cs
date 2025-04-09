@@ -22,7 +22,7 @@ namespace Metamatic.Framework.Workshop
         public struct SaveData
         {
             public string dateTime;
-            [FormerlySerializedAs("chapter")] public string place;
+            public string place;
             public object world;
         }
         
@@ -150,7 +150,7 @@ namespace Metamatic.Framework.Workshop
                 var saveData = new SaveData()
                 {
                     dateTime = DateTime.Now.ToString(),
-                    place = m_CurrentChapterAddress,
+                    place = GameSystem.GetCurrentPlaceAddress(),
                     world = worldData
                 };
                 Console.Debug("Launcher", $"Saving game data: {saveData}");

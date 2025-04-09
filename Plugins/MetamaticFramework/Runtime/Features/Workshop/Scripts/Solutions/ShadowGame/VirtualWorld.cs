@@ -28,7 +28,8 @@ namespace Metamatic.Framework
             public SaveServiceData[] services;
         }
         
-        public static VirtualWorld Current { get; private set; }
+        private static readonly Observable<VirtualWorld> s_ObservableCurrentVirtualWorld = new Observable<VirtualWorld>();
+        public static VirtualWorld Current => s_ObservableCurrentVirtualWorld.value;
         
         public static VirtualWorld CreateNewCurrent()
         {
@@ -36,17 +37,22 @@ namespace Metamatic.Framework
             {
                 Current.Dispose();
             }
-            Current = new VirtualWorld();
+            s_ObservableCurrentVirtualWorld.value = new VirtualWorld();
             return Current;
         }
 
         public static void DisposeCurrent()
         {
-            if (Current != null)
+            if (s_ObservableCurrentVirtualWorld.value != null)
             {
-                Current.Dispose();
-                Current = null;
+                s_ObservableCurrentVirtualWorld.value.Dispose();
+                s_ObservableCurrentVirtualWorld.value = null;
             }
+        }
+
+        public static DisposableAction WatchVirtualWorldAsync(Func<VirtualWorld, Signal, UniTaskVoid> action)
+        {
+            return s_ObservableCurrentVirtualWorld.WatchAsync(action);
         }
         
         private readonly Dictionary<string, VirtualPlace> m_Places = new();
@@ -57,6 +63,7 @@ namespace Metamatic.Framework
         public readonly ObservableList<VirtualEntity> ObservableEntitiesList = new();
         #endif
         private SignalSource m_DisposeSignalSource;
+        private bool m_Disposed = false;
         
         // Get ability to iterate over all servies
         public IEnumerable<VirtualService> services => m_Services.Values;
@@ -267,6 +274,7 @@ namespace Metamatic.Framework
         /// <param name="cancellationSignal"></param>
         private async UniTaskVoid OnPlaceActivationAsync(string placeAddress, Signal cancellationSignal)
         {
+            if (String.IsNullOrEmpty(placeAddress)) return;
             /* Create place if not exists */
             if (!m_Places.TryGetValue(placeAddress, out var place))
             {
@@ -278,7 +286,10 @@ namespace Metamatic.Framework
 
             place.Wake().Forget(); // TODO: Check if it is necessary to await
             await cancellationSignal;
-            place.Hibernate();
+            if (!m_Disposed && GameSystem.isGameRunning)
+            {
+                place.Hibernate();
+            }
         }
         
         public VirtualPlace GetOrCreatePlace(string placeAddress)
@@ -460,6 +471,13 @@ namespace Metamatic.Framework
 
         public void Dispose()
         {
+            if (m_Disposed)
+            {
+                Console.Error("VirtualWorld", "Dispose", "Already disposed");
+                return;
+            }
+
+            m_Disposed = true;
             // TODO: Maybe use one common signal source for all services?
             /* Dispose all services */
             foreach (var service in m_Services.ToArray())

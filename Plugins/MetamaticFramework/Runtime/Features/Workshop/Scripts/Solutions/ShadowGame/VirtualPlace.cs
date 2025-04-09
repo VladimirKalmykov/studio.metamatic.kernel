@@ -236,10 +236,25 @@ namespace Metamatic.Framework
                 return;
             }
             hibernated = true;
-            /* Dispose all entities */
+            
+            /* Stop all entities */
             foreach (var pair in m_Entities)
             {
-                pair.Value.InternalDestroy(DismissReason.Release);
+                pair.Value.InternalStop();
+            }
+            
+            /* Disable all entities */
+            foreach (var pair in m_Entities)
+            {
+                // Need to mark as 'isAboutToDestroy' to prevent immediate dematerialize with virtualization
+                pair.Value.isAboutToDestroy = true;
+                pair.Value.enabled = false;
+            }
+
+            /* Dispose all entities */
+            foreach (var pair in m_Entities.ToArray())
+            {
+                ReleaseEntity(pair.Value, DismissReason.Release);
             }
         }
         

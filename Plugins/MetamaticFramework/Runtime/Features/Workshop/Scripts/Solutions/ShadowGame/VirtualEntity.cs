@@ -137,6 +137,7 @@ namespace Metamatic.Framework
         internal void InternalDestroy(DismissReason reason)
         {
             this.place.world.InternalUnregisterVirtualEntity(this);
+            TryDematerialize(DismissReason.Release);
         }
 
         internal void Release(DismissReason reason)
@@ -272,19 +273,32 @@ namespace Metamatic.Framework
             observeDisposable?.Invoke();
         }
 
+        private SignalSource m_StopLogicSignalSource = default;
+        
         private void PlayVirtualLogic(Signal cancellationSignal)
         {
-            foreach (var logic in m_Logics)
+            m_StopLogicSignalSource = SignalSource.Create();
+            var registration = cancellationSignal.Register(m_StopLogicSignalSource.TryRaise);
+            try
             {
-                if (!m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
+                foreach (var logic in m_Logics)
                 {
-                    virtualLogic = (VirtualEntityLogic)Activator.CreateInstance(logic.entityLogicType);
-                    m_VirtualEntityLogics.Add(logic.componentType, virtualLogic);
+                    if (!m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
+                    {
+                        virtualLogic = (VirtualEntityLogic)Activator.CreateInstance(logic.entityLogicType);
+                        m_VirtualEntityLogics.Add(logic.componentType, virtualLogic);
+                    }
+                    RunVirtualLogic(virtualLogic, logic, m_StopLogicSignalSource.Signal).Forget();
                 }
-                RunVirtualLogic(virtualLogic, logic, cancellationSignal).Forget();
+            }
+            finally
+            {
+                registration.Dispose();
             }
         }
 
+        
+        
         private async UniTaskVoid RunVirtualLogic(VirtualEntityLogic virtualLogic, EntityLogic.SaveData saveData, Signal cancellationSignal)
         {
             try
@@ -292,7 +306,8 @@ namespace Metamatic.Framework
                 await virtualLogic.Load(saveData.data);
                 cancellationSignal.ThrowIfRaised();
                 virtualLogic.Run(cancellationSignal).Forget();
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 Console.Error("VirtualEntity", "RunVirtualLogic", e);
                 GameSystem.FatalError(new Exception($"Virtual logic '{virtualLogic.GetType().Name}' failed"));
@@ -415,6 +430,19 @@ namespace Metamatic.Framework
             {
                 enabled = true;
             }
+        }
+
+        /// <summary>
+        /// Disable all materialized entities and stop all virtual logics.
+        /// Call this method only before disposing entity.
+        /// </summary>
+        public void InternalStop()
+        {
+            if (m_MaterializedEntity.hasValue)
+            {
+                m_MaterializedEntity.value.enabled = false;
+            }
+            m_StopLogicSignalSource.TryRaise();
         }
         
         private async UniTaskVoid InternalMaterializeAsync(Signal cancellationSignal)

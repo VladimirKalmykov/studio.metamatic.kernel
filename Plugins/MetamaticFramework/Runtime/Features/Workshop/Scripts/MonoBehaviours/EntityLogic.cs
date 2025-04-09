@@ -21,6 +21,11 @@ namespace Metamatic.Framework.Workshop
             public Type componentType;
             public Type entityLogicType;
             public object data;
+            
+            public SaveData()
+            {
+            }
+            
             public SaveData(Type componentType, Type entityLogicType, object data)
             {
                 this.componentType = componentType;

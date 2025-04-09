@@ -26,6 +26,7 @@ namespace Metamatic.SaveSystem
             var vector2Converter = new Vector2JsonConverter();
             var vector3Converter = new Vector3JsonConverter();
             var quaternionConverter = new QuaternionJsonConverter();
+            var genericArrayConverter = new GenericArrayConverter();
             var dictionaryConverter = new DictionaryVersionControlConverter();
 
             // Resolvers
@@ -38,13 +39,14 @@ namespace Metamatic.SaveSystem
                 // Можно убрать/изменить на None, если не хотите \"красивый\" JSON
                 Converters = new List<JsonConverter>
                 {
-                    versionControlConverter,
                     typeConverter,
                     assetReferenceConverter,
                     vector2Converter,
                     vector3Converter,
                     quaternionConverter,
-                    dictionaryConverter
+                    genericArrayConverter,
+                    dictionaryConverter,
+                    versionControlConverter
                 }
             };
 
@@ -73,6 +75,7 @@ namespace Metamatic.SaveSystem
             var vector2Converter = new Vector2JsonConverter();
             var vector3Converter = new Vector3JsonConverter();
             var quaternionConverter = new QuaternionJsonConverter();
+            var genericArrayConverter = new GenericArrayConverter();
             var dictionaryConverter = new DictionaryVersionControlConverter();
 
             // 2) Настраиваем JsonSerializerSettings
@@ -81,13 +84,14 @@ namespace Metamatic.SaveSystem
                 ContractResolver = new IgnoreTypeReferenceLoopContractResolver(),
                 Converters = new List<JsonConverter>
                 {
-                    versionControlConverter,
                     typeConverter,
                     assetReferenceConverter,
                     vector2Converter,
                     vector3Converter,
                     quaternionConverter,
-                    dictionaryConverter
+                    genericArrayConverter,
+                    dictionaryConverter,
+                    versionControlConverter
                 }
                 // Можно добавить и другие настройки: TypeNameHandling, MissingMemberHandling и т. п.
             };

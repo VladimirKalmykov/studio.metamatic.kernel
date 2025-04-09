@@ -35,10 +35,9 @@ namespace Metamatic.Framework
             IntroSceneComplete,
         }
         
-        private static Observable<VirtualWorld> m_ObservableVirtualWorld = new Observable<VirtualWorld>(); 
         #region Public API
 
-        public static VirtualWorld virtualWorld => m_ObservableVirtualWorld.Value;
+        public static VirtualWorld virtualWorld => VirtualWorld.Current;
         public static Observable<GameAppStage> m_ObservableAppStage = new Observable<GameAppStage>(GameAppStage.Stopped);
         public static Observable<string> m_ActivePlaceAddress = new Observable<string>();
         public static bool isGameRunning { get; private set; }
@@ -113,7 +112,6 @@ namespace Metamatic.Framework
         {
             Console.Error("GameSystem", error);
             OnFatalError?.Invoke(error); // TOOD: And what then?
-            StopGame().Forget();
         }
         
         public static void FatalError(string message)
@@ -258,12 +256,10 @@ namespace Metamatic.Framework
         {
             try
             {
-                // Dispose previous virtual world, if exists
-                m_ObservableVirtualWorld.Value?.Dispose();
                 m_ActivePlaceAddress.Value = addressOrGuid;
                 if (!seamless)
                 {
-                    m_ObservableVirtualWorld.Value = VirtualWorld.CreateNewCurrent();
+                    VirtualWorld.CreateNewCurrent();
                 }
                 isGameRunning = true;
                 isGameLoaded = false;
@@ -321,18 +317,27 @@ namespace Metamatic.Framework
                 {
                     return false;
                 }
+                // Pause game
+                Time.timeScale = 0;
+                
+                isGameRunning = false;
                 m_ObservableAppStage.uniqValue = GameAppStage.Unloading;
-                m_ActivePlaceAddress.Value = null;
+                
                 _StopGameSignalSource.TryRaise();
                 isGameLoaded = false;
                 OnBeforeGameStop?.Invoke();
                 /* Emit stop game event to all services */
                 Service.EmitStopGameEvent();
                 VirtualWorld.DisposeCurrent();
-                isGameRunning = false;
+                m_ActivePlaceAddress.Value = null;
+                await UniTask.Yield();
+
+                Console.Debug("UnloadGame", "Ensure that all spawned object are dismissed");
             
                 // Unload scenes
                 await UniTask.WhenAll(_CurrentBaseSceneSummon.DisposeAsync(), _CurrentGameSceneSummon.DisposeAsync());
+                
+                Console.Debug("UnloadGame", "Ensure that all scenes are unloaded");
             
                 OnGameStopped?.Invoke();
                 m_ObservableAppStage.uniqValue = GameAppStage.Stopped;
@@ -350,9 +355,10 @@ namespace Metamatic.Framework
             }
         }
         
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static DisposableAction WatchVirtualWorldAsync(Func<VirtualWorld, Signal, UniTaskVoid> action)
         {
-            return m_ObservableVirtualWorld.WatchAsync(action);
+            return VirtualWorld.WatchVirtualWorldAsync(action);
         }
         
         public static UniTask WhenStart(Signal cancelSignal = default)

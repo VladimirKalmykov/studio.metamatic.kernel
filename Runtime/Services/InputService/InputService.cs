@@ -26,6 +26,7 @@ namespace Metamatic
         private ObservableList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
         private PlayerInputManager m_PlayerInputManager;
+        private PlayerInput m_PlayerInput;
         private event Action<int, InputAction.CallbackContext> m_OnPlayerActionTriggered;
         private HashSet<InputDevice> m_AssignedDevices = new HashSet<InputDevice>();
         
@@ -60,7 +61,7 @@ namespace Metamatic
             else
             {
                 /* Single player mode */
-                var playerInput = Instantiate(m_PlayerInputPrefab);
+                var playerInput = m_PlayerInput = Instantiate(m_PlayerInputPrefab);
                 playerInput.actions = m_InputActionAsset;
                 InternalOnPlayerJoined(playerInput);
             }
@@ -79,6 +80,12 @@ namespace Metamatic
             {
                 m_PlayerInputManager.onPlayerJoined -= InternalOnPlayerJoined;
                 m_PlayerInputManager.onPlayerLeft -= InternalOnPlayerLeft;
+                Destroy(m_PlayerInputManager);
+            }
+            
+            if (m_PlayerInput != null)
+            {
+                Destroy(m_PlayerInput.gameObject);
             }
         }
         
