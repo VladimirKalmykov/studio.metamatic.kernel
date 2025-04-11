@@ -64,7 +64,7 @@ namespace Metamatic.Framework
         {
             if (!hibernated)
             {
-                GameSystem.FatalError(new Exception("Can't wake up non-hibernated place"));
+                Console.Warning("VirtualPlace", "Can't wake up non-hibernated place");
                 return;
             }
             hibernated = false;

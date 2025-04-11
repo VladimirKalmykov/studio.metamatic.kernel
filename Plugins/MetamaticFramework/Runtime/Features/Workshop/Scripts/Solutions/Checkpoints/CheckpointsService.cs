@@ -6,7 +6,7 @@ namespace Metamatic.Framework.Workshop
     {
         protected override UniTask RunService(Ready ready, Signal signal)
         {
-            var launcherService = Service.Resolve<LauncherService>(signal);
+            var launcherService = Service.Resolve<GameService>(signal);
             return ready();
         }
     }

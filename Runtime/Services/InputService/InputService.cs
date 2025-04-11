@@ -26,7 +26,7 @@ namespace Metamatic
         private ObservableList<PlayerInput> m_PlayerInputs;
         private CameraService m_CameraService;
         private PlayerInputManager m_PlayerInputManager;
-        private PlayerInput m_PlayerInput;
+        private PlayerInput m_SignlePlayerInput;
         private event Action<int, InputAction.CallbackContext> m_OnPlayerActionTriggered;
         private HashSet<InputDevice> m_AssignedDevices = new HashSet<InputDevice>();
         
@@ -57,11 +57,12 @@ namespace Metamatic
                 playerInputManager.playerPrefab = m_PlayerInputPrefab.gameObject;
                 playerInputManager.onPlayerJoined += InternalOnPlayerJoined;
                 playerInputManager.onPlayerLeft += InternalOnPlayerLeft;
+                
             }
             else
             {
                 /* Single player mode */
-                var playerInput = m_PlayerInput = Instantiate(m_PlayerInputPrefab);
+                var playerInput = m_SignlePlayerInput = Instantiate(m_PlayerInputPrefab);
                 playerInput.actions = m_InputActionAsset;
                 InternalOnPlayerJoined(playerInput);
             }
@@ -71,10 +72,6 @@ namespace Metamatic
             InputSystem.onDeviceChange += OnDeviceChange;
 
             await ready();
-            if (m_SinglePlayer)
-            {
-                InternalOnPlayerLeft(m_PlayerInputs[0]);
-            }
             InputSystem.onDeviceChange -= OnDeviceChange;
             if (m_PlayerInputManager != null)
             {
@@ -83,9 +80,18 @@ namespace Metamatic
                 Destroy(m_PlayerInputManager);
             }
             
-            if (m_PlayerInput != null)
+            // Destroy all player inputs
+            foreach (var playerInput in m_PlayerInputs)
             {
-                Destroy(m_PlayerInput.gameObject);
+                if (playerInput != null)
+                {
+                    Destroy(playerInput.gameObject);
+                }
+            }
+            
+            if (m_SignlePlayerInput != null)
+            {
+                Destroy(m_SignlePlayerInput.gameObject);
             }
         }
         

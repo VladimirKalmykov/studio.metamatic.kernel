@@ -117,6 +117,7 @@ namespace Metamatic
             }
             finally
             {
+                tasksList.Clear();
                 ParamLessPool<List<UniTask>>.ReturnShared(tasksList);
             }
         }

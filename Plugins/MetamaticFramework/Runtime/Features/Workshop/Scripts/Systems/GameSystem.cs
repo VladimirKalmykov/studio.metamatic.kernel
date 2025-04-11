@@ -119,7 +119,7 @@ namespace Metamatic.Framework
             var error = new Exception(message);
             Console.Error("GameSystem", error);
             OnFatalError?.Invoke(error); // TOOD: And what then?
-            StopGame().Forget();
+            TryStopGame().Forget();
         }
 
         public static DisposableAction WatchGameLoaded(Action handler)
@@ -222,6 +222,7 @@ namespace Metamatic.Framework
                 {
                     return false;
                 }
+                // Re-create stop game signal source
                 _StopGameSignalSource.TryRaise();
                 _StopGameSignalSource = SignalSource.Create();
                 OnGameIsLoading?.Invoke();
@@ -256,11 +257,12 @@ namespace Metamatic.Framework
         {
             try
             {
-                m_ActivePlaceAddress.Value = addressOrGuid;
                 if (!seamless)
                 {
+                    // Re-create virtual world if not seamless
                     VirtualWorld.CreateNewCurrent();
                 }
+                m_ActivePlaceAddress.Value = addressOrGuid;
                 isGameRunning = true;
                 isGameLoaded = false;
                 using var pending = PendingSystem.CreateCriticalPending("Initialize place scenes");
@@ -309,7 +311,7 @@ namespace Metamatic.Framework
             }
         }
 
-        public static async UniTask<bool> StopGame()
+        public static async UniTask<bool> TryStopGame()
         {
             try
             {

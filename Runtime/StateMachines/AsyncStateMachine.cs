@@ -552,6 +552,7 @@ namespace Metamatic
         private readonly StateChangeHandler m_Handler;
         private TState m_DefaultState;
         private bool m_SettingKeepOnlyLatestState;
+        private bool m_RefuseNextStateIfNotReady;
         private bool m_SettingAutoCompleteWithDefaultState;
         private bool m_SettingDebug;
 
@@ -600,14 +601,16 @@ namespace Metamatic
         /// <param name="keepOnlyLatestState">Deferred queue can contain only one state (latest state win). Otherwise the queue of the next state has no limits</param>
         /// <param name="autoCompleteWithDefaultState">If current transition is about to end, but there are no next states in queue, automatically add default state as next state</param>
         /// <param name="debug">Enable debug logging</param>
+        /// <param name="refuseNextStateIfNotReady">Ignore adding next state if the current transition is not ready</param>
         public AsyncStateMachine(StateChangeHandler handler, TState defaultState = default,
-            bool keepOnlyLatestState = false, bool autoCompleteWithDefaultState = false, bool debug = false)
+            bool keepOnlyLatestState = false, bool autoCompleteWithDefaultState = false, bool debug = false, bool refuseNextStateIfNotReady = false)
         {
             m_Handler = handler;
             m_DefaultState = defaultState;
             m_SettingKeepOnlyLatestState = keepOnlyLatestState;
             m_SettingAutoCompleteWithDefaultState = autoCompleteWithDefaultState;
             m_SettingDebug = debug;
+            m_RefuseNextStateIfNotReady = refuseNextStateIfNotReady;
             currentState = defaultState;
             m_StateIsDisposable = typeof(IDisposable).IsAssignableFrom(typeof(TState));
 
@@ -737,7 +740,7 @@ namespace Metamatic
                     $"Attempt to add state {newState} | (id #{id}) (Curren status is {m_Status}). Stack trace: {Environment.StackTrace}");
 #endif
             /* Invalidate state */
-            if (m_Disposed || !m_NextStateValidator.Validate(currentState, newState))
+            if (m_Disposed || !m_NextStateValidator.Validate(currentState, newState) || (m_RefuseNextStateIfNotReady && m_Status == TransitionStatus.FromPrevToCurrentProcessing))
             {
                 /* As the state is invalid, we should dispose it if it supports IDisposable */
                 if (m_StateIsDisposable)
@@ -768,7 +771,7 @@ namespace Metamatic
                     case TransitionStatus.FromPrevToCurrentCompleted:
                     {
                         /* Transition is being processed, therefore we should add next state and defer this state */
-                        /* Bet first we should check if queue already has next state */
+                        /* But first we should check if queue already has next state */
                         var tcs = ReusableUniTaskCompletionSource.Create();
                         #if DEBUG
                         if (m_SettingDebug)
@@ -852,6 +855,18 @@ namespace Metamatic
         /// <returns></returns>
         public bool HasState(short id)
         {
+            if (id == 0) return false;
+            return activeId == id || m_StatesQueue.Any(x => x.id == id);
+        }
+
+        /// <summary>
+        /// Returns true if the state with specified id is in queue or active
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public bool isValidState(short id)
+        {
+            if (id == 0) return false;
             return activeId == id || m_StatesQueue.Any(x => x.id == id);
         }
         
@@ -863,6 +878,24 @@ namespace Metamatic
         public LowCouplingTask GetStateObserver(short id)
         {
             return new LowCouplingTask(new Token96Bit(id, -1), WaitState);
+        }
+        
+        /**
+         * Wait for current state ready
+         */
+        public UniTask WaitCurrentState(Signal cancellationSignal = default)
+        {
+            if (activeId == 0 || m_Status != TransitionStatus.FromPrevToCurrentProcessing)
+            {
+                return UniTask.CompletedTask;
+            }
+
+            if (cancellationSignal.CanBeCanceled)
+            {
+                var cancellationTask = cancellationSignal.ToUniTask(true);
+                return UniTask.WhenAny(completeTransitionFromPrevStateTask, cancellationTask);
+            }
+            return completeTransitionFromPrevStateTask;
         }
 
         /// <summary>
