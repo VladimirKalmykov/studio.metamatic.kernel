@@ -201,6 +201,7 @@ namespace Metamatic.Framework
         public VirtualEntity CreateEntity(Entity.SaveData data)
         {
             var entity = new VirtualEntity(this, data.id, data.position, data.blueprint); // TODO: Use pool
+            entity.placeAddress = address;
             entity.Load(data).Forget();
             
             entity.InternalAwake();

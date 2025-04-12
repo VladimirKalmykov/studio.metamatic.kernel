@@ -30,7 +30,8 @@ namespace Metamatic.Framework.Workshop
         #region Fields
         [SerializeField] private AssetReference startScene;
         [SerializeField] private AssetReference mainMenuScene;
-        [SerializeField] private AssetReference loadGameScene;
+        [SerializeField] private AssetReference winGameScene;
+        [SerializeField] private AssetReferenceT<Presenter> loadingScreen;
         #endregion
         
         #region Private properties
@@ -160,7 +161,12 @@ namespace Metamatic.Framework.Workshop
                             // Hide loading screen
                             break;
                         }
+
                         await transition.WaitNextState();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error("GameService", e);
                     }
                     finally
                     {
@@ -168,7 +174,14 @@ namespace Metamatic.Framework.Workshop
                     }
                     break;
                 }
-                    
+                case WinGameLoopEvent winGameLoopEvent:
+                {
+                    // Stop game
+                    await GameSystem.TryStopGame();
+                    await using var winGameScene = ResourcesSystem.LoadScene(this.winGameScene, LoadSceneMode.Additive, activateOnLoad: true);
+                    await transition.WaitNextState();
+                    break;
+                }
             }
         }
         
@@ -264,6 +277,21 @@ namespace Metamatic.Framework.Workshop
                 return false;
             }
 
+            await m_GameLoopStateMachine.WaitState(stateToken);
+            return true;
+        }
+
+        /// <summary>
+        /// Load win game scene.
+        /// </summary>
+        /// <returns></returns>
+        public async UniTask<bool> WinGame()
+        {
+            var stateToken = m_GameLoopStateMachine.PushState(GameLoopEvent.WinGameLoopEvent);
+            if (!m_GameLoopStateMachine.isValidState(stateToken))
+            {
+                return false;
+            }
             await m_GameLoopStateMachine.WaitState(stateToken);
             return true;
         }

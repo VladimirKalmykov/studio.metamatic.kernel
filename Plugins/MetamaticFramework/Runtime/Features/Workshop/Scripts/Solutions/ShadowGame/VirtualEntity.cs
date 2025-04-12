@@ -115,6 +115,7 @@ namespace Metamatic.Framework
         private Entity.SaveData m_SaveData;
         
         public ObservableNullable<Entity> m_MaterializedEntity = new();
+        public bool isMaterialized => m_MaterializedEntity.hasValue;
 
         public VirtualEntity(VirtualPlace place, string id, Vector3 position, string blueprintAddress = null)
         {
@@ -440,7 +441,7 @@ namespace Metamatic.Framework
         {
             if (m_MaterializedEntity.hasValue)
             {
-                m_MaterializedEntity.value.enabled = false;
+                m_MaterializedEntity.value.gameObject.SetActive(false);
             }
             m_StopLogicSignalSource.TryRaise();
         }

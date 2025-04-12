@@ -4,6 +4,7 @@ namespace Plugins.MetamaticFramework.Runtime.Features.Workshop.Scripts.Classes
     {
         public static readonly IdleGameLoopEvent IdleGameLoopEvent = new IdleGameLoopEvent();
         public static readonly MenuGameLoopEvent MenuGameLoopEvent = new MenuGameLoopEvent();
+        public static readonly WinGameLoopEvent WinGameLoopEvent = new WinGameLoopEvent();
     }
     
     public class IdleGameLoopEvent : GameLoopEvent
@@ -38,5 +39,10 @@ namespace Plugins.MetamaticFramework.Runtime.Features.Workshop.Scripts.Classes
             this.saveAddress = saveAddress;
             this.seamless = seamless;
         }
+    }
+    
+    public class WinGameLoopEvent : GameLoopEvent
+    {
+        
     }
 }

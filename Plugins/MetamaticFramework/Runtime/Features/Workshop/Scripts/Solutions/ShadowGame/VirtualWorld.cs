@@ -60,7 +60,7 @@ namespace Metamatic.Framework
         private readonly Dictionary<string, VirtualEntity> m_EntitiesRegistry = new();
         private readonly Dictionary<string, MicroEvent<VirtualEntity, bool>> m_EntityListeners = new();
         #if UNITY_EDITOR
-        public readonly ObservableList<VirtualEntity> ObservableEntitiesList = new();
+        public readonly ObservableList<VirtualEntity> DebugObservableEntitiesList = new();
         #endif
         private SignalSource m_DisposeSignalSource;
         private bool m_Disposed = false;
@@ -139,6 +139,9 @@ namespace Metamatic.Framework
         public void InternalRegisterVirtualEntity(VirtualEntity virtualEntity)
         {
             m_EntitiesRegistry[virtualEntity.id] = virtualEntity;
+#if DEBUG
+            DebugObservableEntitiesList.Add(virtualEntity);
+#endif
             if (m_EntityListeners.TryGetValue(virtualEntity.id, out var listener))
             {
                 listener.Emit(virtualEntity, true);
@@ -148,6 +151,9 @@ namespace Metamatic.Framework
         public void InternalUnregisterVirtualEntity(VirtualEntity virtualEntity)
         {
             m_EntitiesRegistry.Remove(virtualEntity.id);
+#if DEBUG
+            DebugObservableEntitiesList.Remove(virtualEntity);
+#endif
             if (m_EntityListeners.TryGetValue(virtualEntity.id, out var listener))
             {
                 listener.Emit(virtualEntity, false);

@@ -30,6 +30,7 @@ namespace Metamatic.Framework.Workshop
             await ready();
             GameArea.OnAreasDisabled -= OnAreaDisabled;
             GameArea.OnAreasEnabled -= OnAreaEnabled;
+            GameAreas.Clear();
         }
         
         private void OnAreaEnabled(GameArea gameArea)

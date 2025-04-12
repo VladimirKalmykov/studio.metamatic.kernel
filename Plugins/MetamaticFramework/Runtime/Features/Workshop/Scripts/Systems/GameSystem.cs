@@ -319,12 +319,13 @@ namespace Metamatic.Framework
                 {
                     return false;
                 }
+
                 // Pause game
                 Time.timeScale = 0;
-                
+
                 isGameRunning = false;
                 m_ObservableAppStage.uniqValue = GameAppStage.Unloading;
-                
+
                 _StopGameSignalSource.TryRaise();
                 isGameLoaded = false;
                 OnBeforeGameStop?.Invoke();
@@ -335,16 +336,17 @@ namespace Metamatic.Framework
                 await UniTask.Yield();
 
                 Console.Debug("UnloadGame", "Ensure that all spawned object are dismissed");
-            
+
                 // Unload scenes
                 await UniTask.WhenAll(_CurrentBaseSceneSummon.DisposeAsync(), _CurrentGameSceneSummon.DisposeAsync());
-                
+
                 Console.Debug("UnloadGame", "Ensure that all scenes are unloaded");
-            
+
                 OnGameStopped?.Invoke();
                 m_ObservableAppStage.uniqValue = GameAppStage.Stopped;
                 return true;
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 // Unload all scenes
                 await _CurrentBaseSceneSummon.DisposeAsync();
@@ -352,8 +354,12 @@ namespace Metamatic.Framework
                 Console.Error("GameSystem", e);
                 FatalError(e);
                 m_ObservableAppStage.uniqValue = GameAppStage.Error;
-                
+
                 return false;
+            }
+            finally
+            {
+                Time.timeScale = 1;
             }
         }
         
