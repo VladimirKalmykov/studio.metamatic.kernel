@@ -22,12 +22,14 @@ namespace Metamatic.Framework.Editor.PlayPanel
         private Observable<bool> m_Observable_ConfigSkipAppIntro = new Observable<bool>();
         private Observable<bool> m_Observable_ConfigSkipMainMenuScene = new Observable<bool>();
         private Observable<AssetReference> m_Observable_ChapterReference = new Observable<AssetReference>();
+        private Observable<string> m_Observable_CheckpointId = new Observable<string>();
         #endregion
         
         #region Refs to UI elements
         private Toggle m_ToggleSkipAppIntro;
         private Toggle m_ToggleSkipMainMenuScene;   
         private AssetReferenceField m_ChapterAssetReferenceField;
+        private TextField m_CheckpointIdField;
         #endregion
         
         [UnityEditor.MenuItem ("Metamatic/Framework/Play Panel")]
@@ -41,7 +43,8 @@ namespace Metamatic.Framework.Editor.PlayPanel
             // Load play config from developer persistent storage
             m_Observable_ConfigSkipAppIntro.Value = EditorPrefs.GetBool(GameSystem.ConfigSkipGameIntroKeyName, false);
             m_Observable_ConfigSkipMainMenuScene.Value = EditorPrefs.GetBool(GameSystem.ConfigSkipMainMenuOnStartKeyName, false);
-            m_Observable_ChapterReference.Value = EditorAddressablesUtils.GetAssetReferenceByAddress(EditorPrefs.GetString(GameSystem.ConfigForceStartChapterGuid, ""));
+            m_Observable_ChapterReference.Value = EditorAddressablesUtils.GetAssetReferenceByGuid(EditorPrefs.GetString(GameSystem.ConfigForceStartChapterGuid, ""));
+            m_Observable_CheckpointId.Value = EditorPrefs.GetString(GameSystem.ConfigForceStartCheckpointId, "");
             
             // Подписываемся на событие изменения состояния Play Mode
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
@@ -50,11 +53,14 @@ namespace Metamatic.Framework.Editor.PlayPanel
             m_ToggleSkipAppIntro.SetValueWithoutNotify(m_Observable_ConfigSkipAppIntro.Value);
             m_ToggleSkipMainMenuScene.SetValueWithoutNotify(m_Observable_ConfigSkipMainMenuScene.Value);
             m_ChapterAssetReferenceField.SetValue(m_Observable_ChapterReference.Value);
+            m_CheckpointIdField.SetValueWithoutNotify(m_Observable_CheckpointId.Value);
+            
             
             // Subscribe to config
             using var listenSkipGameIntro = m_Observable_ConfigSkipAppIntro.Watch(OnSkipGameIntroChanged, true);
             using var listenSkipMainMenuScene = m_Observable_ConfigSkipMainMenuScene.Watch(OnSkipMainMenuSceneChanged, true);
             using var listenChapterReference = m_Observable_ChapterReference.Watch(OnChapterReferenceChanged, true);
+            using var listenCheckpointId = m_Observable_CheckpointId.Watch(OnCheckpointIdChanged, true);
             await ready();
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
         }
@@ -73,9 +79,14 @@ namespace Metamatic.Framework.Editor.PlayPanel
         
         private void OnChapterReferenceChanged(AssetReference ar)
         {
-            var address = EditorAddressablesUtils.EditorOnlyGetAddressFromAssetReference(ar);
+            var address = ar.AssetGUID;
             EditorPrefs.SetString(GameSystem.ConfigForceStartChapterGuid, address);
             m_ChapterAssetReferenceField.SetValue(ar);
+        }
+
+        private void OnCheckpointIdChanged(string checkpointId)
+        {
+            EditorPrefs.SetString(GameSystem.ConfigForceStartCheckpointId, checkpointId);
         }
 
         protected override void OnCreateGUI()
@@ -107,6 +118,7 @@ namespace Metamatic.Framework.Editor.PlayPanel
             playButtonContainer.Add(button);
             
             // Place selector (Object selector)
+            var placeField = new Field("Place");
             m_ChapterAssetReferenceField = new AssetReferenceField(typeof(Place))
             {
                 
@@ -115,9 +127,28 @@ namespace Metamatic.Framework.Editor.PlayPanel
             {
                 m_Observable_ChapterReference.Value = ar;
             };
+
+            placeField.Add(m_ChapterAssetReferenceField);
+            playButtonContainer.Add(placeField);
             
-            playButtonContainer.Add(m_ChapterAssetReferenceField);
+            var checkpointIdField = new Field("Checkpoint id");
+            // Checkpoint id
+            m_CheckpointIdField = new TextField()
+            {
+                value = m_Observable_ChapterReference.Value?.AssetGUID,
+                style =
+                {
+                    flexGrow = 1,
+                    height = 20
+                }
+            };
+            m_CheckpointIdField.RegisterValueChangedCallback(evt =>
+            {
+                m_Observable_CheckpointId.Value = evt.newValue;
+            });
             
+            checkpointIdField.Add(m_CheckpointIdField);
+            playButtonContainer.Add(checkpointIdField);
             
             playPanel.Add(playButtonContainer);
             

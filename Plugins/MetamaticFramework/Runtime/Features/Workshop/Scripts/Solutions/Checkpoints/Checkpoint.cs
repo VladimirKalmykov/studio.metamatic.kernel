@@ -77,6 +77,32 @@ namespace Metamatic.Framework.Workshop
         
         #if UNITY_EDITOR
         [FormerlySerializedAs("m_EditMode")] public Observable<bool> EditorOnlyEditMode = new(false); 
+        
+        // Этот метод создаст новый пункт меню для создания вашего объекта.
+        [UnityEditor.MenuItem("GameObject/Metamatic/Framework/Checkpoint", false, 10)]
+        public static void CreateCheckpointGameObject(MenuCommand menuCommand)
+        {
+            // Создайте новый объект Checkpoint
+            var checkpoint = new GameObject("Checkpoint");
+            checkpoint.transform.SetParent(menuCommand.context as Transform, false);
+            checkpoint.transform.position = Vector3.zero;
+            checkpoint.transform.rotation = Quaternion.identity;
+            checkpoint.transform.localScale = Vector3.one;
+            
+            // Добавьте компонент Checkpoint к новому объекту
+            var component = checkpoint.AddComponent<Checkpoint>();
+            component.GenerateUniqueId();
+            
+            // Выберите новый объект в редакторе
+            Selection.activeGameObject = checkpoint;
+        }
+        
+        [UnityEditor.MenuItem("GameObject/Metamatic/Framework/Checkpoint", true)]
+        public static bool ValidateCreateCheckpointGameObject()
+        {
+            // Проверяем, что объект, к которому мы добавляем новый объект, является GameArea
+            return Selection.activeGameObject != null && Selection.activeGameObject.GetComponent<GameArea>() != null;
+        }
         #endif
         
         #region Serializable fields

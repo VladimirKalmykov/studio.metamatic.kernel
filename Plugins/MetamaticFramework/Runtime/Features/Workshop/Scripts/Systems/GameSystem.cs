@@ -29,6 +29,7 @@ namespace Metamatic.Framework
         public const string ConfigSkipGameIntroKeyName = "Metamatic_ConfigSkipGameIntro";
         public const string ConfigSkipMainMenuOnStartKeyName = "Metamatic_ConfigSkipMainMenuOnStart";
         public const string ConfigForceStartChapterGuid = "Metamatic_ConfigForceStartChapterGuid";
+        public const string ConfigForceStartCheckpointId = "Metamatic_ConfigForceStartCheckpointId";
         #endregion
         public enum GameEvent
         {
