@@ -10,7 +10,8 @@ using Debug = UnityEngine.Debug;
 
 namespace Metamatic
 {
-    public sealed class AsyncStateMachine<TState> : IDisposable, IUniTaskAsyncDisposable
+    public class AsyncStateMachine<TState, TContext> : IDisposable, IUniTaskAsyncDisposable
+    where TContext: class
     {
         public enum TransitionStatus
         {
@@ -54,7 +55,7 @@ namespace Metamatic
 
         public readonly struct Transition
         {
-            private readonly AsyncStateMachine<TState> m_StateMachine;
+            private readonly AsyncStateMachine<TState, TContext> m_StateMachine;
             public readonly Signal cancellationSignal; // TODO: rename to CapitalCase
             public readonly short ID;
 
@@ -64,6 +65,12 @@ namespace Metamatic
             public TState state => m_StateMachine.currentState;
             public TState nextState => m_StateMachine.nextState;
             public bool hasNextState => m_StateMachine.m_HasNextState;
+
+            public TContext context
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get =>  m_StateMachine.Context; 
+            }
 
             public bool isExternalCancellationSignalCancelled =>
                 m_StateMachine.m_ExternalCancellationSignal.IsCancellationRequested;
@@ -83,7 +90,7 @@ namespace Metamatic
                 return m_StateMachine.AddNextStateValidator(validator);
             }
 
-            internal Transition(AsyncStateMachine<TState> stateMachine, short id)
+            internal Transition(AsyncStateMachine<TState, TContext> stateMachine, short id)
             {
                 m_StateMachine = stateMachine;
                 cancellationSignal = stateMachine.cancellationSignal;
@@ -550,6 +557,7 @@ namespace Metamatic
         #endregion
 
         private readonly StateChangeHandler m_Handler;
+        public readonly TContext Context;
         private TState m_DefaultState;
         private bool m_SettingKeepOnlyLatestState;
         private bool m_RefuseNextStateIfNotReady;
@@ -602,10 +610,11 @@ namespace Metamatic
         /// <param name="autoCompleteWithDefaultState">If current transition is about to end, but there are no next states in queue, automatically add default state as next state</param>
         /// <param name="debug">Enable debug logging</param>
         /// <param name="refuseNextStateIfNotReady">Ignore adding next state if the current transition is not ready</param>
-        public AsyncStateMachine(StateChangeHandler handler, TState defaultState = default,
+        public AsyncStateMachine(StateChangeHandler handler, TContext context, TState defaultState = default,
             bool keepOnlyLatestState = false, bool autoCompleteWithDefaultState = false, bool debug = false, bool refuseNextStateIfNotReady = false)
         {
             m_Handler = handler;
+            Context = context;
             m_DefaultState = defaultState;
             m_SettingKeepOnlyLatestState = keepOnlyLatestState;
             m_SettingAutoCompleteWithDefaultState = autoCompleteWithDefaultState;
@@ -1233,6 +1242,16 @@ namespace Metamatic
                 m_TransitionToNextStateCompletionSource?.TryReturn();
             }
             // TODO: Consider do not throw exception of current transition
+        }
+    }
+
+    public sealed class AsyncStateMachine<TState> : AsyncStateMachine<TState, object>
+    {
+        public AsyncStateMachine(StateChangeHandler handler, TState defaultState = default,
+            bool keepOnlyLatestState = false, bool autoCompleteWithDefaultState = false, bool debug = false,
+            bool refuseNextStateIfNotReady = false) : base(handler, null, defaultState, keepOnlyLatestState,
+            autoCompleteWithDefaultState, debug, refuseNextStateIfNotReady)
+        {
         }
     }
 }
