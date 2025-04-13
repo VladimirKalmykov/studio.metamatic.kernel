@@ -43,11 +43,43 @@ namespace Metamatic.Framework.Workshop
         /// <param name="delay"></param>
         /// <param name="onComplete"></param>
         /// <returns></returns>
-        public DisposableAction Schedule(float delay, Action onComplete)
+        public static DisposableAction Schedule(float delay, Action onComplete, PlayerLoopTiming playerLoopTiming = PlayerLoopTiming.EarlyUpdate)
         {
             var css = SignalSource.Create();
-            PlayerLoop.Delay(delay, PlayerLoopTiming.EarlyUpdate, css.Signal).ContinueWith(onComplete).Forget();
+            PlayerLoop.Delay(delay, playerLoopTiming, css.Signal).ContinueWith(onComplete).Forget();
             return DisposableAction.Create(css.Dispose);
+        }
+        
+        public readonly struct ScheduledAsyncAction
+        {
+            public readonly Action<Signal> OnComplete;
+            public readonly Signal CancellationSignal;
+            
+            public ScheduledAsyncAction(Action<Signal> onComplete, Signal cancellationSignal)
+            {
+                OnComplete = onComplete;
+                CancellationSignal = cancellationSignal;
+            }
+            
+            public void Invoke()
+            {
+                if (CancellationSignal.isRaised)
+                    return;
+                OnComplete(CancellationSignal);
+            }
+        }
+        
+        /// <summary>
+        /// Schedule an cancellable action to be executed after a delay.
+        /// </summary>
+        /// <param name="delay"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="playerLoopTiming"></param>
+        /// <param name="cancellationSignal"></param>
+        public static void Schedule(float delay, Action<Signal> onComplete, PlayerLoopTiming playerLoopTiming = PlayerLoopTiming.EarlyUpdate, Signal cancellationSignal = default)
+        {
+            var scheduledAction = new ScheduledAsyncAction(onComplete, cancellationSignal);
+            PlayerLoop.Delay(delay, playerLoopTiming, cancellationSignal).ContinueWith(scheduledAction.Invoke).Forget();
         }
         
         public void ScheduleAtTime(float time, Action onComplete, Signal cancellationSignal)

@@ -194,7 +194,7 @@ namespace Metamatic.Framework
             });
         }
         
-        public DisposableAction WatchEntityExistsAsync(string id, Func<VirtualEntity, bool, Signal, UniTaskVoid> listener)
+        public DisposableAction WatchVirtualEntityExistsAsync(string id, Func<VirtualEntity, bool, Signal, UniTaskVoid> listener)
         {
             var css = SignalSource.Create();
             if (!m_EntityListeners.TryGetValue(id, out var listeners))
@@ -346,7 +346,7 @@ namespace Metamatic.Framework
                 m_Places.Add(placeAddress, place);
             }
 
-            return place.CreateEntity(id, position, blueprintAddress, checkpointId: checkpointId, checkpoint: checkpoint, dontEnable: dontEnable, alwaysPlayVirtualLogic: alwaysPlayVirtualLogic);
+            return place.CreateVirtualEntity(id, position, blueprintAddress, checkpointId: checkpointId, checkpoint: checkpoint, dontEnable: dontEnable, alwaysPlayVirtualLogic: alwaysPlayVirtualLogic);
         }
         
         public VirtualEntity GetOrCreateVirtualEntity(string placeAddress, string id, Vector3 position, string blueprintAddress)
@@ -374,6 +374,94 @@ namespace Metamatic.Framework
             }
 
             return CreateEntity(placeAddress, id, position, blueprintAddress);
+        }
+
+        /// <summary>
+        /// Find entity in all places.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="entityDescriptor"></param>
+        /// <returns></returns>
+        public bool TryFindEntity(string id, out EntityDescriptor entityDescriptor)
+        {
+            if (!TryGetEntity(id, out var virtualEntity))
+            {
+                // Entity not found in current place. Try to find it in all places.
+                foreach (var place in m_Places.Values)
+                {
+                    if (place.TryFindEntity(id, out entityDescriptor))
+                    {
+                        return true;
+                    }
+                }
+            }
+            else
+            {
+                entityDescriptor = new EntityDescriptor(this, virtualEntity.place, virtualEntity.id, false,
+                    virtualEntity.isMaterialized, (Entity.SaveData)virtualEntity.Save());
+                return true;
+            }
+
+            entityDescriptor = default;
+            return false;
+        }
+
+        public bool MoveEntity(string entityId, string placeAddress)
+        {
+            if (TryFindEntity(entityId, out var entityDescriptor))
+            {
+                if (placeAddress != entityDescriptor.place.address)
+                {
+                    var nextPlace = GetOrCreatePlace(placeAddress);
+                    var nextData = entityDescriptor.data;
+                    nextData.checkpointId = "default";
+                    nextData.gameAreaId = null;
+                    nextPlace.CreateEntity(nextData);
+                    entityDescriptor.Release();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        
+        public bool MoveEntity(string entityId, string placeAddress, string checkpointId)
+        {
+            if (TryFindEntity(entityId, out var entityDescriptor))
+            {
+                if (placeAddress != entityDescriptor.place.address)
+                {
+                    entityDescriptor.Release();
+                    var nextPlace = GetOrCreatePlace(placeAddress);
+                    var nextData = entityDescriptor.data;
+                    nextData.checkpointId = checkpointId;
+                    nextData.gameAreaId = null;
+                    nextPlace.CreateEntity(nextData);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        
+        public bool MoveEntity(string entityId, string placeAddress, Vector3 position)
+        {
+            if (TryFindEntity(entityId, out var entityDescriptor))
+            {
+                if (placeAddress != entityDescriptor.place.address)
+                {
+                    entityDescriptor.Release();
+                    var nextPlace = GetOrCreatePlace(placeAddress);
+                    var nextData = entityDescriptor.data;
+                    nextData.position = position;
+                    nextData.checkpointId = null;
+                    nextData.gameAreaId = null;
+                    nextPlace.CreateEntity(nextData);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public object Save()

@@ -348,11 +348,17 @@ namespace Metamatic
         /// <returns></returns>
         public static DisposableAction LoopDelay(Func<float> getSeconds, Action action, PlayerLoopTiming timing = PlayerLoopTiming.Update)
         {
+            var debugId = Guid.NewGuid();
             var currentTime = Time.time;
             var isActive = true;
             var nextSeconds = getSeconds();
             UniTask.WaitUntil(() =>
             {
+                if (!isActive)
+                {
+                    Console.Debug("PlayerLoop", "Break loop", $"{debugId}");
+                    return true;
+                }
                 if (Time.time - currentTime >= nextSeconds)
                 {
                     currentTime = Time.time;
@@ -369,7 +375,11 @@ namespace Metamatic
                 return !isActive;
             }, timing);
             
-            return new DisposableAction(() => isActive = false);
+            return new DisposableAction(() =>
+            {
+                Console.Debug("PlayerLoop", "Dispose", $"{debugId}");
+                isActive = false;
+            });
         }
         
         /// <summary>

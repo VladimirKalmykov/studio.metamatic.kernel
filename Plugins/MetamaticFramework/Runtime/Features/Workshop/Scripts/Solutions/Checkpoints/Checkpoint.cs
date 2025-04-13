@@ -1,8 +1,10 @@
 
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Metamatic.Exceptions;
 using Sirenix.OdinInspector;
+using UnityEngine.Events;
 using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -15,6 +17,7 @@ namespace Metamatic.Framework.Workshop
     public class Checkpoint : MonoBehaviour
     {
         private static readonly SignedIndexedHashPool<Checkpoint> s_Checkpoints = new SignedIndexedHashPool<Checkpoint>(50);
+        private static readonly Dictionary<string, Checkpoint> m_CheckpointsById = new Dictionary<string, Checkpoint>(50);
         private static event Action<Checkpoint, Entity> OnTriggerAll;
         public static DisposableAction SubscribeTriggerAll(Action<Checkpoint, Entity> action)
         {
@@ -23,9 +26,7 @@ namespace Metamatic.Framework.Workshop
         }
         public static bool TryGetCheckpoint(string id, out Checkpoint checkpoint)
         {
-            /* Find all checkpoint components in the game */
-            var checkpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None);
-            foreach (var nextCheckpoint in checkpoints)
+            foreach (var nextCheckpoint in s_Checkpoints)
             {
                 if (nextCheckpoint.id == id)
                 {
@@ -40,10 +41,9 @@ namespace Metamatic.Framework.Workshop
         public static bool TryGetCheckpointOrDefault(string id, out Checkpoint checkpoint)
         {
             /* Find all checkpoint components in the game */
-            var checkpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None);
             var defaultCheckpoint = default(Checkpoint);
             var gotDefault = false;
-            foreach (var nextCheckpoint in checkpoints)
+            foreach (var nextCheckpoint in s_Checkpoints)
             {
                 if (nextCheckpoint.id == id)
                 {
@@ -84,12 +84,13 @@ namespace Metamatic.Framework.Workshop
         [Tooltip("Is this checkpoint the default one? New game will start from this checkpoint.")]
         [SerializeField] private bool m_IsDefault;
         
-        [SerializeField]
+        [HideInInspector][SerializeField]
         public string id;
         
         #endregion
 
         public event Action<Entity> OnTrigger;
+        public UnityEvent<Entity> OnTriggerEvent = new UnityEvent<Entity>();
         
         public Vector3 worldSpawnPosition => transform.TransformPoint(spawnPosition);
         private Observable<bool> m_ObservableIsActivated = new(false);
@@ -116,7 +117,15 @@ namespace Metamatic.Framework.Workshop
 
         private void Awake()
         {
+            #if DEBUG
+            if (m_CheckpointsById.ContainsKey(id))
+            {
+                Console.Error("Checkpoint", $"Checkpoint with the same id ({id}) already exists");
+                return;
+            }
+            #endif
             m_ReleaseToken = s_Checkpoints.Add(this);
+            m_CheckpointsById[id] = this;
             m_CheckpointTrigger = GetComponent<CheckpointTrigger>();
             
             #if DEBUG
@@ -131,7 +140,10 @@ namespace Metamatic.Framework.Workshop
 
         private void OnDestroy()
         {
-            s_Checkpoints.Remove(m_ReleaseToken);
+            if (s_Checkpoints.Remove(m_ReleaseToken, out var checkpoint))
+            {
+                m_CheckpointsById.Remove(id);
+            }
             OnDestroyAction?.Invoke();
         }
 
@@ -160,6 +172,7 @@ namespace Metamatic.Framework.Workshop
         public void Trigger(Entity entity)
         {
             OnTrigger?.Invoke(entity);
+            OnTriggerEvent.Invoke(entity);
             OnTriggerAll?.Invoke(this, entity);
         }
         

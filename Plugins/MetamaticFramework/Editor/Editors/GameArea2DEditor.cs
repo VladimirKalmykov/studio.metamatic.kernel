@@ -2,7 +2,9 @@ using Cysharp.Threading.Tasks;
 using Metamatic;
 using Metamatic.EditorTools;
 using Metamatic.UIToolKit;
+using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -24,6 +26,8 @@ namespace Metamatic.Framework.Workshop
             // Connect stylesheets
             superRoot.styleSheets.Add(UIToolKitCore.tailwindStyleSheet);
             superRoot.styleSheets.Add(UIToolKitCore.styleSheet);
+            
+            superRoot.Add(CreateIdElement());
 
             VisualElement ugui = new IMGUIContainer(() =>
             {
@@ -41,6 +45,29 @@ namespace Metamatic.Framework.Workshop
             Console.Debug("Editor", "Create GUI");
 
             return superRoot;
+        }
+
+        private VisualElement CreateIdElement()
+        {
+            var editor = new IdEditorElement(() =>
+            {
+                if (IdsGenerator.GenerateUniqueIdForComponent(gameArea2D, IdsGenerator.IdType.ShortGuid,
+                        (area2D, id) => area2D.id == id, out var id))
+                {
+                    return id;
+                }
+
+                return "";
+            })
+            {
+                value = gameArea2D.id
+            };
+            editor.onValueChanged += (value) =>
+            {
+                gameArea2D.id = value;
+                EditorUtility.SetDirty(gameArea2D);
+            };
+            return editor;
         }
 
         private VisualElement CreateControlsElement()

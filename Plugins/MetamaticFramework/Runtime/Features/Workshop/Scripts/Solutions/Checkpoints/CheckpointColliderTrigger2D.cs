@@ -22,7 +22,7 @@ namespace Metamatic.Framework.Workshop
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (PlayerSystem.IsPlayer(other.gameObject, out var entity))
+            if (other.gameObject.TryGetComponent<Entity>(out var entity))
             {
                 Checkpoint.Trigger(entity);
             }

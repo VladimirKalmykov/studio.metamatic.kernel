@@ -262,7 +262,7 @@ namespace Metamatic.Framework
                     // Re-create virtual world if not seamless
                     VirtualWorld.CreateNewCurrent();
                 }
-                m_ActivePlaceAddress.Value = addressOrGuid;
+                m_ActivePlaceAddress.Value = null;
                 isGameRunning = true;
                 isGameLoaded = false;
                 using var pending = PendingSystem.CreateCriticalPending("Initialize place scenes");
@@ -274,30 +274,30 @@ namespace Metamatic.Framework
                 var chapter = await summonChapter.Wait(default);
                 
                 // Activate scenes
-                if (!seamless || _CurrentBaseSceneRef != chapter.baseScene)
+                if (!seamless || _CurrentBaseSceneRef?.AssetGUID != chapter.baseScene.AssetGUID)
                 {
-                    // Unload previous base scene
                     _CurrentBaseSceneInstance = default;
+                    // Unload previous base scene
                     await _CurrentBaseSceneSummon.DisposeAsync();
+                    _CurrentBaseSceneRef = chapter.baseScene;
+                    // Load base scene
+                    _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Additive);
                 }
                 
-                if (!seamless || (_CurrentGameSceneRef != chapter.gameScene))
+                if (!seamless || (_CurrentGameSceneRef?.AssetGUID != chapter.gameScene.AssetGUID))
                 {
                     _CurrentGameSceneInstance = default;
                     await _CurrentGameSceneSummon.DisposeAsync();
+                    _CurrentGameSceneRef = chapter.gameScene;
+                    // Load game scene
+                    _CurrentGameSceneSummon = ResourcesSystem.LoadScene(_CurrentGameSceneRef, LoadSceneMode.Additive);
                 }
-                _CurrentGameSceneRef = chapter.gameScene;
-                _CurrentBaseSceneRef = chapter.baseScene;
-            
-                // Load base scene
-                _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Additive);
-            
-                // Load game scene
-                _CurrentGameSceneSummon = ResourcesSystem.LoadScene(_CurrentGameSceneRef, LoadSceneMode.Additive);
             
                 var (baseSceneInstance, gameSceneInstance) = await UniTask.WhenAll(_CurrentBaseSceneSummon.ToUniTask(), _CurrentGameSceneSummon.ToUniTask());
                 _CurrentBaseSceneInstance = baseSceneInstance;
                 _CurrentGameSceneInstance = gameSceneInstance;
+                
+                m_ActivePlaceAddress.Value = addressOrGuid;
                 
                 var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
                 await UniTask.WhenAll(servicesReadyTasks);

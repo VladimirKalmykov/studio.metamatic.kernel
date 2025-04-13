@@ -27,6 +27,7 @@ namespace Metamatic.Framework.Workshop
             {
                 using var trackDelayer = PlayerLoop.LoopDelay(GetTrackingRandomDelay, TrackSpawnedEntities);
                 await signal;
+                Console.Debug("VirtualLogic", "AutoSpawner", "Stop logic");
             }
             
             Console.Debug("AutoSpawner", "Stop virtual logic");

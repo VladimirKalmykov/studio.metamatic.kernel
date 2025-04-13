@@ -135,7 +135,7 @@ namespace Metamatic.Framework
             this.place.world.InternalRegisterVirtualEntity(this);
         }
         
-        internal void InternalDestroy(DismissReason reason)
+        internal void InternalDestroy()
         {
             this.place.world.InternalUnregisterVirtualEntity(this);
             TryDematerialize(DismissReason.Release);
@@ -148,11 +148,6 @@ namespace Metamatic.Framework
         
         public object Save()
         {
-            if (!m_HasData)
-            {
-                return null;
-            }
-
             /* Collect data from all entity logics */
             if (m_Logics != null)
             {
@@ -194,7 +189,6 @@ namespace Metamatic.Framework
                 #endif
                 id = saveData.id;
                 m_SaveData = saveData;
-                m_HasData = true;
                 blueprint = saveData.blueprint;
                 isStatic = saveData.isStatic;
                 isKicked = saveData.isKicked;
@@ -237,7 +231,7 @@ namespace Metamatic.Framework
                 if (alwaysPlayVirtualLogic)
                 {
                     /* Play entity logic */
-                    PlayVirtualLogic(cancellationSignal);
+                    SchedulePlayVirtualLogic(1f, cancellationSignal);
                 }
                 await cancellationSignal;
             }
@@ -251,54 +245,59 @@ namespace Metamatic.Framework
         
         private async UniTaskVoid OnMaterializedChangeAsync(Entity entity, bool hasEntity, Signal cancellationSignal)
         {
+            cancellationSignal.Register(() =>
+            {
+                Console.Debug("VirtualEntity", "OnMaterializedChangeAsync", $"Entity {id} previous is cancelled: Now is {(hasEntity ? "Has material entity" : "Not no material entity")}");
+            });
             Action observeDisposable = null;
-            if (!hasEntity && !isKicked && !isStatic) // TODO: Watch kicked, because it can be changed anytime
+            if (!isKicked && !hasEntity)
             {
-                if (String.IsNullOrEmpty(checkpointId))
+                if (!isStatic) // TODO: Watch kicked, because it can be changed anytime
                 {
-                    // Should be materialized in the specified game area
-                    observeDisposable = m_ObservableGameAreaId.WatchAsync(OnGameAreaIdChangeAsync);
+                    if (String.IsNullOrEmpty(checkpointId))
+                    {
+                        // Should be materialized in the specified game area
+                        observeDisposable = m_ObservableGameAreaId.WatchAsync(OnGameAreaIdChangeAsync);
+                    }
+                    else
+                    {
+                        observeDisposable = m_ObservableCheckpointId.WatchAsync(OnCheckpointIdChangeAsync);
+                    }
                 }
-                else
+                
+                if (!alwaysPlayVirtualLogic && m_Logics != null)
                 {
-                    observeDisposable = m_ObservableCheckpointId.WatchAsync(OnCheckpointIdChangeAsync);
+                    /* Play virtual entity logic */
+                    SchedulePlayVirtualLogic(1f, cancellationSignal);
                 }
             }
-
-            if (!alwaysPlayVirtualLogic && !hasEntity && m_Logics != null)
-            {
-                /* Play entity logic */
-                PlayVirtualLogic(cancellationSignal);
-            }
+           
             await cancellationSignal;
             observeDisposable?.Invoke();
         }
 
         private SignalSource m_StopLogicSignalSource = default;
         
+        private void SchedulePlayVirtualLogic(float seconds, Signal cancellationSignal)
+        {
+            m_StopLogicSignalSource.Dispose();
+            m_StopLogicSignalSource = SignalSource.Create();
+            cancellationSignal.Register(m_StopLogicSignalSource.TryRaise);
+            TimeService.Schedule(2f, PlayVirtualLogic, PlayerLoopTiming.Update, m_StopLogicSignalSource.Signal);
+        }
+        
         private void PlayVirtualLogic(Signal cancellationSignal)
         {
-            m_StopLogicSignalSource = SignalSource.Create();
-            var registration = cancellationSignal.Register(m_StopLogicSignalSource.TryRaise);
-            try
+            foreach (var logic in m_Logics)
             {
-                foreach (var logic in m_Logics)
+                if (!m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
                 {
-                    if (!m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
-                    {
-                        virtualLogic = (VirtualEntityLogic)Activator.CreateInstance(logic.entityLogicType);
-                        m_VirtualEntityLogics.Add(logic.componentType, virtualLogic);
-                    }
-                    RunVirtualLogic(virtualLogic, logic, m_StopLogicSignalSource.Signal).Forget();
+                    virtualLogic = (VirtualEntityLogic)Activator.CreateInstance(logic.entityLogicType);
+                    m_VirtualEntityLogics.Add(logic.componentType, virtualLogic);
                 }
-            }
-            finally
-            {
-                registration.Dispose();
+                RunVirtualLogic(virtualLogic, logic, cancellationSignal).Forget();
             }
         }
-
-        
         
         private async UniTaskVoid RunVirtualLogic(VirtualEntityLogic virtualLogic, EntityLogic.SaveData saveData, Signal cancellationSignal)
         {
@@ -341,7 +340,19 @@ namespace Metamatic.Framework
 
         private async UniTaskVoid OnCheckpointIdChangeAsync(string checkpointId, Signal cancellationSignal)
         {
-            if (checkpoint != null || Checkpoint.TryGetCheckpoint(checkpointId, out checkpoint))
+            if (checkpointId == "default")
+            {
+                if (Checkpoint.TryGetDefaultCheckpoint(out var defaultCheckpoint))
+                {
+                    checkpoint = defaultCheckpoint;
+                    using var watchCheckpointActivation = defaultCheckpoint.WatchActivationAsync(OnCheckpointActivationAsync);
+                    await cancellationSignal;
+                }
+                else
+                {
+                    Console.Error("VirtualEntity", "No default checkpoint found in current place");
+                }
+            } else if (checkpoint != null || Checkpoint.TryGetCheckpoint(checkpointId, out checkpoint))
             {
                 using var watchCheckpointActivation = checkpoint.WatchActivationAsync(OnCheckpointActivationAsync);
                 await cancellationSignal;

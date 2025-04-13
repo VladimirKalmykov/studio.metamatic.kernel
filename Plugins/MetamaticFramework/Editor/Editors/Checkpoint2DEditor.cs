@@ -20,6 +20,7 @@ namespace Metamatic.Framework.Workshop
             // Connect stylesheets
             superRoot.styleSheets.Add(UIToolKitCore.tailwindStyleSheet);
             superRoot.styleSheets.Add(UIToolKitCore.styleSheet);
+            superRoot.Add(CreateIdElement());
 
             VisualElement ugui = new IMGUIContainer(() =>
             {
@@ -35,6 +36,29 @@ namespace Metamatic.Framework.Workshop
             Console.Debug("Editor", "Create GUI");
 
             return superRoot;
+        }
+        
+        private VisualElement CreateIdElement()
+        {
+            var editor = new IdEditorElement(() =>
+            {
+                if (IdsGenerator.GenerateUniqueIdForComponent(checkpoint, IdsGenerator.IdType.ShortGuid,
+                        (checkpointToMatch, id) => checkpointToMatch.id == id, out var id))
+                {
+                    return id;
+                }
+
+                return "";
+            })
+            {
+                value = checkpoint.id
+            };
+            editor.onValueChanged += (value) =>
+            {
+                checkpoint.id = value;
+                EditorUtility.SetDirty(checkpoint);
+            };
+            return editor;
         }
         
         private VisualElement CreateControlsElement()

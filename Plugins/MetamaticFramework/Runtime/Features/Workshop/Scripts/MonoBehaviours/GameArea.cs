@@ -190,7 +190,7 @@ namespace Metamatic.Framework.Workshop
 #endif
         [Tooltip("Determines that all entities that belong to this area should be removed or virtualized if the area is deactivated. To put it simply, all things will fall down to the abyss if this area's basement are disappeared.")]
         [SerializeField] public bool isFoundation = true;
-        [ReadOnly] [SerializeField] public string id;
+        [HideInInspector] [SerializeField] public string id;
 
 #if UNITY_EDITOR        
         private bool m_FactualIsActiveInEditor = false;
