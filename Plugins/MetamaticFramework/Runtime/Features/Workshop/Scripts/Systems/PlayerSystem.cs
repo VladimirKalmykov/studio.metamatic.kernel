@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using Metamatic.Framework.Workshop;
 using UnityEngine;
 
@@ -81,6 +82,44 @@ namespace Metamatic.Framework
                 if (i == index)
                 {
                     action(entity);
+                }
+            }
+        }
+
+        public static DisposableAction WatchPlayerAsync(Func<Entity, Signal, UniTaskVoid> handler, int index)
+        {
+            SignalSource css = default;
+            if (m_Players.TryGetValue(index, out var player))
+            {
+                css.Dispose();
+                css = SignalSource.Create();
+                handler(player, css.Signal).Forget();
+            }
+            OnPlayerRegistered += OnPlayerRegisteredHandler;
+            OnPlayerUnregistered += OnPlayerUnregisteredHandler;
+
+            return DisposableAction.Create(() =>
+            {
+                css.Dispose();
+                OnPlayerRegistered -= OnPlayerRegisteredHandler;
+                OnPlayerUnregistered -= OnPlayerUnregisteredHandler;
+            });
+            
+            void OnPlayerRegisteredHandler(Entity entity, int i)
+            {
+                if (i == index)
+                {
+                    css.Dispose();
+                    css = SignalSource.Create();
+                    handler(entity, css.Signal).Forget();
+                }
+            }
+            
+            void OnPlayerUnregisteredHandler(Entity entity, int i)
+            {
+                if (i == index)
+                {
+                    css.Dispose();
                 }
             }
         }

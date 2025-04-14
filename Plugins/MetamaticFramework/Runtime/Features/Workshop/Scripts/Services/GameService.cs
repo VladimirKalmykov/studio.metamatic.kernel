@@ -36,7 +36,7 @@ namespace Metamatic.Framework.Workshop
         
         #region Private properties
 
-        private AsyncStateMachine<GameLoopEvent> m_GameLoopStateMachine;
+        private AsyncStateMachine<GameLoopEvent, GameService> m_GameLoopStateMachine;
         private AsyncDisposableSummon<SceneInstance> m_StartSceneSummon = AsyncDisposableSummon<SceneInstance>.Empty;
         private SceneInstance m_LoadingSceneInstance;
         private string m_CurrentChapterAddress;
@@ -47,7 +47,7 @@ namespace Metamatic.Framework.Workshop
             DontDestroyOnLoad(this.gameObject);
             
             /* Init state machine */
-            m_GameLoopStateMachine = new AsyncStateMachine<GameLoopEvent>(OnStateChange, GameLoopEvent.IdleGameLoopEvent, keepOnlyLatestState: true, refuseNextStateIfNotReady: true);
+            m_GameLoopStateMachine = new AsyncStateMachine<GameLoopEvent, GameService>(OnStateChange, this, GameLoopEvent.IdleGameLoopEvent, keepOnlyLatestState: true, refuseNextStateIfNotReady: true);
             
             /* Load editor prefs */
 #if METAMATIC_SKIP_GAME_INTRO
@@ -90,7 +90,7 @@ namespace Metamatic.Framework.Workshop
             await ready();
         }
 
-        private async UniTask OnStateChange(AsyncStateMachine<GameLoopEvent>.Transition transition)
+        private async UniTask OnStateChange(AsyncStateMachine<GameLoopEvent, GameService>.Transition transition)
         {
             switch (transition.state)
             {

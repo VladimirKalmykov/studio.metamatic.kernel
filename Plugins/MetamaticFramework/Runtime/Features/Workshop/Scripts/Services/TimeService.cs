@@ -36,6 +36,7 @@ namespace Metamatic.Framework.Workshop
         }
 
         private bool m_WasLoaded;
+        private VetoVote m_PauseGameVetoVote = new VetoVote(false);
 
         /// <summary>
         /// Schedule an action to be executed after a delay.
@@ -92,7 +93,7 @@ namespace Metamatic.Framework.Workshop
             PlayerLoop.Delay(time - this.time, PlayerLoopTiming.EarlyUpdate, cancellationSignal).ContinueWith(onComplete).Forget();
         }
         
-        protected override UniTask RunService(Ready ready, Signal signal)
+        protected override async UniTask RunService(Ready ready, Signal signal)
         {
             if (!m_WasLoaded)
             {
@@ -100,7 +101,14 @@ namespace Metamatic.Framework.Workshop
                 m_SystemTimeAtCustomTimeLastChange = Time.time;
                 timeScale = m_DefaultTimeScale;
             }
-            return ready();
+
+            using var watchPause = m_PauseGameVetoVote.Watch(OnGamePause);
+            await ready();
+        }
+
+        public DisposableAction Pause()
+        {
+            return m_PauseGameVetoVote.Vote(true);
         }
 
         public object Save()
@@ -120,6 +128,13 @@ namespace Metamatic.Framework.Workshop
             timeScale = saveData.timeScale;
             m_WasLoaded = true;
             return UniTask.CompletedTask;
+        }
+
+        private float m_BeforePauseTimeScale;
+        private void OnGamePause(bool paused)
+        {
+            m_BeforePauseTimeScale = timeScale;
+            Time.timeScale = paused ? 0 : m_BeforePauseTimeScale;
         }
     }
 }

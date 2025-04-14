@@ -106,6 +106,48 @@ namespace Metamatic
             return GetVariableSetter<T>(this, name);
         }
         
+        public bool TryGetVariable<T>(object key, string name, out T value)
+        {
+            var type = typeof(T);
+            var dictionaryKey = (key, type, name);
+            if (!m_Variables.TryGetValue(dictionaryKey, out var inquirable))
+            {
+                value = default;
+                return false;
+            }
+            
+            var inquirableTyped = (Inquirable<Observable<T>>)inquirable;
+            var microState = inquirableTyped.value;
+            value = microState.value;
+            return true;
+        }
+        
+        public bool TryGetVariable<T>(string name, out T value)
+        {
+            return TryGetVariable(this, name, out value);
+        }
+        
+        public void SetVariable<T>(object key, string name, T value)
+        {
+            var type = typeof(T);
+            var dictionaryKey = (key, type, name);
+            if (!m_Variables.TryGetValue(dictionaryKey, out var inquirable))
+            {
+                var microStateBase = new Observable<T>();
+                inquirable = (Inquirable)new Inquirable<Observable<T>>(microStateBase);
+                m_Variables.Add(dictionaryKey, inquirable);
+            }
+            
+            var inquirableTyped = (Inquirable<Observable<T>>)inquirable;
+            var microState = inquirableTyped.value;
+            microState.value = value;
+        }
+        
+        public void SetVariable<T>(string name, T value)
+        {
+            SetVariable(this, name, value);
+        }
+        
         /// <summary>
         /// Read variable from the dispatcher. Use it only if you are sure that variable exists. In most cases you should use SubscribeVariable instead.
         /// </summary>
