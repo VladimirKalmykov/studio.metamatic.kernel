@@ -121,7 +121,7 @@ namespace Metamatic
         {
             m_StepCancellationSignalSource.TryRaise();
             var presentCancellationSource = m_StepCancellationSignalSource = SignalSource.Create();
-            OnPresent(presentCancellationSource.Signal);
+            OnPresent(presentCancellationSource.Signal).Forget();
         }
         
         /// <summary>

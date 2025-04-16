@@ -54,7 +54,7 @@ namespace Metamatic.Framework.Editor.VirtualWorldEditorWIndow
                 "Matereialized",
                 TableView<VirtualEntity>.Col.WidthType.Relative,
                 0.5f,
-                entity => new Tracker<Label, VirtualEntity>(new Label(entity.placeAddress),entity, (label, virtualEntity) => label.text = virtualEntity.isMaterialized ? "Yes" : "No"));
+                entity => new Tracker<Label, VirtualEntity>(new Label(entity.isMaterialized ? "Yes" : "No"),entity, (label, virtualEntity) => label.text = virtualEntity.isMaterialized ? "Yes" : "No"));
 
             m_EntitiesTable = new TableView<VirtualEntity>(cols);
             section.Add(m_EntitiesTable);

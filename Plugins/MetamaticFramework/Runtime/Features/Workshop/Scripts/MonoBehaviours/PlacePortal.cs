@@ -45,15 +45,15 @@ namespace Metamatic.Framework.Workshop
                 {
                     case PlacementType.Default:
                         // Move the entity to the default checkpoint
-                        VirtualWorld.Current.MoveEntity(entity.id, place.AssetGUID);
+                        VirtualWorld.Current.MoveEntityToPlace(entity.id, place.AssetGUID);
                         break;
                     case PlacementType.SpecificCheckpoint:
                         // Move the entity to the specific checkpoint
-                        VirtualWorld.Current.MoveEntity(entity.id, place.AssetGUID, checkpointId);
+                        VirtualWorld.Current.MoveEntityToPlace(entity.id, place.AssetGUID, checkpointId);
                         break;
                     case PlacementType.FreePosition:
                         // Move the entity to the free position
-                        VirtualWorld.Current.MoveEntity(entity.id, place.AssetGUID, freePosition);
+                        VirtualWorld.Current.MoveEntityToPlace(entity.id, place.AssetGUID, freePosition);
                         break;
                 }
             } catch (Exception e)

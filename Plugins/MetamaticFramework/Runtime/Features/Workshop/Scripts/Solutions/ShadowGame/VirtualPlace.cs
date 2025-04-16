@@ -46,6 +46,16 @@ namespace Metamatic.Framework
             };
         }
 
+        public void TryHibernate()
+        {
+            if (hibernated)
+            {
+                return;
+            }
+
+            Hibernate();
+        }
+        
         public void Hibernate()
         {
             if (hibernated)
@@ -64,6 +74,14 @@ namespace Metamatic.Framework
             }
 
             m_Entities.Clear();
+        }
+
+        public async UniTask TryAwake()
+        {
+            if (hibernated)
+            {
+                await Wake();
+            }
         }
 
         public async UniTask Wake()

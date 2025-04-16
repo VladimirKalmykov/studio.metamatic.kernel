@@ -171,9 +171,9 @@ namespace Metamatic.Framework
                 rotation = m_SaveData.rotation,
                 gameAreaId = m_ObservableGameAreaId.value,
                 checkpointId = checkpointId,
-                dataComponents = m_SaveData.dataComponents,
-                components = m_SaveData.components,
-                logics = m_Logics,
+                dataComponents = m_SaveData.dataComponents ?? Array.Empty<EntityData.SaveData>(),
+                components = m_SaveData.components ?? Array.Empty<Entity.ComponentSaveData>(),
+                logics = m_Logics ?? Array.Empty<EntityLogic.SaveData>(),
             };
         }
 

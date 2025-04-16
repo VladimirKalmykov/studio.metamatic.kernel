@@ -406,7 +406,7 @@ namespace Metamatic.Framework
             return false;
         }
 
-        public bool MoveEntity(string entityId, string placeAddress)
+        public bool MoveEntityToPlace(string entityId, string placeAddress)
         {
             if (TryFindEntity(entityId, out var entityDescriptor))
             {
@@ -425,7 +425,7 @@ namespace Metamatic.Framework
             return false;
         }
         
-        public bool MoveEntity(string entityId, string placeAddress, string checkpointId)
+        public bool MoveEntityToPlace(string entityId, string placeAddress, string checkpointId)
         {
             if (TryFindEntity(entityId, out var entityDescriptor))
             {
@@ -444,7 +444,7 @@ namespace Metamatic.Framework
             return false;
         }
         
-        public bool MoveEntity(string entityId, string placeAddress, Vector3 position)
+        public bool MoveEntityToPlace(string entityId, string placeAddress, Vector3 position)
         {
             if (TryFindEntity(entityId, out var entityDescriptor))
             {
@@ -550,11 +550,11 @@ namespace Metamatic.Framework
                     var virtualPlace = GetOrCreatePlace(place.address);
                     if (place.address == activePlaceAddress)
                     {
-                        await virtualPlace.Wake();
+                        await virtualPlace.TryAwake();
                     }
                     else
                     {
-                        virtualPlace.Hibernate();
+                        virtualPlace.TryHibernate();
                     }
                     loadTasks.Add(virtualPlace.Load(place));
                 }

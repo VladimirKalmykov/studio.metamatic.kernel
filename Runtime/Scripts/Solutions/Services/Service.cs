@@ -38,6 +38,23 @@ namespace Metamatic
             await service.Demand(signal);
             return service;
         }
+        
+        /// <summary>
+        /// Resolves service synchronously. If service is not registered yet, it will return null.
+        /// </summary>
+        /// <param name="service"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static bool TryResolveSync<T>(out T service) where T : Service
+        {
+            if (EnabledServices.TryGetValue(typeof(T), out var s))
+            {
+                service = (T)s;
+                return true;
+            }
+            service = null;
+            return false;
+        }
 
         private static UniTask<T> ResolveInternal<T>(Signal signal = default, float timeout = 10f) where T : Service
         {

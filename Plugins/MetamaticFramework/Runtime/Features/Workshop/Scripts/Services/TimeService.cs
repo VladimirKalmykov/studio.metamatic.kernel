@@ -12,6 +12,7 @@ namespace Metamatic.Framework.Workshop
     {
         [SerializeField] private float m_DefaultTime = 0f;
         [SerializeField] private float m_DefaultTimeScale = 1f;
+        [SerializeField] private float m_DefaultFixedTimeScale = 0.02f;
         
         [Version("1.0.0")]
         public struct SaveData
@@ -33,6 +34,12 @@ namespace Metamatic.Framework.Workshop
                 m_TimeScale = value;
                 Time.timeScale = value;
             }
+        }
+        
+        public float fixedTimeScale 
+        {
+            get => Time.fixedDeltaTime;
+            set => Time.fixedDeltaTime = value;
         }
 
         private bool m_WasLoaded;
@@ -109,6 +116,22 @@ namespace Metamatic.Framework.Workshop
         public DisposableAction Pause()
         {
             return m_PauseGameVetoVote.Vote(true);
+        }
+        
+        public void SlowDownTime(float newTimeScale)
+        {
+            // Устанавливаем новый timeScale
+            Time.timeScale = newTimeScale;
+            // Подгоняем fixedDeltaTime, чтобы фиксированное обновление физики по реальному времени оставалось прежним:
+            Time.fixedDeltaTime = m_DefaultFixedTimeScale * newTimeScale;
+        }
+        
+        public void ResetTimeScale() 
+        {
+            // Возвращаем timeScale к исходному значению
+            Time.timeScale = m_DefaultTimeScale;
+            // Возвращаем fixedDeltaTime к исходному значению:
+            Time.fixedDeltaTime = m_DefaultFixedTimeScale;
         }
 
         public object Save()
