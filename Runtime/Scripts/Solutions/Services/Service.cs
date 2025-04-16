@@ -113,7 +113,7 @@ namespace Metamatic
                         #if DEBUG
                         tasksList.Add(CarryOnServiceLoadStageReady(service.Value, placeAddress, _StopGameSignal.Signal));
                         #else
-                        tasksList.Add(new AsyncWorkWithParam<string>(service.Value.OnGameLoaded, placeAddress, m_StopGameSignal.Signal).Task);
+                        tasksList.Add(new AsyncWorkWithParam<string>(service.Value.OnPlaceLoaded, placeAddress, _StopGameSignal.Signal).Task);
                         #endif
                     }
                     catch (Exception e)

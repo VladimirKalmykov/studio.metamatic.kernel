@@ -49,6 +49,11 @@ namespace Metamatic
             }
         }
 
+        protected virtual void OnDestroy()
+        {
+            Abort();
+        }
+
         /// <summary>
         /// This signal is raised when the presenter is completely dismissed.
         /// </summary>
