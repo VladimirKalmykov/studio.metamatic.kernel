@@ -18,15 +18,6 @@ namespace Metamatic.Framework.Workshop
     /// </summary>
     public class GameService : Service
     {
-        [Serializable]
-        [Version("1.0.0")]
-        public struct SaveData
-        {
-            public string dateTime;
-            public string place;
-            public object world;
-        }
-        
         #region Fields
         [SerializeField] private AssetReference startScene;
         [SerializeField] private AssetReference mainMenuScene;
@@ -145,22 +136,17 @@ namespace Metamatic.Framework.Workshop
                     var pending = PendingSystem.CreateCriticalPending("Load game");
                     try
                     {
-                        var loadAddress = loadGameLoopEvent.saveAddress;
-                        var seamless = loadGameLoopEvent.seamless;
-
-                        // Try to load game
-                        var getSaveDataTask =
-                            Repository.LocalStorage.Get<SaveData>(loadAddress, transition.cancellationSignal);
-                        if (!seamless)
+                        var saveService = await Service.Resolve<SaveService>();
+                        if (!loadGameLoopEvent.seamless)
                         {
                             await GameSystem.TryStopGame();
                             // Show loading screen
                         }
+                        var saveData = await saveService.Load(loadGameLoopEvent.saveAddress, seamless: loadGameLoopEvent.seamless, transition.cancellationSignal);
 
-                        var saveData = await getSaveDataTask;
-                        await GameSystem.LoadGame(saveData.place, saveData.world, seamless);
+                        await GameSystem.LoadGame(saveData.Place, saveData.World, loadGameLoopEvent.seamless);
                         pending.Dispose();
-                        if (!seamless)
+                        if (!loadGameLoopEvent.seamless)
                         {
                             // Hide loading screen
                             break;
@@ -214,29 +200,8 @@ namespace Metamatic.Framework.Workshop
         /// <returns></returns>
         public async UniTask<bool> Save(string address = "latest", Signal cancellationSignal = default)
         {
-            try
-            {
-                if (!GameSystem.isGameRunning)
-                {
-                    return false;
-                }
-                using var pending = PendingSystem.CreatePending("Save game");
-                var worldData = GameSystem.virtualWorld.Save();
-
-                var saveData = new SaveData()
-                {
-                    dateTime = DateTime.Now.ToString(),
-                    place = GameSystem.GetCurrentPlaceAddress(),
-                    world = worldData
-                };
-                Console.Debug("Launcher", $"Saving game data: {saveData}");
-                await Repository.LocalStorage.Set(address, saveData, cancellationSignal);
-                return true;
-            } catch (Exception e)
-            {
-                Console.Error("Launcher", e);
-                return false;
-            }
+            var saveService = await Service.Resolve<SaveService>();
+            return await saveService.Save(address, cancellationSignal);
         }
 
         public async UniTask<bool> Load(string saveAddress = "latest", bool seamless = false)

@@ -11,7 +11,7 @@ namespace Metamatic.Framework
     /// Virtual (ghost) entities
     /// </summary>
     [Virtualization(typeof(Entity))]
-    public class VirtualEntity: ISavable
+    public class VirtualEntity: IWorldSavable
     {
         public VirtualPlace place { get; internal set; }
         private bool m_Enabled = false;
@@ -146,7 +146,7 @@ namespace Metamatic.Framework
             place.ReleaseEntity(this, reason);
         }
         
-        public object Save()
+        public object SaveToWorld()
         {
             /* Collect data from all entity logics */
             if (m_Logics != null)
@@ -156,7 +156,7 @@ namespace Metamatic.Framework
                     var logic = m_Logics[i];
                     if (m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
                     {
-                        logic.data = virtualLogic.Save();
+                        logic.data = virtualLogic.SaveToWorld();
                     }
                 }
             }
@@ -177,7 +177,7 @@ namespace Metamatic.Framework
             };
         }
 
-        public UniTask Load(object data)
+        public UniTask LoadFromWorld(object data)
         {
             if (data is Entity.SaveData saveData)
             {
@@ -303,7 +303,7 @@ namespace Metamatic.Framework
         {
             try
             {
-                await virtualLogic.Load(saveData.data);
+                await virtualLogic.LoadFromWorld(saveData.data);
                 cancellationSignal.ThrowIfRaised();
                 virtualLogic.Run(cancellationSignal).Forget();
             }
@@ -370,7 +370,7 @@ namespace Metamatic.Framework
             {
                 await UniTaskEventLoop.Shared.Yield(cancelSignal);
                 var entity = await Entity.Spawn(blueprint, checkpoint.worldSpawnPosition,
-                    Quaternion.identity, id, false, Save(), cancelSignal);
+                    Quaternion.identity, id, false, SaveToWorld(), cancelSignal);
                 entity.transform.position = checkpoint.worldSpawnPosition;
                 entity.InternalBindToVirtualEntity(this);
                 InternalBindToMaterializedEntity(entity);
@@ -470,7 +470,7 @@ namespace Metamatic.Framework
                 }
                 #endif
                 var entity = await Entity.Spawn(blueprint, position,
-                    Quaternion.identity, id, false, Save(), cancellationSignal);
+                    Quaternion.identity, id, false, SaveToWorld(), cancellationSignal);
                 entity.InternalBindToVirtualEntity(this);
                 InternalBindToMaterializedEntity(entity);
                 entity.gameObject.SetActive(true);

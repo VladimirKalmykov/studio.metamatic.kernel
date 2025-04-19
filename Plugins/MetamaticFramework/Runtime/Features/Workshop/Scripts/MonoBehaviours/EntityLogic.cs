@@ -6,11 +6,11 @@ using UnityEngine;
 namespace Metamatic.Framework.Workshop
 {
     
-    public abstract class VirtualEntityLogic: ISavable
+    public abstract class VirtualEntityLogic: IWorldSavable
     {
         public abstract UniTaskVoid Run(Signal signal);
-        public abstract object Save();
-        public abstract UniTask Load(object data);
+        public abstract object SaveToWorld();
+        public abstract UniTask LoadFromWorld(object data);
     }
 
     public abstract class EntityLogic : MonoBehaviour
@@ -53,7 +53,7 @@ namespace Metamatic.Framework.Workshop
     {
         public override EntityLogic.SaveData InternalSaveEntityLogic()
         {
-            var saveData = this is ISavable savable ? savable.Save() : null;
+            var saveData = this is IWorldSavable savable ? savable.SaveToWorld() : null;
             return new SaveData(this.GetType(), typeof(TVirtual), saveData);
         }
 
@@ -61,9 +61,9 @@ namespace Metamatic.Framework.Workshop
         {
             if (data.entityLogicType == typeof(TVirtual))
             {
-                if (this is ISavable savable)
+                if (this is IWorldSavable savable)
                 {
-                    return savable.Load(data.data);
+                    return savable.LoadFromWorld(data.data);
                 }
             }
             else

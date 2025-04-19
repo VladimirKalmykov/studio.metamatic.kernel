@@ -10,7 +10,7 @@ namespace Metamatic.Framework.Workshop
     /// Entity component is a base class for all other components that are attached to an Entity. E.g. Health, Inventory, etc.
     /// </summary>
     [RequireComponent(typeof(Entity))]
-    public abstract class EntityData: MonoBehaviour, ISavable
+    public abstract class EntityData: MonoBehaviour, IWorldSavable
     {
         [Version("1.0.0")]
         public class SaveData
@@ -110,9 +110,9 @@ namespace Metamatic.Framework.Workshop
             
         }
 
-        public abstract object Save();
+        public abstract object SaveToWorld();
 
-        public abstract UniTask Load(object data);
+        public abstract UniTask LoadFromWorld(object data);
         public UniTask Bootstrap()
         {
             OnInitializeStateWithDefaultValues();
@@ -165,13 +165,13 @@ namespace Metamatic.Framework.Workshop
 
         protected abstract T GetDefaultState();
         
-        public override object Save()
+        public override object SaveToWorld()
         {
             OnBeforeSave();
             return new SaveData(this, typeof(T), State);
         }
 
-        public override UniTask Load(object data)
+        public override UniTask LoadFromWorld(object data)
         {
             if (data == null) return UniTask.CompletedTask;
             State = (T)((data as SaveData)?.Data);

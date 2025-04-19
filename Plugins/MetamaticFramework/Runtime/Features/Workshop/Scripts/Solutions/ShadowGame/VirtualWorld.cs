@@ -9,10 +9,8 @@ using UnityEngine.Serialization;
 
 namespace Metamatic.Framework
 {
-    public class VirtualWorld: ISavable, IDisposable
+    public class VirtualWorld: IWorldSavable, IDisposable
     {
-        
-
         [Serializable]
         [Version("1.0.0")]
         public struct SaveData
@@ -98,7 +96,7 @@ namespace Metamatic.Framework
         {
             var placeAddress = GameSystem.GetCurrentPlaceAddress();
             var virtualEntity = GetOrCreateVirtualEntity(placeAddress, entity.id, entity.transform.position, entity.blueprint);
-            virtualEntity.Load(entity.Save());
+            virtualEntity.LoadFromWorld(entity.SaveToWorld());
         }
         
         public async UniTask TryHydrate(Entity entity)
@@ -109,13 +107,13 @@ namespace Metamatic.Framework
                 virtualEntity = CreateEntity(GameSystem.activePlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true, alwaysPlayVirtualLogic: entity.alwaysPlayVirtualLogic);
                 if (entity.alwaysPlayVirtualLogic)
                 {
-                    await virtualEntity.Load(entity.Save());
+                    await virtualEntity.LoadFromWorld(entity.SaveToWorld());
                 }
                 entity.InternalMarkMaterialized();
             }
             else
             {
-                await entity.Materialize(virtualEntity.Save());
+                await entity.Materialize(virtualEntity.SaveToWorld());
             }
             entity.InternalBindToVirtualEntity(virtualEntity);
             virtualEntity.InternalBindToMaterializedEntity(entity);
@@ -263,8 +261,14 @@ namespace Metamatic.Framework
 
         private void OnServiceRegistered(Service service)
         {
-            /* Create virtual service for real service */
-            GetOrCreateVirtualService(typeof(Service));
+            /*
+             * Create virtual service only for those services that are savable.
+             */
+            if (service is IWorldSavable or IPlaceSavable)
+            {
+                /* Create virtual service for real service */
+                GetOrCreateVirtualService(typeof(Service));
+            }
         }
 
         /// <summary>
@@ -392,7 +396,7 @@ namespace Metamatic.Framework
             else
             {
                 entityDescriptor = new EntityDescriptor(this, virtualEntity.place, virtualEntity.id, false,
-                    virtualEntity.isMaterialized, (Entity.SaveData)virtualEntity.Save());
+                    virtualEntity.isMaterialized, (Entity.SaveData)virtualEntity.SaveToWorld());
                 return true;
             }
 
@@ -458,16 +462,16 @@ namespace Metamatic.Framework
             return false;
         }
 
-        public object Save()
+        public object SaveToWorld()
         {
             /* Save services data */
             var servicesData = new List<ServiceSaveData>();
             /* Walk services and get its data */
             foreach (var service in m_Services.Values)
             {
-                if (service is ISavable savable)
+                if (service is IWorldSavable savable)
                 {
-                    var data = savable.Save();
+                    var data = savable.SaveToWorld();
                     if (data != null)
                     {
                         servicesData.Add(new ServiceSaveData
@@ -496,7 +500,7 @@ namespace Metamatic.Framework
             /* Collect virtual entities */
             foreach (var place in placeValues)
             {
-                placesData[j] = (VirtualPlace.SaveData)(place.Save());
+                placesData[j] = (VirtualPlace.SaveData)(place.SaveToWorld());
                 j++;
             }
 
@@ -510,7 +514,7 @@ namespace Metamatic.Framework
             return saveData;
         }
 
-        public async UniTask Load(object data)
+        public async UniTask LoadFromWorld(object data)
         {
             if (data is SaveData saveData)
             {
@@ -520,15 +524,15 @@ namespace Metamatic.Framework
                 {
                     if (Service.Services.TryGetValue(serviceData.serviceType, out var service))
                     {
-                        if (service is ISavable savable)
+                        if (service is IWorldSavable savable)
                         {
-                            tasks.Add(savable.Load(serviceData.data));
+                            tasks.Add(savable.LoadFromWorld(serviceData.data));
                         }
                     }
                     else
                     {
                         Console.Error("Launcher", $"Service not found: {serviceData.serviceType}");
-                        GetOrCreateVirtualService(serviceData.serviceType).Load(serviceData.data);
+                        GetOrCreateVirtualService(serviceData.serviceType).LoadFromWorld(serviceData.data);
                     }
                 }
                 await UniTask.WhenAll(tasks);
@@ -550,7 +554,7 @@ namespace Metamatic.Framework
                     {
                         virtualPlace.TryHibernate();
                     }
-                    loadTasks.Add(virtualPlace.Load(place));
+                    loadTasks.Add(virtualPlace.LoadFromWorld(place));
                 }
             
                 await UniTask.WhenAll(loadTasks);

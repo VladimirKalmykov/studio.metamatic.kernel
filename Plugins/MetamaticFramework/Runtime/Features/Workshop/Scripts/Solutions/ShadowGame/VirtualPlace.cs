@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Metamatic.Framework
 {
-    public class VirtualPlace : ISavable, IDisposable
+    public class VirtualPlace : IWorldSavable, IDisposable
     {
         [Serializable]
         [Version("1.0.0")]
@@ -64,7 +64,7 @@ namespace Metamatic.Framework
                 return;
             }
 
-            this.data = (SaveData)Save();
+            this.data = (SaveData)SaveToWorld();
             hibernated = true;
 
             /* Release all entities */
@@ -121,7 +121,7 @@ namespace Metamatic.Framework
                 if (m_Entities.TryGetValue(id, out var virtualEntity))
                 {
                     entity = new EntityDescriptor(world, this, virtualEntity.id, false, virtualEntity.isMaterialized,
-                        (Entity.SaveData)virtualEntity.Save());
+                        (Entity.SaveData)virtualEntity.SaveToWorld());
                     return true;
                 }
             }
@@ -130,7 +130,7 @@ namespace Metamatic.Framework
             return false;
         }
 
-        public object Save()
+        public object SaveToWorld()
         {
             if (hibernated)
             {
@@ -146,7 +146,7 @@ namespace Metamatic.Framework
             var i = 0;
             foreach (var pair in m_Entities)
             {
-                saveData.entities[i] = (Entity.SaveData)pair.Value.Save();
+                saveData.entities[i] = (Entity.SaveData)pair.Value.SaveToWorld();
                 i++;
             }
 
@@ -171,7 +171,7 @@ namespace Metamatic.Framework
             return saveData;
         }
 
-        public async UniTask Load(object data)
+        public async UniTask LoadFromWorld(object data)
         {
             if (data is SaveData saveData)
             {
@@ -275,7 +275,7 @@ namespace Metamatic.Framework
         {
             var entity = new VirtualEntity(this, data.id, data.position, data.blueprint); // TODO: Use pool
             entity.placeAddress = address;
-            entity.Load(data).Forget();
+            entity.LoadFromWorld(data).Forget();
 
             entity.InternalAwake();
             m_Entities.Add(entity.id, entity);
@@ -377,7 +377,7 @@ namespace Metamatic.Framework
 
         private async UniTask WakeAsync(Action ready, Signal cancellationSignal)
         {
-            await Load(data);
+            await LoadFromWorld(data);
 
             /* Enable all entities */
             foreach (var pair in m_Entities)

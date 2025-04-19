@@ -4,7 +4,7 @@ using Metamatic.SaveSystem;
 
 namespace Metamatic.Framework
 {
-    public class VirtualService: ISavable, ISavablePlace, IDisposable
+    public class VirtualService: IWorldSavable, IPlaceSavable, IDisposable
     {
         public Type serviceType { get; }
         protected Service OriginService;
@@ -21,17 +21,17 @@ namespace Metamatic.Framework
         
         private async UniTaskVoid OnServiceSpawned(Service service, Signal cancellationSignal)
         {
-            if (service is ISavable savable)
+            if (service is IWorldSavable savable)
             {
                 if (m_SaveData != null)
                 {
                     /* Load cached service data to real service */
-                    savable.Load(m_SaveData);
+                    savable.LoadFromWorld(m_SaveData);
                     m_SaveData = null;
                 }
             }
 
-            if (service is ISavablePlace savablePlace)
+            if (service is IPlaceSavable savablePlace)
             {
                 if (!String.IsNullOrEmpty(m_SavedPlaceAddress))
                 {
@@ -44,12 +44,12 @@ namespace Metamatic.Framework
             await cancellationSignal;
             OriginService = null;
 
-            if (service is ISavable savableBack)
+            if (service is IWorldSavable savableBack)
             {
                 /* Save service data back to cache */
-                m_SaveData = savableBack.Save();
+                m_SaveData = savableBack.SaveToWorld();
             }
-            if (service is ISavablePlace savablePlaceBack)
+            if (service is IPlaceSavable savablePlaceBack)
             {
                 var currentPlace = GameSystem.GetCurrentPlaceAddress();
                 if (!String.IsNullOrEmpty(currentPlace))
@@ -61,20 +61,20 @@ namespace Metamatic.Framework
             }
         }
 
-        public object Save()
+        public object SaveToWorld()
         {
-            if (OriginService is ISavable savable)
+            if (OriginService is IWorldSavable savable)
             {
-                return savable.Save();
+                return savable.SaveToWorld();
             }
             return m_SaveData;
         }
 
-        public UniTask Load(object data)
+        public UniTask LoadFromWorld(object data)
         {
-            if (OriginService is ISavable savable)
+            if (OriginService is IWorldSavable savable)
             {
-                return savable.Load(data);
+                return savable.LoadFromWorld(data);
             }
             m_SaveData = data;
             return UniTask.CompletedTask;
@@ -88,7 +88,7 @@ namespace Metamatic.Framework
 
         public object SaveToPlace(string placeAddress)
         {
-            if (OriginService is ISavablePlace savable)
+            if (OriginService is IPlaceSavable savable)
             {
                 return savable.SaveToPlace(placeAddress);
             }
@@ -97,7 +97,7 @@ namespace Metamatic.Framework
 
         public UniTask LoadFromPlace(string placeAddress, object data)
         {
-            if (OriginService is ISavablePlace savable)
+            if (OriginService is IPlaceSavable savable)
             {
                 m_SavedPlaceAddress = null;
                 m_PlaceSaveData = null;

@@ -8,7 +8,7 @@ namespace Metamatic.Framework.Workshop
     /// <summary>
     /// Provide time that can be saved and loaded within the game.
     /// </summary>
-    public class TimeService: Service, ISavable
+    public class TimeService: Service, IWorldSavable
     {
         [SerializeField] private float m_DefaultTime = 0f;
         [SerializeField] private float m_DefaultTimeScale = 1f;
@@ -134,7 +134,7 @@ namespace Metamatic.Framework.Workshop
             Time.fixedDeltaTime = m_DefaultFixedTimeScale;
         }
 
-        public object Save()
+        public object SaveToWorld()
         {
             return new SaveData
             {
@@ -143,7 +143,7 @@ namespace Metamatic.Framework.Workshop
             };
         }
 
-        public UniTask Load(object data)
+        public UniTask LoadFromWorld(object data)
         {
             var saveData = (SaveData) data;
             m_CustomTime = saveData.time;

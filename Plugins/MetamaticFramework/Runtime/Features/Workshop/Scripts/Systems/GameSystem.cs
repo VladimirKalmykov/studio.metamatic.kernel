@@ -251,7 +251,7 @@ namespace Metamatic.Framework
 
         public static async UniTask LoadWorld(object data)
         {
-            await virtualWorld.Load(data);
+            await virtualWorld.LoadFromWorld(data);
         }
         
         private static async UniTask<bool> InternalInitializeGame(string addressOrGuid, bool seamless, Signal cancellationSignal)

@@ -3,9 +3,9 @@ using Cysharp.Threading.Tasks;
 namespace Metamatic.SaveSystem
 {
     /// <summary>
-    /// Support for saving and loading data for a specific place.
+    /// Services implementing this interface will be loaded within the place. It allows you to have different save data for each place.
     /// </summary>
-    public interface ISavablePlace
+    public interface IPlaceSavable
     {
         public object SaveToPlace(string placeAddress);
         public UniTask LoadFromPlace(string placeAddress, object data);

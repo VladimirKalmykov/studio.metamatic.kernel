@@ -16,7 +16,7 @@ namespace Metamatic.Framework.Workshop
     /// <summary>
     /// Base class for all game entities
     /// </summary>
-    public sealed class Entity : AsyncBehaviour, ISavable, IResettable
+    public sealed class Entity : AsyncBehaviour, IWorldSavable, IResettable
     {
         [Version("1.0.0")]
         public struct ComponentSaveData
@@ -872,14 +872,14 @@ namespace Metamatic.Framework.Workshop
             await ready();
         }
 
-        public object Save()
+        public object SaveToWorld()
         {
             var entityTransform = transform;
             var dataComponents = new EntityData.SaveData[DataComponents.Count];
             
             // Get all game object's components which implements ISavable interface
             var components = gameObject.GetComponents<MonoBehaviour>();
-            var savableComponents = new List<ISavable>();
+            var savableComponents = new List<IWorldSavable>();
             var logics = new List<EntityLogic.SaveData>();
             foreach (var component in components)
             {
@@ -887,7 +887,7 @@ namespace Metamatic.Framework.Workshop
                 {
                     var logicSaveData = entityLogic.InternalSaveEntityLogic();
                     logics.Add(logicSaveData);
-                } else if (component is ISavable savable and not EntityData and not Entity)
+                } else if (component is IWorldSavable savable and not EntityData and not Entity)
                 {
                     savableComponents.Add(savable);
                 }
@@ -914,7 +914,7 @@ namespace Metamatic.Framework.Workshop
             var j = 0;
             foreach (var component in DataComponents)
             {
-                dataComponents[j] = (EntityData.SaveData)component.Save();
+                dataComponents[j] = (EntityData.SaveData)component.SaveToWorld();
                 j++;
             }
             
@@ -924,7 +924,7 @@ namespace Metamatic.Framework.Workshop
                 otherComponents[j] = new ComponentSaveData()
                 {
                     componentType = savableComponent.GetType(),
-                    data = savableComponent.Save()
+                    data = savableComponent.SaveToWorld()
                 };
                 j++;
             }
@@ -944,7 +944,7 @@ namespace Metamatic.Framework.Workshop
                 Console.Error("Entity", "Cannot materialize entity", $"Entity {id} is already materialized");
             }
 #endif
-            await Load(data);
+            await LoadFromWorld(data);
             OnMaterialized?.Invoke();
             loaded = true;
         }
@@ -965,7 +965,7 @@ namespace Metamatic.Framework.Workshop
             loaded = true;
         }
 
-        public async UniTask Load(object data)
+        public async UniTask LoadFromWorld(object data)
         {
             if (data == null)
             {
@@ -996,15 +996,15 @@ namespace Metamatic.Framework.Workshop
                 foreach (var componentSaveData in entityData.dataComponents)
                 {
                     var component = thisGameObject.GetOrAddComponent<EntityData>(componentSaveData.ComponentType);
-                    loadingTasks.Add(component.Load(componentSaveData));
+                    loadingTasks.Add(component.LoadFromWorld(componentSaveData));
                 }
 
                 foreach (var componentData in entityData.components)
                 {
                     var component = thisGameObject.GetOrAddComponent<MonoBehaviour>(componentData.componentType);
-                    if (component is ISavable savable)
+                    if (component is IWorldSavable savable)
                     {
-                        loadingTasks.Add(savable.Load(componentData.data));
+                        loadingTasks.Add(savable.LoadFromWorld(componentData.data));
                     }
                 }
             
