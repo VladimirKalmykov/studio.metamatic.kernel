@@ -18,7 +18,7 @@ namespace Metamatic.Framework
         {
             public string address;
             public Entity.SaveData[] entities;
-            public VirtualWorld.SaveServiceData[] services;
+            public ServiceSaveData[] services;
         }
 
         public string address;
@@ -42,7 +42,7 @@ namespace Metamatic.Framework
             {
                 address = address,
                 entities = Array.Empty<Entity.SaveData>(),
-                services = Array.Empty<VirtualWorld.SaveServiceData>()
+                services = Array.Empty<ServiceSaveData>()
             };
         }
 
@@ -151,14 +151,14 @@ namespace Metamatic.Framework
             }
 
             // Save services
-            var services = new List<VirtualWorld.SaveServiceData>();
+            var services = new List<ServiceSaveData>();
             foreach (var service in world.services)
             {
                 var serviceData = service.SaveToPlace(address);
                 if (serviceData != null)
                 {
                     var serviceType = service.serviceType;
-                    var saveServiceData = new VirtualWorld.SaveServiceData()
+                    var saveServiceData = new ServiceSaveData()
                     {
                         serviceType = serviceType,
                         data = serviceData

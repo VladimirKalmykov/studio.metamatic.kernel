@@ -5,9 +5,12 @@ namespace Metamatic
     {
         using System;
         using System.Runtime.CompilerServices;
+        
         /// <summary>
         /// Lightweight synchronization primitive designed to facilitate deferred asynchronous operations. It can be locked and unlocked multiple times, allowing multiple awaiters to wait for the lock to be released. This class is particularly useful in scenarios where you need to control the flow of asynchronous operations, ensuring that certain operations are deferred until a specific condition is met.
         /// </summary>
+        /// <remarks>Works unstable with several awaiters!</remarks>
+        [Obsolete("Use AsyncLock", false)]
         public class DeferLock : INotifyCompletion, IDisposable
         {
             private int _lockCount;

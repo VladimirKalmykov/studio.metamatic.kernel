@@ -10,7 +10,7 @@ namespace Metamatic.Framework.Workshop
         public float healthTaken;
         public float healthSpent;
     }
-    public class Health: EntityData<HealthState>
+    public class Health: EntityStore<HealthState>
     {
         #region Exposed writable Fields
         [ShowInInspector] public float maxHealth;

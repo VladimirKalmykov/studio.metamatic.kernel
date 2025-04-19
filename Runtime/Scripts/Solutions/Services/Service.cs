@@ -9,10 +9,17 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    [Version("1.0.0")]
+    public class ServiceSaveData
+    {
+        public Type serviceType;
+        public object data;
+    }
     public abstract class Service: MonoBehaviour
     {
+        
         #region Static Members
-        private static readonly Dictionary<Type, Service> AwakedServices = new ();
+        private static readonly Dictionary<Type, Service> AwakenServices = new ();
         private static readonly Dictionary<Type, Service> EnabledServices = new ();
         private static readonly Dictionary<Type, List<Action<Service, bool>>> ServiceObservers = new ();
         
@@ -106,7 +113,7 @@ namespace Metamatic
                 _StopGameSignal = SignalSource.Create();
                 stopOrCancelSignalSource.Register(_StopGameSignal.TryRaise);
 
-                foreach (var service in AwakedServices)
+                foreach (var service in AwakenServices)
                 {
                     try
                     {
@@ -159,7 +166,7 @@ namespace Metamatic
         public static void EmitStopGameEvent()
         {
             _StopGameSignal.TryRaise();
-            foreach (var service in AwakedServices)
+            foreach (var service in AwakenServices)
             {
                 service.Value.OnGameStop();
             }
@@ -339,7 +346,7 @@ namespace Metamatic
             /* Ensure that all required services are registered */
             foreach (var requiredService in requiredServices)
             {
-                if (!AwakedServices.ContainsKey(requiredService))
+                if (!AwakenServices.ContainsKey(requiredService))
                 {
                     #if UNITY_EDITOR
                     m_MissedRequiredServices.Add(requiredService.ToString());
@@ -384,19 +391,19 @@ namespace Metamatic
         {
             m_DestroySignalSource = SignalSource.Create();
             var type = this.GetType();
-            if (AwakedServices.ContainsKey(type))
+            if (AwakenServices.ContainsKey(type))
             {
                 throw new InvalidOperationException($"Service {type} already added");
             }
             Console.Log("Service", "Register", $"{type} by ${name}");
-            AwakedServices.Add(type, this);
+            AwakenServices.Add(type, this);
             OnServiceRegistered?.Invoke(type, this);
         }
 
         protected virtual void OnDestroy()
         {
             var type = this.GetType();
-            AwakedServices.Remove(type);
+            AwakenServices.Remove(type);
             OnServiceUnregistered?.Invoke(type, this);
             #if UNITY_EDITOR
             if (Application.isPlaying)

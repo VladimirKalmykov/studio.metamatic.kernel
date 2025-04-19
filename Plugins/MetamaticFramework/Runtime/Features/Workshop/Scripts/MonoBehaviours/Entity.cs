@@ -303,6 +303,13 @@ namespace Metamatic.Framework.Workshop
         
         [Tooltip("Always play virtual logic even if entity is materialized (Experimental)")]
         public bool alwaysPlayVirtualLogic = false;
+        
+        [Tooltip("Destroy virtual entity when entity is dematerialized")]
+        public bool destroyVirtualEntityOnDematerialize = true; // TODO: Implement destroyVirtualEntityOnDematerialize logic
+        
+        [ShowIf("destroyVirtualEntityOnDematerialize")]
+        [Tooltip("Delay before destroy virtual entity")]
+        public float destroyVirtualEntityOnDematerializeDelay = 0f; // TODO: Implement destroyVirtualEntityDelay logic
 
         #endregion
         

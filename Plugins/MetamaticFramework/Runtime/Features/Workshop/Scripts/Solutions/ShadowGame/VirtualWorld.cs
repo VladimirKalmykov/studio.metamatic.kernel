@@ -11,13 +11,7 @@ namespace Metamatic.Framework
 {
     public class VirtualWorld: ISavable, IDisposable
     {
-        [Serializable]
-        [Version("1.0.0")]
-        public class SaveServiceData
-        {
-            public Type serviceType;
-            public object data;
-        }
+        
 
         [Serializable]
         [Version("1.0.0")]
@@ -25,7 +19,7 @@ namespace Metamatic.Framework
         {
             public string dateTime;
             public VirtualPlace.SaveData[] places;
-            public SaveServiceData[] services;
+            public ServiceSaveData[] services;
         }
         
         private static readonly Observable<VirtualWorld> s_ObservableCurrentVirtualWorld = new Observable<VirtualWorld>();
@@ -467,7 +461,7 @@ namespace Metamatic.Framework
         public object Save()
         {
             /* Save services data */
-            var servicesData = new List<SaveServiceData>();
+            var servicesData = new List<ServiceSaveData>();
             /* Walk services and get its data */
             foreach (var service in m_Services.Values)
             {
@@ -476,7 +470,7 @@ namespace Metamatic.Framework
                     var data = savable.Save();
                     if (data != null)
                     {
-                        servicesData.Add(new SaveServiceData
+                        servicesData.Add(new ServiceSaveData
                         {
                             serviceType = service.serviceType, // TODO: Проблема обратного преобразования, если сервис переименуется
                             data = data

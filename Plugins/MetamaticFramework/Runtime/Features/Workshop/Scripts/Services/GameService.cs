@@ -41,6 +41,10 @@ namespace Metamatic.Framework.Workshop
         private SceneInstance m_LoadingSceneInstance;
         private string m_CurrentChapterAddress;
         #endregion
+        
+        #region Public properties
+        public bool isInMainMenu => m_GameLoopStateMachine.currentState == GameLoopEvent.MenuGameLoopEvent;
+        #endregion
 
         protected override async UniTask RunService(Ready ready, Signal signal)
         {
