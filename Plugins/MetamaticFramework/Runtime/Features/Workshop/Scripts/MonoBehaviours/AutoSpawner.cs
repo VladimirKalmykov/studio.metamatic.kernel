@@ -74,13 +74,13 @@ namespace Metamatic.Framework.Workshop
             return UnityEngine.Random.Range(2f, 5f);
         }
 
-        public override object SaveToWorld()
+        public override object Save()
         {
             Console.Debug("AutoSpawner", $"Save virtual logic");
             return data;
         }
 
-        public override UniTask LoadFromWorld(object data)
+        public override UniTask Load(object data)
         {
             if (data is AutoSpawnerSaveData saveData)
             {
@@ -92,7 +92,7 @@ namespace Metamatic.Framework.Workshop
     
     [RequireComponent(typeof(Entity))]
     [RequireService(typeof(TimeService))]
-    public class AutoSpawner: EntityLogic<VirtualAutoSpawner>, IWorldSavable
+    public class AutoSpawner: EntityLogic<VirtualAutoSpawner>, IAutoSavable
     {
         [SerializeField] private SpawnConfig m_SpawnConfig;
         [SerializeField] private bool m_RespawnOnDestroy = true;
@@ -202,7 +202,7 @@ namespace Metamatic.Framework.Workshop
             }
         }
 
-        public object SaveToWorld()
+        public object Save()
         {
             Console.Debug("AutoSpawner", $"Save material logic");
             return new AutoSpawnerSaveData
@@ -213,7 +213,7 @@ namespace Metamatic.Framework.Workshop
             };
         }
 
-        public UniTask LoadFromWorld(object data)
+        public UniTask Load(object data)
         {
             Console.Debug("AutoSpawner", $"Load material logic");
             if (data is AutoSpawnerSaveData saveData)

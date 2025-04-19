@@ -156,7 +156,7 @@ namespace Metamatic.Framework
                     var logic = m_Logics[i];
                     if (m_VirtualEntityLogics.TryGetValue(logic.componentType, out var virtualLogic))
                     {
-                        logic.data = virtualLogic.SaveToWorld();
+                        logic.data = virtualLogic.Save();
                     }
                 }
             }
@@ -303,7 +303,7 @@ namespace Metamatic.Framework
         {
             try
             {
-                await virtualLogic.LoadFromWorld(saveData.data);
+                await virtualLogic.Load(saveData.data);
                 cancellationSignal.ThrowIfRaised();
                 virtualLogic.Run(cancellationSignal).Forget();
             }
