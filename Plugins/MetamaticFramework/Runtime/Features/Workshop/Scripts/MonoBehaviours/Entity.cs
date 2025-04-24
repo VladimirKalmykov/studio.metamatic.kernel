@@ -48,6 +48,16 @@ namespace Metamatic.Framework.Workshop
             public EntityLogic.SaveData[] logics;
         }
         
+        #region Structures
+
+        private enum PostDematerializeBehaviour
+        {
+            KeepVirtualEntity,
+            DestroyVirtualEntity,
+            DestroyVirtualEntityWithDelay
+        }
+        #endregion
+        
         #region Static API
         public static readonly SignedIndexedHashPool<Entity> EntitiesRegistry = new(200);
         public static readonly Dictionary<string, Token96Bit> EntitiesRegistrationTokens = new();
@@ -480,7 +490,7 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         public void Release()
         {
-            Dismiss(DismissReason.Release);
+            Dematerialize(DismissReason.Release);
         }
         
         /// <summary>
@@ -498,10 +508,7 @@ namespace Metamatic.Framework.Workshop
         public void Kick()
         {
             isKicked = true;
-            /* Resolve game area */
-            
-            GameSystem.virtualWorld.Virtualize(this);
-            Dismiss(DismissReason.Kick);
+            Dematerialize(DismissReason.Kick);
         }
         
         /// <summary>
@@ -522,18 +529,65 @@ namespace Metamatic.Framework.Workshop
             Console.Debug("Entity", "Dematerialize", $"Dematerializing entity {id}");
             OnBeforeDematerialize?.Invoke();
             loaded = false;
-            switch (reason)
+            var thisId = id;
+            
+            PostDematerializeBehaviour postDematerializeBehaviour = PostDematerializeBehaviour.KeepVirtualEntity;
+            if (
+                reason == DismissReason.Kill
+                || reason == DismissReason.Release
+            )
             {
-                case DismissReason.Release:
-                case DismissReason.Kill:
-                    // Do not virtualize entity if it is killed or released
+                postDematerializeBehaviour = PostDematerializeBehaviour.DestroyVirtualEntity;
+            }
+            else if (reason == DismissReason.Kick)
+            {
+                postDematerializeBehaviour = PostDematerializeBehaviour.KeepVirtualEntity;
+            }
+            else if (destroyVirtualEntityOnDematerialize)
+            {
+                if (destroyVirtualEntityOnDematerializeDelay > 0)
+                {
+                    postDematerializeBehaviour = PostDematerializeBehaviour.DestroyVirtualEntityWithDelay;
+                }
+                else
+                {
+                    postDematerializeBehaviour = PostDematerializeBehaviour.DestroyVirtualEntity;
+                }
+            }
+            
+            switch (postDematerializeBehaviour)
+            {
+                case PostDematerializeBehaviour.KeepVirtualEntity:
+                    case PostDematerializeBehaviour.DestroyVirtualEntityWithDelay:
+                    
+                        Virtualize();
                         break;
-                default:
-                    Virtualize();
-                    break;
+            }
+
+            if (postDematerializeBehaviour == PostDematerializeBehaviour.DestroyVirtualEntityWithDelay)
+            {
+                
             }
             
             Dismiss(reason);
+
+            /*
+             * After dismissing entity, we can destroy virtual entity if needed
+             * It is important to destroy virtual entity after dismissing, because
+             * releasing entity will invoke dematerialize method again if entity is not dismissed
+             */
+            switch (postDematerializeBehaviour)
+            {
+                case PostDematerializeBehaviour.DestroyVirtualEntity:
+                    VirtualWorld.Current?.TryReleaseVirtualEntityInCurrentPlaceIfNotMaterialized(thisId, reason);
+                    break;
+                case PostDematerializeBehaviour.DestroyVirtualEntityWithDelay:
+                    TimeService.Schedule(destroyVirtualEntityOnDematerializeDelay, () =>
+                    {
+                        VirtualWorld.Current?.TryReleaseVirtualEntityInCurrentPlaceIfNotMaterialized(thisId, reason);
+                    }, PlayerLoopTiming.PostLateUpdate);
+                    break;
+            }
         }
 
         /// <summary>
@@ -872,7 +926,7 @@ namespace Metamatic.Framework.Workshop
             await ready();
         }
 
-        public object SaveToWorld()
+        public object Save()
         {
             var entityTransform = transform;
             var dataComponents = new EntityData.SaveData[DataComponents.Count];

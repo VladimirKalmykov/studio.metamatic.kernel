@@ -121,7 +121,7 @@ namespace Metamatic.Framework
                 if (m_Entities.TryGetValue(id, out var virtualEntity))
                 {
                     entity = new EntityDescriptor(world, this, virtualEntity.id, false, virtualEntity.isMaterialized,
-                        (Entity.SaveData)virtualEntity.SaveToWorld());
+                        (Entity.SaveData)virtualEntity.Save());
                     return true;
                 }
             }
@@ -146,7 +146,7 @@ namespace Metamatic.Framework
             var i = 0;
             foreach (var pair in m_Entities)
             {
-                saveData.entities[i] = (Entity.SaveData)pair.Value.SaveToWorld();
+                saveData.entities[i] = (Entity.SaveData)pair.Value.Save();
                 i++;
             }
 
@@ -275,7 +275,7 @@ namespace Metamatic.Framework
         {
             var entity = new VirtualEntity(this, data.id, data.position, data.blueprint); // TODO: Use pool
             entity.placeAddress = address;
-            entity.LoadFromWorld(data).Forget();
+            entity.Load(data).Forget();
 
             entity.InternalAwake();
             m_Entities.Add(entity.id, entity);

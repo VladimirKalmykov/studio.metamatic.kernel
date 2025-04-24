@@ -23,6 +23,7 @@ namespace Metamatic.Framework.Workshop
         [SerializeField] private AssetReference mainMenuScene;
         [SerializeField] private AssetReference winGameScene;
         [SerializeField] private AssetReferenceT<Presenter> loadingScreen;
+        [SerializeField] private AssetReferenceT<Place> startPlace;
         #endregion
         
         #region Private properties
@@ -214,6 +215,11 @@ namespace Metamatic.Framework.Workshop
 
             await m_GameLoopStateMachine.WaitState(stateToken);
             return true;
+        }
+        
+        public UniTask LaunchNewGame()
+        {
+            return LaunchGame(startPlace.AssetGUID, false);
         }
 
         public UniTask LaunchGame(AssetReferenceT<Place> chapterReferenceT, bool seamless)

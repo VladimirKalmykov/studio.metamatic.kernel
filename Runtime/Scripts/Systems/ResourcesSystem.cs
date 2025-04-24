@@ -164,12 +164,21 @@ namespace Metamatic.Systems
                         var sceneInstance = handle.Result;
                         if (sceneInstance.Scene.isLoaded)
                         {
-                            await Addressables.UnloadSceneAsync(sceneInstance);
+                            await Addressables.UnloadSceneAsync(sceneInstance).ToUniTask();
+                        }
+                        else
+                        {
+                            Addressables.Release(handle);
                         }
                     }
-                    finally
+                    catch (OperationCanceledException)
                     {
-                        Addressables.Release(handle);
+                        // ignored
+                        Console.Debug("ResourcesSystem", "Scene unload operation was cancelled");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error("ResourcesSystem", $"Failed to unload scene: {e}");
                     }
                 } else {
                     Addressables.Release(handle);

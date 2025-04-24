@@ -79,6 +79,12 @@ namespace Metamatic.Framework.Editor.PlayPanel
         
         private void OnChapterReferenceChanged(AssetReference ar)
         {
+            if (ar == null)
+            {
+                m_ChapterAssetReferenceField.SetValue(null);
+                EditorPrefs.SetString(GameSystem.ConfigForceStartChapterGuid, "");
+                return;
+            }
             var address = ar.AssetGUID;
             EditorPrefs.SetString(GameSystem.ConfigForceStartChapterGuid, address);
             m_ChapterAssetReferenceField.SetValue(ar);

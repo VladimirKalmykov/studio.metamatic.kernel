@@ -65,9 +65,9 @@ namespace Metamatic
 #if DEBUG
         public readonly Observable<bool> Disposed;
 #endif
-        public static DisposableAction<T> Create<T>(Action<T> action, T payload)
+        public static DisposableAction<TT> Create<TT>(Action<TT> action, TT payload)
         {
-            return new DisposableAction<T>(action, payload);
+            return new DisposableAction<TT>(action, payload);
         }
         public static readonly DisposableAction Empty = new DisposableAction(null);
         public bool isEmpty => _action == null;

@@ -9,7 +9,7 @@ using UnityEngine.Serialization;
 
 namespace Metamatic.Framework
 {
-    public class VirtualWorld: IWorldSavable, IDisposable
+    public class VirtualWorld: IDisposable
     {
         [Serializable]
         [Version("1.0.0")]
@@ -96,7 +96,28 @@ namespace Metamatic.Framework
         {
             var placeAddress = GameSystem.GetCurrentPlaceAddress();
             var virtualEntity = GetOrCreateVirtualEntity(placeAddress, entity.id, entity.transform.position, entity.blueprint);
-            virtualEntity.LoadFromWorld(entity.SaveToWorld());
+            virtualEntity.Load(entity.Save());
+        }
+        
+        /// <summary>
+        /// Try release dematerialized entity in current place. It will be removed from virtual world and current place if exists and is not materialized.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="reason"></param>
+        /// <returns></returns>
+        public bool TryReleaseVirtualEntityInCurrentPlaceIfNotMaterialized(string id, DismissReason reason)
+        {
+            if (m_EntitiesRegistry.TryGetValue(id, out var entity))
+            {
+                if (!entity.isMaterialized)
+                {
+                    entity.Release(reason);
+                }
+                
+                return true;
+            }
+
+            return false;
         }
         
         public async UniTask TryHydrate(Entity entity)
@@ -107,13 +128,13 @@ namespace Metamatic.Framework
                 virtualEntity = CreateEntity(GameSystem.activePlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true, alwaysPlayVirtualLogic: entity.alwaysPlayVirtualLogic);
                 if (entity.alwaysPlayVirtualLogic)
                 {
-                    await virtualEntity.LoadFromWorld(entity.SaveToWorld());
+                    await virtualEntity.Load(entity.Save());
                 }
                 entity.InternalMarkMaterialized();
             }
             else
             {
-                await entity.Materialize(virtualEntity.SaveToWorld());
+                await entity.Materialize(virtualEntity.Save());
             }
             entity.InternalBindToVirtualEntity(virtualEntity);
             virtualEntity.InternalBindToMaterializedEntity(entity);
@@ -396,7 +417,7 @@ namespace Metamatic.Framework
             else
             {
                 entityDescriptor = new EntityDescriptor(this, virtualEntity.place, virtualEntity.id, false,
-                    virtualEntity.isMaterialized, (Entity.SaveData)virtualEntity.SaveToWorld());
+                    virtualEntity.isMaterialized, (Entity.SaveData)virtualEntity.Save());
                 return true;
             }
 

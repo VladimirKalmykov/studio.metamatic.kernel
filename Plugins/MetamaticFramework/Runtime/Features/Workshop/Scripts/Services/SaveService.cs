@@ -13,7 +13,7 @@ namespace Metamatic.Framework.Workshop
     public class SaveService: Service
     {
         [Version("1.0.0")]
-        public struct SaveData
+        public struct GameSaveData
         {
             public ServiceSaveData[] Services;
             public string DateTime;
@@ -48,7 +48,7 @@ namespace Metamatic.Framework.Workshop
                 }    
             }
             
-            var saveData = new SaveData
+            var saveData = new GameSaveData
             {
                 Services = serviceSaveData.ToArray(),
                 World = worldSaveData,
@@ -60,9 +60,9 @@ namespace Metamatic.Framework.Workshop
             return true;
         }
         
-        public async UniTask<SaveService.SaveData> Load(string loadAddress = "latest", bool seamless = false, Signal cancellationSignal = default)
+        public async UniTask<SaveService.GameSaveData> Load(string loadAddress = "latest", bool seamless = false, Signal cancellationSignal = default)
         {
-            var data = await Repository.LocalStorage.Get<SaveData>(loadAddress, cancellationSignal);
+            var data = await Repository.LocalStorage.Get<GameSaveData>(loadAddress, cancellationSignal);
             
             // Load services
             foreach (var serviceSaveData in data.Services)

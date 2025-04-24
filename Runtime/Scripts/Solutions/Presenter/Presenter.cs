@@ -85,7 +85,7 @@ namespace Metamatic
         /// Call this method to show the presenter.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
-        public void Present(bool ignoreChildren = false)
+        public virtual void Present(bool ignoreChildren = false)
         {
             /*
              * If the presenter is already presenting, do nothing.

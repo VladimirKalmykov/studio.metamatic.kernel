@@ -11,7 +11,7 @@ namespace Metamatic.Framework
     /// Virtual (ghost) entities
     /// </summary>
     [Virtualization(typeof(Entity))]
-    public class VirtualEntity: IWorldSavable
+    public class VirtualEntity
     {
         public VirtualPlace place { get; internal set; }
         private bool m_Enabled = false;
@@ -146,7 +146,7 @@ namespace Metamatic.Framework
             place.ReleaseEntity(this, reason);
         }
         
-        public object SaveToWorld()
+        public object Save()
         {
             /* Collect data from all entity logics */
             if (m_Logics != null)
@@ -177,7 +177,7 @@ namespace Metamatic.Framework
             };
         }
 
-        public UniTask LoadFromWorld(object data)
+        public UniTask Load(object data)
         {
             if (data is Entity.SaveData saveData)
             {
@@ -370,7 +370,7 @@ namespace Metamatic.Framework
             {
                 await UniTaskEventLoop.Shared.Yield(cancelSignal);
                 var entity = await Entity.Spawn(blueprint, checkpoint.worldSpawnPosition,
-                    Quaternion.identity, id, false, SaveToWorld(), cancelSignal);
+                    Quaternion.identity, id, false, Save(), cancelSignal);
                 entity.transform.position = checkpoint.worldSpawnPosition;
                 entity.InternalBindToVirtualEntity(this);
                 InternalBindToMaterializedEntity(entity);
@@ -470,7 +470,7 @@ namespace Metamatic.Framework
                 }
                 #endif
                 var entity = await Entity.Spawn(blueprint, position,
-                    Quaternion.identity, id, false, SaveToWorld(), cancellationSignal);
+                    Quaternion.identity, id, false, Save(), cancellationSignal);
                 entity.InternalBindToVirtualEntity(this);
                 InternalBindToMaterializedEntity(entity);
                 entity.gameObject.SetActive(true);
