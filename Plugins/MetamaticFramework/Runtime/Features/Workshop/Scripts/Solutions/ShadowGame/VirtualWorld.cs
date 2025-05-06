@@ -51,6 +51,18 @@ namespace Metamatic.Framework
         private readonly Dictionary<Type, VirtualService> m_Services = new();
         private readonly Dictionary<string, VirtualEntity> m_EntitiesRegistry = new();
         private readonly Dictionary<string, MicroEvent<VirtualEntity, bool>> m_EntityListeners = new();
+
+        /// <summary>
+        /// Entities will be virtualized if they are not materialized and are not in the current place.
+        /// Kicked entities will be virtualized even if this option is disabled.
+        /// </summary>
+        public bool virtualizeAbandonedEntities { get; private set; } = true;
+        /// <summary>
+        /// How long dematerialized entity will be alive in the virtual world. After that it will be released.
+        /// Use zero for infinite time.
+        /// </summary>
+        public float virtualizedEntityExpirationDuration { get; private set; } = 0f;
+        
         #if UNITY_EDITOR
         public readonly ObservableList<VirtualEntity> DebugObservableEntitiesList = new();
         #endif
@@ -59,16 +71,63 @@ namespace Metamatic.Framework
         
         // Get ability to iterate over all servies
         public IEnumerable<VirtualService> services => m_Services.Values;
-
-        public VirtualWorld()
+        
+        public VirtualWorld(bool virtualizeAbandonedEntities = true, float virtualizedEntityExpirationDuration = 0f)
         {
             m_DisposeSignalSource = SignalSource.Create();
+            this.virtualizeAbandonedEntities = virtualizeAbandonedEntities;
+            this.virtualizedEntityExpirationDuration = virtualizedEntityExpirationDuration;
             RunAsync(m_DisposeSignalSource.Signal).Forget();
         }
         
         public bool HasEntity(string id)
         {
             return m_EntitiesRegistry.ContainsKey(id);
+        }
+
+        /// <summary>
+        /// Determines whether entity should be virtualized or not. It accepts entity and dismiss reason.
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="dismissReason"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public bool ShouldVirtualizeEntity(Entity entity, DismissReason dismissReason)
+        {
+            switch (dismissReason)
+            {
+                case DismissReason.Kick:
+                    return true;
+                case DismissReason.Kill:
+                    case DismissReason.Release:
+                        case DismissReason.Destroy:
+                        return false;
+                case DismissReason.Abandon:
+                {
+                    return entity.customVirtualizeLifecycle ? entity.virtualizeEntityOnAbandon : virtualizeAbandonedEntities;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(dismissReason), dismissReason, null);
+            }
+        }
+        
+        public float GetExpirationTime(Entity entity)
+        {
+            var expirationDuration = entity.customVirtualizeLifecycle && entity.virtualizeEntityOnAbandon
+                ? entity.virtualEntityExpirationDuration : virtualizedEntityExpirationDuration;
+            if (expirationDuration > 0f)
+            {
+                if (Service.TryResolveSync<TimeService>(out TimeService timeService))
+                {
+                    return timeService.time + expirationDuration;
+                }
+                else
+                {
+                    Console.Error("VirtualWorld", "GetExpirationTime", "Time service not found");
+                }
+            }
+
+            return 0f;
         }
         
         public bool ReleaseEntity(string id, DismissReason reason)

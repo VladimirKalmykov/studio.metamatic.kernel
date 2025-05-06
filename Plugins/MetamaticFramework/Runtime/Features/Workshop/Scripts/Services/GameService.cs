@@ -6,6 +6,7 @@ using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
 using Plugins.MetamaticFramework.Runtime.Features.Workshop.Scripts.Classes;
+using Sirenix.OdinInspector;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -19,11 +20,22 @@ namespace Metamatic.Framework.Workshop
     public class GameService : Service
     {
         #region Fields
+        [BoxGroup("Scenes")]
         [SerializeField] private AssetReference startScene;
+        [BoxGroup("Scenes")]
         [SerializeField] private AssetReference mainMenuScene;
+        [BoxGroup("Scenes")]
         [SerializeField] private AssetReference winGameScene;
+        [BoxGroup("Resources")]
         [SerializeField] private AssetReferenceT<Presenter> loadingScreen;
+        [BoxGroup("Resources")]
         [SerializeField] private AssetReferenceT<Place> startPlace;
+        
+        [BoxGroup("Virtual world")]
+        [Tooltip("If true, dematerialized entities will be virtualized and saved. If false, they will be removed from the virtual world immediately. This rule applies to all entities, except those that have been kicked.")]
+        public bool virtualizeEntities = true;
+        [Tooltip("Delay before dematerialized entities are removed from the virtual world. This rule applies to all entities, except those that have been kicked. Use zero to keep them in the virtual world forever.")]
+        public float virtualizedEntityLifeTime = 0f;
         #endregion
         
         #region Private properties

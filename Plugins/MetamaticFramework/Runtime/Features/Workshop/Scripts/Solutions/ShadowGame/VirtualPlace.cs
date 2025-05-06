@@ -359,7 +359,7 @@ namespace Metamatic.Framework
             }
 
             /* Disable all entities */
-            foreach (var pair in m_Entities)
+            foreach (var pair in m_Entities.ToArray())
             {
                 // Need to mark as 'isAboutToDestroy' to prevent immediate dematerialize with virtualization
                 pair.Value.isAboutToDestroy = true;
@@ -385,7 +385,30 @@ namespace Metamatic.Framework
                 pair.Value.enabled = true;
             }
 
-            await cancellationSignal;
+            using (PlayerLoop.LoopDelay(10f, ClearUpExpiredEntities))
+            {
+                await cancellationSignal;
+            }
+        }
+
+        private void ClearUpExpiredEntities()
+        {
+            // TODO: Cache time service
+            if (Service.TryResolveSync<TimeService>(out var timeService))
+            {
+                // TODO: Maybe use pool for expired entities? Or at least keep them in a separate list?
+                /* Iterate over all entities */
+                foreach (var pair in m_Entities.ToArray())
+                {
+                    var entity = pair.Value;
+                    if (entity.expirationTime == 0f || entity.expirationTime > timeService.time)
+                    {
+                        continue;
+                    }
+                    // Release expired entity
+                    entity.Release(DismissReason.Release);
+                }
+            }
         }
 
         #endregion

@@ -51,6 +51,7 @@ namespace Metamatic.Framework
         /// Determines if virtual logic should be always played even if entity is materialized.
         /// </summary>
         public bool alwaysPlayVirtualLogic;
+        public float expirationTime = 0f;
         
         /// <summary>
         /// Id of the game area where entity was located when was materialized. It makes possible to spawn entity in the same game area when it's activated again.

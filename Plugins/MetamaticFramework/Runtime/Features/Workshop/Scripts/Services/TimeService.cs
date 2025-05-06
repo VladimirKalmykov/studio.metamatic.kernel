@@ -118,6 +118,10 @@ namespace Metamatic.Framework.Workshop
             return m_PauseGameVetoVote.Vote(true);
         }
         
+        /// <summary>
+        /// Set the time scale to a new value. Fixed time scale will be adjusted accordingly.
+        /// </summary>
+        /// <param name="newTimeScale"></param>
         public void SlowDownTime(float newTimeScale)
         {
             // Устанавливаем новый timeScale

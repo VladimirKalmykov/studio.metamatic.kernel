@@ -10,6 +10,7 @@ using UnityEditor;
 #endif
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Serialization;
 
 namespace Metamatic.Framework.Workshop
 {
@@ -46,6 +47,10 @@ namespace Metamatic.Framework.Workshop
             public EntityData.SaveData[] dataComponents;
             public ComponentSaveData[] components;
             public EntityLogic.SaveData[] logics;
+            /// <summary>
+            /// Time when entity should be released. If zero, virtual entity will not be released.
+            /// </summary>
+            [FormerlySerializedAs("expireTime")] public float expirationTime;
         }
         
         #region Structures
@@ -65,6 +70,7 @@ namespace Metamatic.Framework.Workshop
         
         private static event Action<Entity> OnEntityRegisteredEvent;
         private static event Action<Entity, DismissReason> OnEntityUnregisteredEvent;
+        #endregion
         
         private readonly ObservableNullable<GameArea> m_ObservableGameArea = new ObservableNullable<GameArea>();
 
@@ -303,7 +309,6 @@ namespace Metamatic.Framework.Workshop
 
             return entity;
         }
-        #endregion
         
 
         #region Serializable fields
@@ -314,12 +319,17 @@ namespace Metamatic.Framework.Workshop
         [Tooltip("Always play virtual logic even if entity is materialized (Experimental)")]
         public bool alwaysPlayVirtualLogic = false;
         
-        [Tooltip("Destroy virtual entity when entity is dematerialized")]
-        public bool destroyVirtualEntityOnDematerialize = true; // TODO: Implement destroyVirtualEntityOnDematerialize logic
+        [Tooltip("Allow to specify custom lifecycle for virtual entity")]
+        public bool customVirtualizeLifecycle = false;
         
-        [ShowIf("destroyVirtualEntityOnDematerialize")]
+        [ShowIf("customVirtualizeLifecycle")]
+        [Tooltip("Destroy virtual entity when entity is dematerialized")]
+        public bool virtualizeEntityOnAbandon = false; // TODO: Implement destroyVirtualEntityOnDematerialize logic
+        
+        [ShowIf("customVirtualizeLifecycle")]
+        [ShowIf("virtualizeEntityOnAbandon")]
         [Tooltip("Delay before destroy virtual entity")]
-        public float destroyVirtualEntityOnDematerializeDelay = 0f; // TODO: Implement destroyVirtualEntityDelay logic
+        public float virtualEntityExpirationDuration = 0f; // TODO: Implement destroyVirtualEntityDelay logic
 
         #endregion
         
@@ -531,42 +541,11 @@ namespace Metamatic.Framework.Workshop
             loaded = false;
             var thisId = id;
             
-            PostDematerializeBehaviour postDematerializeBehaviour = PostDematerializeBehaviour.KeepVirtualEntity;
-            if (
-                reason == DismissReason.Kill
-                || reason == DismissReason.Release
-            )
-            {
-                postDematerializeBehaviour = PostDematerializeBehaviour.DestroyVirtualEntity;
-            }
-            else if (reason == DismissReason.Kick)
-            {
-                postDematerializeBehaviour = PostDematerializeBehaviour.KeepVirtualEntity;
-            }
-            else if (destroyVirtualEntityOnDematerialize)
-            {
-                if (destroyVirtualEntityOnDematerializeDelay > 0)
-                {
-                    postDematerializeBehaviour = PostDematerializeBehaviour.DestroyVirtualEntityWithDelay;
-                }
-                else
-                {
-                    postDematerializeBehaviour = PostDematerializeBehaviour.DestroyVirtualEntity;
-                }
-            }
-            
-            switch (postDematerializeBehaviour)
-            {
-                case PostDematerializeBehaviour.KeepVirtualEntity:
-                    case PostDematerializeBehaviour.DestroyVirtualEntityWithDelay:
-                    
-                        Virtualize();
-                        break;
-            }
+            var shouldVirtualize = VirtualWorld.Current.ShouldVirtualizeEntity(this, reason);
 
-            if (postDematerializeBehaviour == PostDematerializeBehaviour.DestroyVirtualEntityWithDelay)
+            if (shouldVirtualize)
             {
-                
+                Virtualize();
             }
             
             Dismiss(reason);
@@ -576,17 +555,9 @@ namespace Metamatic.Framework.Workshop
              * It is important to destroy virtual entity after dismissing, because
              * releasing entity will invoke dematerialize method again if entity is not dismissed
              */
-            switch (postDematerializeBehaviour)
+            if (!shouldVirtualize)
             {
-                case PostDematerializeBehaviour.DestroyVirtualEntity:
-                    VirtualWorld.Current?.TryReleaseVirtualEntityInCurrentPlaceIfNotMaterialized(thisId, reason);
-                    break;
-                case PostDematerializeBehaviour.DestroyVirtualEntityWithDelay:
-                    TimeService.Schedule(destroyVirtualEntityOnDematerializeDelay, () =>
-                    {
-                        VirtualWorld.Current?.TryReleaseVirtualEntityInCurrentPlaceIfNotMaterialized(thisId, reason);
-                    }, PlayerLoopTiming.PostLateUpdate);
-                    break;
+                VirtualWorld.Current?.TryReleaseVirtualEntityInCurrentPlaceIfNotMaterialized(thisId, reason);
             }
         }
 
@@ -817,6 +788,12 @@ namespace Metamatic.Framework.Workshop
         
         protected override void Awake()
         {
+            #if UNITY_EDITOR
+            if (GameSystem.virtualWorld == null)
+            {
+                enabled = false;
+            }
+            #endif
             m_InitialPosition = transform.position;
             m_InitialRotation = transform.rotation;
             base.Awake();
@@ -950,6 +927,7 @@ namespace Metamatic.Framework.Workshop
             var otherComponents = new ComponentSaveData[savableComponents.Count];
             
             var gameAreaId = gameAreaIsSet ? gameArea.id : null;
+            var expirationTime = VirtualWorld.Current.GetExpirationTime(this);
             var saveData = new SaveData()
             {
                 blueprint = blueprint,
@@ -963,7 +941,8 @@ namespace Metamatic.Framework.Workshop
                 checkpointId = null,
                 dataComponents = dataComponents,
                 components = otherComponents,
-                logics = logics.ToArray()
+                logics = logics.ToArray(),
+                expirationTime = expirationTime
             };
             var j = 0;
             foreach (var component in DataComponents)
