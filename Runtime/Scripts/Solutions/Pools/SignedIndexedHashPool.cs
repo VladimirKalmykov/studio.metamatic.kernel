@@ -231,16 +231,41 @@ namespace Metamatic
             return m_ItemsSet.Contains(instance);
         }
 
+        public DisposableAction WatchEvery(Action<T> action)
+        {
+            foreach (var index in m_UsedIndexes)
+            {
+                action(m_Items[index].Value);
+            }
+            
+            OnAdd += AddHandler;
+            
+            return DisposableAction.Create(() =>
+            {
+                OnAdd -= AddHandler;
+            });
+            
+            void AddHandler(int index, T value)
+            {
+                action(value);
+            }
+        }
+
         /// <summary>
         /// Watch every item async.
         /// </summary>
         /// <param name="action"></param>
         /// <returns></returns>
-        public DisposableAction WatchEveryAsync(Func<T, Signal, UniTaskVoid> action)
+        public DisposableAction WatchEveryAsync(Func<T, Signal, UniTaskVoid> action, Func<T, bool> filter = null)
         {
             var listeners = ParamLessPool<Dictionary<int, SignalSource>>.GetShared();
             foreach (var index in m_UsedIndexes)
             {
+                var value = m_Items[index].Value;
+                if (filter != null && !filter(value))
+                {
+                    continue;
+                }
                 var css = SignalSource.Create();
                 action(m_Items[index].Value, css.Signal).Forget();
                 listeners[index] = css;
@@ -265,6 +290,11 @@ namespace Metamatic
             
             void AddHandler(int index, T value)
             {
+                if (filter != null && !filter(value))
+                {
+                    return;
+                }
+                    
                 var css = SignalSource.Create();
                 action(value, css.Signal).Forget();
                 listeners[index] = css;

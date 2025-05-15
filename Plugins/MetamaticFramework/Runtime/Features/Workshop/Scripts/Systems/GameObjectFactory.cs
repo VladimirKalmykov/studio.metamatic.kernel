@@ -185,6 +185,9 @@ namespace Metamatic.Framework
                 case ScriptableBlueprint blueprint:
                     await InitializePoolForBlueprint(ResolveHandler, assetReferenceRuntimeKey, blueprint, cancellationSignal);
                     break;
+                case UnityEngine.GameObject gameObject:
+                    await InitializePoolForGameObjectAsComponent<Entity>(ResolveHandler, assetReferenceRuntimeKey, gameObject, cancellationSignal); // TODO: Remove hardcoded Entity
+                    break;
                 default:
                     throw new Exception($"Failed to initialize pool for asset {assetReference}");
             }
@@ -243,9 +246,18 @@ namespace Metamatic.Framework
         
         private static async UniTask InitializePoolForBlueprint(Action<ConfigurablePool<UnityEngine.Component>> resolve, string runtimeKey, ScriptableBlueprint blueprint, Signal cancellationSignal)
         {
-            using var prefabSummon = blueprint.SummonPrefabConverted(ConvertGameObjectToEntity);
+            using var prefabSummon = blueprint.SummonPrefabConverted(ConvertGameObjectToEntity); // Remove hardcoded Entity
             var prefab = await prefabSummon.Wait(cancellationSignal);
             var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>(prefab, keepInactive: true, dontDestroyOnLoad: true), autoShrink: true);
+            resolve(pool);
+            await cancellationSignal;
+            pool.Dispose();
+        }
+        
+        private static async UniTask InitializePoolForGameObjectAsComponent<T>(Action<ConfigurablePool<UnityEngine.Component>> resolve, string runtimeKey, GameObject gameObject, Signal cancellationSignal) where T : UnityEngine.Component
+        {
+            var component = gameObject.GetOrAddComponent<T>();
+            var pool = new ConfigurablePool<UnityEngine.Component>(new ComponentPrefabPoolConfig<UnityEngine.Component>(component, keepInactive: true, dontDestroyOnLoad: true), autoShrink: true);
             resolve(pool);
             await cancellationSignal;
             pool.Dispose();

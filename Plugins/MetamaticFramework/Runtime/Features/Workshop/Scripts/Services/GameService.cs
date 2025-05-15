@@ -89,13 +89,18 @@ namespace Metamatic.Framework.Workshop
                 m_StartSceneSummon.DisposeAsync().Forget();
             }
 
-            /* Show main menu */
-            m_GameLoopStateMachine.PushState(GameLoopEvent.MenuGameLoopEvent);
-            
-            #if UNITY_EDITOR
-            ProcessDevelopmentLoadingScenario().Forget();
-            #endif
-            await ready();
+            try
+            {
+                /* Show main menu */
+                await m_GameLoopStateMachine.PushStateAsync(GameLoopEvent.MenuGameLoopEvent);
+            }
+            finally
+            {
+#if UNITY_EDITOR
+                ProcessDevelopmentLoadingScenario().Forget();
+#endif
+                await ready();
+            }
         }
 
         private async UniTask OnStateChange(AsyncStateMachine<GameLoopEvent, GameService>.Transition transition)
@@ -108,8 +113,9 @@ namespace Metamatic.Framework.Workshop
                 case MenuGameLoopEvent:
                 {
                     await GameSystem.TryStopGame();
-                    /* We have to load main menu after intro scene, because of addressable bug with activateOnLoad (https://discussions.unity.com/t/loadsceneasync-activateonload-false-does-not-work/817793/12)  */
+                    /* We can not preload main menu before intro scene show, because of addressable bug with activateOnLoad (https://discussions.unity.com/t/loadsceneasync-activateonload-false-does-not-work/817793/12)  */
                     await using var mainMenuScene = ResourcesSystem.LoadScene(this.mainMenuScene, LoadSceneMode.Additive, activateOnLoad: true);
+                    await mainMenuScene.Wait(transition.generalCancellationSignal);
                     await transition.WaitNextState();
                     break;
                 }

@@ -67,6 +67,23 @@ namespace Metamatic
                 cancellationSignalSource.TryRaise();
             });
         }
+        
+        public DisposableAction WatchAsync(Func<T, Signal, UniTaskVoid> handler)
+        {
+            SignalSource cancellationSignalSource = default;
+            var watcher = Watch((nextValue, nextHasValue) =>
+            {
+                cancellationSignalSource.TryRaise();
+                if (!nextHasValue) return;
+                cancellationSignalSource = SignalSource.Create();
+                handler(nextValue, cancellationSignalSource.Signal).Forget();
+            });
+            return DisposableAction.Create(() =>
+            {
+                watcher.Dispose();
+                cancellationSignalSource.TryRaise();
+            });
+        }
 
         public UniTask<T> WhenHasValue(Signal cancellationSignal)
         {
