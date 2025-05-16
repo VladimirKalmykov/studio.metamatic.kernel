@@ -115,6 +115,32 @@ namespace Metamatic
                 }
                 return new Awaiter(m_LazyTask, m_CancellationSignal);
             }
+            
+            public UniTask<TOutput> ContinueWith<TOutput>(Func<T, UniTask<TOutput>> continuationFunction) 
+            {
+                if (m_CancellationSignal.isRaised)
+                {
+                    return UniTask.FromCanceled<TOutput>();
+                }
+                if (!IsValid())
+                {
+                    return UniTask.FromException<TOutput>(new Exception("The lazy task has been reset."));
+                }
+                return m_LazyTask.ContinueWith(continuationFunction);
+            }
+            
+            public UniTask<TOutput> ContinueWith<TOutput>(Func<T,TOutput> continuationFunction) 
+            {
+                if (m_CancellationSignal.isRaised)
+                {
+                    return UniTask.FromCanceled<TOutput>();
+                }
+                if (!IsValid())
+                {
+                    return UniTask.FromException<TOutput>(new Exception("The lazy task has been reset."));
+                }
+                return m_LazyTask.ContinueWith(continuationFunction);
+            }
         }
         
         public void Dispose()
@@ -272,6 +298,56 @@ namespace Metamatic
                     OnCompleted = null;
                 }
             }
+        }
+
+        public UniTask<TOutput> ContinueWith<TOutput>(Func<T, UniTask<TOutput>> continuationFunction)
+        {
+            if (state == State.Completed)
+            {
+                return continuationFunction(result);
+            }
+            if (state == State.Faulted)
+            {
+                return UniTask.FromException<TOutput>(exception);
+            }
+            var tsc = SafeUniTaskCompletionSource<TOutput>.Create();
+            OnCompleted += () =>
+            {
+                if (state == State.Completed)
+                {
+                    tsc.TrySetResult(continuationFunction(result).GetAwaiter().GetResult());
+                }
+                else
+                {
+                    tsc.TrySetException(exception);
+                }
+            };
+            return tsc.Task;
+        }
+        
+        public UniTask<TOutput> ContinueWith<TOutput>(Func<T, TOutput> continuationFunction)
+        {
+            if (state == State.Completed)
+            {
+                return UniTask.FromResult(continuationFunction(result));
+            }
+            if (state == State.Faulted)
+            {
+                return UniTask.FromException<TOutput>(exception);
+            }
+            var tsc = SafeUniTaskCompletionSource<TOutput>.Create();
+            OnCompleted += () =>
+            {
+                if (state == State.Completed)
+                {
+                    tsc.TrySetResult(continuationFunction(result));
+                }
+                else
+                {
+                    tsc.TrySetException(exception);
+                }
+            };
+            return tsc.Task;
         }
 
         public void Reset()
