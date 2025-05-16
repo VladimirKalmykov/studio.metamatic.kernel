@@ -47,7 +47,7 @@ namespace Metamatic
     /// Use existing configuration (like ComponentPrefabPoolConfig or GameObjectConfigurablePoolConfig) for the pool or create a new one.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class ConfigurablePool<T> : ConfigurablePool, IDisposable
+    public class ConfigurablePool<T> : ConfigurablePool, IDisposable where T: UnityEngine.Object
     {
         #region GlobalPool
 

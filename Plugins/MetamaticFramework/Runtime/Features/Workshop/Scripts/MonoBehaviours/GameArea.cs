@@ -201,11 +201,12 @@ namespace Metamatic.Framework.Workshop
 
         public enum ResourceMode
         {
+            None,
             Prefab,
             AddictiveScene
         }
 
-        [SerializeField] private ResourceMode m_ResourceMode = ResourceMode.Prefab;
+        [SerializeField] private ResourceMode m_ResourceMode = ResourceMode.None;
 
         [ShowIf("@m_ResourceMode==ResourceMode.Prefab")] [SerializeField]
         private AssetReferenceT<Transform> m_Prefab;

@@ -254,6 +254,14 @@ namespace Metamatic.Framework
             pool.Dispose();
         }
         
+        private static async UniTask InitializePoolForGameObject<T>(Action<ConfigurablePool<UnityEngine.GameObject>> resolve, string runtimeKey, GameObject gameObject, Signal cancellationSignal) where T : UnityEngine.Component
+        {
+            var pool = new ConfigurablePool<UnityEngine.GameObject>(new GameObjectConfigurablePoolConfig(gameObject, keepInactive: true, dontDestroyOnLoad: true), autoShrink: true);
+            resolve(pool);
+            await cancellationSignal;
+            pool.Dispose();
+        }
+        
         private static async UniTask InitializePoolForGameObjectAsComponent<T>(Action<ConfigurablePool<UnityEngine.Component>> resolve, string runtimeKey, GameObject gameObject, Signal cancellationSignal) where T : UnityEngine.Component
         {
             var component = gameObject.GetOrAddComponent<T>();
