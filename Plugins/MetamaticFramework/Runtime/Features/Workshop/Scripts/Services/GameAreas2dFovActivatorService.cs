@@ -6,7 +6,7 @@ using Metamatic.MicroBehaviours;
 namespace Metamatic.Framework.Workshop
 {
     [RequireService(typeof(FOV2DService))]
-    public class GameAreas2dService: Service
+    public class GameAreas2dFovActivatorService: Service
     {
         private static readonly ObservableList<GameArea> GameAreas = new();
         private readonly HashSet<string> m_IntersectedAreas = new();

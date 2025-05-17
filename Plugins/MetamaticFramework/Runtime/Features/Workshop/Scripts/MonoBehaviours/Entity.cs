@@ -315,6 +315,8 @@ namespace Metamatic.Framework.Workshop
 
         [Tooltip("Unique identifier of the entity")]
         [ReadOnly] public string id;
+        [Tooltip("Dematerialize entity if it is out of game area")]
+        public bool dependsOnArea = false;
         
         [Tooltip("Always play virtual logic even if entity is materialized (Experimental)")]
         public bool alwaysPlayVirtualLogic = false;
@@ -788,12 +790,6 @@ namespace Metamatic.Framework.Workshop
         
         protected override void Awake()
         {
-            #if UNITY_EDITOR
-            if (GameSystem.virtualWorld == null)
-            {
-                enabled = false;
-            }
-            #endif
             m_InitialPosition = transform.position;
             m_InitialRotation = transform.rotation;
             base.Awake();
@@ -808,7 +804,7 @@ namespace Metamatic.Framework.Workshop
 
         private void FixedUpdate()
         {
-            if (isKicked) return;
+            if (isKicked || !dependsOnArea) return;
             /* First of all check if entity is still inside active game area */
             var position = transform.position;
             if (!gameAreaIsSet || !gameArea.isActive || !gameArea.IsIntersected(position))

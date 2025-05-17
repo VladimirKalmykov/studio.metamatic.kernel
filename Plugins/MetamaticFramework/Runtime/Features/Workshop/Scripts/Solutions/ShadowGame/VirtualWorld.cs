@@ -20,14 +20,14 @@ namespace Metamatic.Framework
             public ServiceSaveData[] services;
         }
         
-        private static readonly Observable<VirtualWorld> s_ObservableCurrentVirtualWorld = new Observable<VirtualWorld>();
-        public static VirtualWorld Current => s_ObservableCurrentVirtualWorld.value;
+        private static readonly ObservableNullable<VirtualWorld> s_ObservableCurrentVirtualWorld = new ObservableNullable<VirtualWorld>();
+        public static VirtualWorld Current => s_ObservableCurrentVirtualWorld.hasValue ? s_ObservableCurrentVirtualWorld.Value : CreateNewCurrent();
         
         public static VirtualWorld CreateNewCurrent()
         {
-            if (Current != null)
+            if (s_ObservableCurrentVirtualWorld.hasValue)
             {
-                Current.Dispose();
+                s_ObservableCurrentVirtualWorld.value.Dispose();
             }
             s_ObservableCurrentVirtualWorld.value = new VirtualWorld();
             return Current;
@@ -35,10 +35,10 @@ namespace Metamatic.Framework
 
         public static void DisposeCurrent()
         {
-            if (s_ObservableCurrentVirtualWorld.value != null)
+            if (s_ObservableCurrentVirtualWorld.hasValue)
             {
                 s_ObservableCurrentVirtualWorld.value.Dispose();
-                s_ObservableCurrentVirtualWorld.value = null;
+                s_ObservableCurrentVirtualWorld.Clear();
             }
         }
 
@@ -184,7 +184,7 @@ namespace Metamatic.Framework
             if (!m_EntitiesRegistry.TryGetValue(entity.id, out var virtualEntity))
             {
                 // Create virtual entity
-                virtualEntity = CreateEntity(GameSystem.activePlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true, alwaysPlayVirtualLogic: entity.alwaysPlayVirtualLogic);
+                virtualEntity = CreateEntity(GameSystem.activePlaceAddress ?? GameSystem.LimbPlaceAddress, entity.id, entity.transform.position, entity.blueprint, dontEnable: true, alwaysPlayVirtualLogic: entity.alwaysPlayVirtualLogic);
                 if (entity.alwaysPlayVirtualLogic)
                 {
                     await virtualEntity.Load(entity.Save());

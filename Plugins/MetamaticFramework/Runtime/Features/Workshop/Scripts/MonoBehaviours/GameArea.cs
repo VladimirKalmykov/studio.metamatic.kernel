@@ -197,6 +197,7 @@ namespace Metamatic.Framework.Workshop
 #endif
 
         private ObservableVetoVote ActivateVote = new ObservableVetoVote(false);
+        [ShowInInspector, ReadOnly]
         public bool isActive { get; private set; } = false;
 
         public enum ResourceMode
@@ -432,7 +433,10 @@ namespace Metamatic.Framework.Workshop
             {
                 foreach (var entity in m_RegisteredEntities.Values.ToArray())
                 {
-                    entity.Dematerialize(DismissReason.Abandon);
+                    if (entity.dependsOnArea)
+                    {
+                        entity.Dematerialize(DismissReason.Abandon);
+                    }
                 }
             }
         }
@@ -471,6 +475,12 @@ namespace Metamatic.Framework.Workshop
                         }
 
                         await ActivateScene(cancellationSignal);
+                    }
+                    else
+                    {
+                        await cancellationSignal;
+                        OnBeforeDeactivateEvent?.Invoke(this);
+                        InternalDeactivate();
                     }
                 }
                 catch (OperationCanceledException)

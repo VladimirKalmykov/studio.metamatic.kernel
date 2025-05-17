@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
 using Metamatic.DevTools;
 using Sirenix.OdinInspector;
 using Unity.Cinemachine;
@@ -83,8 +84,7 @@ namespace Metamatic
         private readonly Observable<CameraController> m_CameraController = new();
         private Dictionary<CameraController, IDisposable> m_CameraWeightSubscriptions = new();
 
-        private Observable<ICinemachineCamera> m_ObservableCurrentVirtualCamera = new();
-        private Transform m_FollowTarget;
+        private readonly ObservableNullable<CinemachineVirtualCameraBase> m_ObservableCurrentVirtualCamera = new();
 
         /// <summary>
         /// Contains all active shakers that are currently shaking the camera.
@@ -104,6 +104,8 @@ namespace Metamatic
                 return m_CameraController.value.camera;
             }
         }
+        
+        private readonly ObservableNullable<Transform> m_FollowTargetObservable = new ObservableNullable<Transform>();
 
         protected override async UniTask RunService(Ready ready, Signal signal)
         {
@@ -111,17 +113,39 @@ namespace Metamatic
             using var monitoringShakeAmplitude = Monitoring.Create("ImpactService.Shake", "amplidute", () => shakeAmplitude);
             using var monitoringShakeFrequency = Monitoring.Create("ImpactService.Shake", "frequency", () => shakeFrequency);
 #endif
-            m_ObservableCurrentVirtualCamera.Value = GetCurrentVirtualCamera();
+            var currentCamera = GetCurrentVirtualCamera();
+            if (currentCamera is CinemachineVirtualCameraBase cinemachineCamera)
+            {
+                m_ObservableCurrentVirtualCamera.Value = cinemachineCamera;
+            }
+            
             CinemachineCore.CameraActivatedEvent.AddListener(OnCameraActivated);
+            using var observeFollowTarget = m_FollowTargetObservable.Watch(OnFollowTargetChange);
             await ready();
             CinemachineCore.CameraActivatedEvent.RemoveListener(OnCameraActivated);
         }
         
         
+        private void OnFollowTargetChange(Transform target, bool hasValue)
+        {
+            if (m_ObservableCurrentVirtualCamera.hasValue)
+            {
+                m_ObservableCurrentVirtualCamera.Value.Follow = target;
+            }
+        }
+        
         private void OnCameraActivated(ICinemachineCamera.ActivationEventParams activationParams)
         {
             var incomingCamera = activationParams.IncomingCamera;
-            m_ObservableCurrentVirtualCamera.Value = incomingCamera as CinemachineCamera;
+            if (incomingCamera is CinemachineVirtualCameraBase cinemachineCamera)
+            {
+                if (m_FollowTargetObservable.hasValue)
+                {
+                
+                    cinemachineCamera.Follow = m_FollowTargetObservable.value;
+                }
+                m_ObservableCurrentVirtualCamera.Value = incomingCamera as CinemachineCamera;
+            }
         }
 
         #region Public methods
@@ -134,6 +158,11 @@ namespace Metamatic
         public DisposableAction SubscribeToMainCamera(Action<CameraController> action)
         {
             return m_CameraController.Watch(action);
+        }
+        
+        public DisposableAction WatchMainCameraAsync(Func<CameraController, Signal, UniTaskVoid> action)
+        {
+            return m_CameraController.WatchAsync(action);
         }
 
         public DisposableAction AnnounceCameraController(CameraController cameraController)
@@ -150,9 +179,15 @@ namespace Metamatic
             });
         }
         
+        [UsedImplicitly]
         public void FollowTarget(Transform target)
         {
-            m_FollowTarget = target;
+            if (target == null)
+            {
+                m_FollowTargetObservable.Clear();
+                return;
+            }
+            m_FollowTargetObservable.value = target;
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
