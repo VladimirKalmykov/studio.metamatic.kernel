@@ -11,7 +11,7 @@ namespace Metamatic.Framework
     /// пока жив сам GameObject (его <see cref="instanceID"/> больше не встречается в коде после Destroy).
     /// </summary>
     /// <typeparam name="T">Тип компонента</typeparam>
-    internal static class ComponentCache<T> where T : Component
+    public static class ComponentCache<T> where T : Component
     {
         private static readonly Dictionary<int, T> _cache = new();
 
