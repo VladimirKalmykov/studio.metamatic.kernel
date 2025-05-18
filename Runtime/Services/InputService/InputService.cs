@@ -41,10 +41,8 @@ namespace Metamatic
         {
             /* Prepare handler for player inputs */
             using var playerInputs = m_PlayerInputs = new ObservableList<PlayerInput>(HandlePlayerInput);
-            var cameraService = m_CameraService = await Resolve<CameraService>(signal);
             /* Subscribe to main camera */
-            using var mainCameraSubscription = cameraService.SubscribeToMainCamera(HandleMainCamera);
-
+            using var subscribeCameraService  = Service.WatchServiceAsync(typeof(CameraService), OnCameraServiceReady);
             
             
             /* Make a deal with the player manager */
@@ -92,6 +90,16 @@ namespace Metamatic
             if (m_SignlePlayerInput != null)
             {
                 Destroy(m_SignlePlayerInput.gameObject);
+            }
+        }
+        
+        private async UniTaskVoid OnCameraServiceReady(Service service, Signal cancellationSignal)
+        {
+            if (service is CameraService cameraService)
+            {
+                m_CameraService = cameraService;
+                using var mainCameraSubscription = cameraService.SubscribeToMainCamera(HandleMainCamera);
+                await cancellationSignal;
             }
         }
         
@@ -251,8 +259,12 @@ namespace Metamatic
         private void InternalOnPlayerJoined(PlayerInput playerInput)
         {
             global::Metamatic.Console.Info("Player", $"Joined: {playerInput.playerIndex}");
+
+            if (Service.TryResolveSync<CameraService>(out var cameraService))
+            {
+                playerInput.camera = m_CameraService.camera;
+            }
             
-            playerInput.camera = m_CameraService.camera;
             m_PlayerInputs.Add(playerInput);
             OnPlayerJoined?.Invoke(playerInput);
         }

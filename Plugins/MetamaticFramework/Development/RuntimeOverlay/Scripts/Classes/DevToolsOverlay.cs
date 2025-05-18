@@ -238,8 +238,8 @@ namespace Metamatic.Framework
                 /* Wait for persistent state to load */
                 await loadPersistentStateTask;
 
-                // Resolve camera service
-                CameraService = await Service.Resolve<CameraService>(signal);
+                // Subscribe camera service
+                using var watchCameraService = Service.WatchServiceAsync(typeof(CameraService), OnCameraServiceReady);
                 
                 // Prepare UIDocument and add styles
                 uiDocument = GetComponent<UIDocument>();
@@ -316,6 +316,16 @@ namespace Metamatic.Framework
             {
                 Console.Exception("MetamaticFramework", "Overlay", e);
             }
+        }
+        
+        private async UniTaskVoid OnCameraServiceReady(Service service, Signal signal)
+        {
+            if (service is CameraService cameraService)
+            {
+                CameraService = cameraService;
+            }
+            await signal;
+            CameraService = null;
         }
 
         private async UniTaskVoid OnPresenceChange(PresenceType presenceType, Signal signal)

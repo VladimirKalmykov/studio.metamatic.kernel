@@ -8,7 +8,7 @@ namespace Metamatic
     /// This class is used to store data in the persistent way. Within the repository, data is stored in a serializable format. It is also used to migrate data between versions.
     /// You must provide a version number for each data type. The version number is used to migrate data between versions. Use the <see cref="VersionAttribute"/> to specify the version number.
     /// </summary>
-    public class VersionedDataTypeContainer: ISerializationCallbackReceiver
+    public class VersionedDataTypeContainer
     {
         [Serializable]
         public class Metadata
@@ -107,16 +107,6 @@ namespace Metamatic
             }
 
             return default(T);
-        }
-
-        public void OnBeforeSerialize()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void OnAfterDeserialize()
-        {
-            throw new NotImplementedException();
         }
     }
 
