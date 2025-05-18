@@ -63,7 +63,7 @@ namespace Metamatic.Framework
         /// </summary>
         public float virtualizedEntityExpirationDuration { get; private set; } = 0f;
         
-        #if UNITY_EDITOR
+        #if DEBUG
         public readonly ObservableList<VirtualEntity> DebugObservableEntitiesList = new();
         #endif
         private SignalSource m_DisposeSignalSource;

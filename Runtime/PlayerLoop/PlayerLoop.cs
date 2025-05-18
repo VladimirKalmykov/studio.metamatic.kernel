@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
@@ -482,6 +483,23 @@ namespace Metamatic
                     m_Stopwatch = null;
                 }
             }
+
+            signal.ThrowIfRaised();
+        }
+        
+        /// <summary>
+        /// Delay for a given time span using unscaled delta time.
+        /// </summary>
+        /// <param name="timeSpan"></param>
+        /// <param name="signal"></param>
+        public static async UniTask DelayUnscaled(TimeSpan timeSpan, Signal signal = default)
+        {
+            await UniTask.Delay(
+                TimeSpan.FromSeconds(3),
+                DelayType.UnscaledDeltaTime,      // считаем на unscaledΔTime
+                PlayerLoopTiming.Update,
+                cancellationToken: signal
+            );
 
             signal.ThrowIfRaised();
         }

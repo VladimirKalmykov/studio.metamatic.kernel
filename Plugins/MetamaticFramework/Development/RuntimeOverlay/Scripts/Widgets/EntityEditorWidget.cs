@@ -11,7 +11,7 @@ namespace Metamatic.Framework.Widgets
     [MetamaticWidget("Metamatic/Entity", null, WidgetApplicability.Both)]
     public class EntityEditorWidget: Widget
     {
-        private Tabs<EntityComponent> m_EntityComponentsTabs;
+        private Tabs<EntityData> m_EntityComponentsTabs;
         
         public EntityEditorWidget()
         {
@@ -20,7 +20,7 @@ namespace Metamatic.Framework.Widgets
             AddToClassList(UIToolKitCore.Tailwind.Column);
             
             // Add columns to the widget
-            m_EntityComponentsTabs = new Tabs<EntityComponent>();
+            m_EntityComponentsTabs = new Tabs<EntityData>();
             Add(m_EntityComponentsTabs);
         }
         public override async UniTask OnPanelAttachedAsync(Signal cancellationSignal)
@@ -30,7 +30,7 @@ namespace Metamatic.Framework.Widgets
             await cancellationSignal;
         }
         
-        private async UniTaskVoid OnActiveTabLifecycleChanged(EntityComponent entityComponent, Signal signal)
+        private async UniTaskVoid OnActiveTabLifecycleChanged(EntityData entityComponent, Signal signal)
         {
             m_EntityComponentsTabs.Clear();
             if (entityComponent == null)
@@ -69,11 +69,11 @@ namespace Metamatic.Framework.Widgets
             var entity = selectedObject.GetComponent<Entity>();
             if (entity == null) return;
             // Subscribe to entity components
-            using var entityComponentsSubscription = entity.Components.WatchEachLifecycle(OnEntityComponentsChanged);
+            using var entityComponentsSubscription = entity.DataComponents.WatchEachLifecycle(OnEntityComponentsChanged);
             await signal;
         }
         
-        private async UniTaskVoid OnEntityComponentsChanged(EntityComponent entityComponent, int index, Signal signal)
+        private async UniTaskVoid OnEntityComponentsChanged(EntityData entityComponent, int index, Signal signal)
         {
             using var tag = m_EntityComponentsTabs.AddTab(entityComponent.GetType().Name, entityComponent);
             await signal;

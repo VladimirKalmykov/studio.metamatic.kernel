@@ -296,7 +296,7 @@ namespace Metamatic
         public Signal disableSignal => m_DisableSignalSource.Signal;
         public Signal destroySignal => m_DestroySignalSource.Signal;
         
-        #if UNITY_EDITOR
+        #if DEBUG
         [ShowIf("@m_MissedRequiredServices.Count > 0"), ShowInInspector, ReadOnly, InfoBox("Following required services are missed", InfoMessageType.Error), UsedImplicitly]
         [ListDrawerSettings(IsReadOnly = true, ShowFoldout = false)]
         private List<string> m_MissedRequiredServices = new();

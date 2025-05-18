@@ -6,6 +6,7 @@ using Metamatic.Framework.Workshop;
 using Metamatic.UIToolKit;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
+using Metamatic.UIToolKit.VisualElements;
 
 namespace Metamatic.Framework
 {
@@ -297,7 +298,7 @@ namespace Metamatic.Framework
                 m_TopSideFlyoutPanel = new SideFlyoutPanel(SideFlyoutPanel.Position.Top, true);
                 
                 // Add toggle button
-                var toggleButton = new ToggleButton<PresenceType>(m_ObservablePresence);
+                var toggleButton = new SwitchButton<PresenceType>(m_ObservablePresence);
                 toggleButton.AddChoice("Hidden", PresenceType.Hidden);
                 toggleButton.AddChoice("Visible", PresenceType.Visible);
                 toggleButton.AddChoice("Interactive", PresenceType.Interactive);
