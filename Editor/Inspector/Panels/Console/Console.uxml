@@ -5,6 +5,7 @@
             <engine:VisualElement name="Left" style="flex-grow: 1; flex-direction: row;">
                 <engine:Button text="Clear" name="ClearButton" triple-click-selects-line="false" double-click-selects-word="false" emoji-fallback-support="false" enable-rich-text="false" style="margin-bottom: 0; margin-right: 0; margin-top: 0; margin-left: 0;" />
                 <engine:Toggle tooltip="Display Unity build-in log" text="Build-in log" name="BuiltInLogCheckbox" style="font-size: 14px; -unity-text-align: middle-left;" />
+                <engine:Toggle name="WrapToggle" text="Wrap long lines" style="font-size: 14px; -unity-text-align: middle-left;" />
                 <engine:VisualElement name="Space" style="flex-grow: 1;" />
             </engine:VisualElement>
             <engine:VisualElement name="Right" style="flex-grow: 1; flex-direction: row-reverse;">

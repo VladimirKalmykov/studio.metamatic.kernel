@@ -182,6 +182,7 @@ namespace Metamatic
         [UsedImplicitly]
         public void FollowTarget(Transform target)
         {
+            Console.Info("CameraService", "FollowTarget", target?.name);
             if (target == null)
             {
                 m_FollowTargetObservable.Clear();

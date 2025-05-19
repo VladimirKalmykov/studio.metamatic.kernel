@@ -6,6 +6,10 @@ using UnityEngine;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public readonly struct PreservedTask<T>: IDisposable
     {
         private readonly InternalTaskLike<T> m_LazyTask;
