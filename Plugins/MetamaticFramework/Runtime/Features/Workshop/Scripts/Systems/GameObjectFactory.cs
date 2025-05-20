@@ -99,7 +99,7 @@ namespace Metamatic.Framework
                 return AsyncSummon<T>.Empty;
 
             var task = goSummon.Wait(default)
-                                 .ContinueWith<T>(ComponentCache<T>.GetOrAdd);
+                                 .ContinueWith<T>(ExtensionMethods.GetOrAddComponent<T>);
 
             // dispose компонента = dispose исходного GO‑summon
             return new AsyncSummon<T>(Token96Bit.Empty, task, _ => goSummon.Dispose());

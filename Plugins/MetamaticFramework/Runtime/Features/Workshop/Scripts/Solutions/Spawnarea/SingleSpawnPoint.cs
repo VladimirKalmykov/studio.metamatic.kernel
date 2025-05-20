@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Metamatic.Framework.Workshop
 {
-    public class SpawnPoint: SpawnArea
+    public class SingleSpawnPoint: SpawnArea
     {
         private Spawnpoint m_CachedSpawnpoint;
         public override bool TryGetSpawnpoint(out Spawnpoint spawnpoint)

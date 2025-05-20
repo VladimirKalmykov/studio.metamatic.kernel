@@ -1,48 +1,68 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Metamatic.Framework
 {
     /// <summary>
-    /// Простейший кэш компонентов, чтобы не вызывать <see cref="Component.GetComponent"/> по нескольку раз.
-    /// Ключ – <see cref="Object.GetInstanceID"/> префаба в пуле.
-    /// <para/>
-    /// Слабых ссылок Unity не предоставляет, поэтому по‑простому храним до тех пор,
-    /// пока жив сам GameObject (его <see cref="instanceID"/> больше не встречается в коде после Destroy).
+    /// Кеш компонентов с использованием слабых ссылок.
     /// </summary>
-    /// <typeparam name="T">Тип компонента</typeparam>
-    public static class ComponentCache<T> where T : Component
+    [Obsolete("Redundant")]
+    public static class WeakComponentCache<T> where T : Component
     {
-        private static readonly Dictionary<int, T> _cache = new();
+        // Ключ — InstanceID GameObject, значение — слабая ссылка на компонент T
+        private static readonly Dictionary<int, WeakReference<T>> _cache = new();
 
         /// <summary>
-        /// Вернёт компонент <typeparamref name="T"/> для данного <paramref name="go"/>.
-        /// При первом обращении выполнит <c>go.GetComponent&lt;T&gt;()</c> и сохранит результат.
+        /// Получит или добавит компонент T для данного GameObject.
+        /// Если слабая ссылка "мертва" (объект освобождён GC или Destroyed),
+        /// то создаст новую через go.GetComponent&lt;T&gt;().
         /// </summary>
         public static T GetOrAdd(GameObject go)
         {
-            #if DEBUG
-            Debug.Assert(go != null, "ComponentCache: go is null");
-            #else
             if (go == null) return null;
-            #endif
 
             int id = go.GetInstanceID();
-            if (!_cache.TryGetValue(id, out var comp) || comp == null)
+
+            if (_cache.TryGetValue(id, out var weakRef))
             {
-                comp = go.GetComponent<T>();
-                _cache[id] = comp;
+                // 1) Попытка получить цель из WeakReference
+                if (weakRef.TryGetTarget(out T existing) && existing != null)
+                {
+                    // UnityEngine.Object.operator== вернёт false, если он Destroyed
+                    return existing;
+                }
+                // иначе — старая ссылка "мертва"
+                _cache.Remove(id);
             }
+
+            // создаём и сохраняем новую ссылку
+            T comp = go.GetComponent<T>();
+            _cache[id] = new WeakReference<T>(comp);
             return comp;
         }
 
         /// <summary>
-        /// Вызывать после <c>Object.Destroy(go)</c>, чтобы не держать лишние ссылки.
+        /// Ручная очистка всех "мертвых" записей из кеша.
+        /// Можно вызывать периодически, например,
+        /// после N обращений или по таймеру.
         /// </summary>
-        public static void Remove(GameObject go)
+        public static void Cleanup()
         {
-            if (go == null) return;
-            _cache.Remove(go.GetInstanceID());
+            var deadKeys = _cache
+                .Where(pair =>
+                {
+                    // если слабая ссылка больше не держит объект
+                    if (!pair.Value.TryGetTarget(out T target)) return true;
+                    // либо Unity-объект Destroyed
+                    return target == null;
+                })
+                .Select(pair => pair.Key)
+                .ToList();
+
+            foreach (int key in deadKeys)
+                _cache.Remove(key);
         }
     }
 }
