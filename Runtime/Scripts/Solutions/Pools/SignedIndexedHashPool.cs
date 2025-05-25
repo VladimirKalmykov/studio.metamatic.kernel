@@ -318,11 +318,12 @@ namespace Metamatic
         // ReSharper disable once InconsistentNaming
         public int Count => m_ItemsSet.Count;
         
-        public IEnumerator<T> GetEnumerator()
+        public IEnumerator<(T value, int index, long signature)> GetEnumerator()
         {
             foreach (var index in m_UsedIndexes)
             {
-                yield return m_Items[index].Value;
+                var item = m_Items[index];
+                yield return (item.Value, index, item.Signature);
             }
         }
         
@@ -332,7 +333,7 @@ namespace Metamatic
             int i = 0;
             foreach (var item in this)
             {
-                array[i] = item;
+                array[i] = item.value;
                 i++;
             }
 
@@ -359,7 +360,7 @@ namespace Metamatic
         private void ResizeArray()
         {
             #if DEBUG
-            Console.Info("SignedIndexedPool", $"Resizing array from {m_Items.Length} to {m_Items.Length * 2}");
+            Console.Warning("SignedIndexedPool", $"Resizing array from {m_Items.Length} to {m_Items.Length * 2}");
             #endif
             if (m_Items.Length == MaxArrayLength)
                 throw new InvalidOperationException("Cannot exceed maximum array size.");

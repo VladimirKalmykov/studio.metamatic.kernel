@@ -43,7 +43,7 @@ namespace Metamatic
         /// Apply the property block to the renderer
         /// </summary>
         [Button]
-        public void SetPropertyBlock()
+        public void Apply()
         {
             Renderer.SetPropertyBlock(Value);
         }

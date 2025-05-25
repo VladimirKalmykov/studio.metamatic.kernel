@@ -28,9 +28,9 @@ namespace Metamatic.Framework.Workshop
         {
             foreach (var nextCheckpoint in s_Checkpoints)
             {
-                if (nextCheckpoint.id == id)
+                if (nextCheckpoint.value.id == id)
                 {
-                    checkpoint = nextCheckpoint;
+                    checkpoint = nextCheckpoint.value;
                     return true;
                 }
             }
@@ -45,13 +45,13 @@ namespace Metamatic.Framework.Workshop
             var gotDefault = false;
             foreach (var nextCheckpoint in s_Checkpoints)
             {
-                if (nextCheckpoint.id == id)
+                if (nextCheckpoint.value.id == id)
                 {
-                    checkpoint = nextCheckpoint;
+                    checkpoint = nextCheckpoint.value;
                     return true;
-                } else if (nextCheckpoint.m_IsDefault)
+                } else if (nextCheckpoint.value.m_IsDefault)
                 {
-                    defaultCheckpoint = nextCheckpoint;
+                    defaultCheckpoint = nextCheckpoint.value;
                     gotDefault = true;
                 }
             }

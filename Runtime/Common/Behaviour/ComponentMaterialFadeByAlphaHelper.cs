@@ -30,7 +30,7 @@ namespace Metamatic
             if (m_SharedMaterialPropertyBlock != null)
             {
                 m_SharedMaterialPropertyBlock.Value.SetFloat(Alpha, nextAlpha);
-                m_SharedMaterialPropertyBlock.SetPropertyBlock();
+                m_SharedMaterialPropertyBlock.Apply();
             }
         }
 

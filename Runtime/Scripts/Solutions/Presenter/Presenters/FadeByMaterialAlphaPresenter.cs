@@ -50,7 +50,7 @@ namespace Metamatic.Presenters
             materialPropertyBlock.SetFloat(AlphaTransitionDuration, m_TransitionDuration);
             materialPropertyBlock.SetFloat(AlphaTransitionStartTime, m_TransitionStartTime);
             
-            m_SharedMaterialPropertyBlock.SetPropertyBlock();
+            m_SharedMaterialPropertyBlock.Apply();
         }
 
         protected override void OnReset()
@@ -60,7 +60,7 @@ namespace Metamatic.Presenters
             var materialPropertyBlock = m_SharedMaterialPropertyBlock.Value;
             materialPropertyBlock.SetFloat(Alpha, m_CurrentAlpha);
             materialPropertyBlock.SetFloat(NextAlpha, m_NextAlpha);
-            m_SharedMaterialPropertyBlock.SetPropertyBlock();
+            m_SharedMaterialPropertyBlock.Apply();
         }
     }
 }

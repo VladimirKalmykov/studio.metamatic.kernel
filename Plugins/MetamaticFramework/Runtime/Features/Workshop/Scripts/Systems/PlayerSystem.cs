@@ -13,6 +13,11 @@ namespace Metamatic.Framework
         public static event Action<Entity, int> OnPlayerRegistered;
         public static event Action<Entity, int> OnPlayerUnregistered;
         
+        public static bool TryGetPlayer(int index, out Entity player)
+        {
+            return m_Players.TryGetValue(index, out player);
+        }
+        
         /// <summary>
         /// Check whether the game object is a player.
         /// </summary>
