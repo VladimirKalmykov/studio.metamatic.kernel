@@ -1,11 +1,12 @@
 namespace Metamatic
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using UnityEngine;
 
     [Serializable]
-    public class SerializableDictionary<TKey, TValue> : ISerializationCallbackReceiver
+    public class SerializableDictionary<TKey, TValue> : ISerializationCallbackReceiver, IEnumerable<KeyValuePair<TKey, TValue>>
     {
         [SerializeField]
         private List<TKey> keys = new List<TKey>();
@@ -14,9 +15,44 @@ namespace Metamatic
         private List<TValue> values = new List<TValue>();
 
         // Словарь для использования во время выполнения
-
-        // Доступ к словарю
         public Dictionary<TKey, TValue> dictionary { get; private set; } = new Dictionary<TKey, TValue>();
+
+        // Количество элементов
+        public int Count => keys.Count;
+
+        // Доступ к словарю по ключу
+        public TValue this[TKey key]
+        {
+            get => dictionary[key];
+            set => dictionary[key] = value;
+        }
+
+        // Доступ к паре ключ-значение по индексу
+        public KeyValuePair<TKey, TValue> this[int index]
+        {
+            get
+            {
+                if (index < 0 || index >= keys.Count)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                return new KeyValuePair<TKey, TValue>(keys[index], values[index]);
+            }
+            set
+            {
+                if (index < 0 || index >= keys.Count)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+
+                // Удаляем старую пару из словаря
+                var oldKey = keys[index];
+                dictionary.Remove(oldKey);
+
+                // Обновляем списки ключей и значений
+                keys[index] = value.Key;
+                values[index] = value.Value;
+
+                // Добавляем новую пару в словарь
+                dictionary.Add(value.Key, value.Value);
+            }
+        }
 
         // Реализация интерфейса для сериализации
         public void OnBeforeSerialize()
@@ -54,16 +90,20 @@ namespace Metamatic
             return dictionary.ContainsKey(key);
         }
 
-        public TValue this[TKey key]
-        {
-            get => dictionary[key];
-            set => dictionary[key] = value;
-        }
-        
         public void Clear()
         {
             dictionary.Clear();
         }
-    }
 
+        // Реализация перечисления
+        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        {
+            return dictionary.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
 }

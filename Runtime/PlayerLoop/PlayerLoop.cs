@@ -302,6 +302,40 @@ namespace Metamatic
             signal.ThrowIfRaised();
         }
         
+        public static async UniTask EachFrame(Action action, PlayerLoopTiming timing,
+            Signal signal)
+        {
+            if (signal.isRaised)
+            {
+                return;
+            }
+            var startTime = Time.time;
+            await UniTask.WaitUntil(() =>
+            {
+                action();
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
+                return signal.IsCancellationRequested;
+            }, timing);
+            signal.ThrowIfRaised();
+        }
+        
+        public static async UniTask EachFrame(Action action, 
+            Signal signal)
+        {
+            if (signal.isRaised)
+            {
+                return;
+            }
+            var startTime = Time.time;
+            await UniTask.WaitUntil(() =>
+            {
+                action();
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
+                return signal.IsCancellationRequested;
+            });
+            signal.ThrowIfRaised();
+        }
+        
         public static DisposableAction EachFrame(Action action, PlayerLoopTiming timing = PlayerLoopTiming.Update)
         {
             var isActive = true;

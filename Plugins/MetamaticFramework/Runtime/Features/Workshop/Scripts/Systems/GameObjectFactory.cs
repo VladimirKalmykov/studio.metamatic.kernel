@@ -5,6 +5,7 @@ using Metamatic.Framework.Workshop;
 using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using Object = UnityEngine.Object;
 
 namespace Metamatic.Framework
 {
@@ -16,14 +17,17 @@ namespace Metamatic.Framework
     /// </summary>
     public static class GameObjectFactory
     {
-        #region Fields
-
+        #region Static fields
+        #if DEBUG
+        public static ObservableList<(ScriptableBlueprint blueprint, ConfigurablePool<GameObject> pool)> DebugBlueprintPools = new();
+        public static ObservableList<(GameObject, ConfigurablePool<GameObject>)> DebugPrefabsPools = new();
+        #endif
         private static readonly Dictionary<string, AsyncContainer<ConfigurablePool<GameObject>>> Pools = new();
         private static readonly SignedIndexedPool<Action> SummonCancellationSignals = new(1000);
 
         #endregion
 
-        #region Public — GameObject‑уровень
+        #region Public GameObject‑уровень
 
         public static AsyncSummon<GameObject> SummonGameObject(AssetReferenceT<GameObject> assetReference) => SummonGameObject((AssetReference)assetReference);
         public static AsyncSummon<GameObject> SummonGameObject(AssetReference assetReference)              => SummonGameObject(assetReference.AssetGUID);
@@ -160,9 +164,24 @@ namespace Metamatic.Framework
                 _                       => throw new Exception($"Unsupported asset type for {address}")
             };
 
-            var pool = new ConfigurablePool<GameObject>(
-                new GameObjectConfigurablePoolConfig(prefab, keepInactive: true, dontDestroyOnLoad: true),
-                autoShrink: true);
+            var pool = directRes is ScriptableBlueprint scriptableBlueprint
+                ? new ConfigurablePool<GameObject>(
+                    new GameObjectFromBlueprintPoolConfig(prefab, scriptableBlueprint, address, keepInactive: true, dontDestroyOnLoad: true),
+                    autoShrink: true)
+                : new ConfigurablePool<GameObject>(
+                    new GameObjectConfigurablePoolConfig(prefab, keepInactive: true, dontDestroyOnLoad: true),
+                    autoShrink: true);
+            
+#if DEBUG
+            if (directRes is ScriptableBlueprint debugScriptableBlueprint)
+            {
+                DebugBlueprintPools.Add((debugScriptableBlueprint, pool));
+            }
+            else
+            {
+                DebugPrefabsPools.Add((prefab, pool));
+            }
+#endif
 
             pool.OnPoolIsUseless += () => ReleasePool(address);
 

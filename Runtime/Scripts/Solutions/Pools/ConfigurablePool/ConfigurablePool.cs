@@ -627,6 +627,7 @@ namespace Metamatic
         public override string displayName => $"ConfigurablePool<{typeof(T).Name}> {m_Config.GetKey()}";
         public override int countInPool => m_ObjectsInPoolList.Count;
         public override int countOutPool => m_OutOfPool.Count;
+        public int TotalCount => m_ObjectsInPoolList.Count + m_OutOfPool.Count;
         #endif
     }
 }
