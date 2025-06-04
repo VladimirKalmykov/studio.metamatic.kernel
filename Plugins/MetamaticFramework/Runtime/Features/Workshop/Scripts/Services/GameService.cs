@@ -237,12 +237,12 @@ namespace Metamatic.Framework.Workshop
         
         public UniTask LaunchNewGame()
         {
-            return LaunchGame(startPlace.AssetGUID, false);
+            return LaunchPlace(startPlace.AssetGUID, false);
         }
 
-        public UniTask LaunchGame(AssetReferenceT<Place> chapterReferenceT, bool seamless)
+        public UniTask LaunchPlace(AssetReferenceT<Place> chapterReferenceT, bool seamless)
         {
-            return LaunchGame(chapterReferenceT.AssetGUID, seamless);
+            return LaunchPlace(chapterReferenceT.AssetGUID, seamless);
         }
 
         /// <summary>
@@ -250,9 +250,26 @@ namespace Metamatic.Framework.Workshop
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async UniTask<bool> LaunchGame(string addressOrGuid, bool seamless)
+        public async UniTask<bool> LaunchPlace(string placeGuid, bool seamless)
         {
-            var stateToken = m_GameLoopStateMachine.PushState(new LaunchGameLoopEvent(addressOrGuid, seamless));
+            var stateToken = m_GameLoopStateMachine.PushState(new LaunchGameLoopEvent(placeGuid, seamless));
+            if (!m_GameLoopStateMachine.isValidState(stateToken))
+            {
+                return false;
+            }
+
+            await m_GameLoopStateMachine.WaitState(stateToken);
+            return true;
+        }
+        
+        public async UniTask<bool> EnsurePlaceLoaded(string placeGuid, bool seamless)
+        {
+            if (GameSystem.IsPlaceActive(placeGuid))
+            {
+                return true;
+            }
+
+            var stateToken = m_GameLoopStateMachine.PushState(new LaunchGameLoopEvent(placeGuid, seamless));
             if (!m_GameLoopStateMachine.isValidState(stateToken))
             {
                 return false;

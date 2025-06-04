@@ -74,6 +74,11 @@ namespace Metamatic.Framework
         {
             
         }
+        
+        public static bool IsPlaceActive(string placeAddress)
+        {
+            return m_ActivePlaceAddress.Value == placeAddress;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void HandleExceptionsFrom(UniTask task)

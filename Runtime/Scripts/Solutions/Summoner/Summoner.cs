@@ -79,6 +79,11 @@ namespace Metamatic
         {
             return m_PreservedTask.Wait(cancellationSignal);
         }
+        
+        public UniTask<T> ToUniTask(Signal cancellationSignal)
+        {
+            return m_PreservedTask.ToUniTask(cancellationSignal);
+        }
 
         public void Dispose()
         {

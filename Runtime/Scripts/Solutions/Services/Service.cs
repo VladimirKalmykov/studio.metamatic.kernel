@@ -223,6 +223,16 @@ namespace Metamatic
             return new DisposableAction(() => ServiceAddedEvent -= service);
         }
 
+        public static DisposableAction WatchServiceAsync<TService>(Func<TService, Signal, UniTaskVoid> handler) where TService : Service
+        {
+            if (!typeof(TService).IsSubclassOf(typeof(Service)))
+            {
+                throw new ArgumentException($"Type {typeof(TService)} is not a Service");
+            }
+            
+            return WatchServiceAsync(typeof(TService), (handler as Func<Service, Signal, UniTaskVoid>));
+        }
+        
         public static DisposableAction WatchServiceAsync(Type serviceType, Func<Service, Signal, UniTaskVoid> handler)
         {
             SignalSource cancellationSignalSource = default;

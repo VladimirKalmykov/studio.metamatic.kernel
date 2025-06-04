@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -27,15 +28,16 @@ namespace Metamatic.SaveSystem
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
+            // --- 1. Сохраняем «v» и «t» как раньше ---
             var version = VersionAttribute.GetVersion(value.GetType(), "0");
-            var versionIndex = m_Glossary.IndexOf(version);
+            int versionIndex = m_Glossary.IndexOf(version);
             if (versionIndex == -1)
             {
                 m_Glossary.Add(version);
                 versionIndex = m_Glossary.Count - 1;
             }
 
-            var typeIndex = m_Types.IndexOf(value.GetType());
+            int typeIndex = m_Types.IndexOf(value.GetType());
             if (typeIndex == -1)
             {
                 m_Types.Add(value.GetType());
@@ -43,47 +45,58 @@ namespace Metamatic.SaveSystem
             }
 
             writer.WriteStartObject();
-
             writer.WritePropertyName("v");
             writer.WriteValue(versionIndex);
-
             writer.WritePropertyName("t");
             writer.WriteValue(typeIndex);
-
             writer.WritePropertyName("d");
 
-            // Получаем контракт для объекта
+            // --- 2. Подготовка к ручной сериализации содержимого ---
             var contract = serializer.ContractResolver.ResolveContract(value.GetType()) as JsonObjectContract;
             if (contract == null)
             {
-                // Если контракт не объектный, просто сериализуем как обычно
+                // Если вдруг это не объектный контракт
                 serializer.Serialize(writer, value);
+                writer.WriteEndObject(); // закрываем «корень»
+                return;
             }
-            else
+
+            writer.WriteStartObject();
+
+            foreach (var jsonProp in contract.Properties)
             {
-                // Ручная сериализация свойств
-                writer.WriteStartObject();
-                foreach (var property in contract.Properties)
-                {
-                    // Пропускаем свойства, которые не должны сериализоваться
-                    if (property.Ignored || !property.Readable)
-                        continue;
+                // Проверяем, игнорируется ли поле/свойство атрибутом или настройками:
+                if (jsonProp.Ignored || !jsonProp.Readable)
+                    continue;
 
-                    // Если стоит проверка ShouldSerialize, можно её вызвать:
-                    if (property.ShouldSerialize != null && !property.ShouldSerialize(value))
-                        continue;
+                // Уважение к логике ShouldSerialize:
+                if (jsonProp.ShouldSerialize != null && !jsonProp.ShouldSerialize(value))
+                    continue;
 
-                    // Получаем значение свойства
-                    var propertyValue = property.ValueProvider.GetValue(value);
-                    writer.WritePropertyName(property.PropertyName);
-                    // Сериализуем каждое свойство стандартным способом
-                    serializer.Serialize(writer, propertyValue);
-                }
+                // Определяем «чистый» MemberInfo по имени:
+                MemberInfo mi = value.GetType()
+                    .GetMember(jsonProp.PropertyName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .FirstOrDefault();
 
-                writer.WriteEndObject();
+                // Если это не поле — пропускаем
+                if (!(mi is FieldInfo fieldInfo))
+                    continue;
+
+                // Если само поле помечено [NonSerialized] или [JsonIgnore], пропускаем:
+                if (fieldInfo.GetCustomAttribute<NonSerializedAttribute>() != null)
+                    continue;
+                if (fieldInfo.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+                    continue;
+
+                // Всё чисто: получаем значение поля и сериализуем
+                object valueOfField = fieldInfo.GetValue(value);
+                writer.WritePropertyName(jsonProp.PropertyName);
+                serializer.Serialize(writer, valueOfField);
             }
 
-            writer.WriteEndObject();
+            writer.WriteEndObject(); // закрыли «d»-объект
+            writer.WriteEndObject(); // закрыли корень (v, t, d)
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue,
@@ -128,13 +141,15 @@ namespace Metamatic.SaveSystem
                 return null;
             }
 
-            #if DEBUG
+#if DEBUG
             if (contract.DefaultCreator == null)
             {
-                Console.Error("SerializationVersionControl", $"Type {targetType} does not have a default constructor! Probably you forgot to add parameterless constructor to the class?");
-                throw new Exception($"Type {targetType} does not have a default constructor! Probably you forgot to add parameterless constructor to the class?");
+                Console.Error("SerializationVersionControl",
+                    $"Type {targetType} does not have a default constructor! Probably you forgot to add parameterless constructor to the class?");
+                throw new Exception(
+                    $"Type {targetType} does not have a default constructor! Probably you forgot to add parameterless constructor to the class?");
             }
-            #endif
+#endif
             // Создаем экземпляр с помощью DefaultCreator контракта
             object instance = contract.DefaultCreator();
             // Перебираем свойства, определенные контрактом
@@ -169,7 +184,7 @@ namespace Metamatic.SaveSystem
             // Не обрабатываем примитивы и строки
             if (objectType.IsPrimitive || objectType == typeof(string))
                 return false;
-    
+
             // Исключаем типы списков List<T>
             if (objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(List<>))
                 return false;
