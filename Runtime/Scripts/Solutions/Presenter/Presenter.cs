@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Metamatic
@@ -10,6 +11,11 @@ namespace Metamatic
     /// </summary>
     public abstract class Presenter: MonoBehaviour, IAbortable, IResettable
     {
+        [SerializeField][BoxGroup("Presenter")]
+        private bool autoPresentOnStart = false;
+        [SerializeField][BoxGroup("Presenter")]
+        public bool ignoreParentPresenter = false;
+        
         public enum State
         {
             Idle,
@@ -47,6 +53,10 @@ namespace Metamatic
             {
                 OnReset();
             }
+            if (autoPresentOnStart)
+            {
+                Present();
+            }
         }
 
         protected virtual void OnDestroy()
@@ -69,6 +79,7 @@ namespace Metamatic
             }
         }
         
+        [Button]
         public void Reset()
         {
             if (Application.isPlaying)
@@ -81,10 +92,12 @@ namespace Metamatic
             }
         }
         
+       
         /// <summary>
         /// Call this method to show the presenter.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
+        [Button]
         public virtual void Present(bool ignoreChildren = false)
         {
             /*
@@ -115,7 +128,11 @@ namespace Metamatic
                  */
                 foreach (var childPresenter in m_ChildPresenters)
                 {
-                    childPresenter.Present(true);
+                    if (childPresenter.ignoreParentPresenter)
+                    {
+                        continue; // Skip child presenters that ignore the parent presenter.
+                    }
+                    childPresenter.Present();
                 }
             }
             if (!m_IsStarted) return; // Return if the presenter is not started yet.
@@ -132,6 +149,7 @@ namespace Metamatic
         /// <summary>
         /// Call this method to hide the presenter.
         /// </summary>
+        [Button]
         public void Dismiss(bool ignoreChildren = false)
         {
             if (enabled == false || state == State.Dismissing)
