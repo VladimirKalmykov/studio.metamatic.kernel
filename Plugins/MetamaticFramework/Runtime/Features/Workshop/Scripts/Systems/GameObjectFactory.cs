@@ -87,10 +87,10 @@ namespace Metamatic.Framework
 
         #region Capacity API
 
-        public static IDisposable ReservePoolCapacity(AssetReference assetReference, int capacity) =>
+        public static DisposableAction ReservePoolCapacity(AssetReference assetReference, int capacity) =>
             InternalReserve(assetReference.AssetGUID, capacity);
 
-        public static IDisposable ReservePoolCapacity(string address, int capacity) =>
+        public static DisposableAction ReservePoolCapacity(string address, int capacity) =>
             InternalReserve(address, capacity);
 
         #endregion
@@ -109,7 +109,7 @@ namespace Metamatic.Framework
             return new AsyncSummon<T>(Token96Bit.Empty, task, _ => goSummon.Dispose());
         }
 
-        private static IDisposable InternalReserve(string address, int capacity)
+        private static DisposableAction InternalReserve(string address, int capacity)
         {
             var cts       = SignalSource.Create();
             var container = GetOrAddPoolContainer(address);

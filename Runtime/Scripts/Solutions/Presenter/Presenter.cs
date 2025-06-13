@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Metamatic
 {
@@ -12,9 +13,13 @@ namespace Metamatic
     public abstract class Presenter: MonoBehaviour, IAbortable, IResettable
     {
         [SerializeField][BoxGroup("Presenter")]
-        private bool autoPresentOnStart = false;
+        private bool autoPresentOnEnable = false;
+        [SerializeField][BoxGroup("Presenter")]
+        private bool deactivateOnDismiss = false;
         [SerializeField][BoxGroup("Presenter")]
         public bool ignoreParentPresenter = false;
+        [SerializeField][BoxGroup("Presenter")]
+        public Presenter[] subPresenters = Array.Empty<Presenter>();
         
         public enum State
         {
@@ -53,10 +58,19 @@ namespace Metamatic
             {
                 OnReset();
             }
-            if (autoPresentOnStart)
+        }
+
+        protected virtual void OnEnable()
+        {
+            if (autoPresentOnEnable)
             {
                 Present();
             }
+        }
+
+        protected virtual void OnDisable()
+        {
+            state = State.Idle;
         }
 
         protected virtual void OnDestroy()
@@ -79,7 +93,7 @@ namespace Metamatic
             }
         }
         
-        [Button]
+        [BoxGroup("Presenter"), Button]
         public void Reset()
         {
             if (Application.isPlaying)
@@ -97,13 +111,13 @@ namespace Metamatic
         /// Call this method to show the presenter.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
-        [Button]
+        [BoxGroup("Presenter"), Button]
         public virtual void Present(bool ignoreChildren = false)
         {
             /*
              * If the presenter is already presenting, do nothing.
              */
-            if (enabled == false || state == State.Presenting)
+            if (state == State.Presenting)
             {
                 return;
             }
@@ -112,6 +126,8 @@ namespace Metamatic
             {
                 state = State.Presenting;
                 // First presentation
+                enabled = true;
+                gameObject.SetActive(true); // TODO: Cache gameObject?
                 m_ActiveCancellationSource.Dispose();
                 m_ActiveCancellationSource = AsyncCancellationSource.Create();
                 OnActive(m_ActiveCancellationSource.Cancellation).Forget();
@@ -123,6 +139,17 @@ namespace Metamatic
             
             if (!ignoreChildren)
             {
+                if (subPresenters != null && subPresenters.Length > 0)
+                {
+                    foreach (var neighborPresenter in subPresenters)
+                    {
+                        if (neighborPresenter.ignoreParentPresenter)
+                        {
+                            continue; // Skip neighbor presenters that ignore the parent presenter.
+                        }
+                        neighborPresenter.Present();
+                    }
+                }
                 /*
                  * If the presenter has child presenters, show them as well.
                  */
@@ -149,7 +176,7 @@ namespace Metamatic
         /// <summary>
         /// Call this method to hide the presenter.
         /// </summary>
-        [Button]
+        [BoxGroup("Presenter"), Button]
         public void Dismiss(bool ignoreChildren = false)
         {
             if (enabled == false || state == State.Dismissing)
@@ -161,13 +188,34 @@ namespace Metamatic
             {
                 return;
             }
+            if (subPresenters != null && subPresenters.Length > 0)
+            {
+                foreach (var neighborPresenter in subPresenters)
+                {
+                    if (neighborPresenter.ignoreParentPresenter)
+                    {
+                        continue; // Skip neighbor presenters that ignore the parent presenter.
+                    }
+                    neighborPresenter.Dismiss();
+                }
+            }
             foreach (var childPresenter in m_ChildPresenters)
             {
-                childPresenter.Dismiss(true);
+                if (childPresenter.ignoreParentPresenter)
+                {
+                    continue; // Skip child presenters that ignore the parent presenter.
+                }
+                childPresenter.Dismiss();
             }
         }
 
         public UniTask Dismiss(Signal cancellationSignal)
+        {
+            Dismiss();
+            return WaitForDismissal(cancellationSignal);
+        }
+
+        public UniTask DismissAsync(Signal cancellationSignal = default)
         {
             Dismiss();
             return WaitForDismissal(cancellationSignal);
@@ -208,6 +256,10 @@ namespace Metamatic
                 if (!dismissCancellationSignal.isRaised)
                 {
                     Reset();
+                    if (deactivateOnDismiss)
+                    {
+                        gameObject.SetActive(false);
+                    }
                 }
             }
             catch (OperationCanceledException)

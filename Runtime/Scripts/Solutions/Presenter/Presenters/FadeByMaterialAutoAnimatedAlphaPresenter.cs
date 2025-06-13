@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Metamatic.Presenters
 {
-    public class FadeByMaterialAlphaPresenter : Presenter
+    public class FadeByMaterialAutoAnimatedAlphaPresenter : Presenter
     {
         [SerializeField] public float fadeInDuration = 0.5f;
         [SerializeField] public float fadeOutDuration = 0.5f;
