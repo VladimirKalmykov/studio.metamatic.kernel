@@ -341,8 +341,9 @@ namespace Metamatic
             var isActive = true;
             UniTask.WaitUntil(() =>
             {
+                if (!isActive) return true;
                 action();
-                return !isActive;
+                return false;
             }, timing);
             
             return new DisposableAction(() => isActive = false);

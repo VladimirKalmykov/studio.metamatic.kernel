@@ -94,6 +94,18 @@ namespace Metamatic
         public Action<Signal> OnShakersActivated;
         public float shakeAmplitude { get; private set; }
         public float shakeFrequency { get; private set; }
+        
+        public (CinemachineVirtualCameraBase virtualCameraBase, bool isSet) currentVirtualCamera
+        {
+            get
+            {
+                if (m_ObservableCurrentVirtualCamera.hasValue)
+                {
+                    return (m_ObservableCurrentVirtualCamera.value, true);
+                }
+                return (null, false);
+            }
+        }
 
         [ShowInInspector]
         public new Camera camera
@@ -163,6 +175,17 @@ namespace Metamatic
         public DisposableAction WatchMainCameraAsync(Func<CameraController, Signal, UniTaskVoid> action)
         {
             return m_CameraController.WatchAsync(action);
+        }
+        
+        public DisposableAction WatchVirtualCamera(Action<CinemachineVirtualCameraBase, bool> action)
+        {
+            return m_ObservableCurrentVirtualCamera.Watch(action);
+        }
+        
+        public DisposableAction WatchVirtualCameraAsync(
+            Func<CinemachineVirtualCameraBase, Signal, UniTaskVoid> action)
+        {
+            return m_ObservableCurrentVirtualCamera.WatchAsync(action);
         }
 
         public DisposableAction AnnounceCameraController(CameraController cameraController)

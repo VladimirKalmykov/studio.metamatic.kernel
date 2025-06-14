@@ -70,6 +70,11 @@ namespace Metamatic
 
         protected virtual void OnDisable()
         {
+            if (state != State.Idle)
+            {
+               m_StepCancellationSignalSource.TryRaise();
+               Reset();
+            }
             state = State.Idle;
         }
 
@@ -122,6 +127,7 @@ namespace Metamatic
                 return;
             }
 
+            Console.Debug("Presenter", $"Presenting {gameObject.name} with state {state}");
             if (state == State.Idle)
             {
                 state = State.Presenting;
