@@ -8,7 +8,7 @@ namespace Metamatic
     using System.Linq;
     using System.Reflection;
 
-    [CustomPropertyDrawer(typeof(Condition))]
+    [CustomPropertyDrawer(typeof(ConditionLegacy))]
     public class ConditionDrawer : PropertyDrawer
     {
         const float PADDING = 2f;

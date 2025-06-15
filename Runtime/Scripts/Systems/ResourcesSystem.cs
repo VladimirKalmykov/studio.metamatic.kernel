@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using Cysharp.Threading.Tasks;
 using Metamatic;
@@ -12,6 +13,7 @@ namespace Metamatic.Systems
     {
         private static readonly SignedIndexedPool<Action> HandleReleaseActions = new (500);
         private static readonly SignedIndexedPool<AsyncOperationHandle<SceneInstance>> LoadSceneOperationHandles = new (500);
+        private static Dictionary<string, IDisposable> _ScheduledReleases = new Dictionary<string, IDisposable>();
         /// <summary>
         /// Summon addressable resource asynchronously.
         /// </summary>
@@ -20,31 +22,18 @@ namespace Metamatic.Systems
         /// <returns>Disposable AsyncSummon that contains async task of resource.</returns>
         public static AsyncSummon<T> Summon<T>(AssetReferenceT<T> assetReference) where T : UnityEngine.Object
         {
-            var tcs = SafeUniTaskCompletionSource<T>.Create();
-            var handle = Addressables.LoadAssetAsync<T>(assetReference);
-            var token = HandleReleaseActions.Add(() => Addressables.Release(handle));
-            
-            handle.Completed += HandleCompleted;
-            
-            return new AsyncSummon<T>(token, tcs.Task, Release);
-            
-            void HandleCompleted(AsyncOperationHandle<T> operationHandle)
-            {
-                if (operationHandle.Status == AsyncOperationStatus.Succeeded)
-                {
-                    tcs.TrySetResult(operationHandle.Result);
-                }
-                else
-                {
-                    tcs.TrySetException(new Exception($"Failed to load asset {assetReference}"));
-                }
-            }
+            return Summon<T>(assetReference.AssetGUID);
         }
         
         public static AsyncSummon<T> Summon<T>(AssetReference assetReference) where T : UnityEngine.Object
         {
+            return Summon<T>(assetReference.AssetGUID);
+        }
+        
+        public static AsyncSummon<T> Summon<T>(string address) where T : UnityEngine.Object
+        {
             var tcs = SafeUniTaskCompletionSource<T>.Create();
-            var handle = Addressables.LoadAssetAsync<UnityEngine.Object>(assetReference);
+            var handle = Addressables.LoadAssetAsync<UnityEngine.Object>(address);
             var token = HandleReleaseActions.Add(() => Addressables.Release(handle));
             
             handle.Completed += HandleCompleted;
@@ -59,16 +48,38 @@ namespace Metamatic.Systems
                 }
                 else
                 {
-                    tcs.TrySetException(new Exception($"Failed to load asset {assetReference}"));
+                    tcs.TrySetException(new Exception($"Failed to load asset {address}"));
                 }
             }
         }
         
-        public static AsyncSummon<T> Summon<T>(string address) where T : UnityEngine.Object
+        /// <summary>
+        /// Summon addressable resource asynchronously with a grace period. After disposing the summon, the resource will be released after the specified grace period.
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="gracePeriod">Delay in seconds</param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static AsyncSummon<T> Summon<T>(string address, int gracePeriod) where T : UnityEngine.Object
         {
             var tcs = SafeUniTaskCompletionSource<T>.Create();
             var handle = Addressables.LoadAssetAsync<UnityEngine.Object>(address);
-            var token = HandleReleaseActions.Add(() => Addressables.Release(handle));
+            if (_ScheduledReleases.TryGetValue(address, out var scheduledRelease))
+            {
+                // If we already have a scheduled release, we can just reuse it
+                scheduledRelease.Dispose();
+                _ScheduledReleases.Remove(address);
+            }
+            var token = HandleReleaseActions.Add(() =>
+            {
+                _ScheduledReleases[address] = Schedule(gracePeriod, () =>
+                {
+                    if (_ScheduledReleases.Remove(address, out var release))
+                    {
+                        Addressables.Release(handle);
+                    }
+                });
+            });
             
             handle.Completed += HandleCompleted;
             
@@ -143,6 +154,13 @@ namespace Metamatic.Systems
                     tcs.TrySetException(new Exception($"Failed to load scene {asset}"));
                 }
             }
+        }
+        
+        private static DisposableAction Schedule(float delay, Action onComplete, PlayerLoopTiming playerLoopTiming = PlayerLoopTiming.EarlyUpdate)
+        {
+            var css = SignalSource.Create();
+            PlayerLoop.Delay(delay, playerLoopTiming, css.Signal).ContinueWith(onComplete).Forget();
+            return DisposableAction.Create(css.Dispose);
         }
         
         private static void Release(Token96Bit token)

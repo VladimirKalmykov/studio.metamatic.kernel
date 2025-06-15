@@ -6,7 +6,7 @@ namespace Metamatic
     using UnityEngine;
 
     [Serializable]
-    public class Condition
+    public class ConditionLegacy
     {
         [SerializeField] private UnityEngine.Object target;
         [SerializeField] private string memberName;
