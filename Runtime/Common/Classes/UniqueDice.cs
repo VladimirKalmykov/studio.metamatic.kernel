@@ -47,6 +47,11 @@ namespace Metamatic
 
             return side;
         }
+
+        public int Roll()
+        {
+            return Next();
+        }
         
         public void Reset()
         {

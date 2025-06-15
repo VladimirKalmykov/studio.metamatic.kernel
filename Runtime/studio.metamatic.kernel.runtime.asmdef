@@ -13,7 +13,8 @@
         "Unity.2D.Animation.Runtime",
         "Animancer",
         "Unity.TextMeshPro",
-        "Unity.Cinemachine"
+        "Unity.Cinemachine",
+        "UniTask.Addressables"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
