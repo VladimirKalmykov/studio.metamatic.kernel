@@ -264,9 +264,12 @@ namespace Metamatic
         public State state { get; private set; }
         public short version { get; private set; }
         public event Action OnCompleted;
+        public string debugID;
         
         public void Initialize(UniTask<T> uniTask)
         {
+            // Generate random debug id
+            debugID = Guid.NewGuid().ToString("N").Substring(0, 8);
             HandleTaskAsync(uniTask).Forget();
         }
         
@@ -286,7 +289,7 @@ namespace Metamatic
             catch (Exception e)
             {
                 valid = version == startVersion;
-                if (valid)
+                if (!valid)
                 {
                     Console.Warning("TaskLike", "The lazy task has been reset.");
                     return;
@@ -298,8 +301,13 @@ namespace Metamatic
             {
                 if (valid)
                 {
-                    OnCompleted?.Invoke();
+                    // 1) захватываем текущее поле
+                    var toInvoke = OnCompleted;
+                    // 2) сразу же сбрасываем в null,
+                    //    чтобы новые подписчики не оказались в этом списке
                     OnCompleted = null;
+                    // 3) теперь вызываем все старые continuation
+                    toInvoke?.Invoke();
                 }
             }
         }

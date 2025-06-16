@@ -3,25 +3,34 @@ using Cysharp.Threading.Tasks;
 using Metamatic;
 using UnityEngine;
 using UnityEngine.Localization;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Extensions
 {
     public static class LocalizationExtensions
     {
-        public static DisposableAction Watch(this LocalizedString localizedString, LocalizedString.ChangeHandler handler)
+        /// <summary>
+        /// Отслеживает изменение локализованной строки и сразу же выдаёт текущее значение (асинхронно).
+        /// </summary>
+        public static DisposableAction Watch(this LocalizedString localizedString, UnityEngine.Localization.LocalizedString.ChangeHandler handler)
         {
+            // Подписываемся на будущие изменения
             localizedString.StringChanged += handler;
-            
-            /* Immediate update */
-            if (localizedString.IsEmpty)
+
+            // Асинхронно запрашиваем текущее значение
+            AsyncOperationHandle<string> handle = localizedString.GetLocalizedStringAsync();
+            if (handle.IsDone)
             {
-                handler.Invoke("");
+                // Если уже готово — сразу вызываем
+                handler(handle.Result);
             }
             else
             {
-                handler.Invoke(localizedString.GetLocalizedString());
+                // Иначе ждём завершения
+                handle.Completed += op => handler(op.Result);
             }
-            
+
+            // Возвращаем IDisposable для отписки от StringChanged
             return DisposableAction.Create(() =>
             {
                 localizedString.StringChanged -= handler;

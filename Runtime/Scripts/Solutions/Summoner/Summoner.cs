@@ -59,6 +59,7 @@ namespace Metamatic
         private readonly Action<Token96Bit> m_Dispose;
         private readonly Token96Bit m_Token;
         private readonly PreservedTask<T> m_PreservedTask;
+        public PreservedTask<T> preservedTask => m_PreservedTask;
 #if DEBUG
         private readonly Container<bool> m_IsDisposed;
 #endif
