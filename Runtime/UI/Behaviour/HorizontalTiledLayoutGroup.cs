@@ -75,7 +75,7 @@
             int index = 0;
             var nextActiveChildCount = 0;
             foreach(RectTransform child in transform) {
-                if (!child.gameObject.activeInHierarchy) continue;
+                if (!child.gameObject.activeInHierarchy || child.hideFlags != HideFlags.None) continue;
                 nextActiveChildCount++;
                 child.anchoredPosition = new Vector3(
                     left,

@@ -17,12 +17,17 @@ namespace Metamatic.Systems
     {
         public readonly T Asset;
         private readonly IResourceLocation m_Location;
+        /// <summary>
+        /// The key the asset was requested with (asset guid or address)
+        /// </summary>
+        public readonly string Key;
         // ReSharper disable once InconsistentNaming
         public string PrimaryKey => m_Location.PrimaryKey;
 
-        public AddressableAssetMetadata(T asset, IResourceLocation location)
+        public AddressableAssetMetadata(T asset, string key, IResourceLocation location)
         {
             this.Asset = asset;
+            this.Key = key;
             this.m_Location = location;
         }
     }
@@ -206,6 +211,11 @@ namespace Metamatic.Systems
             return SummonMany<T>(addresses.Select(a => a.AssetGUID));
         }
 
+        public static AsyncSummon<IList<T>> SummonMany<T>(string[] keys) where T : UnityEngine.Object
+        {
+            return SummonMany<T>(keys.AsEnumerable());
+        }
+
         public static AsyncSummon<AddressableAssetMetadata<T>> SummonWithMetadata<T>(string key) where T: UnityEngine.Object
         {
             var css = SignalSource.Create();
@@ -386,7 +396,7 @@ namespace Metamatic.Systems
             });
             var asset = await handle.Task;
             
-            return new AddressableAssetMetadata<T>(asset, locations[0]);
+            return new AddressableAssetMetadata<T>(asset, key, locations[0]);
         }
         
         private static async UniTask<AddressableAssetMetadata<T>[]> InternalGetManyWithMetadata<T>(IEnumerable<string> keys, Signal cancellationSignal) where T : UnityEngine.Object
@@ -432,7 +442,7 @@ namespace Metamatic.Systems
                 index = 0;
                 foreach (var asset in loadedAssets)
                 {
-                    resultMetadata[index] = new AddressableAssetMetadata<T>(asset, locations[index]);
+                    resultMetadata[index] = new AddressableAssetMetadata<T>(asset, arrayUniqueKeys[index], locations[index]);
                     index++;
                 }
 
