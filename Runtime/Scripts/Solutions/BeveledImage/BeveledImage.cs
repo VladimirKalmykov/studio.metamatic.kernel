@@ -15,18 +15,31 @@ namespace Metamatic
 
         public override Texture mainTexture => backgroundSprite ? backgroundSprite.texture : s_WhiteTexture;
 
-        [Header("Border")] public float borderWidth = 0f;
+        [Header("Border Settings")]
+        public float borderWidth = 0f;
         public Color borderColor = Color.black;
+
+        [Header("Outline Only Mode")]
+        [Tooltip("Если true, рисуем только ободок (border), без заливки; цвет ободка берётся из основного color.")]
+        public bool outlineOnly = false;
 
         protected override void OnPopulateMesh(VertexHelper vh)
         {
             vh.Clear();
             Rect r = rectTransform.rect;
 
+            // Внешний контур
             var outer = GenerateBeveledPath(r, bevelSize);
 
-            if (borderWidth > 0f)
+            // Решаем, как рисовать: всегда рисуем ring, если есть borderWidth;
+            // заливку — только если outlineOnly == false
+            bool hasBorder = borderWidth > 0f;
+            // Цвет ободка: если режим outlineOnly — берём главный цвет, иначе — borderColor
+            Color ringColor = outlineOnly ? color : borderColor;
+
+            if (hasBorder)
             {
+                // внутренний контур для кольца
                 Rect innerRect = new Rect(
                     r.xMin + borderWidth, r.yMin + borderWidth,
                     r.width - 2 * borderWidth, r.height - 2 * borderWidth);
@@ -39,12 +52,24 @@ namespace Metamatic
 
                 var inner = GenerateBeveledPath(innerRect, innerBevel);
 
-                AddRing(vh, outer, inner, borderColor);
-                AddFill(vh, inner, color, GetUVs(inner, innerRect, backgroundSprite));
+                // рисуем ободок
+                AddRing(vh, outer, inner, ringColor);
+
+                // и только если не в режиме outlineOnly — рисуем заливку
+                if (!outlineOnly)
+                {
+                    var uvsInner = GetUVs(inner, innerRect, backgroundSprite);
+                    AddFill(vh, inner, color, uvsInner);
+                }
             }
             else
             {
-                AddFill(vh, outer, color, GetUVs(outer, r, backgroundSprite));
+                // нет borderWidth — рисуем заливку только если не outlineOnly
+                if (!outlineOnly)
+                {
+                    var uvsOuter = GetUVs(outer, r, backgroundSprite);
+                    AddFill(vh, outer, color, uvsOuter);
+                }
             }
         }
 
@@ -53,7 +78,6 @@ namespace Metamatic
         {
             return new List<Vector2>
             {
-                // по часовой стрелке, начиная от верхнего левого «среза» на верхней стороне
                 new Vector2(r.xMin + b.x, r.yMax),
                 new Vector2(r.xMax - b.y, r.yMax),
                 new Vector2(r.xMax, r.yMax - b.y),
@@ -121,5 +145,4 @@ namespace Metamatic
             return uvs;
         }
     }
-
 }

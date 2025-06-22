@@ -393,20 +393,42 @@ namespace Metamatic
         /// <param name="actionName"></param>
         /// <param name="cancelllationSignal"></param>
         /// <returns></returns>
-        public string ResolveKeyBindingForAction(int playerIndex, string actionName, Signal cancelllationSignal)
+        public bool TryResolveKeyBindingForAction(int playerIndex, string actionMapName, string actionName,  out string key, InputBinding.DisplayStringOptions displayStringOptions = default, bool first = false)
         {
-            /* Wait until player joined */
-            var currentInputAsset = GetPlayerInputActionAsset(playerIndex);
-            if (currentInputAsset == null) return "";
-            var controlScheme = GetPlayerInputControlScheme(playerIndex);
-            var actionMap = currentInputAsset.FindActionMap("Player");
-            var action = actionMap.FindAction(actionName);
-            if (action == null)
+            try
             {
-                Debug.LogError($"Action {actionName} not found in the input asset.");
-            }
+                /* Wait until player joined */
+                var currentInputAsset = GetPlayerInputActionAsset(playerIndex);
+                if (currentInputAsset == null)
+                {
+                    key = null;
+                    return false;
+                }
 
-            return action.GetBindingDisplayString(group: controlScheme);
+                var controlScheme = GetPlayerInputControlScheme(playerIndex);
+                var actionMap = currentInputAsset.FindActionMap(actionMapName);
+                var action = actionMap.FindAction(actionName);
+                if (action == null)
+                {
+                    Debug.LogError($"Action {actionName} not found in the input asset.");
+                    key = null;
+                    return false;
+                }
+
+                key = action.GetBindingDisplayString(group: controlScheme, options: displayStringOptions);
+                if (first)
+                {
+                    // Split `rawKey` by '|' and trim
+                    key = key.Split('|')[0].Trim();
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.Error("InputService", $"Failed to resolve key binding: {e}");
+                key = null;
+            }
+            return false;
         }
         
         #region Bind actions

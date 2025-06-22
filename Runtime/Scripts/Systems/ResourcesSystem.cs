@@ -6,6 +6,7 @@ using System.Linq;
 using Cysharp.Threading.Tasks;
 using Metamatic;
 using Sirenix.OdinInspector.Editor.GettingStarted;
+using UnityEditor.VersionControl;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceLocations;
@@ -38,24 +39,37 @@ namespace Metamatic.Systems
         private static readonly SignedIndexedPool<AsyncOperationHandle<SceneInstance>> LoadSceneOperationHandles = new (500);
         private static Dictionary<string, IDisposable> _ScheduledReleases = new Dictionary<string, IDisposable>();
 
-        public static async UniTask<string> GetAssetAddress(string assetGuid)
+        public static async UniTask<string> GetAssetAddress(string assetGuid, Signal cancellationSignal = default)
         {
             if (m_MapAssetGuidToAssetAddress.TryGetValue(assetGuid, out var address))
             {
                 return address;
             }
             var handle = Addressables.LoadResourceLocationsAsync(assetGuid);
-            var task = handle.ToUniTask();
-            var locations = await task;
-            if (locations.Count == 0)
+            try
             {
-                return null;
+                var task = handle.ToUniTask(cancellationToken: cancellationSignal);
+                var locations = await task;
+                if (locations.Count == 0)
+                {
+                    return null;
+                }
+
+                var primaryKey = locations[0].PrimaryKey;
+                m_MapAssetGuidToAssetAddress[assetGuid] = primaryKey;
+
+
+                return locations[0].PrimaryKey;
             }
+            finally
+            {
+                Addressables.Release(handle);
+            }
+        }
 
-            var primaryKey = locations[0].PrimaryKey;
-            m_MapAssetGuidToAssetAddress[assetGuid] = primaryKey;
-
-            return locations[0].PrimaryKey;
+        public static UniTask<string> GetAssetAddress(AssetReference assetReference, Signal cancellationSignal = default)
+        {
+            return GetAssetAddress(assetReference.AssetGUID, cancellationSignal);
         }
         
         public static async UniTask<IResourceLocation> GetAssetLocation(string assetGuid)
@@ -94,18 +108,18 @@ namespace Metamatic.Systems
         public static AsyncSummon<T> Summon<T>(string address) where T : UnityEngine.Object
         {
             var tcs = SafeUniTaskCompletionSource<T>.Create();
-            var handle = Addressables.LoadAssetAsync<UnityEngine.Object>(address);
+            var handle = Addressables.LoadAssetAsync<T>(address);
             var token = HandleReleaseActions.Add(() => Addressables.Release(handle));
             
             handle.Completed += HandleCompleted;
             
             return new AsyncSummon<T>(token, tcs.Task, Release);
             
-            void HandleCompleted(AsyncOperationHandle<UnityEngine.Object> operationHandle)
+            void HandleCompleted(AsyncOperationHandle<T> operationHandle)
             {
                 if (operationHandle.Status == AsyncOperationStatus.Succeeded)
                 {
-                    tcs.TrySetResult((T)operationHandle.Result);
+                    tcs.TrySetResult(operationHandle.Result);
                 }
                 else
                 {
@@ -124,7 +138,7 @@ namespace Metamatic.Systems
         public static AsyncSummon<T> Summon<T>(string address, int gracePeriod) where T : UnityEngine.Object
         {
             var tcs = SafeUniTaskCompletionSource<T>.Create();
-            var handle = Addressables.LoadAssetAsync<UnityEngine.Object>(address);
+            var handle = Addressables.LoadAssetAsync<T>(address);
             
             var token = HandleReleaseActions.Add(() =>
             {
@@ -138,7 +152,7 @@ namespace Metamatic.Systems
             
             return new AsyncSummon<T>(token, tcs.Task, Release);
             
-            void HandleCompleted(AsyncOperationHandle<UnityEngine.Object> operationHandle)
+            void HandleCompleted(AsyncOperationHandle<T> operationHandle)
             {
                 if (operationHandle.Status == AsyncOperationStatus.Succeeded)
                 {
@@ -248,7 +262,6 @@ namespace Metamatic.Systems
         {
             return SummonManyWithMetadata<T>(assetReferences.Select(a => a.AssetGUID));
         }
-
 
         public static AsyncDisposableSummon<SceneInstance> LoadScene(
             AssetReference asset,

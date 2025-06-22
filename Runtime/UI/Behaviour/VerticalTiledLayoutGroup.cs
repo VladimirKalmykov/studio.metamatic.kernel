@@ -1,4 +1,5 @@
-﻿using UnityEngine.EventSystems;
+﻿using Sirenix.OdinInspector;
+using UnityEngine.EventSystems;
 
 namespace Metamatic.UI {
     using UnityEngine;
@@ -17,12 +18,17 @@ namespace Metamatic.UI {
         /// Update size each frame
         /// </summary>
         public bool updateEachFrame;
+
+        public bool transition;
+        [ShowIf(nameof(transition))]
+        public float transitionDuration;
         private float m_UpdateInterval = 0.1f; // 10 раз в секунду (1 секунда / 10)
         private float m_NextUpdateTime;
         private RectTransform m_Rect;
         RectTransform rect => m_Rect ??= GetComponent<RectTransform>();
         DrivenRectTransformTracker dt;
         private event System.Action OnBeforeDisable;
+        private Vector2 m_NextSizeDelta;
         protected override void Awake() {
             dt = new DrivenRectTransformTracker();
         }
@@ -91,6 +97,23 @@ namespace Metamatic.UI {
                 m_NextUpdateTime = Time.time + m_UpdateInterval;
                 SetDirty();
             }
+
+            #if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+            #endif
+            
+            if (fitContent && transition)
+            {
+                rect.sizeDelta = Vector3.Lerp(rect.sizeDelta, m_NextSizeDelta, Time.deltaTime / transitionDuration);
+            }
+        }
+
+        private void OnTransformChildrenChanged()
+        {
+            SetDirty();
         }
 
         void SetDirty()
@@ -138,10 +161,37 @@ namespace Metamatic.UI {
             }
 
             if (fitContent) {
-                rect.sizeDelta = new Vector2(
-                    width,
-                    -top
-                );
+                #if UNITY_EDITOR
+                if (Application.isPlaying && transition)
+                {
+                    m_NextSizeDelta = new Vector2(
+                        width,
+                        -top
+                    );
+                }
+                else
+                {
+                    rect.sizeDelta = new Vector2(
+                        width,
+                        -top
+                    );
+                }
+                #else
+                if (transition)
+                {
+                    m_NextSizeDelta = new Vector2(
+                        width,
+                        -top
+                    );
+                }
+                else
+                {
+                    rect.sizeDelta = new Vector2(
+                        width,
+                        -top
+                    );
+                }
+                #endif
             }
         }
 

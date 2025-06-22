@@ -10,17 +10,20 @@ namespace Metamatic
     /// <summary>
     /// It provides a polymorphic functionality for showing and hiding a game object, the main feature of which is the ability to flexibly show and hide an object, as well as respond to the event of its final hiding.
     /// </summary>
-    public abstract class Presenter: MonoBehaviour, IAbortable, IResettable
+    public abstract class Presenter : MonoBehaviour, IAbortable, IResettable
     {
-        [SerializeField][BoxGroup("Presenter")]
+        [SerializeField] [BoxGroup("Presenter")]
         private bool autoPresentOnEnable = false;
-        [SerializeField][BoxGroup("Presenter")]
+
+        [SerializeField] [BoxGroup("Presenter")]
         private bool deactivateOnDismiss = false;
-        [SerializeField][BoxGroup("Presenter")]
+
+        [SerializeField] [BoxGroup("Presenter")]
         public bool ignoreParentPresenter = false;
-        [SerializeField][BoxGroup("Presenter")]
+
+        [SerializeField] [BoxGroup("Presenter")]
         public Presenter[] subPresenters = Array.Empty<Presenter>();
-        
+
         public enum State
         {
             Idle,
@@ -37,10 +40,22 @@ namespace Metamatic
 
         protected virtual void Awake()
         {
+#if UNITY_EDITOR
             if (Application.isPlaying)
             {
-                m_ChildPresenters.AddRange(GetComponentsInChildren<Presenter>(true));
+#endif
+                foreach (Transform child in transform)
+                {
+                    GameObject go = child.gameObject;
+                    if (go.hideFlags == HideFlags.None)
+                    {
+                        m_ChildPresenters.AddRange(child.GetComponentsInChildren<Presenter>(true));
+                    }
+                }
+
+#if UNITY_EDITOR
             }
+#endif
         }
 
         protected virtual void Start()
@@ -72,9 +87,10 @@ namespace Metamatic
         {
             if (state != State.Idle)
             {
-               m_StepCancellationSignalSource.TryRaise();
-               Reset();
+                m_StepCancellationSignalSource.TryRaise();
+                Reset();
             }
+
             state = State.Idle;
         }
 
@@ -94,10 +110,11 @@ namespace Metamatic
                 {
                     m_CompleteDismissSignalSource = SignalSource.Create();
                 }
+
                 return m_CompleteDismissSignalSource.Signal;
             }
         }
-        
+
         [BoxGroup("Presenter"), Button]
         public void Reset()
         {
@@ -110,8 +127,8 @@ namespace Metamatic
                 OnReset();
             }
         }
-        
-       
+
+
         /// <summary>
         /// Call this method to show the presenter.
         /// </summary>
@@ -127,7 +144,7 @@ namespace Metamatic
                 return;
             }
 
-            Console.Debug("Presenter", $"Presenting {gameObject.name} with state {state}");
+
             if (state == State.Idle)
             {
                 state = State.Presenting;
@@ -142,7 +159,7 @@ namespace Metamatic
             {
                 state = State.Presenting;
             }
-            
+
             if (!ignoreChildren)
             {
                 if (subPresenters != null && subPresenters.Length > 0)
@@ -153,9 +170,11 @@ namespace Metamatic
                         {
                             continue; // Skip neighbor presenters that ignore the parent presenter.
                         }
+
                         neighborPresenter.Present();
                     }
                 }
+
                 /*
                  * If the presenter has child presenters, show them as well.
                  */
@@ -165,35 +184,39 @@ namespace Metamatic
                     {
                         continue; // Skip child presenters that ignore the parent presenter.
                     }
+
                     childPresenter.Present();
                 }
             }
+
             if (!m_IsStarted) return; // Return if the presenter is not started yet.
             ContinuePreset();
         }
-        
+
         private void ContinuePreset()
         {
             m_StepCancellationSignalSource.TryRaise();
             var presentCancellationSource = m_StepCancellationSignalSource = SignalSource.Create();
             OnPresent(presentCancellationSource.Signal).Forget();
         }
-        
+
         /// <summary>
         /// Call this method to hide the presenter.
         /// </summary>
         [BoxGroup("Presenter"), Button]
         public void Dismiss(bool ignoreChildren = false)
         {
-            if (enabled == false || state == State.Dismissing)
+            if (enabled == false || state != State.Presenting)
             {
                 return;
             }
+
             AsyncHide().Forget();
             if (ignoreChildren)
             {
                 return;
             }
+
             if (subPresenters != null && subPresenters.Length > 0)
             {
                 foreach (var neighborPresenter in subPresenters)
@@ -202,15 +225,18 @@ namespace Metamatic
                     {
                         continue; // Skip neighbor presenters that ignore the parent presenter.
                     }
+
                     neighborPresenter.Dismiss();
                 }
             }
+
             foreach (var childPresenter in m_ChildPresenters)
             {
                 if (childPresenter.ignoreParentPresenter)
                 {
                     continue; // Skip child presenters that ignore the parent presenter.
                 }
+
                 childPresenter.Dismiss();
             }
         }
@@ -226,7 +252,7 @@ namespace Metamatic
             Dismiss();
             return WaitForDismissal(cancellationSignal);
         }
-        
+
         public void Set(bool isPresented)
         {
             if (isPresented)
@@ -238,7 +264,7 @@ namespace Metamatic
                 Dismiss();
             }
         }
-        
+
         /// <summary>
         /// Wait for the presenter to be dismissed.
         /// </summary>
@@ -277,15 +303,16 @@ namespace Metamatic
                 Console.Error("Presenter", e);
             }
         }
-        
+
         public bool isAborted { get; private set; } = false;
         private event Action OnAborted;
+
         public void Abort()
         {
             isAborted = true;
             m_ActiveCancellationSource.Abort();
             /*
-             * Call step cancellation signal source to cancel the current step. It cancels both the presentation operation and the dismissal operation. 
+             * Call step cancellation signal source to cancel the current step. It cancels both the presentation operation and the dismissal operation.
              */
             m_StepCancellationSignalSource.TryRaise();
             OnAborted?.Invoke();
@@ -304,23 +331,26 @@ namespace Metamatic
             OnAborted += action;
             return new DisposableAction(() => OnAborted -= action);
         }
-        
+
         /// <summary>
         /// Async method to present the presenter. E.g. show a UI element via animation.
         /// </summary>
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
         protected abstract UniTaskVoid OnPresent(Signal cancellationSignal);
+
         /// <summary>
         /// Async method to dismiss the presenter. E.g. hide a UI element via animation.
         /// </summary>
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
         protected abstract UniTask OnDismiss(Signal cancellationSignal);
+
         /// <summary>
         /// Called when the presenter is aborted or manually reset. Should immediately stop all animations and hide the UI element.
         /// </summary>
         protected abstract void OnReset();
+
         /// <summary>
         /// Override this method if you need to perform some async actions while the presenter is active.
         /// </summary>
