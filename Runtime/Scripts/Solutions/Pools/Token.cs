@@ -1,5 +1,3 @@
-using System;
-
 namespace Metamatic
 {
     public readonly struct Token64Bit

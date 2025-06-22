@@ -6,7 +6,6 @@ using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Users;
-using Console = Metamatic.Console;
 
 namespace Metamatic
 {

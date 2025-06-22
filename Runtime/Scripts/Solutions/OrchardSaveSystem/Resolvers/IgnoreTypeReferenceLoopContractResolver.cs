@@ -2,7 +2,6 @@ using System;
 
 namespace Metamatic.SaveSystem
 {
-    using Newtonsoft.Json;
     using Newtonsoft.Json.Serialization;
 
     public class IgnoreTypeReferenceLoopContractResolver : DefaultContractResolver
