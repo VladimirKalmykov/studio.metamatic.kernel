@@ -287,7 +287,7 @@ namespace Metamatic.Framework
                     await _CurrentBaseSceneSummon.DisposeAsync();
                     _CurrentBaseSceneRef = chapter.baseScene;
                     // Load base scene
-                    _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Single);
+                    _CurrentBaseSceneSummon = ResourcesSystem.LoadScene(_CurrentBaseSceneRef, LoadSceneMode.Additive);
                 }
                 
                 if (!seamless || (_CurrentGameSceneRef?.AssetGUID != chapter.gameScene.AssetGUID))
