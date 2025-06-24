@@ -19,6 +19,9 @@ namespace Metamatic
 
         [SerializeField] [BoxGroup("Presenter")]
         public bool ignoreParentPresenter = false;
+        
+        [SerializeField] [BoxGroup("Presenter")]
+        public bool ignoreChildrenPresenters = false;
 
         [SerializeField] [BoxGroup("Presenter")]
         public Presenter[] subPresenters = Array.Empty<Presenter>();
@@ -159,7 +162,7 @@ namespace Metamatic
                 state = State.Presenting;
             }
 
-            if (!ignoreChildren)
+            if (!ignoreChildrenPresenters && !ignoreChildren)
             {
                 if (subPresenters != null && subPresenters.Length > 0)
                 {
@@ -211,7 +214,7 @@ namespace Metamatic
             }
 
             AsyncHide().Forget();
-            if (ignoreChildren)
+            if (ignoreChildren || ignoreChildrenPresenters)
             {
                 return;
             }

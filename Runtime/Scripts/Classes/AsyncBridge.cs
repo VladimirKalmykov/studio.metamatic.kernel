@@ -1,8 +1,20 @@
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
+    /// <summary>
+    /// Режим работы моста.
+    /// Default – текущее поведение (единоразовая таска).
+    /// Buffering – все сообщения накапливаются в памяти.
+    /// </summary>
+    public enum BridgeMode
+    {
+        Default,
+        Buffering
+    }
+
     /// <summary>
     /// Типобезопасный аналог AsyncExchange.
     ///   • <typeparamref name="TIn"/>  – то, что поступает *внутрь* из внешнего кода.
@@ -10,10 +22,13 @@ namespace Metamatic
     /// </summary>
     public readonly struct AsyncBridge<TIn, TOut> : IUniTaskAsyncDisposable, IDisposable
     {
-        public static AsyncBridge<TIn, TOut> Create(BridgeCore<TIn, TOut>.AsyncAction action, object[] deps = null)
+        public static AsyncBridge<TIn, TOut> Create(
+            BridgeCore<TIn, TOut>.AsyncAction action,
+            BridgeMode mode = BridgeMode.Default,
+            object[] deps = null)
         {
             var core = ParamLessPool<BridgeCore<TIn, TOut>>.GetShared();
-            core.Init(action, deps);
+            core.Init(action, mode, deps);
             return new AsyncBridge<TIn, TOut>(core);
         }
 
@@ -29,8 +44,10 @@ namespace Metamatic
 
         public UniTask task => Resolve()?.task ?? UniTask.CompletedTask;
         public void Send(TIn value) => Resolve()?.Send(value);
-        public UniTask<TOut> Receive(Signal token = default) => Resolve()?.Receive<TOut>(token) ?? UniTask.FromCanceled<TOut>();
-        public UniTask<TOut> Duplex(TIn value, Signal token = default) => Resolve()?.Duplex(value, token) ?? UniTask.FromCanceled<TOut>();
+        public UniTask<TOut> Receive(Signal token = default) =>
+            Resolve()?.Receive(token) ?? UniTask.FromCanceled<TOut>();
+        public UniTask<TOut> Duplex(TIn value, Signal token = default) =>
+            Resolve()?.Duplex(value, token) ?? UniTask.FromCanceled<TOut>();
 
         public void Dispose()
         {
@@ -54,6 +71,11 @@ namespace Metamatic
     /// </summary>
     public class BridgeCore<TIn, TOut> : IUniTaskAsyncDisposable, IDisposable
     {
+        /* -------------------- РЕЖИМ -------------------- */
+        private BridgeMode _mode;
+        private Queue<TIn>  _inputQueue;
+        private Queue<TOut> _outputQueue;
+
         /* -------------------- ВНУТРЕННИЙ ОБМЕННИК -------------------- */
         public readonly struct Exchanger : IUniTaskAsyncDisposable
         {
@@ -66,6 +88,9 @@ namespace Metamatic
             /* ---------- RECEIVE ---------- */
             public async UniTask<TIn> Receive()
             {
+                if (_m._mode == BridgeMode.Buffering && _m._inputQueue.Count > 0)
+                    return _m._inputQueue.Dequeue();
+
                 DisposableAction reg = default;
                 if (_m._inputCs == null)
                 {
@@ -87,12 +112,16 @@ namespace Metamatic
             /* ---------- SEND ---------- */
             public void Send(TOut value)
             {
+                if (_m._mode == BridgeMode.Buffering && _m._outputCs == null)
+                {
+                    _m._outputQueue.Enqueue(value);
+                    return;
+                }
                 if (_m._outputCs == null)
                 {
                     _m._expectedOutputType = typeof(TOut);
                     _m._outputCs = SafeUniTaskCompletionSource<TOut>.Create();
                 }
-
                 if (_m._outputCs is SafeUniTaskCompletionSource<TOut> cs)
                 {
                     if (cs.Task.Status == UniTaskStatus.Pending)
@@ -106,9 +135,9 @@ namespace Metamatic
             public void Send() => Send(default);
 
             /* ---------- DUPLEX ---------- */
-            public UniTask<TIn> Duplex(TOut value)
+            public async UniTask<TIn> Duplex(TOut value)
             {
-                var t = Receive();
+                var t = await Receive();
                 Send(value);
                 return t;
             }
@@ -117,24 +146,19 @@ namespace Metamatic
         }
 
         /* -------------------- ПОЛЯ -------------------- */
-        // CompletionSources
         private object _inputCs;
         private object _outputCs;
 
-        // Ожидаемые типы (для отладки)
         private Type _expectedInputType;
         private Type _expectedOutputType;
 
-        // Сигналы/отмена
         private SignalSource _css;
         public Signal cancellationSignal => _css.Signal;
 
-        // Версия и общее состояние
         public int  version { get; private set; }
         private readonly ReusableUniTaskCompletionSource _done = ReusableUniTaskCompletionSource.Create();
         public UniTask task => _done.Task;
 
-        // События
         public bool  isDisposedAsync { get; private set; }
         public bool  isAborted      { get; private set; }
         public bool  isDisposedSync { get; private set; }
@@ -142,14 +166,19 @@ namespace Metamatic
         public event Action OnDisposedSync;
         public event Action<Exception> OnDisposedAsync;
 
-        // Пользовательская логика
         public delegate UniTask AsyncAction(Exchanger x, Signal cts);
         private AsyncAction _action;
 
         /* -------------------- ЖИЗНЕННЫЙ ЦИКЛ -------------------- */
-        public void Init(AsyncAction action, object[] deps = null)
+        public void Init(AsyncAction action, BridgeMode mode, object[] deps = null)
         {
             _action = action;
+            _mode   = mode;
+            if (mode == BridgeMode.Buffering)
+            {
+                _inputQueue  = new Queue<TIn>();
+                _outputQueue = new Queue<TOut>();
+            }
             _css    = SignalSource.Create();
             RunAsync();
         }
@@ -165,8 +194,14 @@ namespace Metamatic
             finally { _done.TrySetResult(); }
         }
 
+        /* -------------------- SEND from внешнего -------------------- */
         public void Send(TIn value)
         {
+            if (_mode == BridgeMode.Buffering && _inputCs == null)
+            {
+                _inputQueue.Enqueue(value);
+                return;
+            }
             if (_inputCs == null)
             {
                 _expectedInputType = typeof(TIn);
@@ -184,8 +219,12 @@ namespace Metamatic
         }
         public void Send() => Send(default);
 
-        public async UniTask<TOut> Receive<TOut>(Signal ext = default)
+        /* -------------------- RECEIVE from внешнего -------------------- */
+        public async UniTask<TOut> Receive(Signal ext = default)
         {
+            if (_mode == BridgeMode.Buffering && _outputQueue.Count > 0)
+                return _outputQueue.Dequeue();
+
             ext.ThrowIfRaised();
             cancellationSignal.ThrowIfRaised();
 
@@ -208,11 +247,9 @@ namespace Metamatic
             throw new InvalidOperationException($"Expected {_expectedOutputType}, but got {_outputCs?.GetType()}");
         }
 
-        public UniTask Receive(Signal s = default) => Receive<object>(s);
-
-        public UniTask<TOut> Duplex(TIn value, Signal token = default)
+        public async UniTask<TOut> Duplex(TIn value, Signal token = default)
         {
-            var t = Receive<TOut>(token);
+            var t = await Receive(token);
             Send(value);
             return t;
         }
@@ -232,6 +269,12 @@ namespace Metamatic
             _expectedInputType = _expectedOutputType = null;
             _action = null;
             isDisposedAsync = false;
+
+            if (_mode == BridgeMode.Buffering)
+            {
+                _inputQueue?.Clear();
+                _outputQueue?.Clear();
+            }
         }
         public void Reset() => Reset(false);
         public async UniTask ResetAsync()

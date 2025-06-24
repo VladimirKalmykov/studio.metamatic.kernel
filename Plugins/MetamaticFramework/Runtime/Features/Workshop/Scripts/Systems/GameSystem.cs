@@ -46,6 +46,7 @@ namespace Metamatic.Framework
         public static GameLoadingType loadingType { get; private set; }
         public static event Action<bool> OnBeforeLoadGameScenes;
         public static event Action OnGameScenesActivated;
+        public static Observable<bool> m_PlaceInitialized = new Observable<bool>(false);
         /// <summary>
         /// Event is raised when the game is ready to start (scenes are loaded).
         /// </summary>
@@ -172,6 +173,21 @@ namespace Metamatic.Framework
             return m_ObservableAppStage.WatchAsync(action);
         }
 
+        public static async UniTask WaitForGameStage(GameAppStage stage, float timeout, Signal cancellationSignal)
+        {
+            using var timerSignalSource = SignalSource.CreateLinked(cancellationSignal);
+            using var stageWaiterSignalSource = SignalSource.CreateLinked(cancellationSignal);
+            var timeoutTask = PlayerLoop.Delay(timeout, signal: timerSignalSource.Signal);
+            var stageTask = m_ObservableAppStage.WaitUntilValueIs(stage, stageWaiterSignalSource.Signal);
+            var result = await UniTask.WhenAny(stageTask, timeoutTask);
+            if (!result.hasResultLeft)
+            {
+                // Timer
+                stageWaiterSignalSource.TryRaise();
+                throw new TimeoutException();
+            }
+        }
+
         /// <summary>
         /// Start game from the scratch.
         /// </summary>
@@ -273,6 +289,7 @@ namespace Metamatic.Framework
                 isGameLoaded = false;
                 using var pending = PendingSystem.CreateCriticalPending("Initialize place scenes");
                 OnBeforeLoadGameScenes?.Invoke(seamless);
+                m_PlaceInitialized.uniqValue = false;
                 
                 // Show load game scene
                 // Launch the game async
@@ -307,7 +324,7 @@ namespace Metamatic.Framework
                 
                 var servicesReadyTasks = Service.Services.Values.Select(service => service.WhenReady(cancellationSignal)).ToArray();
                 await UniTask.WhenAll(servicesReadyTasks);
-
+                m_PlaceInitialized.uniqValue = true;
                 OnGameScenesActivated?.Invoke();
                 return true;
             } catch (Exception e)
@@ -375,7 +392,7 @@ namespace Metamatic.Framework
             return VirtualWorld.WatchVirtualWorldAsync(action);
         }
         
-        public static UniTask WhenStart(Signal cancelSignal = default)
+        public static UniTask WhenStarted(Signal cancelSignal = default)
         {
             var tsc = SafeUniTaskCompletionSource.Create();
             DisposableAction unregister = default;

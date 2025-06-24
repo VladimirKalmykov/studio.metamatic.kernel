@@ -20,6 +20,25 @@ namespace Metamatic
     /// </remarks>
     public readonly struct Signal
     {
+        private static readonly SignedIndexedPool<SignalSource> Sources = new(100);
+
+        /// <summary>
+        /// Fast way to get signal and token, that can be used to raise signal via ReleaseToken
+        /// </summary>
+        /// <returns></returns>
+        public static (Signal, Token96Bit) GetToken()
+        {
+            var signalSource = SignalSource.Create();
+            return (signalSource.Signal, Sources.Add(signalSource));
+        }
+
+        public static void ReleaseToken(Token96Bit token)
+        {
+            if (Sources.Remove(token, out var source))
+            {
+                source.Dispose();
+            }
+        }
         /// <summary>
         /// Returns already raised signal
         /// </summary>
