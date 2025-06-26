@@ -1,4 +1,5 @@
 using System;
+using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
@@ -58,6 +59,27 @@ namespace Metamatic
             void ChangeHandler()
             {
                 action(result);
+            }
+        }
+
+        public DisposableAction WatchAsync(Func<bool, Signal, UniTaskVoid> action)
+        {
+            var css = SignalSource.Create();
+            action(result, css.Signal).Forget();
+            
+            OnResultChange += ChangeHandler;
+            
+            return new DisposableAction(() =>
+            {
+                css.TryRaise();
+                OnResultChange -= ChangeHandler;
+            });
+
+            void ChangeHandler()
+            {
+                css.TryRaise();
+                css = SignalSource.Create();
+                action(result, css.Signal).Forget();
             }
         }
         
