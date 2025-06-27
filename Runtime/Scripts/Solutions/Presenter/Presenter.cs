@@ -42,22 +42,7 @@ namespace Metamatic
 
         protected virtual void Awake()
         {
-#if UNITY_EDITOR
-            if (Application.isPlaying)
-            {
-#endif
-                foreach (Transform child in transform)
-                {
-                    GameObject go = child.gameObject;
-                    if (go.hideFlags == HideFlags.None)
-                    {
-                        m_ChildPresenters.AddRange(child.GetComponentsInChildren<Presenter>(true));
-                    }
-                }
 
-#if UNITY_EDITOR
-            }
-#endif
         }
 
         protected virtual void Start()
@@ -176,6 +161,23 @@ namespace Metamatic
                         neighborPresenter.Present();
                     }
                 }
+                
+#if UNITY_EDITOR
+                if (Application.isPlaying)
+                {
+#endif
+                    foreach (Transform child in transform)
+                    {
+                        GameObject go = child.gameObject;
+                        if (go.hideFlags == HideFlags.None)
+                        {
+                            m_ChildPresenters.AddRange(child.GetComponentsInChildren<Presenter>(true));
+                        }
+                    }
+
+#if UNITY_EDITOR
+                }
+#endif
 
                 /*
                  * If the presenter has child presenters, show them as well.
@@ -352,6 +354,12 @@ namespace Metamatic
         /// Called when the presenter is aborted or manually reset. Should immediately stop all animations and hide the UI element.
         /// </summary>
         protected abstract void OnReset();
+
+        protected virtual UniTask OnPrepare(Action ready, Signal onDismiss)
+        {
+            ready();
+            return UniTask.CompletedTask;           
+        }
 
         /// <summary>
         /// Override this method if you need to perform some async actions while the presenter is active.
