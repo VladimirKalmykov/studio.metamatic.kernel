@@ -293,10 +293,11 @@ namespace Metamatic
             var startTime = Time.time;
             await UniTask.WaitUntil(() =>
             {
+                if (signal.IsCancellationRequested) return true;
                 var progress = Mathf.Clamp01((Time.time - startTime) / duration);
                 action(progress);
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
-                return progress == 1f || signal.IsCancellationRequested;
+                return progress == 1f;
             }, timing);
             signal.ThrowIfRaised();
         }

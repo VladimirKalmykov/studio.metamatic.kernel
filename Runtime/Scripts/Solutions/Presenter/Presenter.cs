@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Metamatic
 {
@@ -283,10 +284,13 @@ namespace Metamatic
             state = State.Dismissing;
             m_StepCancellationSignalSource.TryRaise();
             var dismissStepCancellationSource = m_StepCancellationSignalSource = SignalSource.Create();
+            var scene = gameObject.scene;
+            
             await UniTask.NextFrame();
             if (dismissStepCancellationSource.IsRaised) return;
             try
             {
+                SceneManager.sceneUnloaded += OnObjectSceneUnloaded;
                 var dismissCancellationSignal = dismissStepCancellationSource.Signal;
                 await OnDismiss(dismissCancellationSignal);
                 if (!dismissCancellationSignal.isRaised)
@@ -306,6 +310,15 @@ namespace Metamatic
             {
                 Console.Error("Presenter", e);
             }
+            finally
+            {
+                SceneManager.sceneUnloaded -= OnObjectSceneUnloaded;
+            }
+        }
+
+        private void OnObjectSceneUnloaded(Scene scene)
+        {
+            m_StepCancellationSignalSource.TryRaise();
         }
 
         public bool isAborted { get; private set; } = false;
