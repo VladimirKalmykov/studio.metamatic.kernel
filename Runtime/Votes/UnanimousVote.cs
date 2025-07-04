@@ -23,6 +23,7 @@ namespace Metamatic
         public bool result { get; private set; }
         public Resolution resolution { get; private set; }
         public event Action<bool, Resolution> OnResultChanged;
+        
         public UnanimousVote(bool fallbackResult)
         {
             m_PrevResult = fallbackResult;

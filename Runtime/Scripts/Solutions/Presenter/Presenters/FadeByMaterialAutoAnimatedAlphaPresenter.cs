@@ -23,10 +23,10 @@ namespace Metamatic.Presenters
             m_SharedMaterialPropertyBlock = this.GetOrAddComponent<SharedMaterialPropertyBlock>();
         }
 
-        protected override UniTaskVoid OnPresent(Signal cancellationSignal)
+        protected override UniTask OnPresent(Signal cancellationSignal)
         {
             PerformShaderBasedAlphaTransition(1f);
-            return new UniTaskVoid();
+            return UniTask.CompletedTask;
         }
 
         protected override UniTask OnDismiss(Signal cancellationSignal)

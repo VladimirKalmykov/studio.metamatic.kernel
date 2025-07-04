@@ -15,7 +15,7 @@ public class MaterialAlphaPresenter : Presenter
         base.Awake();
         m_SharedMaterialPropertyBlock = this.GetOrAddComponent<SharedMaterialPropertyBlock>();
     }
-    protected override async UniTaskVoid OnPresent(Signal cancellationSignal)
+    protected override async UniTask OnPresent(Signal cancellationSignal)
     {
         await PlayerLoop.EachFrame(progress =>
         {

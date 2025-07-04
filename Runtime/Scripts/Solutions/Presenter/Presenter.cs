@@ -35,6 +35,7 @@ namespace Metamatic
         }
 
         private SignalSource m_StepCancellationSignalSource = default;
+        private SignalSource m_CompletePresentSignalSource = default;
         private SignalSource m_CompleteDismissSignalSource = default;
         private AsyncCancellationSource m_ActiveCancellationSource = default;
         private List<Presenter> m_ChildPresenters = new List<Presenter>();
@@ -198,11 +199,39 @@ namespace Metamatic
             ContinuePreset();
         }
 
+        public UniTask PresentAsync(Signal cancellationSignal)
+        {
+            Present();
+            return WaitForPresent(cancellationSignal);
+        }
+
         private void ContinuePreset()
         {
             m_StepCancellationSignalSource.TryRaise();
             var presentCancellationSource = m_StepCancellationSignalSource = SignalSource.Create();
-            OnPresent(presentCancellationSource.Signal).Forget();
+            InternalAsyncPresent(presentCancellationSource.Signal).Forget();
+        }
+
+        private async UniTaskVoid InternalAsyncPresent(Signal signal)
+        {
+            try
+            {
+                m_CompletePresentSignalSource.TryRaise();
+                m_CompletePresentSignalSource = SignalSource.Create();
+                await OnPresent(signal);
+            }
+            catch (OperationCanceledException)
+            {
+                // Ignore
+            }
+            catch (Exception e)
+            {
+                Console.Error("Presenter", e);
+            }
+            finally
+            {
+                m_CompletePresentSignalSource.TryRaise();
+            }
         }
 
         /// <summary>
@@ -276,7 +305,23 @@ namespace Metamatic
         /// <returns></returns>
         public UniTask WaitForDismissal(Signal cancellationSignal)
         {
+            // Check state
+            if (state == State.Idle)
+            {
+                return UniTask.CompletedTask;
+            }
+            
             return UniTask.WhenAny(completeDismissSignal.ToUniTask(), cancellationSignal.ToUniTask());
+        }
+
+        public UniTask WaitForPresent(Signal cancellationSignal)
+        {
+            if (m_CompletePresentSignalSource.IsRaised)
+            {
+                return UniTask.CompletedTask;
+            }
+            
+            return UniTask.WhenAny(m_CompletePresentSignalSource.Signal.ToUniTask(), cancellationSignal.ToUniTask());
         }
 
         private async UniTask AsyncHide()
@@ -354,7 +399,7 @@ namespace Metamatic
         /// </summary>
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
-        protected abstract UniTaskVoid OnPresent(Signal cancellationSignal);
+        protected abstract UniTask OnPresent(Signal cancellationSignal);
 
         /// <summary>
         /// Async method to dismiss the presenter. E.g. hide a UI element via animation.
