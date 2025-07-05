@@ -44,6 +44,11 @@ namespace Metamatic.Framework
             return m_PlayersRegistry.Contains(entity);
         }
 
+        public static bool IsPlayer(GameObject entityObject)
+        {
+            return IsPlayer(entityObject.GetComponent<Entity>());
+        }
+
         /// <summary>
         /// Register the player entity.
         /// </summary>
