@@ -481,6 +481,12 @@ namespace Metamatic
 
             signal.ThrowIfRaised();
         }
+
+        public static UniTask Delay(float seconds,
+            Signal signal = default)
+        {
+            return Delay(seconds, PlayerLoopTiming.Update, signal);
+        }
         
         public static async UniTask Delay(TimeSpan timeSpan, PlayerLoopTiming timing = PlayerLoopTiming.Update, Signal signal = default)
         {
