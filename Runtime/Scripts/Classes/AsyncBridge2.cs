@@ -4,43 +4,33 @@ using Cysharp.Threading.Tasks;
 
 namespace Metamatic
 {
-    /// <summary>
-    /// Режим работы моста.
-    /// Default – текущее поведение (единоразовая таска).
-    /// Buffering – все сообщения накапливаются в памяти.
-    /// </summary>
-    public enum BridgeMode
-    {
-        Default,
-        Buffering
-    }
 
     /// <summary>
-    /// Типобезопасный аналог AsyncExchange.
+    /// Типобезопасный аналог AsyncExchange. В отличии от AsyncBridge позволяет 
     ///   • <typeparamref name="TIn"/>  – то, что поступает *внутрь* из внешнего кода.
     ///   • <typeparamref name="TOut"/> – то, что отдаётся *наружу* внутренним кодом.
     /// </summary>
-    public readonly struct AsyncBridge<TIn, TOut> : IUniTaskAsyncDisposable, IDisposable
+    public readonly struct AsyncBridge2<TIn, TOut> : IUniTaskAsyncDisposable, IAbortable
     {
-        public static AsyncBridge<TIn, TOut> Create(
-            BridgeCore<TIn, TOut>.AsyncAction action,
+        public static AsyncBridge2<TIn, TOut> Create(
+            BridgeCore2<TIn, TOut>.AsyncAction action,
             BridgeMode mode = BridgeMode.Default,
             object[] deps = null)
         {
-            var core = ParamLessPool<BridgeCore<TIn, TOut>>.GetShared();
+            var core = ParamLessPool<BridgeCore2<TIn, TOut>>.GetShared();
             core.Init(action, mode, deps);
-            return new AsyncBridge<TIn, TOut>(core);
+            return new AsyncBridge2<TIn, TOut>(core);
         }
 
-        private readonly BridgeCore<TIn, TOut> _core;
+        private readonly BridgeCore2<TIn, TOut> _core;
         private readonly int _version;
-        private AsyncBridge(BridgeCore<TIn, TOut> core)
+        private AsyncBridge2(BridgeCore2<TIn, TOut> core)
         {
             _core = core;
             _version = core.version;
         }
 
-        private BridgeCore<TIn, TOut> Resolve() => _core.version == _version ? _core : null;
+        private BridgeCore2<TIn, TOut> Resolve() => _core.version == _version ? _core : null;
 
         public UniTask task => Resolve()?.task ?? UniTask.CompletedTask;
         public void Send(TIn value) => Resolve()?.Send(value);
@@ -48,28 +38,34 @@ namespace Metamatic
             Resolve()?.Receive(token) ?? UniTask.FromCanceled<TOut>();
         public UniTask<TOut> Duplex(TIn value, Signal token = default) =>
             Resolve()?.Duplex(value, token) ?? UniTask.FromCanceled<TOut>();
-
-        public void Dispose()
-        {
-            var c = Resolve();
-            if (c != null)
-            {
-                c.Reset();
-                ParamLessPool<BridgeCore<TIn, TOut>>.ReturnShared(c);
-            }
-        }
+        
         public async UniTask DisposeAsync()
         {
             var c = Resolve();
             try { if (c != null) await c.ResetAsync(); }
-            finally { ParamLessPool<BridgeCore<TIn, TOut>>.ReturnShared(c); }
+            finally { ParamLessPool<BridgeCore2<TIn, TOut>>.ReturnShared(c); }
+        }
+
+        public bool isAborted => Resolve()?.isAborted ?? true;
+        public void Abort()
+        {
+            var c = Resolve();
+            if (c != null)
+            {
+                c.Abort();
+            }
+        }
+
+        public DisposableAction AddAbortedListenerOnce(Action action)
+        {
+            throw new NotImplementedException();
         }
     }
 
     /// <summary>
     /// Главная «сердцевина», основана на твоём DisposedAsyncExchangeCore, но обобщена.
     /// </summary>
-    public class BridgeCore<TIn, TOut> : IUniTaskAsyncDisposable, IDisposable
+    public class BridgeCore2<TIn, TOut>
     {
         /* -------------------- РЕЖИМ -------------------- */
         private BridgeMode _mode;
@@ -77,10 +73,10 @@ namespace Metamatic
         private Queue<TOut> _outputQueue;
 
         /* -------------------- ВНУТРЕННИЙ ОБМЕННИК -------------------- */
-        public readonly struct Exchanger : IUniTaskAsyncDisposable
+        public readonly struct Exchanger
         {
-            private readonly BridgeCore<TIn, TOut> _m;
-            internal Exchanger(BridgeCore<TIn, TOut> master) => _m = master;
+            private readonly BridgeCore2<TIn, TOut> _m;
+            internal Exchanger(BridgeCore2<TIn, TOut> master) => _m = master;
 
             public bool isDisposedAsync => _m.isDisposedAsync;
             public bool isAborted      => _m.isAborted;
@@ -141,8 +137,6 @@ namespace Metamatic
                 Send(value);
                 return t;
             }
-
-            public UniTask DisposeAsync() => _m.DisposeAsync();
         }
 
         /* -------------------- ПОЛЯ -------------------- */
@@ -152,21 +146,21 @@ namespace Metamatic
         private Type _expectedInputType;
         private Type _expectedOutputType;
 
-        private SignalSource _css;
-        public Signal cancellationSignal => _css.Signal;
+        private AsyncCancellationSource _acs;
+        public Signal cancellationSignal => _acs.Signal;
+        public AsyncCancellation cancellation => _acs.Cancellation;
 
         public int  version { get; private set; }
         private readonly ReusableUniTaskCompletionSource _done = ReusableUniTaskCompletionSource.Create();
         public UniTask task => _done.Task;
 
         public bool  isDisposedAsync { get; private set; }
+        public bool isGoingToBeResetAsync { get; private set; }
         public bool  isAborted      { get; private set; }
         public bool  isDisposedSync { get; private set; }
         public event Action OnAborted;
-        public event Action OnDisposedSync;
-        public event Action<Exception> OnDisposedAsync;
 
-        public delegate UniTask AsyncAction(Exchanger x, Signal cts);
+        public delegate UniTask AsyncAction(Exchanger x, AsyncCancellation cts);
         private AsyncAction _action;
 
         /* -------------------- ЖИЗНЕННЫЙ ЦИКЛ -------------------- */
@@ -179,7 +173,7 @@ namespace Metamatic
                 _inputQueue  = new Queue<TIn>();
                 _outputQueue = new Queue<TOut>();
             }
-            _css    = SignalSource.Create();
+            _acs    = AsyncCancellationSource.Create();
             RunAsync();
         }
 
@@ -187,7 +181,7 @@ namespace Metamatic
         {
             try
             {
-                await _action(new Exchanger(this), cancellationSignal);
+                await _action(new Exchanger(this), cancellation);
             }
             catch (OperationCanceledException) { /* ok */ }
             catch (Exception e) { _done.TrySetException(e); }
@@ -257,18 +251,18 @@ namespace Metamatic
         /* -------------------- DISPOSE / RESET -------------------- */
         public void Reset(bool fromAsync = false)
         {
-            if (!fromAsync) _css.Dispose();
+            if (!fromAsync) _acs.TryCancelSync();
             unchecked { version++; }
-            OnDisposedSync?.Invoke();
             isDisposedSync = false;
-
-            _done.TrySetResult();
-            _done.Reset();
 
             _inputCs = _outputCs = null;
             _expectedInputType = _expectedOutputType = null;
             _action = null;
             isDisposedAsync = false;
+            isGoingToBeResetAsync = false;
+            
+            _done.TrySetResult();
+            _done.Reset();
 
             if (_mode == BridgeMode.Buffering)
             {
@@ -279,7 +273,9 @@ namespace Metamatic
         public void Reset() => Reset(false);
         public async UniTask ResetAsync()
         {
-            _css.Dispose();
+            if (isGoingToBeResetAsync) return;
+            isGoingToBeResetAsync = true;
+            _acs.TryCancelAsync();
             try { await _done.Task; }
             finally { Reset(true); }
         }
@@ -289,26 +285,14 @@ namespace Metamatic
             if (isAborted) return;
             isAborted = true;
             OnAborted?.Invoke();
-            _css.TryRaise();
+            _acs.TryCancelSync();
         }
 
-        /* IUniTaskAsyncDisposable / IDisposable */
-        public void Dispose() { Dispose(false); }
-        private void Dispose(bool async)
+        public void Dispose()
         {
             if (isDisposedSync) return;
             isDisposedSync = true;
-            OnDisposedSync?.Invoke();
-            _css.Dispose();
-            if (!async) DisposeAsync().Forget();
-            GC.SuppressFinalize(this);
-        }
-        public async UniTask DisposeAsync()
-        {
-            Dispose(true);
-            try { await _done.Task; }
-            catch (Exception e) { OnDisposedAsync?.Invoke(e); isDisposedAsync = true; }
-            finally { if (!isDisposedAsync) { isDisposedAsync = true; OnDisposedAsync?.Invoke(null); } }
+            _acs.Dispose();
         }
     }
 }

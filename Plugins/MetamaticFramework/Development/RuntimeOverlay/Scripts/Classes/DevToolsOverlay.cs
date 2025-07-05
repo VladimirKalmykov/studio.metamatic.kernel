@@ -592,7 +592,7 @@ namespace Metamatic.Framework
         public async UniTask LoadPersistentState(Signal signal)
         {
             var localStorage = Repository.localStorageLegacy;
-            var state = await localStorage.TryGet("metamatic-framework/overlay", () => new PersistentState(),
+            var (state, exists) = await localStorage.TryGet("metamatic-framework/overlay", () => new PersistentState(),
                 signal);
             if (state != null)
             {

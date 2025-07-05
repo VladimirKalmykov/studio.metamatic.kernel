@@ -108,14 +108,15 @@ namespace Metamatic
             return JsonUtility.FromJson<TData>(json);
         }
         
-        public virtual async UniTask<TData> TryGet<TData>(string address, IStorage.DataFactory<TData> getDefault, CancellationToken token)
+        public virtual async UniTask<(TData data, bool exists)> TryGet<TData>(string address, IStorage.DataFactory<TData> getDefault, CancellationToken token)
         {
             try
             {
-                return await Get<TData>(address, token);
+                var loadedData = await Get<TData>(address, token);
+                return (loadedData, true);
             } catch (NotFoundException)
             {
-                return getDefault();
+                return (getDefault(), false);
             }
         }
         public virtual UniTask Set<TData>(string address, TData value, CancellationToken token)
