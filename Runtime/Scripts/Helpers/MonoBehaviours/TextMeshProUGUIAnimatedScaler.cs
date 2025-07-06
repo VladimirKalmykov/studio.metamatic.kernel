@@ -11,7 +11,7 @@ namespace Metamatic
     [RequireComponent(typeof(TextMeshProUGUI))]
     public class TextMeshProUGUIAnimatedScaler : MonoBehaviour
     {
-        [Range(1f, 3f)] public float zoomFactor = 1.5f;
+        [Range(0f, 3f)] public float zoomFactor = 1.5f;
 
         [Tooltip("Общая длительность «вздутия» туда-обратно")]
         public float duration = 0.3f;
