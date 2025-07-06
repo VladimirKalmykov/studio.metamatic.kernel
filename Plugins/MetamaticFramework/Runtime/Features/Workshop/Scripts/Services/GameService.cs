@@ -133,7 +133,7 @@ namespace Metamatic.Framework.Workshop
                         }
 
                         // Luanch game
-                        await GameSystem.LaunchGame(placeAddress, seamless);
+                        await GameSystem.LaunchGame(placeAddress, seamless, virtualizeEntities, virtualizedEntityLifeTime);
                         pending.Dispose();
                         await transition.WaitNextState();
                         if (!seamless)

@@ -195,7 +195,7 @@ namespace Metamatic.Framework
         /// <param name="seamless"></param>
         /// <param name="cancellationSignal"></param>
         /// <returns></returns>
-        public static async UniTask<bool> LaunchGame(string placeAddress, bool seamless)
+        public static async UniTask<bool> LaunchGame(string placeAddress, bool seamless, bool virtualizeAbandonedEntities, float virtualizedEntityExpirationDuration)
         {
             if (isGameRunning && !seamless)
             {
@@ -207,7 +207,7 @@ namespace Metamatic.Framework
                 _StopGameSignalSource.TryRaise();
                 _StopGameSignalSource = SignalSource.Create();
                 OnGameIsLoading?.Invoke();
-                var initializationResult = await InternalInitializeGame(placeAddress, seamless, _StopGameSignalSource.Signal);
+                var initializationResult = await InternalInitializeGame(placeAddress, seamless, virtualizeAbandonedEntities, virtualizedEntityExpirationDuration, _StopGameSignalSource.Signal);
                 if (!initializationResult)
                 {
                     return false;
@@ -235,8 +235,10 @@ namespace Metamatic.Framework
         /// <param name="worldData"></param>
         /// <param name="seamless"></param>
         /// <param name="signal"></param>
+        /// <param name="virtualizeAbandonedEntities"></param>
+        /// <param name="virtualizedEntityExpirationDuration"></param>
         /// <returns></returns>
-        public static async UniTask<bool> LoadGame(string addressOrGuid, object worldData, bool seamless = false)
+        public static async UniTask<bool> LoadGame(string addressOrGuid, object worldData, bool seamless = false, bool virtualizeAbandonedEntities = false, float virtualizedEntityExpirationDuration = 0f)
         {
             try
             {
@@ -249,7 +251,7 @@ namespace Metamatic.Framework
                 _StopGameSignalSource = SignalSource.Create();
                 OnGameIsLoading?.Invoke();
                 m_ObservableAppStage.uniqValue = GameAppStage.Loading;
-                var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, _StopGameSignalSource.Signal);
+                var initializationResult = await InternalInitializeGame(addressOrGuid, seamless, virtualizeAbandonedEntities, virtualizedEntityExpirationDuration, _StopGameSignalSource.Signal);
                 if (!initializationResult)
                 {
                     return false;
@@ -275,14 +277,14 @@ namespace Metamatic.Framework
             await virtualWorld.LoadFromWorld(data);
         }
         
-        private static async UniTask<bool> InternalInitializeGame(string addressOrGuid, bool seamless, Signal cancellationSignal)
+        private static async UniTask<bool> InternalInitializeGame(string addressOrGuid, bool seamless, bool virtualizeAbandonedEntities, float virtualizedEntityExpirationDuration, Signal cancellationSignal)
         {
             try
             {
                 if (!seamless)
                 {
                     // Re-create virtual world if not seamless
-                    VirtualWorld.CreateNewCurrent();
+                    VirtualWorld.CreateNewCurrent(virtualizeAbandonedEntities, virtualizedEntityExpirationDuration);
                 }
                 m_ActivePlaceAddress.Value = null;
                 isGameRunning = true;

@@ -461,8 +461,9 @@ namespace Metamatic
                 m_ObjectsInPoolSet.Remove(obj);
             }
             m_OutOfPool.Add(obj);
-            m_Config.OnGet(obj);
             var id = m_OutOfPoolIndexed.Add(obj);
+            m_Config.OnGet(obj);
+            
             return (obj, id);
         }
         

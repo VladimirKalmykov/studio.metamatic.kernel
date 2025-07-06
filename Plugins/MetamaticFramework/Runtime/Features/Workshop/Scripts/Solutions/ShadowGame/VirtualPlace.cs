@@ -256,11 +256,13 @@ namespace Metamatic.Framework
             string checkpointId = null, Checkpoint checkpoint = null, bool dontEnable = false,
             bool alwaysPlayVirtualLogic = false)
         {
-            var entity = new VirtualEntity(this, id, position, blueprintAddress);
-            entity.checkpoint = checkpoint;
-            entity.checkpointId = checkpointId;
-            entity.placeAddress = address;
-            entity.alwaysPlayVirtualLogic = alwaysPlayVirtualLogic;
+            var entity = new VirtualEntity(this, id, position, blueprintAddress)
+            {
+                checkpoint = checkpoint,
+                checkpointId = checkpointId,
+                placeAddress = address,
+                alwaysPlayVirtualLogic = alwaysPlayVirtualLogic
+            };
             entity.InternalAwake();
             m_Entities.Add(entity.id, entity);
             if (!dontEnable && !hibernated)

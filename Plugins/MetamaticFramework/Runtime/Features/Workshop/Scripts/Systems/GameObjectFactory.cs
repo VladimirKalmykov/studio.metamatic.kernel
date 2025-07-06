@@ -24,6 +24,7 @@ namespace Metamatic.Framework
         #endif
         private static readonly Dictionary<string, AsyncContainer<ConfigurablePool<GameObject>>> Pools = new();
         private static readonly SignedIndexedPool<Action> SummonCancellationSignals = new(1000);
+        private static readonly SignedIndexedPool<AsyncSummon<GameObject>> GameObjectSummons = new(1000);
 
         #endregion
 
@@ -50,7 +51,7 @@ namespace Metamatic.Framework
 
         #endregion
 
-        #region Public — Component уровень
+        #region Public
 
         /// <summary>
         /// Получить конкретный компонент из addressable‑префаба.
@@ -102,11 +103,20 @@ namespace Metamatic.Framework
             if (goSummon.isEmpty)
                 return AsyncSummon<T>.Empty;
 
+            var gameObjectSummonToken = GameObjectSummons.Add(goSummon);
             var task = goSummon.Wait(default)
                                  .ContinueWith<T>(ExtensionMethods.GetOrAddComponent<T>);
 
             // dispose компонента = dispose исходного GO‑summon
-            return new AsyncSummon<T>(Token96Bit.Empty, task, _ => goSummon.Dispose());
+            return new AsyncSummon<T>(gameObjectSummonToken, task, DisposeGameObjectSummon);
+        }
+
+        private static void DisposeGameObjectSummon(Token96Bit token)
+        {
+            if (GameObjectSummons.Remove(token, out var goSummon))
+            {
+                goSummon.Dispose();
+            } 
         }
 
         private static DisposableAction InternalReserve(string address, int capacity)
@@ -151,16 +161,16 @@ namespace Metamatic.Framework
             return container;
         }
 
-        private static async UniTask InitializePoolForAsset(Action<ConfigurablePool<GameObject>> resolve, string address, Signal cancel)
+        private static async UniTask InitializePoolForAsset(Action<ConfigurablePool<GameObject>> resolve, string address, Signal cancellationSignal)
         {
             using var summon = ResourcesSystem.Summon<UnityEngine.Object>(address);
-            var directRes    = await summon.Wait(cancel);
+            var directRes    = await summon.Wait(cancellationSignal);
 
             GameObject prefab = directRes switch
             {
                 GameObject go           => go,
                 Component comp          => comp.gameObject,
-                ScriptableBlueprint bp  => await bp.SummonPrefab().Wait(cancel),
+                ScriptableBlueprint bp  => await bp.SummonPrefab().Wait(cancellationSignal),
                 _                       => throw new Exception($"Unsupported asset type for {address}")
             };
 
@@ -187,7 +197,7 @@ namespace Metamatic.Framework
 
             resolve(pool);
 
-            await cancel;
+            await cancellationSignal;
             pool.Dispose();
         }
 

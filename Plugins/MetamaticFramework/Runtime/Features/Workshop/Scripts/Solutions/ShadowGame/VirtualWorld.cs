@@ -23,13 +23,13 @@ namespace Metamatic.Framework
         private static readonly ObservableNullable<VirtualWorld> s_ObservableCurrentVirtualWorld = new ObservableNullable<VirtualWorld>();
         public static VirtualWorld Current => s_ObservableCurrentVirtualWorld.hasValue ? s_ObservableCurrentVirtualWorld.Value : CreateNewCurrent();
         
-        public static VirtualWorld CreateNewCurrent()
+        public static VirtualWorld CreateNewCurrent(bool virtualizeAbandonedEntities = true, float virtualizedEntityExpirationDuration = 0f)
         {
             if (s_ObservableCurrentVirtualWorld.hasValue)
             {
                 s_ObservableCurrentVirtualWorld.value.Dispose();
             }
-            s_ObservableCurrentVirtualWorld.value = new VirtualWorld();
+            s_ObservableCurrentVirtualWorld.value = new VirtualWorld(virtualizeAbandonedEntities, virtualizedEntityExpirationDuration);
             return Current;
         }
 
@@ -400,10 +400,12 @@ namespace Metamatic.Framework
 
         public VirtualEntity CreateEntity(
             Vector3 position,
-            string blueprintAddress
+            string blueprintAddress,
+            string checkpointId = null,
+            Checkpoint checkpoint = null
         )
         {
-            return CreateEntity(GameSystem.GetCurrentPlaceAddress(), IdsGenerator.GenerateGuid(), position, blueprintAddress);
+            return CreateEntity(GameSystem.GetCurrentPlaceAddress(), IdsGenerator.GenerateGuid(), position, blueprintAddress, checkpointId, checkpoint);
         }
 
         public VirtualEntity CreateEntity(
@@ -452,6 +454,11 @@ namespace Metamatic.Framework
             }
 
             return CreateEntity(placeAddress, id, position, blueprintAddress);
+        }
+
+        public VirtualEntity GetOrCreateVirtualEntity(string id, Vector3 position, string blueprintAddress)
+        {
+            return GetOrCreateVirtualEntity(GameSystem.GetCurrentPlaceAddress(), id, position, blueprintAddress);
         }
 
         /// <summary>

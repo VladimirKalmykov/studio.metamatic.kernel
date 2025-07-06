@@ -39,7 +39,7 @@ namespace Metamatic.Framework.Editor.VirtualWorldEditorWIndow
         private VisualElement CreateEntitiesSection()
         {
             var section = new BoxGroup("Entities");
-            var cols = new TableView<VirtualEntity>.Col[3];
+            var cols = new TableView<VirtualEntity>.Col[4];
             cols[0] = new TableView<VirtualEntity>.Col(
                 "Id",
                 TableView<VirtualEntity>.Col.WidthType.Relative,
@@ -55,7 +55,13 @@ namespace Metamatic.Framework.Editor.VirtualWorldEditorWIndow
                 TableView<VirtualEntity>.Col.WidthType.Relative,
                 0.5f,
                 entity => new Tracker<Label, VirtualEntity>(new Label(entity.isMaterialized ? "Yes" : "No"),entity, (label, virtualEntity) => label.text = virtualEntity.isMaterialized ? "Yes" : "No"));
-
+            cols[3] = new TableView<VirtualEntity>.Col(
+                "Position",
+                TableView<VirtualEntity>.Col.WidthType.Relative,
+                0.5f,
+                entity => new Tracker<Label, VirtualEntity>(new Label($"{entity.position.x:F1},{entity.position.y:F1},{entity.position.z:F1}"), entity, (label, virtualEntity) => label.text = $"{entity.position.x:F1},{entity.position.y:F1},{entity.position.z:F1}"));
+                
+            
             m_EntitiesTable = new TableView<VirtualEntity>(cols);
             section.Add(m_EntitiesTable);
             

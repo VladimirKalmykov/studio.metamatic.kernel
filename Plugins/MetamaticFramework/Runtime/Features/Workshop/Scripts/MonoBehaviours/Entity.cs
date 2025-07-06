@@ -289,6 +289,7 @@ namespace Metamatic.Framework.Workshop
                     // Release blueprint and prefab after entity is destroyed
                     entity.OnEntityDismissedEvent += (reason) =>
                     {
+                        entity.ResetEntity();
                         // We can dispose blueprint and prefab only after entity is destroyed
                         summon.Dispose();
                     };

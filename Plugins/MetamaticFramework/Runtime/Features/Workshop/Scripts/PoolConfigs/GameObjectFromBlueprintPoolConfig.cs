@@ -10,13 +10,31 @@ namespace Metamatic
         private readonly bool m_DontDestroyOnLoad;
         private readonly IObjectBlueprint m_Blueprint;
         private readonly string m_Address;
-        public GameObjectFromBlueprintPoolConfig(GameObject prefab, IObjectBlueprint blueprint, string address, bool keepInactive = false, bool dontDestroyOnLoad = false)
+        private readonly bool m_AutoRecyclable;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="prefab"></param>
+        /// <param name="blueprint"></param>
+        /// <param name="address"></param>
+        /// <param name="keepInactive"></param>
+        /// <param name="dontDestroyOnLoad"></param>
+        /// <param name="autoRecyclable">Return object to the pool when called recycle. Call recycle on return to the pool.</param>
+        public GameObjectFromBlueprintPoolConfig(
+            GameObject prefab,
+            IObjectBlueprint blueprint,
+            string address,
+            bool keepInactive = false,
+            bool dontDestroyOnLoad = false,
+            bool autoRecyclable = false
+            )
         {
             m_Prefab = prefab;
             m_KeepInactive = keepInactive;
             m_DontDestroyOnLoad = dontDestroyOnLoad;
             m_Blueprint = blueprint;
             m_Address = address;
+            m_AutoRecyclable = autoRecyclable;
         }
         public object GetKey()
         {
@@ -48,6 +66,10 @@ namespace Metamatic
         public void OnReturn(GameObject instance)
         {
             instance.SetActive(false);
+            if (m_AutoRecyclable)
+            {
+                instance.GetOrAddComponent<RecyclableGameObject>().Recycle();
+            }
         }
 
         public void OnDestroy(GameObject instance)

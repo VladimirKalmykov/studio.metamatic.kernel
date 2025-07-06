@@ -7,11 +7,13 @@ namespace Metamatic
         private readonly GameObject m_Prefab;
         private readonly bool m_KeepInactive;
         private readonly bool m_DontDestroyOnLoad;
-        public GameObjectConfigurablePoolConfig(GameObject prefab, bool keepInactive = false, bool dontDestroyOnLoad = false)
+        private readonly bool m_AutoRecyclable;
+        public GameObjectConfigurablePoolConfig(GameObject prefab, bool keepInactive = false, bool dontDestroyOnLoad = false, bool autoRecyclable = true)
         {
             m_Prefab = prefab;
             m_KeepInactive = keepInactive;
             m_DontDestroyOnLoad = dontDestroyOnLoad;
+            m_AutoRecyclable = autoRecyclable;
         }
         public object GetKey()
         {
@@ -40,6 +42,10 @@ namespace Metamatic
         public void OnReturn(GameObject instance)
         {
             instance.SetActive(false);
+            if (m_AutoRecyclable)
+            {
+                instance.GetOrAddComponent<RecyclableGameObject>().Recycle();
+            }
         }
 
         public void OnDestroy(GameObject instance)
