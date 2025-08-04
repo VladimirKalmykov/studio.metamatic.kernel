@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace Metamatic
 {
-    [CustomEditor(typeof(Plug), true)]
+    [CustomEditor(typeof(PlugLegacy), true)]
     [RequireEditorComponent(typeof(PlugGUIEditorComponent))]
     public class PlugEditor: ComposableEditor
     {

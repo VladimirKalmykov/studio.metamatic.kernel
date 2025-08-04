@@ -3,7 +3,7 @@
 namespace Metamatic
 {
     [Serializable]
-    public class ToggleableModules: Toggleable<Module[]>
+    public class ToggleableModules: Toggleable<ModuleLegacy[]>
     {
         
     }

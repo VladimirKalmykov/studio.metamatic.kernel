@@ -1,9 +1,9 @@
-﻿using Sirenix.OdinInspector.Editor;
+using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Metamatic
+namespace Metamatic.SocketSystem
 {
     [CustomEditor(typeof(Module), true)]
     public class ModuleEditor: OdinEditor
@@ -39,31 +39,8 @@ namespace Metamatic
             
             /* Create settings view */
             CreateSettingsView(module);
-            
-            /* Create sockets view */
-            var infos = module.GetPlugTypes();
-            VisualElement[] fields = new VisualElement[infos.Length];
-            
-            for (int i = 0; i < infos.Length; i++)
-            {
-                var info = infos[i];
-                var field = new GenericObjectField(info.type)
-                {
-                    value = module.plugs[i]
-                };
-                var index = i;
-                field.RegisterCallback<ChangeEvent<UnityEngine.Object>>(evt =>
-                {
-                    module.plugs[index] = evt.newValue as Plug;
-                    EditorUtility.SetDirty(module);
-                });
-                fields[i] = field;
-            }
 
             m_Type.text = MiscUtils.GetGenericName(module.GetType().BaseType, true, true);
-
-            var fieldSet = new FieldSet("Plugs", fields);
-            root.Add(fieldSet);
             
             /* Create connected module view */
             m_PlugsFieldSet = new FieldSet("Connections", null, true, false);

@@ -1,46 +1,40 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-namespace Metamatic
+namespace Metamatic.SocketSystem
 {
-    public abstract class Slot: MonoBehaviour
-    {
+    public abstract class Slot: MonoBehaviour {
         private static readonly Color DisconnectedGizmoColor = new(0.77f, 0.21f, 0.12f);
         private static readonly Color ConnectedGizmoColor = new(0.12f, 0.77f, 0.21f);
-        public SocketLegacy[] sockets;
-        [SerializeField] private bool allowMultipleConnections;
+        public readonly List<Module> connectedModules = new();
+        public readonly Dictionary<Module, SignalSource> connectionSignals = new();
+        [SerializeField] public Vector3 anchorPosition;
+        [SerializeField] public Quaternion anchorRotation;
+        [SerializeField] protected bool allowMultipleConnections = true;
         /// <summary>
         /// Slot can have only one children. It will remove any children when connect module.
         /// </summary>
         [SerializeField] protected bool dedicated;
-        [SerializeField] private Vector3 m_AnchorPosition;
-        [SerializeField] private Quaternion m_AnchorRotation;
-        public Vector3 anchorPosition
-        {
-            get => m_AnchorPosition;
-            set => m_AnchorPosition = value;
-        }
-        public Quaternion anchorRotation
-        {
-            get => m_AnchorRotation;
-            set => m_AnchorRotation = value;
-        }
-        public readonly List<Module> connectedModules = new();
-        public abstract bool isSupportMultiConnections { get; }
-        protected abstract Action InternalConnect(Module module);
-        protected abstract void InternalDisconnect(Module module);
+        
+        public bool isSupportMultiConnections => allowMultipleConnections && !dedicated;
+        
+        #region Events
         public event Action OnReconnect;
+        #endregion
+        
         public Action Connect(Module module)
         {
-            #if DEBUG
+#if DEBUG
             if (!Application.isPlaying)
             {
                 throw new Exception("Slot can be connected only in play mode");
             }
-            #endif
+#endif
             if (connectedModules.Contains(module))
             {
                 throw new Exception("Module is already connected to this slot");
@@ -83,10 +77,10 @@ namespace Metamatic
             }
             OnReconnect?.Invoke();
         }
-
-        public abstract FormFactorSocketInfo[] GetSocketSchemesTypes();
+        protected abstract Action InternalConnect(Module module);
+        protected abstract void InternalDisconnect(Module module);
         
-        #if UNITY_EDITOR
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             var size = 0.5f;
@@ -94,18 +88,18 @@ namespace Metamatic
             var handleSize = HandleUtility.GetHandleSize(t.position);
             var radius = 0.2f * handleSize;
             var color = connectedModules.Count > 0 ? ConnectedGizmoColor : DisconnectedGizmoColor;
-            Vector3 worldAnchorPosition = t.TransformPoint(m_AnchorPosition);
-            Quaternion worldAnchorRotation = t.rotation * m_AnchorRotation;
+            Vector3 worldAnchorPosition = t.TransformPoint(anchorPosition);
+            Quaternion worldAnchorRotation = t.rotation * anchorRotation;
 
             GizmoHelpers.DrawOrientation(t, worldAnchorPosition, worldAnchorRotation, size, color);
         }
-        #endif
+#endif
         
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
             var color = connectedModules.Count > 0 ? ConnectedGizmoColor : DisconnectedGizmoColor;
-            Vector3 worldAnchorPosition = transform.TransformPoint(m_AnchorPosition);
+            Vector3 worldAnchorPosition = transform.TransformPoint(anchorPosition);
             var handleSize = HandleUtility.GetHandleSize(transform.position);
             var textColor = new GUIStyle();
             textColor.normal.textColor = color;
@@ -114,43 +108,21 @@ namespace Metamatic
 #endif  
     }
     
-    public class Slot<TFormFactor> : Slot, ISerializationCallbackReceiver
-        where TFormFactor: FormFactor, new()
+    public abstract class Slot<TFormFactor>: Slot where TFormFactor: FormFactor
     {
-        private TFormFactor m_FormFactor;
-        private FormFactorSocketSchemeInfo[] m_CachedSocketSchemes;
-        private FormFactorSocketInfo[] m_CachedSockets;
-        public FormFactorSocketSchemeInfo[] socketSchemes
+        public virtual UniTaskVoid OnConnected(Module<TFormFactor> module, Signal disconnectSignal)
         {
-            get
-            {
-                if (m_CachedSocketSchemes == null)
-                {
-                    m_CachedSocketSchemes = FormFactor.GetSocketSchemeTypes(typeof(TFormFactor));
-                }
-                return m_CachedSocketSchemes;
-            }
-        }
-        public FormFactorSocketInfo[] socketsInfo
-        {
-            get
-            {
-                if (m_CachedSockets == null)
-                {
-                    m_CachedSockets = FormFactor.GetSocketTypes(typeof(TFormFactor));
-                }
-                return m_CachedSockets;
-            }
+            return new UniTaskVoid();
         }
         
-        public void OnBeforeSerialize()
+        protected override Action InternalConnect(Module module)
         {
-            Array.Resize(ref sockets, socketSchemes.Length);
-        }
-
-        public void OnAfterDeserialize()
-        {
-            Array.Resize(ref sockets, socketSchemes.Length);
+            var moduleAsGeneric = module as Module<TFormFactor>;
+            if (moduleAsGeneric == null)
+            {
+                throw new Exception($"Module {module} is not of type {typeof(TFormFactor)}");
+            }
+            return InternalConnect(moduleAsGeneric);
         }
         
         private Action InternalConnect(Module<TFormFactor> module)
@@ -159,6 +131,12 @@ namespace Metamatic
             {
                 Debug.LogWarning("Module is already connected to this slot");
                 return () => InternalDisconnect(module);
+            }
+
+            if (!allowMultipleConnections && connectedModules.Count > 0)
+            {
+                Debug.LogError("Multiple connections are not allowed");
+                return () => { };
             }
             /* Remove any children except module */
             if (dedicated)
@@ -177,34 +155,12 @@ namespace Metamatic
                 }
             }
             
-            if (connectedModules.Count != 0 && !isSupportMultiConnections)
-            {
-                throw new Exception($"Slot can not connect to the module {module}, because {this} is already connected to module {connectedModules[0]}");
-            }
             connectedModules.Add(module);
-            for (var i = 0; i < sockets.Length; i++)
-            {
-                sockets[i].Connect(module.plugs[i]);
-            }
+            var signalSource = SignalSource.Create();
+            connectionSignals.Add(module, signalSource);
+            OnConnected(module, signalSource.Signal).Forget();
             
             return () => InternalDisconnect(module);
-        }
-
-        public override bool isSupportMultiConnections => IsSupportMultipleConnections();
-
-        private bool IsSupportMultipleConnections()
-        {
-            return false; // TODO: Implement
-        }
-
-        protected override Action InternalConnect(Module module)
-        {
-            var moduleAsGeneric = module as Module<TFormFactor>;
-            if (moduleAsGeneric == null)
-            {
-                throw new Exception($"Module {module} is not of type {typeof(TFormFactor)}");
-            }
-            return InternalConnect(moduleAsGeneric);
         }
 
         private void InternalDisconnect(Module<TFormFactor> module)
@@ -213,11 +169,11 @@ namespace Metamatic
             {
                 throw new Exception($"Module {module} is not connected to slot {this}");
             }
-            for (var i = 0; i < sockets.Length; i++)
-            {
-                sockets[i].Disconnect(module.plugs[i]);
-            }
 
+            if (connectionSignals.TryGetValue(module, out var signalSource))
+            {
+                signalSource.TryRaise();
+            }
             connectedModules.Remove(module);
         }
 
@@ -233,20 +189,10 @@ namespace Metamatic
         
         protected void InternalDisconnectAll()
         {
-            for (var i = 0; i < connectedModules.Count; i++)
+            foreach (var module in connectedModules.ToArray())
             {
-                var module = connectedModules[i];
-                for (var j = 0; j < sockets.Length; j++)
-                {
-                    sockets[j].Disconnect(module.plugs[j]);
-                }
+                InternalDisconnect(module);
             }
-            connectedModules.Clear();
-        }
-
-        public override FormFactorSocketInfo[] GetSocketSchemesTypes()
-        {
-            return socketsInfo;
         }
     }
 }

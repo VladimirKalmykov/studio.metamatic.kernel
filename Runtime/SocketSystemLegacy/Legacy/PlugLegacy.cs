@@ -36,7 +36,7 @@ namespace Metamatic
         public void LockOnSocket(ISocket<TScheme> socket);
     }
     
-    public abstract class Plug: MonoBehaviour, IPlug
+    public abstract class PlugLegacy: MonoBehaviour, IPlug
     {
         #region Fields
         public Pin[] outputPins;
@@ -76,7 +76,7 @@ namespace Metamatic
         protected abstract void AutoConnectToParent();
     }
     
-    public abstract class Plug<TScheme>: Plug, IPlug<TScheme>, ISerializationCallbackReceiver
+    public abstract class PlugLegacy<TScheme>: PlugLegacy, IPlug<TScheme>, ISerializationCallbackReceiver
     where TScheme: SocketScheme, new()
     {
         [ShowInInspector, ReadOnly]

@@ -34,7 +34,7 @@ namespace Metamatic
             this.optional = optional;
         }
     }
-    public class FormFactor
+    public class FormFactorLegacy
     {
         /// <summary>
         /// Get all RequireSocket attributes for the class and all its base classes
@@ -44,7 +44,7 @@ namespace Metamatic
         public static RequireSocket[] GetRequireSocketAttributes(Type type)
         {
             List<RequireSocket> requireSockets = new List<RequireSocket>();
-            Debug.Assert(type.IsSubclassOf(typeof(FormFactor)), "RequireSocket attribute can be used only for FormFactor subclasses");
+            Debug.Assert(type.IsSubclassOf(typeof(FormFactorLegacy)), "RequireSocket attribute can be used only for FormFactor subclasses");
             var attributes = type.GetCustomAttributes(typeof(RequireSocket), true);
             foreach (var attr in attributes)
             {
@@ -55,10 +55,10 @@ namespace Metamatic
             }
             return requireSockets.ToArray();
         }
-        private static readonly Dictionary<Type, FormFactor> SocketSchemesInstances = new Dictionary<Type, FormFactor>();
+        private static readonly Dictionary<Type, FormFactorLegacy> SocketSchemesInstances = new Dictionary<Type, FormFactorLegacy>();
         private Type[] m_CachedSocketTypes;
         [Obsolete("Out of concept", true)]
-        public static T Pool<T>() where T: FormFactor, new()
+        public static T Pool<T>() where T: FormFactorLegacy, new()
         {
             Type type = typeof(T);
             if (SocketSchemesInstances.TryGetValue(type, out var instantiate))
@@ -110,29 +110,29 @@ namespace Metamatic
             FormFactorPlugInfo[] plugTypes = new FormFactorPlugInfo[schemeTypes.Length];
             for (int i = 0; i < schemeTypes.Length; i++)
             {
-                plugTypes[i] = new FormFactorPlugInfo(typeof(Plug<>).MakeGenericType(schemeTypes[i].type), schemeTypes[i].optional);
+                plugTypes[i] = new FormFactorPlugInfo(typeof(PlugLegacy<>).MakeGenericType(schemeTypes[i].type), schemeTypes[i].optional);
             }
 
             return plugTypes;
         }
     }
     
-    public class AnyFormFactor: FormFactor
+    public class AnyFormFactor: FormFactorLegacy
     {
         
     }
     
-    public class D3FormFactor: FormFactor
+    public class D3FormFactorLegacy: FormFactorLegacy
     {
         
     }
     
-    public class D2FormFactor: FormFactor
+    public class D2FormFactor: FormFactorLegacy
     {
         
     }
     
-    public class UIFormFactor: FormFactor
+    public class UIFormFactor: FormFactorLegacy
     {
         
     }

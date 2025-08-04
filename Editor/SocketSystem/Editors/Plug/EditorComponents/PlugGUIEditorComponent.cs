@@ -32,7 +32,7 @@ namespace Metamatic
         public override void OnEnable()
         {
             m_ConnectionContainer.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
-            var plug = (Plug) target;
+            var plug = (PlugLegacy) target;
             m_SocketScheme = plug.socketScheme;
             m_SocketScheme.OnReconnectIn += HandleReconnectIn;
             m_SocketScheme.OnErrorChanged += HandleErrorChanged;
@@ -302,7 +302,7 @@ namespace Metamatic
 
         private VisualElement CreateOutputPins()
         {
-            var plug = (Plug) target;
+            var plug = (PlugLegacy) target;
             return CreatePins(plug.outputPinTypes, plug.outputPins, "Output Pins", (nextValue, index) =>
             {
                 var nextPins = plug.outputPins.ToArray();
@@ -321,7 +321,7 @@ namespace Metamatic
         
         private VisualElement CreateInputPins()
         {
-            var plug = (Plug) target;
+            var plug = (PlugLegacy) target;
             return CreatePins(plug.inputPinTypes, plug.inputPins, "Input Pins", (nextValue, index) =>
             {
                 var nextPins = plug.inputPins.ToArray();

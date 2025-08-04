@@ -1,4 +1,5 @@
-﻿using System.Linq;
+using System.Linq;
+using Metamatic.SocketSystem;
 using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
@@ -35,30 +36,9 @@ namespace Metamatic
             /* Create settings view */
             CreateSettingsView(slot);
             
-            /* Create sockets view */
-            var infos = slot.GetSocketSchemesTypes();
-            VisualElement[] fields = new VisualElement[infos.Length];
-            
-            for (int i = 0; i < infos.Length; i++)
-            {
-                var info = infos[i];
-                var field = new GenericObjectField(info.type)
-                {
-                    value = slot.sockets[i]
-                };
-                var index = i;
-                field.RegisterCallback<ChangeEvent<UnityEngine.Object>>(evt =>
-                {
-                    slot.sockets[index] = evt.newValue as SocketLegacy;
-                    EditorUtility.SetDirty(slot);
-                });
-                fields[i] = field;
-            }
+           
 
             m_Type.text = MiscUtils.GetGenericName(slot.GetType().BaseType, true, true);
-
-            var fieldSet = new FieldSet("Sockets", fields);
-            root.Add(fieldSet);
             
             /* Create connected module view */
             m_ModulesFieldSet = new FieldSet("Connections", null, true, false);
@@ -101,7 +81,7 @@ namespace Metamatic
             m_Settings.Add(dedicatedToggle);
             
             /* Sticky position */
-            var stickyPositionProperty = serializedObject.FindProperty("m_AnchorPosition");
+            var stickyPositionProperty = serializedObject.FindProperty("anchorPosition");
             var stickyPositionToggle = new Vector3Field("Position")
             {
                 value = stickyPositionProperty.vector3Value
@@ -115,7 +95,7 @@ namespace Metamatic
             stickyPositionToggle.SetEnabled(!Application.isPlaying);
             
             /* Sticky rotation */
-            var stickyRotationProperty = serializedObject.FindProperty("m_AnchorRotation");
+            var stickyRotationProperty = serializedObject.FindProperty("anchorRotation");
             var stickyRotationToggle = new Vector3Field("Rotation")
             {
                 value = stickyRotationProperty.quaternionValue.eulerAngles
