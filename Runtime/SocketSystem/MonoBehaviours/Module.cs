@@ -129,6 +129,8 @@ namespace Metamatic.SocketSystem
             };
         }
         
+        public abstract bool TryFindAppropriateSlotInParent(out Slot slot);
+        
         #region Mono
         private void OnDestroy()
         {
@@ -158,17 +160,27 @@ namespace Metamatic.SocketSystem
         
         public void AutoConnect()
         {
-            var parent = transform.parent;
-            if (parent == null)
-            {
-                return;
-            }
-            var slot = sticky ? parent.GetComponent<Slot<TFormFactor>>() : parent.GetComponentInParent<Slot<TFormFactor>>();
-            if (slot != null && connectedSlot != slot)
+            if (TryFindAppropriateSlotInParent(out var slot))
             {
                 Disconnect();
                 Connect(slot);
             }
+        }
+        
+        public override bool TryFindAppropriateSlotInParent(out Slot slot)
+        {
+            var parent = transform.parent;
+            if (parent == null)
+            {
+                slot = null;
+                return false;
+            }
+            slot = sticky ? parent.GetComponent<Slot<TFormFactor>>() : parent.GetComponentInParent<Slot<TFormFactor>>();
+            if (slot == null)
+            {
+                return false;
+            }
+            return true;
         }
     }
 }

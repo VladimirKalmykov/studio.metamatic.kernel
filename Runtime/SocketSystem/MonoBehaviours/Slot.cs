@@ -8,7 +8,8 @@ using UnityEngine.Serialization;
 
 namespace Metamatic.SocketSystem
 {
-    public abstract class Slot: MonoBehaviour {
+    public abstract class Slot : MonoBehaviour
+    {
         private static readonly Color DisconnectedGizmoColor = new(0.77f, 0.21f, 0.12f);
         private static readonly Color ConnectedGizmoColor = new(0.12f, 0.77f, 0.21f);
         public readonly List<Module> connectedModules = new();
@@ -20,13 +21,13 @@ namespace Metamatic.SocketSystem
         /// Slot can have only one children. It will remove any children when connect module.
         /// </summary>
         [SerializeField] protected bool dedicated;
-        
+
         public bool isSupportMultiConnections => allowMultipleConnections && !dedicated;
-        
+
         #region Events
         public event Action OnReconnect;
         #endregion
-        
+
         public Action Connect(Module module)
         {
 #if DEBUG
@@ -56,7 +57,7 @@ namespace Metamatic.SocketSystem
                 Disconnect(module);
             };
         }
-        
+
         public void Disconnect(Module module)
         {
 #if DEBUG
@@ -69,7 +70,7 @@ namespace Metamatic.SocketSystem
             {
                 throw new Exception($"Module {module} is not connected to slot {this}");
             }
-            
+
             InternalDisconnect(module);
             if (module.connectedSlot == this)
             {
@@ -79,7 +80,7 @@ namespace Metamatic.SocketSystem
         }
         protected abstract Action InternalConnect(Module module);
         protected abstract void InternalDisconnect(Module module);
-        
+
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
@@ -94,7 +95,7 @@ namespace Metamatic.SocketSystem
             GizmoHelpers.DrawOrientation(t, worldAnchorPosition, worldAnchorRotation, size, color);
         }
 #endif
-        
+
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
@@ -105,16 +106,16 @@ namespace Metamatic.SocketSystem
             textColor.normal.textColor = color;
             UnityEditor.Handles.Label(worldAnchorPosition + (Vector3.right * 0.33f * handleSize) + (Vector3.up * 0.33f * handleSize), $"{GetType().Name}<{MiscUtils.GetGenericName(GetType().BaseType, true, true)}>", textColor);
         }
-#endif  
+#endif
     }
-    
-    public abstract class Slot<TFormFactor>: Slot where TFormFactor: FormFactor
+
+    public abstract class Slot<TFormFactor> : Slot where TFormFactor : FormFactor
     {
         public virtual UniTaskVoid OnConnected(Module<TFormFactor> module, Signal disconnectSignal)
         {
             return new UniTaskVoid();
         }
-        
+
         protected override Action InternalConnect(Module module)
         {
             var moduleAsGeneric = module as Module<TFormFactor>;
@@ -124,7 +125,7 @@ namespace Metamatic.SocketSystem
             }
             return InternalConnect(moduleAsGeneric);
         }
-        
+
         private Action InternalConnect(Module<TFormFactor> module)
         {
             if (connectedModules.Contains(module))
@@ -143,7 +144,7 @@ namespace Metamatic.SocketSystem
             {
                 /* Disconnect all modules */
                 InternalDisconnectAll();
-                
+
                 /* Remove rest of the children */
                 for (var i = 0; i < transform.childCount; i++)
                 {
@@ -154,12 +155,12 @@ namespace Metamatic.SocketSystem
                     }
                 }
             }
-            
+
             connectedModules.Add(module);
             var signalSource = SignalSource.Create();
             connectionSignals.Add(module, signalSource);
             OnConnected(module, signalSource.Signal).Forget();
-            
+
             return () => InternalDisconnect(module);
         }
 
@@ -170,7 +171,7 @@ namespace Metamatic.SocketSystem
                 throw new Exception($"Module {module} is not connected to slot {this}");
             }
 
-            if (connectionSignals.TryGetValue(module, out var signalSource))
+            if (connectionSignals.Remove(module, out var signalSource))
             {
                 signalSource.TryRaise();
             }
@@ -186,7 +187,7 @@ namespace Metamatic.SocketSystem
             }
             InternalDisconnect(moduleAsGeneric);
         }
-        
+
         protected void InternalDisconnectAll()
         {
             foreach (var module in connectedModules.ToArray())

@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace Metamatic.SocketSystem
 {
     [CustomEditor(typeof(Module), true)]
-    public class ModuleEditor: OdinEditor
+    public class ModuleEditor : OdinEditor
     {
         private VisualElement m_Body;
         private VisualElement m_Settings;
@@ -17,42 +17,43 @@ namespace Metamatic.SocketSystem
         private Module m_Module;
         private Button m_CopyFromLocalButton;
         private Button m_CopyToLocalButton;
+        private Button m_SetRelativeParentSlotButton;
         private bool m_CopyFromLocal;
-        private  IVisualElementScheduledItem m_CopyFromLocalScheduledItem;
+        private IVisualElementScheduledItem m_CopyFromLocalScheduledItem;
         public override VisualElement CreateInspectorGUI()
         {
             var root = new VisualElement();
             var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/SocketSystem/Editors/Module/ModuleEditor.uxml");
             visualTree.CloneTree(root);
-            
+
             m_Type = root.Q<Label>("type");
             m_Settings = root.Q<VisualElement>("settings");
             m_Body = root.Q<VisualElement>("body");
-            
+
             var module = target as Module;
-            
+
             if (module == null)
             {
                 return root;
             }
             m_Module = module;
-            
+
             /* Create settings view */
             CreateSettingsView(module);
 
             m_Type.text = MiscUtils.GetGenericName(module.GetType().BaseType, true, true);
-            
+
             /* Create connected module view */
             m_PlugsFieldSet = new FieldSet("Connections", null, true, false);
             root.Add(m_PlugsFieldSet);
-            
+
             m_PlugsFieldSet.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
 
             UpdateModulesView();
-            
+
             return root;
         }
-        
+
         private void CreateSettingsView(Module module)
         {
             /* Autoconnect */
@@ -68,7 +69,7 @@ namespace Metamatic.SocketSystem
             });
             m_Settings.Add(autoConnectToggle);
             autoConnectToggle.SetEnabled(!Application.isPlaying);
-            
+
             /* Sticky */
             var stickyProp = serializedObject.FindProperty("sticky");
             var stickyToggle = new Toggle("Sticky")
@@ -83,7 +84,7 @@ namespace Metamatic.SocketSystem
             });
             m_Settings.Add(stickyToggle);
             stickyToggle.SetEnabled(!Application.isPlaying);
-            
+
             /* Position */
             var positionProp = serializedObject.FindProperty("relativePosition");
             m_PositionElement = new Vector3Field("Position")
@@ -97,7 +98,7 @@ namespace Metamatic.SocketSystem
             });
             m_Settings.Add(m_PositionElement);
             m_PositionElement.SetEnabled(!Application.isPlaying);
-            
+
             /* Rotation */
             var rotationProp = serializedObject.FindProperty("relativeRotation");
             m_RotationElement = new Vector3Field("Rotation")
@@ -111,7 +112,7 @@ namespace Metamatic.SocketSystem
             });
             m_Settings.Add(m_RotationElement);
             m_RotationElement.SetEnabled(!Application.isPlaying);
-            
+
             /* Copy from local position and rotation */
             m_CopyFromLocalButton = new Button(() =>
             {
@@ -141,7 +142,7 @@ namespace Metamatic.SocketSystem
             {
                 text = "Copy from local"
             };
-            
+
             /* Copy to local position and rotation */
             m_CopyToLocalButton = new Button(() =>
             {
@@ -150,15 +151,26 @@ namespace Metamatic.SocketSystem
             {
                 text = "Copy to local"
             };
-            
+
+            /* Set from relative parent slot */
+            m_SetRelativeParentSlotButton = new Button(() =>
+            {
+                SetFromParentSlot();
+            })
+            {
+                text = "Bake position and rotation from parent slot"
+            };
+
             m_Settings.Add(m_CopyFromLocalButton);
             m_Settings.Add(m_CopyToLocalButton);
+            m_Settings.Add(m_SetRelativeParentSlotButton);
             m_CopyFromLocalButton.SetEnabled(!Application.isPlaying);
             m_CopyToLocalButton.SetEnabled(!Application.isPlaying);
+            m_SetRelativeParentSlotButton.SetEnabled(!Application.isPlaying);
 
             UpdateView();
         }
-        
+
         private void ApplyCopyToLocal()
         {
             var positionProp = serializedObject.FindProperty("relativePosition");
@@ -185,6 +197,65 @@ namespace Metamatic.SocketSystem
             serializedObject.ApplyModifiedProperties();
         }
 
+        private void SetFromParentSlot()
+        {
+            /* First, search Slot<TFormFactor> in the parent */
+            var module = target as Module;
+            if (module == null)
+            {
+                return;
+            }
+            if (module.TryFindAppropriateSlotInParent(out var slot))
+            {
+                /* Get current world position and rotation of the module */
+                var moduleWorldPosition = module.transform.position;
+                var moduleWorldRotation = module.transform.rotation;
+
+                /* Get slot's world position and rotation */
+                var slotWorldPosition = slot.transform.TransformPoint(slot.anchorPosition);
+                var slotWorldRotation = slot.transform.rotation * slot.anchorRotation;
+
+                /* Calculate relative position */
+                var relativeWorldPosition = moduleWorldPosition - slotWorldPosition;
+                var relativePosition = Quaternion.Inverse(slotWorldRotation) * relativeWorldPosition;
+
+                /* Calculate relative rotation */
+                /* Since SumQuaternions adds Euler angles, we need to subtract slot's rotation from module's rotation */
+                var slotEuler = slotWorldRotation.eulerAngles;
+                var moduleEuler = moduleWorldRotation.eulerAngles;
+                var relativeEuler = moduleEuler - slotEuler;
+
+                /* Normalize angles to 0-360 range */
+                relativeEuler = new Vector3(
+                    (relativeEuler.x + 360) % 360,
+                    (relativeEuler.y + 360) % 360,
+                    (relativeEuler.z + 360) % 360
+                );
+                var relativeRotation = Quaternion.Euler(relativeEuler);
+
+                /* Update module's serialized properties */
+                var positionProp = serializedObject.FindProperty("relativePosition");
+                var rotationProp = serializedObject.FindProperty("relativeRotation");
+
+                positionProp.vector3Value = relativePosition;
+                rotationProp.quaternionValue = relativeRotation;
+
+                /* Update UI elements */
+                m_PositionElement.value = relativePosition;
+                m_RotationElement.value = relativeRotation.eulerAngles;
+
+                serializedObject.ApplyModifiedProperties();
+
+                Debug.Log($"SetFromParentSlot: Calculated relativePosition={relativePosition}, relativeRotation={relativeRotation.eulerAngles}");
+                Debug.Log($"Slot anchor: {slot.anchorPosition}, Slot rotation: {slot.anchorRotation.eulerAngles}");
+                Debug.Log($"Module world: {moduleWorldPosition}, Module rotation: {moduleWorldRotation.eulerAngles}");
+            }
+            else
+            {
+                Debug.LogWarning("No appropriate slot found in parent");
+            }
+        }
+
         private void UpdateView()
         {
             var stickyProp = serializedObject.FindProperty("sticky");
@@ -194,6 +265,7 @@ namespace Metamatic.SocketSystem
             m_RotationElement.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
             m_CopyFromLocalButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
             m_CopyToLocalButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
+            m_SetRelativeParentSlotButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
             m_PositionElement.value = positionProp.vector3Value;
             m_RotationElement.value = rotationProp.quaternionValue.eulerAngles;
             if (m_CopyFromLocal)
@@ -205,7 +277,7 @@ namespace Metamatic.SocketSystem
                 m_CopyFromLocalButton.RemoveFromClassList("Active");
             }
         }
-        
+
         protected override void OnEnable()
         {
             m_Module = target as Module;
@@ -219,7 +291,7 @@ namespace Metamatic.SocketSystem
                 m_PlugsFieldSet.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
             }
         }
-        
+
         protected override void OnDisable()
         {
             m_CopyFromLocalScheduledItem?.Pause();
