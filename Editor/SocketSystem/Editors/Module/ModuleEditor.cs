@@ -49,7 +49,7 @@ namespace Metamatic.SocketSystem
 
             m_PlugsFieldSet.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
 
-            UpdateModulesView();
+            UpdateModulesView(m_Module.connectedSlot);
 
             return root;
         }
@@ -303,13 +303,12 @@ namespace Metamatic.SocketSystem
             }
         }
 
-        private void UpdateModulesView()
+        private void UpdateModulesView(Slot connectedSlot)
         {
             if (m_PlugsFieldSet == null)
             {
                 return;
             }
-            var connectedSlot = m_Module.connectedSlot;
             m_PlugsFieldSet.isActive = connectedSlot != null;
             if (connectedSlot == null)
             {

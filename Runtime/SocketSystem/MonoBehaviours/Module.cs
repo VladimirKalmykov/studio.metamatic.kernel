@@ -25,7 +25,7 @@ namespace Metamatic.SocketSystem
         [SerializeField] protected Quaternion relativeRotation;
         
         #region Events
-        public event Action OnReconnect;
+        public event Action<Slot> OnReconnect;
         #endregion
         
         #region Private protected properties
@@ -35,9 +35,19 @@ namespace Metamatic.SocketSystem
         
         public Slot connectedSlot { get; protected set; }
 
-        protected void EmitReconnect()
+        protected void EmitReconnect(Slot slot)
         {
-            OnReconnect?.Invoke();
+            OnReconnect?.Invoke(slot);
+        }
+        
+        public DisposableAction WatchReconnect(Action<Slot> callback)
+        {
+            OnReconnect += callback ?? throw new ArgumentNullException(nameof(callback));
+            callback(connectedSlot);
+            return new DisposableAction(() =>
+            {
+                OnReconnect -= callback;
+            });
         }
         
         public void Disconnect(Slot slot)
@@ -58,7 +68,7 @@ namespace Metamatic.SocketSystem
                 slot.Disconnect(this);
             }
             ApplyPostDisconnectionEffects();
-            EmitReconnect();
+            EmitReconnect(null);
         }
         
         public void Disconnect()
@@ -121,7 +131,7 @@ namespace Metamatic.SocketSystem
             }
 
             ApplyPostConnectionEffects();
-            EmitReconnect();
+            EmitReconnect(slot);
 
             return () =>
             {
