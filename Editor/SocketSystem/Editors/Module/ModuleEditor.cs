@@ -10,160 +10,106 @@ namespace Metamatic.SocketSystem
     {
         private VisualElement m_Body;
         private VisualElement m_Settings;
-        private Vector3Field m_PositionElement;
-        private Vector3Field m_RotationElement;
-        private FieldSet m_PlugsFieldSet;
-        private Label m_Type;
-        private Module m_Module;
-        private Button m_CopyFromLocalButton;
-        private Button m_CopyToLocalButton;
-        private Button m_SetRelativeParentSlotButton;
-        private bool m_CopyFromLocal;
+        private Vector3Field  m_PositionElement;
+        private Vector3Field  m_RotationElement;
+        private FieldSet      m_PlugsFieldSet;
+        private Label         m_Type;
+        private Module        m_Module;
+        private Button        m_CopyFromLocalButton;
+        private Button        m_CopyToLocalButton;
+        private Button        m_SetRelativeParentSlotButton;
         private IVisualElementScheduledItem m_CopyFromLocalScheduledItem;
+        private bool          m_CopyFromLocal;
+
         public override VisualElement CreateInspectorGUI()
         {
             var root = new VisualElement();
-            var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/studio.metamatic.kernel/Editor/SocketSystem/Editors/Module/ModuleEditor.uxml");
+            var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                "Packages/studio.metamatic.kernel/Editor/SocketSystem/Editors/Module/ModuleEditor.uxml");
             visualTree.CloneTree(root);
 
-            m_Type = root.Q<Label>("type");
+            m_Type     = root.Q<Label>("type");
             m_Settings = root.Q<VisualElement>("settings");
-            m_Body = root.Q<VisualElement>("body");
+            m_Body     = root.Q<VisualElement>("body");
 
-            var module = target as Module;
+            m_Module = target as Module;
+            if (m_Module == null) return root;
 
-            if (module == null)
-            {
-                return root;
-            }
-            m_Module = module;
+            CreateSettingsView(m_Module);
+            m_Type.text = MiscUtils.GetGenericName(m_Module.GetType().BaseType, true, true);
 
-            /* Create settings view */
-            CreateSettingsView(module);
-
-            m_Type.text = MiscUtils.GetGenericName(module.GetType().BaseType, true, true);
-
-            /* Create connected module view */
             m_PlugsFieldSet = new FieldSet("Connections", null, true, false);
             root.Add(m_PlugsFieldSet);
-
             m_PlugsFieldSet.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
 
             UpdateModulesView(m_Module.connectedSlot);
-
             return root;
         }
 
         private void CreateSettingsView(Module module)
         {
-            /* Autoconnect */
+            // autoConnect
             var autoConnectProp = serializedObject.FindProperty("autoConnect");
-            var autoConnectToggle = new Toggle("Auto Connect")
-            {
-                value = autoConnectProp.boolValue
-            };
-            autoConnectToggle.RegisterValueChangedCallback(evt =>
-            {
-                autoConnectProp.boolValue = evt.newValue;
-                serializedObject.ApplyModifiedProperties();
-            });
+            var autoConnectToggle = new Toggle("Auto Connect") { value = autoConnectProp.boolValue };
+            autoConnectToggle.RegisterValueChangedCallback(evt => { autoConnectProp.boolValue = evt.newValue; serializedObject.ApplyModifiedProperties(); });
             m_Settings.Add(autoConnectToggle);
             autoConnectToggle.SetEnabled(!Application.isPlaying);
 
-            /* Sticky */
+            // sticky
             var stickyProp = serializedObject.FindProperty("sticky");
-            var stickyToggle = new Toggle("Sticky")
-            {
-                value = stickyProp.boolValue
-            };
-            stickyToggle.RegisterValueChangedCallback(evt =>
-            {
-                stickyProp.boolValue = evt.newValue;
-                serializedObject.ApplyModifiedProperties();
-                UpdateView();
-            });
+            var stickyToggle = new Toggle("Sticky") { value = stickyProp.boolValue };
+            stickyToggle.RegisterValueChangedCallback(evt => { stickyProp.boolValue = evt.newValue; serializedObject.ApplyModifiedProperties(); UpdateView(); });
             m_Settings.Add(stickyToggle);
             stickyToggle.SetEnabled(!Application.isPlaying);
 
-            /* Position */
+            // relativePosition
             var positionProp = serializedObject.FindProperty("relativePosition");
-            m_PositionElement = new Vector3Field("Position")
-            {
-                value = positionProp.vector3Value
-            };
-            m_PositionElement.RegisterValueChangedCallback(evt =>
-            {
-                positionProp.vector3Value = evt.newValue;
-                serializedObject.ApplyModifiedProperties();
-            });
+            m_PositionElement = new Vector3Field("Position") { value = positionProp.vector3Value };
+            m_PositionElement.RegisterValueChangedCallback(evt => { positionProp.vector3Value = evt.newValue; serializedObject.ApplyModifiedProperties(); });
             m_Settings.Add(m_PositionElement);
             m_PositionElement.SetEnabled(!Application.isPlaying);
 
-            /* Rotation */
+            // relativeRotation
             var rotationProp = serializedObject.FindProperty("relativeRotation");
-            m_RotationElement = new Vector3Field("Rotation")
-            {
-                value = rotationProp.quaternionValue.eulerAngles
-            };
-            m_RotationElement.RegisterValueChangedCallback(evt =>
-            {
-                rotationProp.quaternionValue = Quaternion.Euler(evt.newValue);
-                serializedObject.ApplyModifiedProperties();
-            });
+            m_RotationElement = new Vector3Field("Rotation") { value = rotationProp.quaternionValue.eulerAngles };
+            m_RotationElement.RegisterValueChangedCallback(evt => { rotationProp.quaternionValue = Quaternion.Euler(evt.newValue); serializedObject.ApplyModifiedProperties(); });
             m_Settings.Add(m_RotationElement);
             m_RotationElement.SetEnabled(!Application.isPlaying);
 
-            /* Copy from local position and rotation */
+            // Copy from local (polling)
             m_CopyFromLocalButton = new Button(() =>
             {
                 m_CopyFromLocal = !m_CopyFromLocal;
                 m_PositionElement.SetEnabled(!m_CopyFromLocal);
                 m_RotationElement.SetEnabled(!m_CopyFromLocal);
+
                 if (m_CopyFromLocal)
                 {
-                    if (m_CopyFromLocalScheduledItem != null)
-                    {
-                        m_CopyFromLocalScheduledItem.Pause();
-                    }
+                    m_CopyFromLocalScheduledItem?.Pause();
                     ApplyCopyFromLocal();
-                    m_CopyFromLocalScheduledItem = m_CopyFromLocalButton.schedule.Execute(() => ApplyCopyFromLocal()).Every(100);
+                    m_CopyFromLocalScheduledItem = m_CopyFromLocalButton.schedule.Execute(ApplyCopyFromLocal).Every(100);
                 }
                 else
                 {
-                    if (m_CopyFromLocalScheduledItem != null)
-                    {
-                        m_CopyFromLocalScheduledItem.Pause();
-                        m_CopyFromLocalScheduledItem = null;
-                    }
+                    m_CopyFromLocalScheduledItem?.Pause();
+                    m_CopyFromLocalScheduledItem = null;
                 }
+
                 serializedObject.ApplyModifiedProperties();
                 UpdateView();
-            })
-            {
-                text = "Copy from local"
-            };
+            }) { text = "Copy from local" };
 
-            /* Copy to local position and rotation */
-            m_CopyToLocalButton = new Button(() =>
-            {
-                ApplyCopyToLocal();
-            })
-            {
-                text = "Copy to local"
-            };
+            // Copy to local (one-shot)
+            m_CopyToLocalButton = new Button(ApplyCopyToLocal) { text = "Copy to local" };
 
-            /* Set from relative parent slot */
-            m_SetRelativeParentSlotButton = new Button(() =>
-            {
-                SetFromParentSlot();
-            })
-            {
-                text = "Bake position and rotation from parent slot"
-            };
+            // Bake from parent slot (новая корректная математика)
+            m_SetRelativeParentSlotButton = new Button(SetFromParentSlot)
+            { text = "Bake position and rotation from parent slot" };
 
             m_Settings.Add(m_CopyFromLocalButton);
             m_Settings.Add(m_CopyToLocalButton);
             m_Settings.Add(m_SetRelativeParentSlotButton);
+
             m_CopyFromLocalButton.SetEnabled(!Application.isPlaying);
             m_CopyToLocalButton.SetEnabled(!Application.isPlaying);
             m_SetRelativeParentSlotButton.SetEnabled(!Application.isPlaying);
@@ -175,10 +121,13 @@ namespace Metamatic.SocketSystem
         {
             var positionProp = serializedObject.FindProperty("relativePosition");
             var rotationProp = serializedObject.FindProperty("relativeRotation");
+
             var nextLocalPosition = m_PositionElement.value;
             var nextLocalRotation = Quaternion.Euler(m_RotationElement.value);
+
             m_Module.transform.localPosition = nextLocalPosition;
             m_Module.transform.localRotation = nextLocalRotation;
+
             positionProp.vector3Value = nextLocalPosition;
             rotationProp.quaternionValue = nextLocalRotation;
             serializedObject.ApplyModifiedProperties();
@@ -188,67 +137,54 @@ namespace Metamatic.SocketSystem
         {
             var positionProp = serializedObject.FindProperty("relativePosition");
             var rotationProp = serializedObject.FindProperty("relativeRotation");
+
             var nextLocalPosition = m_Module.transform.localPosition;
             var nextLocalRotation = m_Module.transform.localRotation;
+
             positionProp.vector3Value = nextLocalPosition;
             rotationProp.quaternionValue = nextLocalRotation;
+
             m_PositionElement.value = nextLocalPosition;
-            m_RotationElement.value = nextLocalRotation.eulerAngles;
+            m_RotationElement.value  = nextLocalRotation.eulerAngles;
+
             serializedObject.ApplyModifiedProperties();
         }
 
+        /// <summary>Правильный bake: считаем относительные pos/rot в базисе виртуального якоря.</summary>
         private void SetFromParentSlot()
         {
-            /* First, search Slot<TFormFactor> in the parent */
-            var module = target as Module;
-            if (module == null)
-            {
-                return;
-            }
+            var module = (Module)target;
+            if (module == null) return;
+
             if (module.TryFindAppropriateSlotInParent(out var slot))
             {
-                /* Get current world position and rotation of the module */
-                var moduleWorldPosition = module.transform.position;
-                var moduleWorldRotation = module.transform.rotation;
+                // мир модуля
+                var mPos = module.transform.position;
+                var mRot = module.transform.rotation;
 
-                /* Get slot's world position and rotation */
-                var slotWorldPosition = slot.transform.TransformPoint(slot.anchorPosition);
-                var slotWorldRotation = slot.transform.rotation * slot.anchorRotation;
+                // мир виртуального якоря: T_slot * (pos/rot якоря в локале слота)
+                var slotAnchorPos = slot.transform.TransformPoint(slot.anchorPosition);
+                var slotAnchorRot = slot.transform.rotation * slot.anchorRotation;
 
-                /* Calculate relative position */
-                var relativeWorldPosition = moduleWorldPosition - slotWorldPosition;
-                var relativePosition = Quaternion.Inverse(slotWorldRotation) * relativeWorldPosition;
+                // относительная позиция в базисе якоря
+                var relPosWorld = mPos - slotAnchorPos;
+                var relPos = Quaternion.Inverse(slotAnchorRot) * relPosWorld;
 
-                /* Calculate relative rotation */
-                /* Since SumQuaternions adds Euler angles, we need to subtract slot's rotation from module's rotation */
-                var slotEuler = slotWorldRotation.eulerAngles;
-                var moduleEuler = moduleWorldRotation.eulerAngles;
-                var relativeEuler = moduleEuler - slotEuler;
+                // относительный поворот
+                var relRot = Quaternion.Inverse(slotAnchorRot) * mRot;
 
-                /* Normalize angles to 0-360 range */
-                relativeEuler = new Vector3(
-                    (relativeEuler.x + 360) % 360,
-                    (relativeEuler.y + 360) % 360,
-                    (relativeEuler.z + 360) % 360
-                );
-                var relativeRotation = Quaternion.Euler(relativeEuler);
-
-                /* Update module's serialized properties */
-                var positionProp = serializedObject.FindProperty("relativePosition");
-                var rotationProp = serializedObject.FindProperty("relativeRotation");
-
-                positionProp.vector3Value = relativePosition;
-                rotationProp.quaternionValue = relativeRotation;
-
-                /* Update UI elements */
-                m_PositionElement.value = relativePosition;
-                m_RotationElement.value = relativeRotation.eulerAngles;
-
+                // записываем
+                var p = serializedObject.FindProperty("relativePosition");
+                var r = serializedObject.FindProperty("relativeRotation");
+                p.vector3Value = relPos;
+                r.quaternionValue = relRot;
                 serializedObject.ApplyModifiedProperties();
 
-                Debug.Log($"SetFromParentSlot: Calculated relativePosition={relativePosition}, relativeRotation={relativeRotation.eulerAngles}");
-                Debug.Log($"Slot anchor: {slot.anchorPosition}, Slot rotation: {slot.anchorRotation.eulerAngles}");
-                Debug.Log($"Module world: {moduleWorldPosition}, Module rotation: {moduleWorldRotation.eulerAngles}");
+                // обновляем UI
+                m_PositionElement.value = relPos;
+                m_RotationElement.value = relRot.eulerAngles;
+
+                Debug.Log($"[Bake] relativePosition={relPos}, relativeRotation(euler)={relRot.eulerAngles}");
             }
             else
             {
@@ -258,75 +194,51 @@ namespace Metamatic.SocketSystem
 
         private void UpdateView()
         {
-            var stickyProp = serializedObject.FindProperty("sticky");
+            var stickyProp   = serializedObject.FindProperty("sticky");
             var positionProp = serializedObject.FindProperty("relativePosition");
             var rotationProp = serializedObject.FindProperty("relativeRotation");
-            m_PositionElement.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
-            m_RotationElement.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
-            m_CopyFromLocalButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
-            m_CopyToLocalButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
-            m_SetRelativeParentSlotButton.style.display = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
+
+            var on = stickyProp.boolValue ? DisplayStyle.Flex : DisplayStyle.None;
+            m_PositionElement.style.display = on;
+            m_RotationElement.style.display = on;
+            m_CopyFromLocalButton.style.display = on;
+            m_CopyToLocalButton.style.display = on;
+            m_SetRelativeParentSlotButton.style.display = on;
+
             m_PositionElement.value = positionProp.vector3Value;
             m_RotationElement.value = rotationProp.quaternionValue.eulerAngles;
-            if (m_CopyFromLocal)
-            {
-                m_CopyFromLocalButton.AddToClassList("Active");
-            }
-            else
-            {
-                m_CopyFromLocalButton.RemoveFromClassList("Active");
-            }
+
+            if (m_CopyFromLocal) m_CopyFromLocalButton.AddToClassList("Active");
+            else                 m_CopyFromLocalButton.RemoveFromClassList("Active");
         }
 
         protected override void OnEnable()
         {
             m_Module = target as Module;
-            if (m_Module == null)
-            {
-                return;
-            }
+            if (m_Module == null) return;
+
             m_Module.OnReconnect += UpdateModulesView;
             if (m_PlugsFieldSet != null)
-            {
                 m_PlugsFieldSet.style.display = Application.isPlaying ? DisplayStyle.Flex : DisplayStyle.None;
-            }
         }
 
         protected override void OnDisable()
         {
             m_CopyFromLocalScheduledItem?.Pause();
             m_CopyFromLocalScheduledItem = null;
-            m_Module.OnReconnect -= UpdateModulesView;
-            if (m_PlugsFieldSet != null)
-            {
-                m_PlugsFieldSet.style.display = DisplayStyle.None;
-            }
+
+            if (m_Module != null) m_Module.OnReconnect -= UpdateModulesView;
+            if (m_PlugsFieldSet != null) m_PlugsFieldSet.style.display = DisplayStyle.None;
         }
 
         private void UpdateModulesView(Slot connectedSlot)
         {
-            if (m_PlugsFieldSet == null)
-            {
-                return;
-            }
+            if (m_PlugsFieldSet == null) return;
+
             m_PlugsFieldSet.isActive = connectedSlot != null;
-            if (connectedSlot == null)
-            {
-                m_PlugsFieldSet.content = new[]
-                {
-                    new Label("No slots connected") as VisualElement
-                };
-            }
-            else
-            {
-                m_PlugsFieldSet.content = new[]
-                {
-                    new GenericObjectField(connectedSlot.GetType(), true)
-                    {
-                        value = connectedSlot
-                    }
-                };
-            }
+            m_PlugsFieldSet.content = connectedSlot == null
+                ? new VisualElement[] { new Label("No slots connected") }
+                : new VisualElement[] { new GenericObjectField(connectedSlot.GetType(), true) { value = connectedSlot } };
         }
     }
 }

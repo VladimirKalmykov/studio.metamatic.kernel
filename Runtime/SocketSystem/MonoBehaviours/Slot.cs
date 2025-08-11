@@ -2,109 +2,107 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Metamatic.DevTools;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Metamatic.SocketSystem
 {
     public abstract class Slot : MonoBehaviour
     {
         private static readonly Color DisconnectedGizmoColor = new(0.77f, 0.21f, 0.12f);
-        private static readonly Color ConnectedGizmoColor = new(0.12f, 0.77f, 0.21f);
-        public readonly List<Module> connectedModules = new();
+        private static readonly Color ConnectedGizmoColor    = new(0.12f, 0.77f, 0.21f);
+
+        public readonly List<Module>                connectedModules  = new();
         public readonly Dictionary<Module, SignalSource> connectionSignals = new();
-        [SerializeField] public Vector3 anchorPosition;
+
+        // Виртуальный якорь в ЛОКАЛЕ слота
+        [SerializeField] public Vector3    anchorPosition;
         [SerializeField] public Quaternion anchorRotation;
+
         [SerializeField] protected bool allowMultipleConnections = true;
-        /// <summary>
-        /// Slot can have only one children. It will remove any children when connect module.
-        /// </summary>
-        [SerializeField] protected bool dedicated;
+        [SerializeField] protected bool dedicated; // если true — слот «занимает» единственного ребёнка
 
         public bool isSupportMultiConnections => allowMultipleConnections && !dedicated;
 
-        #region Events
         public event Action OnReconnect;
-        #endregion
+
+        /// <summary>Сообщить модулям, что якорь сдвинулся/повернулся.</summary>
+        public void NotifyAnchorChanged()
+        {
+            // аккуратно: копия массива, на случай что ReapplySticky триггерит события
+            foreach (var m in connectedModules.ToArray())
+                m?.ReapplySticky();
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            // в редакторе при изменении полей — обновить позиционирование подключённых модулей
+            if (!Application.isPlaying) NotifyAnchorChanged();
+        }
+#endif
 
         public Action Connect(Module module)
         {
 #if DEBUG
-            if (!Application.isPlaying)
-            {
-                throw new Exception("Slot can be connected only in play mode");
-            }
+            if (!Application.isPlaying) throw new Exception("Slot can be connected only in play mode");
 #endif
-            if (connectedModules.Contains(module))
-            {
-                throw new Exception("Module is already connected to this slot");
-            }
+            if (connectedModules.Contains(module)) throw new Exception("Module is already connected to this slot");
             if (module.connectedSlot != null && module.connectedSlot != this)
-            {
                 throw new Exception($"Module {module} is already connected to slot {module.connectedSlot}");
-            }
 
-            InternalConnect(module);
-            if (module.connectedSlot == null)
-            {
-                module.Connect(this);
-            }
+            var undo = InternalConnect(module);
+            if (module.connectedSlot == null) module.Connect(this);
+
             OnReconnect?.Invoke();
-
             return () =>
             {
                 Disconnect(module);
+                undo?.Invoke();
             };
         }
 
         public void Disconnect(Module module)
         {
 #if DEBUG
-            if (!Application.isPlaying)
-            {
-                throw new Exception("Slot can be disconnected only in play mode");
-            }
+            if (!Application.isPlaying) throw new Exception("Slot can be disconnected only in play mode");
 #endif
             if (!connectedModules.Contains(module))
-            {
                 throw new Exception($"Module {module} is not connected to slot {this}");
-            }
 
             InternalDisconnect(module);
-            if (module.connectedSlot == this)
-            {
-                module.Disconnect(this);
-            }
+            if (module.connectedSlot == this) module.Disconnect(this);
             OnReconnect?.Invoke();
         }
+
         protected abstract Action InternalConnect(Module module);
         protected abstract void InternalDisconnect(Module module);
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            var size = 0.5f;
             var t = transform;
             var handleSize = HandleUtility.GetHandleSize(t.position);
             var radius = 0.2f * handleSize;
             var color = connectedModules.Count > 0 ? ConnectedGizmoColor : DisconnectedGizmoColor;
-            Vector3 worldAnchorPosition = t.TransformPoint(anchorPosition);
+
+            Vector3    worldAnchorPosition = t.TransformPoint(anchorPosition);
             Quaternion worldAnchorRotation = t.rotation * anchorRotation;
 
-            GizmoHelpers.DrawOrientation(t, worldAnchorPosition, worldAnchorRotation, size, color);
+            GizmoHelpers.DrawOrientation(t, worldAnchorPosition, worldAnchorRotation, 0.5f, color);
         }
-#endif
 
-#if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
             var color = connectedModules.Count > 0 ? ConnectedGizmoColor : DisconnectedGizmoColor;
             Vector3 worldAnchorPosition = transform.TransformPoint(anchorPosition);
             var handleSize = HandleUtility.GetHandleSize(transform.position);
-            var textColor = new GUIStyle();
-            textColor.normal.textColor = color;
-            UnityEditor.Handles.Label(worldAnchorPosition + (Vector3.right * 0.33f * handleSize) + (Vector3.up * 0.33f * handleSize), $"{GetType().Name}<{MiscUtils.GetGenericName(GetType().BaseType, true, true)}>", textColor);
+
+            var textColor = new GUIStyle { normal = { textColor = color } };
+            Handles.Label(worldAnchorPosition + (Vector3.right * 0.33f * handleSize) + (Vector3.up * 0.33f * handleSize),
+                $"{GetType().Name}<{MiscUtils.GetGenericName(GetType().BaseType, true, true)}>", textColor);
         }
 #endif
     }
@@ -118,12 +116,9 @@ namespace Metamatic.SocketSystem
 
         protected override Action InternalConnect(Module module)
         {
-            var moduleAsGeneric = module as Module<TFormFactor>;
-            if (moduleAsGeneric == null)
-            {
-                throw new Exception($"Module {module} is not of type {typeof(TFormFactor)}");
-            }
-            return InternalConnect(moduleAsGeneric);
+            var m = module as Module<TFormFactor>;
+            if (m == null) throw new Exception($"Module {module} is not of type {typeof(TFormFactor)}");
+            return InternalConnect(m);
         }
 
         private Action InternalConnect(Module<TFormFactor> module)
@@ -139,20 +134,15 @@ namespace Metamatic.SocketSystem
                 Debug.LogError("Multiple connections are not allowed");
                 return () => { };
             }
-            /* Remove any children except module */
+
             if (dedicated)
             {
-                /* Disconnect all modules */
                 InternalDisconnectAll();
-
-                /* Remove rest of the children */
                 for (var i = 0; i < transform.childCount; i++)
                 {
                     var child = transform.GetChild(i);
                     if (child != module.transform && !connectedModules.Contains(child.GetComponent<Module>()))
-                    {
                         Destroy(child.gameObject);
-                    }
                 }
             }
 
@@ -161,39 +151,32 @@ namespace Metamatic.SocketSystem
             connectionSignals.Add(module, signalSource);
             OnConnected(module, signalSource.Signal).Forget();
 
+            // при подключении — сразу прилипнуть корректно
+            module.ReapplySticky();
+
             return () => InternalDisconnect(module);
         }
 
         private void InternalDisconnect(Module<TFormFactor> module)
         {
             if (!connectedModules.Contains(module))
-            {
                 throw new Exception($"Module {module} is not connected to slot {this}");
-            }
 
-            if (connectionSignals.Remove(module, out var signalSource))
-            {
-                signalSource.TryRaise();
-            }
+            if (connectionSignals.Remove(module, out var signalSource)) signalSource.TryRaise();
             connectedModules.Remove(module);
         }
 
         protected override void InternalDisconnect(Module module)
         {
-            var moduleAsGeneric = module as Module<TFormFactor>;
-            if (moduleAsGeneric == null)
-            {
-                throw new Exception($"Module {module} is not of type {typeof(TFormFactor)}");
-            }
-            InternalDisconnect(moduleAsGeneric);
+            var m = module as Module<TFormFactor>;
+            if (m == null) throw new Exception($"Module {module} is not of type {typeof(TFormFactor)}");
+            InternalDisconnect(m);
         }
 
         protected void InternalDisconnectAll()
         {
             foreach (var module in connectedModules.ToArray())
-            {
                 InternalDisconnect(module);
-            }
         }
     }
 }
