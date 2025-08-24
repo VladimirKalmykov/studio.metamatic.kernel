@@ -9,7 +9,7 @@ namespace Metamatic.SocketSystem
         [SerializeField] protected bool sticky = true;
 
         // Смещение ОТНОСИТЕЛЬНО ЯКОРЯ слота
-        [SerializeField] protected Vector3    relativePosition;
+        [SerializeField] protected Vector3 relativePosition;
         [SerializeField] protected Quaternion relativeRotation;
 
         public event Action<Slot> OnReconnect;
@@ -59,28 +59,59 @@ namespace Metamatic.SocketSystem
 
             var s = connectedSlot;
 
-            // ВАЖНО: сначала повернуть относительный вектор в базис слота,
-            // затем сложить с позицией якоря (обе величины теперь в локале слота).
-            transform.localPosition = s.anchorPosition + (s.anchorRotation * relativePosition);
+            // ВАЖНО: и позиция, и поворот должны учитывать отражение
+            // Применяем отражение к относительному повороту
+            var reflectedRelativeRotation = GetReflectedRotation(relativeRotation, s.transform);
 
-            // С поворотом всё как раньше — чистая кватернионная композиция:
-            transform.localRotation = s.anchorRotation * relativeRotation;
+            // Позиция: anchor + (anchorRotation * reflectedRelativeRotation * relativePosition)
+            transform.localPosition = s.anchorPosition + (s.anchorRotation * reflectedRelativeRotation * relativePosition);
+
+            // Поворот: anchorRotation * reflectedRelativeRotation
+            transform.localRotation = s.anchorRotation * reflectedRelativeRotation;
         }
-        
+
+        /// <summary>Получить отраженный поворот с учетом отражения объекта в мировом пространстве</summary>
+        private Quaternion GetReflectedRotation(Quaternion localRotation, Transform transform)
+        {
+            // Получаем матрицу трансформации в мировом пространстве
+            Matrix4x4 worldMatrix = transform.localToWorldMatrix;
+
+            // Определяем отражение по знаку определителя матрицы
+            float determinant = worldMatrix.determinant;
+            bool isReflected = determinant < 0;
+
+            if (isReflected)
+            {
+                // При отражении инвертируем все компоненты кватерниона
+                return new Quaternion(
+                    -localRotation.x,
+                    -localRotation.y,
+                    -localRotation.z,
+                    localRotation.w
+                );
+            }
+
+            return localRotation;
+        }
+
 #if UNITY_EDITOR
         [ContextMenu("Debug/Check baked transform")]
         private void DebugCheck()
         {
             if (connectedSlot == null) return;
             var s = connectedSlot;
-            var predictedLocalPos = s.anchorPosition + (s.anchorRotation * relativePosition);
-            var predictedLocalRot = s.anchorRotation * relativeRotation;
+            
+            // Используем ту же логику, что и в ReapplySticky
+            var reflectedRelativeRotation = GetReflectedRotation(relativeRotation, s.transform);
+            var predictedLocalPos = s.anchorPosition + (s.anchorRotation * reflectedRelativeRotation * relativePosition);
+            var predictedLocalRot = s.anchorRotation * reflectedRelativeRotation;
+            
             Debug.Log($"Predicted local pos: {predictedLocalPos}, current: {transform.localPosition}");
             Debug.Log($"Predicted local rot: {predictedLocalRot.eulerAngles}, current: {transform.localRotation.eulerAngles}");
         }
 #endif
-        
-        
+
+
         protected virtual void ApplyPostDisconnectionEffects()
         {
             if (m_Destroyed) return;

@@ -12,13 +12,13 @@ namespace Metamatic.SocketSystem
     public abstract class Slot : MonoBehaviour
     {
         private static readonly Color DisconnectedGizmoColor = new(0.77f, 0.21f, 0.12f);
-        private static readonly Color ConnectedGizmoColor    = new(0.12f, 0.77f, 0.21f);
+        private static readonly Color ConnectedGizmoColor = new(0.12f, 0.77f, 0.21f);
 
-        public readonly List<Module>                connectedModules  = new();
+        public readonly List<Module> connectedModules = new();
         public readonly Dictionary<Module, SignalSource> connectionSignals = new();
 
         // Виртуальный якорь в ЛОКАЛЕ слота
-        [SerializeField] public Vector3    anchorPosition;
+        [SerializeField] public Vector3 anchorPosition;
         [SerializeField] public Quaternion anchorRotation;
 
         [SerializeField] protected bool allowMultipleConnections = true;
@@ -80,6 +80,30 @@ namespace Metamatic.SocketSystem
         protected abstract Action InternalConnect(Module module);
         protected abstract void InternalDisconnect(Module module);
 
+        /// <summary>Получить отраженный поворот с учетом отражения объекта в мировом пространстве</summary>
+        private Quaternion GetReflectedRotation(Quaternion localRotation, Transform transform)
+        {
+            // Получаем матрицу трансформации в мировом пространстве
+            Matrix4x4 worldMatrix = transform.localToWorldMatrix;
+
+            // Определяем отражение по знаку определителя матрицы
+            float determinant = worldMatrix.determinant;
+            bool isReflected = determinant < 0;
+
+            if (isReflected)
+            {
+                // При отражении инвертируем все компоненты кватерниона
+                return new Quaternion(
+                    -localRotation.x,
+                    -localRotation.y,
+                    -localRotation.z,
+                    localRotation.w
+                );
+            }
+
+            return localRotation;
+        }
+
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
@@ -89,7 +113,7 @@ namespace Metamatic.SocketSystem
             var color = connectedModules.Count > 0 ? ConnectedGizmoColor : DisconnectedGizmoColor;
 
             Vector3    worldAnchorPosition = t.TransformPoint(anchorPosition);
-            Quaternion worldAnchorRotation = t.rotation * anchorRotation;
+            Quaternion worldAnchorRotation = t.rotation * GetReflectedRotation(anchorRotation, t);
 
             GizmoHelpers.DrawOrientation(t, worldAnchorPosition, worldAnchorRotation, 0.5f, color);
         }

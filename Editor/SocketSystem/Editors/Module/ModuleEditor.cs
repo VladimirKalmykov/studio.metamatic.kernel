@@ -10,16 +10,16 @@ namespace Metamatic.SocketSystem
     {
         private VisualElement m_Body;
         private VisualElement m_Settings;
-        private Vector3Field  m_PositionElement;
-        private Vector3Field  m_RotationElement;
-        private FieldSet      m_PlugsFieldSet;
-        private Label         m_Type;
-        private Module        m_Module;
-        private Button        m_CopyFromLocalButton;
-        private Button        m_CopyToLocalButton;
-        private Button        m_SetRelativeParentSlotButton;
+        private Vector3Field m_PositionElement;
+        private Vector3Field m_RotationElement;
+        private FieldSet m_PlugsFieldSet;
+        private Label m_Type;
+        private Module m_Module;
+        private Button m_CopyFromLocalButton;
+        private Button m_CopyToLocalButton;
+        private Button m_SetRelativeParentSlotButton;
         private IVisualElementScheduledItem m_CopyFromLocalScheduledItem;
-        private bool          m_CopyFromLocal;
+        private bool m_CopyFromLocal;
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -28,9 +28,9 @@ namespace Metamatic.SocketSystem
                 "Packages/studio.metamatic.kernel/Editor/SocketSystem/Editors/Module/ModuleEditor.uxml");
             visualTree.CloneTree(root);
 
-            m_Type     = root.Q<Label>("type");
+            m_Type = root.Q<Label>("type");
             m_Settings = root.Q<VisualElement>("settings");
-            m_Body     = root.Q<VisualElement>("body");
+            m_Body = root.Q<VisualElement>("body");
 
             m_Module = target as Module;
             if (m_Module == null) return root;
@@ -97,7 +97,8 @@ namespace Metamatic.SocketSystem
 
                 serializedObject.ApplyModifiedProperties();
                 UpdateView();
-            }) { text = "Copy from local" };
+            })
+            { text = "Copy from local" };
 
             // Copy to local (one-shot)
             m_CopyToLocalButton = new Button(ApplyCopyToLocal) { text = "Copy to local" };
@@ -145,7 +146,7 @@ namespace Metamatic.SocketSystem
             rotationProp.quaternionValue = nextLocalRotation;
 
             m_PositionElement.value = nextLocalPosition;
-            m_RotationElement.value  = nextLocalRotation.eulerAngles;
+            m_RotationElement.value = nextLocalRotation.eulerAngles;
 
             serializedObject.ApplyModifiedProperties();
         }
@@ -164,7 +165,7 @@ namespace Metamatic.SocketSystem
 
                 // мир виртуального якоря: T_slot * (pos/rot якоря в локале слота)
                 var slotAnchorPos = slot.transform.TransformPoint(slot.anchorPosition);
-                var slotAnchorRot = slot.transform.rotation * slot.anchorRotation;
+                var slotAnchorRot = slot.transform.rotation * GetReflectedRotation(slot.anchorRotation, slot.transform);
 
                 // относительная позиция в базисе якоря
                 var relPosWorld = mPos - slotAnchorPos;
@@ -192,9 +193,33 @@ namespace Metamatic.SocketSystem
             }
         }
 
+        /// <summary>Получить отраженный поворот с учетом отражения объекта в мировом пространстве</summary>
+        private Quaternion GetReflectedRotation(Quaternion localRotation, Transform transform)
+        {
+            // Получаем матрицу трансформации в мировом пространстве
+            Matrix4x4 worldMatrix = transform.localToWorldMatrix;
+
+            // Определяем отражение по знаку определителя матрицы
+            float determinant = worldMatrix.determinant;
+            bool isReflected = determinant < 0;
+
+            if (isReflected)
+            {
+                // При отражении инвертируем все компоненты кватерниона
+                return new Quaternion(
+                    -localRotation.x,
+                    -localRotation.y,
+                    -localRotation.z,
+                    localRotation.w
+                );
+            }
+
+            return localRotation;
+        }
+
         private void UpdateView()
         {
-            var stickyProp   = serializedObject.FindProperty("sticky");
+            var stickyProp = serializedObject.FindProperty("sticky");
             var positionProp = serializedObject.FindProperty("relativePosition");
             var rotationProp = serializedObject.FindProperty("relativeRotation");
 
@@ -209,7 +234,7 @@ namespace Metamatic.SocketSystem
             m_RotationElement.value = rotationProp.quaternionValue.eulerAngles;
 
             if (m_CopyFromLocal) m_CopyFromLocalButton.AddToClassList("Active");
-            else                 m_CopyFromLocalButton.RemoveFromClassList("Active");
+            else m_CopyFromLocalButton.RemoveFromClassList("Active");
         }
 
         protected override void OnEnable()
