@@ -6,7 +6,6 @@ namespace Metamatic.Framework.Workshop
 {
     public interface IObjectBlueprint
     {
-        public string blueprintName { get; }
         public Type type { get; }
     }
     public interface IObjectBlueprint<T>: IObjectBlueprint

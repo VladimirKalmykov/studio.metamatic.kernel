@@ -13,7 +13,6 @@ namespace Metamatic.Framework.Workshop
 {
     public abstract class ScriptableBlueprint : ScriptableObject, IObjectBlueprint
     {
-        public abstract string blueprintName { get; }
         [SerializeField] public LocalizedString displayName;
         [SerializeField] public AssetReferenceT<GameObject> prefab;
         public abstract Type type { get; }
