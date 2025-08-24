@@ -59,15 +59,9 @@ namespace Metamatic.SocketSystem
 
             var s = connectedSlot;
 
-            // ВАЖНО: и позиция, и поворот должны учитывать отражение
-            // Применяем отражение к относительному повороту
-            var reflectedRelativeRotation = GetReflectedRotation(relativeRotation, s.transform);
-
-            // Позиция: anchor + (anchorRotation * reflectedRelativeRotation * relativePosition)
-            transform.localPosition = s.anchorPosition + (s.anchorRotation * reflectedRelativeRotation * relativePosition);
-
-            // Поворот: anchorRotation * reflectedRelativeRotation
-            transform.localRotation = s.anchorRotation * reflectedRelativeRotation;
+            // Работаем строго в локале слота: чистая композиция локальных TR без учёта масштабов/отражений родителя
+            transform.localPosition = s.anchorPosition + (s.anchorRotation * relativePosition);
+            transform.localRotation = s.anchorRotation * relativeRotation;
         }
 
         /// <summary>Получить отраженный поворот с учетом отражения объекта в мировом пространстве</summary>
@@ -100,12 +94,8 @@ namespace Metamatic.SocketSystem
         {
             if (connectedSlot == null) return;
             var s = connectedSlot;
-            
-            // Используем ту же логику, что и в ReapplySticky
-            var reflectedRelativeRotation = GetReflectedRotation(relativeRotation, s.transform);
-            var predictedLocalPos = s.anchorPosition + (s.anchorRotation * reflectedRelativeRotation * relativePosition);
-            var predictedLocalRot = s.anchorRotation * reflectedRelativeRotation;
-            
+            var predictedLocalPos = s.anchorPosition + (s.anchorRotation * relativePosition);
+            var predictedLocalRot = s.anchorRotation * relativeRotation;
             Debug.Log($"Predicted local pos: {predictedLocalPos}, current: {transform.localPosition}");
             Debug.Log($"Predicted local rot: {predictedLocalRot.eulerAngles}, current: {transform.localRotation.eulerAngles}");
         }

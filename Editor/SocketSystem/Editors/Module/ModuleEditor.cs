@@ -163,16 +163,20 @@ namespace Metamatic.SocketSystem
                 var mPos = module.transform.position;
                 var mRot = module.transform.rotation;
 
-                // мир виртуального якоря: T_slot * (pos/rot якоря в локале слота)
-                var slotAnchorPos = slot.transform.TransformPoint(slot.anchorPosition);
-                var slotAnchorRot = slot.transform.rotation * GetReflectedRotation(slot.anchorRotation, slot.transform);
+                // Переходим в ЛОКАЛЬ слота с учётом масштаба/отражения родительских трансформов
+                var w2l = slot.transform.worldToLocalMatrix;
+                var mPosLocal = w2l.MultiplyPoint3x4(mPos);
+                var mFwdLocal = w2l.MultiplyVector(module.transform.forward);
+                var mUpLocal = w2l.MultiplyVector(module.transform.up);
+                var mRotLocal = Quaternion.LookRotation(mFwdLocal, mUpLocal);
 
-                // относительная позиция в базисе якоря
-                var relPosWorld = mPos - slotAnchorPos;
-                var relPos = Quaternion.Inverse(slotAnchorRot) * relPosWorld;
+                // Якорь задан в локале слота
+                var aPos = slot.anchorPosition;
+                var aRot = slot.anchorRotation;
 
-                // относительный поворот
-                var relRot = Quaternion.Inverse(slotAnchorRot) * mRot;
+                // Относительные pos/rot в базисе якоря
+                var relPos = Quaternion.Inverse(aRot) * (mPosLocal - aPos);
+                var relRot = Quaternion.Inverse(aRot) * mRotLocal;
 
                 // записываем
                 var p = serializedObject.FindProperty("relativePosition");
@@ -193,29 +197,7 @@ namespace Metamatic.SocketSystem
             }
         }
 
-        /// <summary>Получить отраженный поворот с учетом отражения объекта в мировом пространстве</summary>
-        private Quaternion GetReflectedRotation(Quaternion localRotation, Transform transform)
-        {
-            // Получаем матрицу трансформации в мировом пространстве
-            Matrix4x4 worldMatrix = transform.localToWorldMatrix;
 
-            // Определяем отражение по знаку определителя матрицы
-            float determinant = worldMatrix.determinant;
-            bool isReflected = determinant < 0;
-
-            if (isReflected)
-            {
-                // При отражении инвертируем все компоненты кватерниона
-                return new Quaternion(
-                    -localRotation.x,
-                    -localRotation.y,
-                    -localRotation.z,
-                    localRotation.w
-                );
-            }
-
-            return localRotation;
-        }
 
         private void UpdateView()
         {
