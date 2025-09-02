@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Metamatic
 {
     using UnityEngine;
@@ -18,6 +20,12 @@ namespace Metamatic
         [Header("Border Settings")]
         public float borderWidth = 0f;
         public Color borderColor = Color.black;
+        
+        [UsedImplicitly]
+        public void SetBorderColor(Color newColor) {
+            borderColor = newColor;
+            UpdateGeometry();
+        }
 
         [Header("Outline Only Mode")]
         [Tooltip("Если true, рисуем только ободок (border), без заливки; цвет ободка берётся из основного color.")]

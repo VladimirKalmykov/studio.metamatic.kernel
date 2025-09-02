@@ -199,7 +199,7 @@ namespace Metamatic.Framework.Editor.PlayPanel
             string scenePath = GetUnityIdleScenePath();
             if (string.IsNullOrEmpty(scenePath))
             {
-                EditorUtility.DisplayDialog("Ошибка", "Невалидный путь к сцене!", "OK");
+                EditorUtility.DisplayDialog("Ошибка", "Невалидный путь к сцене! Добавьте стартовую сцену в Build Profile.", "OK");
                 return;
             }
 
