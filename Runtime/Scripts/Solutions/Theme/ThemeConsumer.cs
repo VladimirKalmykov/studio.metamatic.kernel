@@ -21,12 +21,18 @@ namespace Metamatic
 
         private SignalSource _disable;
 
+#if UNITY_EDITOR
+        private DisposableAction _editorThemeWatch;
+        private ThemeBase _editorLastTheme;
+#endif
+
         protected virtual void OnEnable()
         {
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
                 EditorResolve();
+                EditorSubscribeToThemeChange();
                 SafeApply();
                 return;
             }
@@ -44,7 +50,13 @@ namespace Metamatic
         protected virtual void OnDisable()
         {
 #if UNITY_EDITOR
-            if (!Application.isPlaying) return;
+            if (!Application.isPlaying)
+            {
+                _editorThemeWatch.Dispose();
+                _editorThemeWatch = default;
+                _editorLastTheme = null;
+                return;
+            }
 #endif
             _disable.TryRaise();
         }
@@ -83,8 +95,13 @@ namespace Metamatic
         {
             if (!Application.isPlaying)
             {
+                var before = currentTheme;
                 EditorResolve();
-                SafeApply();
+                if (currentTheme != before) EditorSubscribeToThemeChange();
+                if (IsSelectedInEditor())
+                {
+                    SafeApply();
+                }
             }
         }
 
@@ -93,6 +110,7 @@ namespace Metamatic
             if (!Application.isPlaying)
             {
                 EditorResolve();
+                EditorSubscribeToThemeChange();
                 SafeApply();
             }
         }
@@ -128,6 +146,25 @@ namespace Metamatic
             }
 #endif
             // Ничего не нашли — оставим как есть.
+        }
+
+        private void EditorSubscribeToThemeChange()
+        {
+            if (Application.isPlaying) return;
+            if (currentTheme == _editorLastTheme) return;
+
+            _editorThemeWatch.Dispose();
+            _editorThemeWatch = default;
+            _editorLastTheme = currentTheme;
+            if (currentTheme)
+                _editorThemeWatch = currentTheme.Watch(SafeApply);
+        }
+
+        private bool IsSelectedInEditor()
+        {
+            var go = gameObject;
+            if (!go) return false;
+            return UnityEditor.Selection.Contains(go);
         }
 #endif
 

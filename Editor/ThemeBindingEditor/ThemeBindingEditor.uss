@@ -1,0 +1,38 @@
+.theme-binding-root {
+    padding: 6px;
+}
+
+.bindings-container {
+    margin-top: 6px;
+    row-gap: 6px;
+}
+
+.binding {
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(55, 55, 55);
+    border-right-color: rgb(55, 55, 55);
+    border-top-color: rgb(55, 55, 55);
+    border-bottom-color: rgb(55, 55, 55);
+    padding: 6px;
+}
+
+.binding-header {
+    margin-bottom: 4px;
+}
+
+.binding-title {
+    unity-font-style: bold;
+}
+
+.binding-button {
+    min-width: 80px;
+}
+
+.key-ref {
+    margin-bottom: 4px;
+}
+
+

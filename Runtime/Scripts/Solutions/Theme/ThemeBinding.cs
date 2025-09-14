@@ -36,17 +36,17 @@ namespace Metamatic
             public TargetKind target = TargetKind.Auto;
 
             // цели (показываются в кастомном инспекторе по target)
-            public Graphic   graphic;
+            public Graphic graphic;
             public Selectable selectable;
 #if TMP_PRESENT
             public TMP_Text  tmpText;
 #endif
-            public Material  material;
-            public string    matProperty = "_Color";
+            public Material material;
+            public string matProperty = "_Color";
             public Component component;
-            public string    memberName;
-            public UnityEvent<Color>   onColor;
-            public UnityEvent<string>  onString;
+            public string memberName;
+            public UnityEvent<Color> onColor;
+            public UnityEvent<string> onString;
 
             // кеш сеттеров
             [NonSerialized] public Action<Color> setColor;
@@ -57,7 +57,7 @@ namespace Metamatic
         [SerializeField] private List<Binding> bindings = new();
 
         // Даст схему для инспектора и автопроставления в ключах
-        internal ThemeSchema ResolveEditorSchema()
+        public ThemeSchema ResolveEditorSchema()
         {
             return currentTheme ? currentTheme.schema : editorSchemaHint;
         }
@@ -135,14 +135,16 @@ namespace Metamatic
 
                 case TargetKind.SelectableColors:
                     b.setBlock = cb => { if (b.selectable) { b.selectable.colors = cb; MarkDirty(b.selectable); } };
-                    b.setColor = c => {
+                    b.setColor = c =>
+                    {
                         if (!b.selectable) return;
                         var cb = b.selectable.colors; cb.normalColor = c; b.selectable.colors = cb; MarkDirty(b.selectable);
                     };
                     break;
 
                 case TargetKind.MaterialColorProperty:
-                    b.setColor = c => {
+                    b.setColor = c =>
+                    {
                         if (b.material && b.material.HasProperty(b.matProperty))
                             b.material.SetColor(b.matProperty, c);
                     };
@@ -159,11 +161,31 @@ namespace Metamatic
                     break;
 
                 case TargetKind.UnityEventColor:
-                    b.setColor = c => b.onColor?.Invoke(c);
+                    b.setColor = c =>
+                    {
+#if UNITY_EDITOR
+                        if (!Application.isPlaying)
+                        {
+                            InvokeUnityEventInEditor(b.onColor, c);
+                            return;
+                        }
+#endif
+                        b.onColor?.Invoke(c);
+                    };
                     break;
 
                 case TargetKind.UnityEventString:
-                    b.setColor = c => b.onString?.Invoke("#" + ColorUtility.ToHtmlStringRGBA(c));
+                    b.setColor = c =>
+                    {
+#if UNITY_EDITOR
+                        if (!Application.isPlaying)
+                        {
+                            InvokeUnityEventInEditor(b.onString, "#" + ColorUtility.ToHtmlStringRGBA(c));
+                            return;
+                        }
+#endif
+                        b.onString?.Invoke("#" + ColorUtility.ToHtmlStringRGBA(c));
+                    };
                     break;
             }
 
@@ -208,5 +230,73 @@ namespace Metamatic
             if (!Application.isPlaying && o) UnityEditor.EditorUtility.SetDirty(o);
 #endif
         }
+
+#if UNITY_EDITOR
+        // Вызов UnityEvent в режиме редактора, включая RuntimeOnly persistent listeners
+        private static void InvokeUnityEventInEditor(UnityEvent<Color> evt, in Color value)
+        {
+            if (evt == null) return;
+
+            // Обычный вызов: сработают EditorAndRuntime слушатели
+            evt.Invoke(value);
+
+            if (Application.isPlaying) return;
+
+            var baseEvt = (UnityEventBase)evt;
+            int count = baseEvt.GetPersistentEventCount();
+            for (int i = 0; i < count; i++)
+            {
+                var state = baseEvt.GetPersistentListenerState(i);
+                if (state == UnityEventCallState.Off) continue;
+                if (state == UnityEventCallState.RuntimeOnly)
+                {
+                    var target = baseEvt.GetPersistentTarget(i);
+                    var method = baseEvt.GetPersistentMethodName(i);
+                    if (!target || string.IsNullOrEmpty(method)) continue;
+
+                    var t = target.GetType();
+                    var mi = t.GetMethod(method, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                        null, new[] { typeof(Color) }, null);
+                    if (mi != null)
+                    {
+                        mi.Invoke(target, new object[] { value });
+                        MarkDirty(target);
+                    }
+                }
+            }
+        }
+
+        private static void InvokeUnityEventInEditor(UnityEvent<string> evt, string value)
+        {
+            if (evt == null) return;
+
+            evt.Invoke(value);
+
+            if (Application.isPlaying) return;
+
+            var baseEvt = (UnityEventBase)evt;
+            int count = baseEvt.GetPersistentEventCount();
+            for (int i = 0; i < count; i++)
+            {
+                var state = baseEvt.GetPersistentListenerState(i);
+                if (state == UnityEventCallState.Off) continue;
+                if (state == UnityEventCallState.RuntimeOnly)
+                {
+                    var target = baseEvt.GetPersistentTarget(i);
+                    var method = baseEvt.GetPersistentMethodName(i);
+                    if (!target || string.IsNullOrEmpty(method)) continue;
+
+                    var t = target.GetType();
+                    var mi = t.GetMethod(method, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                        null, new[] { typeof(string) }, null);
+                    if (mi != null)
+                    {
+                        mi.Invoke(target, new object[] { value });
+                        MarkDirty(target);
+                    }
+                }
+            }
+        }
+#endif
     }
 }
