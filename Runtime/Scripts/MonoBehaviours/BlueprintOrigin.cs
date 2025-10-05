@@ -1,7 +1,8 @@
+using Metamatic.SocketSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-namespace Metamatic.Framework.Workshop
+namespace Metamatic
 {
     public class BlueprintOrigin: MonoBehaviour
     {

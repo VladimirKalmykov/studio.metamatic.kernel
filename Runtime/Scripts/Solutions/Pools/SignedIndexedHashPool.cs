@@ -353,6 +353,21 @@ namespace Metamatic
             Remove(index, m_Items[index].Signature);
             return true;
         }
+        
+        public void Clear()
+        {
+            foreach (var index in m_UsedIndexes)
+            {
+                var item = m_Items[index];
+                OnRemove?.Invoke(index, item.Value);
+                m_Items[index] = (default!, false, 0);
+            }
+            m_UsedIndexes.Clear();
+            m_FreeIndices.Clear();
+            m_ItemsSet.Clear();
+            m_Count = 0;
+            m_LastSignature = 0;
+        }
 
         /// <summary>
         /// Увеличивает размер внутреннего массива в 2 раза (пока не достигнем MaxArrayLength).

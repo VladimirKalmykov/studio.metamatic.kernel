@@ -16,6 +16,12 @@ namespace Metamatic.SocketSystem
 
         public readonly List<Module> connectedModules = new();
         public readonly Dictionary<Module, SignalSource> connectionSignals = new();
+        public abstract Type formFactorType { get; }
+        /// <summary>
+        /// Determines if the slot is free to accept new connections.
+        /// </summary>
+        /// <returns></returns>
+        public bool IsFree() => connectedModules.Count == 0 || allowMultipleConnections;
 
         // Виртуальный якорь в ЛОКАЛЕ слота
         [SerializeField] public Vector3 anchorPosition;
@@ -23,6 +29,7 @@ namespace Metamatic.SocketSystem
 
         [SerializeField] protected bool allowMultipleConnections = true;
         [SerializeField] protected bool dedicated; // если true — слот «занимает» единственного ребёнка
+        [SerializeField] public DeviceController controller;
 
         public bool isSupportMultiConnections => allowMultipleConnections && !dedicated;
 
@@ -129,10 +136,23 @@ namespace Metamatic.SocketSystem
                 $"{GetType().Name}<{MiscUtils.GetGenericName(GetType().BaseType, true, true)}>", textColor);
         }
 #endif
+        
+        public static Slot[] GetSlots(GameObject gameObject, Type formFactorType)
+        {
+            var slots = gameObject.GetComponentsInChildren<Slot>();
+            var compatibleSlots = new List<Slot>();
+            foreach (var slot in slots)
+            {
+                if (slot.formFactorType.IsAssignableFrom(formFactorType))
+                    compatibleSlots.Add(slot);
+            }
+            return compatibleSlots.ToArray();
+        }
     }
 
     public abstract class Slot<TFormFactor> : Slot where TFormFactor : FormFactor
     {
+        public override Type formFactorType => typeof(TFormFactor);
         public virtual UniTaskVoid OnConnected(Module<TFormFactor> module, Signal disconnectSignal)
         {
             return new UniTaskVoid();

@@ -3,11 +3,6 @@ using System.Collections.Generic;
 
 namespace Metamatic
 {
-    public class Bank
-    {
-        
-    }
-
     public class Contest<T>: IDisposable
     where T: ICompetitive
     {

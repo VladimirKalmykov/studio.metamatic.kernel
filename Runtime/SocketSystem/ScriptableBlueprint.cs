@@ -9,7 +9,7 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.Localization;
 using UnityEngine.Serialization;
 
-namespace Metamatic.Framework.Workshop
+namespace Metamatic.SocketSystem
 {
     public abstract class ScriptableBlueprint : ScriptableObject, IObjectBlueprint
     {

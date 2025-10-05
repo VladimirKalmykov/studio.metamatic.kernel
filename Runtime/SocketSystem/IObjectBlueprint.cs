@@ -2,7 +2,7 @@ using System;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Metamatic.Framework.Workshop
+namespace Metamatic.SocketSystem
 {
     public interface IObjectBlueprint
     {

@@ -113,7 +113,6 @@ namespace Metamatic
             var source = ResolveSource();
             if (source == null)
             {
-                Debug.LogError("Original completion source is not available.");
                 return false;
             }
             return source.TrySetCanceled(cancellationToken);
@@ -131,7 +130,6 @@ namespace Metamatic
             var source = ResolveSource();
             if (source == null)
             {
-                Debug.LogError("Original completion source is not available.");
                 return false;
             }
             return source.TrySetException(exception);

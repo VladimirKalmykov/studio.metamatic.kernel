@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using Metamatic.Framework.Workshop;
+using Metamatic.SocketSystem;
 using Metamatic.Systems;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using Object = UnityEngine.Object;
 
-namespace Metamatic.Framework
+namespace Metamatic
 {
     /// <summary>
     /// Универсальная фабрика addressable‑объектов.

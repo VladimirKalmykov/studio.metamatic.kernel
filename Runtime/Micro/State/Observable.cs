@@ -4,6 +4,7 @@
  using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.InputSystem.Utilities;
 using Action = System.Action;
 
 namespace Metamatic
@@ -16,10 +17,164 @@ namespace Metamatic
         #endif
         public abstract void Dispose();
     }
-    interface IObservableValue<TValue>
+    
+    public static class ObservableExtensions
+    {
+        public static DisposableAction WatchAsync<T>(this IObservableValue<T> observable, Func<T, Signal, UniTaskVoid> handler, Func<T, bool> validator = null)
+        {
+            var signalSource = SignalSource.Create();
+            var watcher = observable.Watch(Handler, false, validator);
+            
+            return DisposableAction.Create(() =>
+            {
+                watcher.Dispose();
+                signalSource.Dispose();
+            });
+            
+            void Handler(T value)
+            {
+                signalSource.TryRaise();
+                signalSource = SignalSource.Create();
+                handler(value, signalSource.Signal).Forget();
+            }
+        }
+        
+        public static IObservableValue<TOut> Select<TIn, TOut>(this IObservableValue<TIn> observable, Func<TIn, TOut> selector, bool compare = false, Func<TOut, TOut, bool> comparator = null)
+        {
+            return new SelectedObservable<TIn, TOut>(observable, selector, compare, comparator);
+        }
+    }
+    
+    public readonly struct SelectedObservable<TIn, TOut>: IObservableValue<TOut>
+    {
+        private readonly IObservableValue<TIn> Observable;
+        private readonly Func<TIn, TOut> Selector;
+        private readonly bool Compare;
+        private readonly Func<TOut, TOut, bool> Comparator;
+        
+        internal static bool DefaultComparator(TOut a, TOut b)
+        {
+            return EqualityComparer<TOut>.Default.Equals(a, b);
+        }
+        
+        public SelectedObservable(IObservableValue<TIn> observable, Func<TIn, TOut> selector, bool compare = false, Func<TOut, TOut, bool> comparator = null)
+        {
+            this.Observable = observable;
+            this.Selector = selector;
+            this.Compare = compare;
+            this.Comparator = comparator ?? DefaultComparator;
+        }
+
+        public TOut value => Selector(Observable.value);
+        public DisposableAction Watch(Action<TOut> handler, bool skipInitial = false, Func<TOut, bool> validator = null)
+        {
+            var selector = Selector;
+            var compare = Compare;
+            var comparator = Comparator;
+            var previousValue = default(TOut);
+            var isInitial = true;
+            return Observable.Watch(v =>
+            {
+                var selected = selector(v);
+                if ((validator == null || validator(selected)) && (!compare || (isInitial || !comparator(previousValue, selected))))
+                {
+                    previousValue = selected;
+                    isInitial = false;
+                    handler(selected);
+                }
+            }, skipInitial);
+        }
+
+        public DisposableAction WatchAsync(Func<TOut, Signal, UniTaskVoid> handler, Func<TOut, bool> validator = null)
+        {
+            var selector = Selector;
+            var compare = Compare;
+            var comparator = Comparator;
+            
+            var previousValue = default(TOut);
+            var signalSource = SignalSource.Create();
+            var watcher = Observable.Watch(Handler);
+            
+            return DisposableAction.Create(() =>
+            {
+                watcher.Dispose();
+                signalSource.Dispose();
+            });
+
+            void Handler(TIn nextValue)
+            {
+                var selected = selector(nextValue);
+                if ((validator == null || validator(selected)) &&
+                    (!compare || comparator(previousValue, selected)))
+                {
+                    previousValue = selected;
+                    signalSource.TryRaise();
+                    signalSource = SignalSource.Create();
+                    handler(selected, signalSource.Signal).Forget();
+                }
+            }
+        }
+
+        public IObservableValue<TOut1> Select<TOut1>(Func<TOut, TOut1> selector, bool compare, Func<TOut1, TOut1, bool> comparator = null)
+        {
+            return new SelectedObservable<TOut, TOut1>(this, selector, compare, comparator);
+        }
+    }
+    public interface ISelectableObservable<TIn>
+    {
+        // public IObservableValue<TOut> Select<TOut>(Func<TIn, TOut> selector, bool compare = false, Func<TOut, TOut, bool> comparator = null);
+    }
+    public interface IObservableValue<TValue>: ISelectableObservable<TValue>
     {
         public TValue value { get; }
         public DisposableAction Watch(Action<TValue> handler, bool skipInitial = false, Func<TValue, bool> validator = null);
+    }
+
+    public readonly struct ReadonlyObservable<T> : IObservableValue<T>
+    {
+        private readonly T m_Value;
+        public ReadonlyObservable(T value)
+        {
+            this.m_Value = value;
+        }
+
+
+        public T value => m_Value;
+
+        public DisposableAction Watch(Action<T> handler, bool skipInitial = false, Func<T, bool> validator = null)
+        {
+            if (!skipInitial)
+            {
+                if (validator == null || validator(m_Value))
+                    handler?.Invoke(m_Value);
+            }
+            return DisposableAction.Empty;
+        }
+        
+        /// <summary>
+        /// Watch lifecycle of the value. Every time value changed, cancellation signal will be called
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <param name="validator"></param>
+        /// <returns></returns>
+        public DisposableAction WatchAsync(Func<T, Signal, UniTaskVoid> handler, Func<T, bool> validator = null)
+        {
+            SignalSource valueChangeSignalSource = default;
+            var unwatch = Watch(Watcher, false, validator);
+            
+            return DisposableAction.Create(() =>
+            {
+                valueChangeSignalSource.TryRaise();
+                unwatch.Dispose();
+            });
+
+            void Watcher(T value)
+            {
+                valueChangeSignalSource.TryRaise();
+                valueChangeSignalSource = SignalSource.Create();
+                handler(value, valueChangeSignalSource.Signal).Forget();
+            }
+        }
     }
     public abstract class ObservableReadOnly<TValue>: MicroStateBase, IObservableValue<TValue>, IResettable
     {
@@ -28,7 +183,7 @@ namespace Metamatic
             return true;
         }
         private event Action<TValue> OnChange;
-        private event Action OnDisposedOrReset;
+        public event Action OnDisposedOrReset;
         public int version { get; protected set; }
 
         public TValue value
@@ -260,6 +415,17 @@ namespace Metamatic
 
     public class Observable<TValue> : ObservableReadOnly<TValue>
     {
+        public static Observable<TValue> Cast(IObservableValue<object> observable)
+        {
+            var newObservable = new Observable<TValue>((TValue)observable.value);
+            var releaseWatch = observable.Watch(v =>
+            {
+                newObservable.value = (TValue)v;
+            }, false);
+            newObservable.OnDisposedOrReset += releaseWatch;
+            return newObservable;
+        }
+        
         private TValue m_Value;
         public delegate void MutateHandler(ref TValue value);
         
@@ -380,6 +546,26 @@ namespace Metamatic
         {
             mutationHandler(ref m_Value);
         }
+        
+        /// <summary>
+        /// Transform the observable value into another observable value using the transformer function.
+        /// </summary>
+        /// <param name="transformer"></param>
+        /// <typeparam name="TOutput"></typeparam>
+        /// <returns></returns>
+        public Observable<TOutput> Transform<TOutput>(Func<TValue, TOutput> transformer)
+        {
+            var output = new Observable<TOutput>(transformer(GetValue()));
+            var releaseWatch = Watch(v =>
+            {
+                output.value = transformer(v);
+            }, false);
+            output.OnDisposedOrReset += () =>
+            {
+                releaseWatch.Dispose();
+            };
+            return output;
+        }
     }
 
     public class ObservableProxy<TValue> : ObservableReadOnly<TValue>, IDisposable
@@ -463,6 +649,19 @@ namespace Metamatic
         public void SetProxy(ObservableReadOnly<TValue> proxy)
         {
             m_Proxy.value = proxy;
+        }
+        
+        public void Bind(ObservableReadOnly<TValue> proxy)
+        {
+            m_Proxy.value = proxy;
+        }
+        
+        public void Unbind(ObservableReadOnly<TValue> proxy)
+        {
+            if (m_Proxy.value == proxy)
+            {
+                m_Proxy.value = null;
+            }
         }
         
         public new void Dispose()

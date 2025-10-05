@@ -3,15 +3,15 @@ using System.Collections.Generic;
 
 namespace Metamatic
 {
-    public readonly struct ComposableDisposable: IDisposable
+    public readonly struct CompositeDisposable: IDisposable
     {
         private readonly IEnumerable<IDisposable> disposables;
-        public ComposableDisposable(IEnumerable<IDisposable> disposables)
+        public CompositeDisposable(IEnumerable<IDisposable> disposables)
         {
             this.disposables = disposables;
         }
         
-        public ComposableDisposable(params IDisposable[] disposables)
+        public CompositeDisposable(params IDisposable[] disposables)
         {
             this.disposables = disposables;
         }

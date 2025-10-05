@@ -2,6 +2,7 @@ using System.Linq;
 using Metamatic.SocketSystem;
 using Sirenix.OdinInspector.Editor;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -107,6 +108,18 @@ namespace Metamatic
             });
             m_Settings.Add(stickyRotationToggle);
             stickyRotationToggle.SetEnabled(!Application.isPlaying);
+            
+            /* Device controllers */
+            var deviceControllersProperty = serializedObject.FindProperty("controller");
+            var deviceControllersField = new PropertyField(deviceControllersProperty)
+            {
+                label = "Device Controller"
+            };
+            m_Settings.Add(deviceControllersField);
+            deviceControllersField.SetEnabled(!Application.isPlaying);
+            deviceControllersField.Bind(serializedObject);
+            deviceControllersField.style.marginTop = 5;
+            
             UpdateView();
         }
         
