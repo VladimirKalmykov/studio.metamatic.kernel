@@ -9,6 +9,8 @@ namespace Metamatic
     [DevStatus(DevRating.Experimental)]
     public readonly struct TrackableAwaitableDisposable: IDisposable
     {
+        // ReSharper disable once InconsistentNaming
+        public static TrackableAwaitableDisposable Completed => new TrackableAwaitableDisposable(() => UniTask.CompletedTask.GetAwaiter(), () => { }, ProgressSource.Empty);
         public static TrackableAwaitableDisposable Create(Func<Action, ProgressSource, Signal, UniTask> handler, Signal externalCancellationSignal)
         {
             var progressSource = ProgressSource.Create();
@@ -18,12 +20,12 @@ namespace Metamatic
             {
                 taskSource.TrySetResult();
             }, progressSource, signalSource.Signal);
-            ProcessHandle(handle, progressSource, signalSource, taskSource).Forget();
+            ProcessHandle(handle, signalSource, taskSource).Forget();
 
             return new TrackableAwaitableDisposable(() => taskSource.Task.GetAwaiter(), signalSource.TryRaise, progressSource);
         }
 
-        private static async UniTaskVoid ProcessHandle(UniTask handle, ProgressSource progressSource, SignalSource signalSource, SafeUniTaskCompletionSource taskSource)
+        private static async UniTaskVoid ProcessHandle(UniTask handle, SignalSource signalSource, SafeUniTaskCompletionSource taskSource)
         {
             try
             {
@@ -40,7 +42,6 @@ namespace Metamatic
             finally
             {
                 taskSource.TrySetCanceled();
-                progressSource.Dispose();
                 signalSource.Dispose();
             }
         }
@@ -63,31 +64,39 @@ namespace Metamatic
             return m_GetAwaiter();
         }
 
+        public async UniTask ToUniTask()
+        {
+            await this;
+        }
+
         public void Dispose()
         {
             m_DisposeHandler.Invoke();
+            m_ProgressSource.Dispose();
         }
     }
     
-    public readonly struct TrackableAwaitableDisposable<T>: IDisposable, IObservableValue<float>
+    /// <summary>
+    /// This struct is awaitable, disposable and provides a progress tracker.
+    /// </summary>
+    [DevStatus(DevRating.Experimental)]
+    public readonly struct TrackableAwaitableDisposable<T>: IDisposable
     {
-        public static TrackableAwaitableDisposable<T> Create(Func<Action<T>, Action<float>, Signal, UniTask> handler, Signal externalCancellationSignal)
+        public static TrackableAwaitableDisposable<T> Create(Func<Action<T>, ProgressSource, Signal, UniTask> handler, Signal externalCancellationSignal)
         {
-            var observableFloat = ParamLessPool<Observable<float>>.GetShared();
-            observableFloat.value = 0f;
+            var progressSource = ProgressSource.Create();
             var signalSource = SignalSource.CreateLinked(externalCancellationSignal);
             var taskSource = SafeUniTaskCompletionSource<T>.Create();
-            var handle = handler((value) =>
+            var handle = handler((payload) =>
             {
-                observableFloat.uniqValue = 1f;
-                taskSource.TrySetResult(value);
-            }, observableFloat.SetValue, signalSource.Signal);
-            ProcessHandle(handle, observableFloat, signalSource, taskSource).Forget();
+                taskSource.TrySetResult(payload);
+            }, progressSource, signalSource.Signal);
+            ProcessHandle(handle, signalSource, taskSource).Forget();
 
-            return new TrackableAwaitableDisposable<T>(() => taskSource.Task.GetAwaiter(), signalSource.TryRaise, observableFloat);
+            return new TrackableAwaitableDisposable<T>(() => taskSource.Task.GetAwaiter(), signalSource.TryRaise, progressSource);
         }
-        
-        private static async UniTaskVoid ProcessHandle(UniTask handle, Observable<float> observableFloat, SignalSource signalSource, SafeUniTaskCompletionSource<T> taskSource)
+
+        private static async UniTaskVoid ProcessHandle(UniTask handle, SignalSource signalSource, SafeUniTaskCompletionSource<T> taskSource)
         {
             try
             {
@@ -104,22 +113,21 @@ namespace Metamatic
             finally
             {
                 taskSource.TrySetCanceled();
-                ParamLessPool<Observable<float>>.ReturnShared(observableFloat);
                 signalSource.Dispose();
             }
         }
         
         private readonly Func<UniTask<T>.Awaiter> m_GetAwaiter;
         private readonly Action m_DisposeHandler;
-        private readonly IObservableValue<float> m_ObservableProgress;
+        private readonly ProgressSource m_ProgressSource;
 
-        public float progress => m_ObservableProgress.value;
+        public Progress progress => m_ProgressSource.Progress;
 
-        public TrackableAwaitableDisposable(Func<UniTask<T>.Awaiter> getAwaiter, Action disposeHandler, IObservableValue<float> progress)
+        public TrackableAwaitableDisposable(Func<UniTask<T>.Awaiter> getAwaiter, Action disposeHandler, ProgressSource progress)
         {
             m_GetAwaiter = getAwaiter;
             m_DisposeHandler = disposeHandler;
-            m_ObservableProgress = progress;
+            m_ProgressSource = progress;
         }
         
         public UniTask<T>.Awaiter GetAwaiter()
@@ -130,17 +138,7 @@ namespace Metamatic
         public void Dispose()
         {
             m_DisposeHandler.Invoke();
-        }
-
-        public IObservableValue<TOut> Select<TOut>(Func<float, TOut> selector, bool compare = false, Func<TOut, TOut, bool> comparator = null)
-        {
-            return m_ObservableProgress.Select(selector, compare, comparator);
-        }
-
-        public float value => m_ObservableProgress.value;
-        public DisposableAction Watch(Action<float> handler, bool skipInitial = false, Func<float, bool> validator = null)
-        {
-            return m_ObservableProgress.Watch(handler, skipInitial, validator);
+            m_ProgressSource.Dispose();
         }
     }
 }

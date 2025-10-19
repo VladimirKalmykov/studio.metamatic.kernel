@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using Codice.Client.BaseCommands.Download;
 using Cysharp.Threading.Tasks;
 
 namespace Metamatic
@@ -16,11 +17,12 @@ namespace Metamatic
         }
     }
     
-    public readonly struct Progress: IObservableValue<StepProgress>
+    public readonly struct Progress
     {
         private readonly ProgressSourceImpl m_Impl;
         private readonly int m_Version;
-        private bool isAlive => m_Impl != null;
+        private bool isAlive => m_Impl != null && m_Impl.Version == m_Version;
+        public bool isPending => isAlive && m_Impl.isPending;
         
         public Progress(ProgressSourceImpl impl)
         {
@@ -68,32 +70,6 @@ namespace Metamatic
             }
         }
         
-        public DisposableAction Watch(Action<StepProgress> onChange, bool skipInitial = false, Func<StepProgress, bool> validator = null)
-        {
-            if (m_Impl.Version != m_Version)
-            {
-                if (!skipInitial)
-                {
-                    onChange(new StepProgress(1, 1));
-                }
-                return DisposableAction.Empty;
-            }
-
-            if (validator != null)
-            {
-                return TrustedWatchWithValidator(onChange, validator, skipInitial);
-            }
-
-            if (!skipInitial)
-            {
-                onChange(m_Impl.State);
-            }
-
-            m_Impl.OnChange += onChange;
-            var impl = m_Impl;
-            return DisposableAction.Create(() => impl.OnChange -= onChange);
-        }
-
         public DisposableAction SubscribeBeforeResetOnce(Action handler)
         {
             if (m_Impl.Version != m_Version)
@@ -105,26 +81,15 @@ namespace Metamatic
             var impl = m_Impl;
             return DisposableAction.Create(() => impl.OnBeforeReset -= handler);
         }
-        
-        private DisposableAction TrustedWatchWithValidator(Action<StepProgress> onChange, Func<StepProgress, bool> validator, bool skipInitial = false)
-        {
-            var currentValue = new StepProgress(m_Impl.LocalTotal, m_Impl.LocalPass);
-            if (!skipInitial && validator(currentValue))
-            {
-                onChange(currentValue);
-            }
 
-            m_Impl.OnChange += Handler;
-            var impl = m_Impl;
-            return DisposableAction.Create(() => impl.OnChange -= Handler);
-            
-            void Handler(StepProgress p)
-            {
-                if (validator(p))
-                {
-                    onChange(p);
-                }
-            };
+        public IDisposable WatchPending(Action<bool> handler)
+        {
+            return !isAlive ? DisposableAction.Empty : m_Impl.WatchPending(handler);
+        }
+
+        public IDisposable WatchPendingAsync(Func<Signal, UniTaskVoid> handler)
+        {
+            return !isAlive ? DisposableAction.Empty : m_Impl.WatchPendingAsync(handler);
         }
     }
     
@@ -132,6 +97,8 @@ namespace Metamatic
 
     public readonly struct ProgressSource: IDisposable
     {
+        // ReSharper disable once InconsistentNaming
+        public static ProgressSource Empty => new ProgressSource(null);
         public static ProgressSource Create()
         {
             var impl = ParamLessPool<ProgressSourceImpl>.GetShared();
@@ -200,6 +167,18 @@ namespace Metamatic
         }
     }
 
+    public readonly struct ProgressBound
+    {
+        public readonly Progress Progress;
+        public readonly IDisposable Subscription;
+
+        public ProgressBound(Progress progress, IDisposable subscription)
+        {
+            Progress = progress;
+            Subscription = subscription;
+        }
+    }
+
     public sealed class ProgressSourceImpl: IResettable
     {
         private static readonly SignedIndexedPool<bool> StepTokens = new(1000);
@@ -207,8 +186,33 @@ namespace Metamatic
         internal int LocalTotal;
         internal int LocalPass;
         internal int Version;
-        internal event Action<StepProgress> OnChange;
-        internal readonly SignedIndexedHashPool<(Progress, IDisposable)> SubProgresses = new(50);
+        internal readonly SignedIndexedHashPool<ProgressBound> SubProgresses = new(50);
+        internal bool isPreviouslyPending = false;
+        internal event Action<bool> OnStepRecordChange;
+
+        internal bool isPending
+        {
+            get
+            {
+                if (StepTokens.Count > 0)
+                {
+                    return true;
+                }
+
+                if (SubProgresses.Count > 0)
+                {
+                    foreach (var subProgress in SubProgresses)
+                    {
+                        if (subProgress.value.Progress.isPending)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+        }
 
         // ReSharper disable once InconsistentNaming
         public StepProgress State
@@ -219,7 +223,7 @@ namespace Metamatic
                 var pass = LocalPass;
                 foreach (var (subProgress, index, signature) in SubProgresses)
                 {
-                    var stepProgress = subProgress.Item1.State;
+                    var stepProgress = subProgress.Progress.State;
                     total += stepProgress.Total;
                     pass += stepProgress.Pass;
                 }
@@ -235,9 +239,9 @@ namespace Metamatic
         internal DisposableAction<Token96Bit> CreateStep()
         {
             LocalTotal += 1;
-            EmitProgressChange();
             var token = StepTokens.Add(true);
-            return DisposableAction<Token96Bit>.Create(CompleteTask, token);
+            RecalcPending();
+            return DisposableAction<Token96Bit>.Create(CompleteStep, token);
         }
 
         /// <summary>
@@ -262,43 +266,101 @@ namespace Metamatic
 
         internal IDisposable Bind(Progress progress)
         {
-            var bindToken = SubProgresses.Add((progress, progress.Watch(EmitProgressChange)));
+            var bindToken = SubProgresses.Add(new ProgressBound(progress, progress.WatchPending(p => RecalcPending())));
             var disposer = DisposableAction<Token96Bit>.Create(ReleaseBind, bindToken);
             var subscribeReset = progress.SubscribeBeforeResetOnce(disposer.Dispose);
+            
+            RecalcPending();
             
             return new CompositeDisposable(subscribeReset, disposer);
         }
 
-        private void EmitProgressChange(StepProgress subProgress)
+
+        internal DisposableAction WatchPending(Action<bool> handler)
         {
-            EmitProgressChange();
+            var lastIsPending = isPending;
+            handler(lastIsPending);
+            
+            OnStepRecordChange += Handler;
+            
+            return DisposableAction.Create(() =>
+            {
+                handler(false);
+                OnStepRecordChange -= Handler;
+            });
+    
+            void Handler(bool nextIsPending)
+            {
+                if (nextIsPending != lastIsPending)
+                {
+                    lastIsPending = nextIsPending;
+                    handler(lastIsPending);
+                }
+            }
         }
-        
-        private void EmitProgressChange()
+
+        internal DisposableAction WatchPendingAsync(Func<Signal, UniTaskVoid> handler)
         {
-            OnChange?.Invoke(State);
+            SignalSource signalSource = isPending ? SignalSource.Create() : SignalSource.Empty;
+
+            var watcher = WatchPending(Handler);
+
+            return DisposableAction.Create(() =>
+            {
+                signalSource.Dispose();
+                watcher.Dispose();
+            });
+            
+            void Handler(bool nextIsPending)
+            {
+                signalSource.Dispose();
+                
+                if (nextIsPending)
+                {
+                    signalSource = SignalSource.Create();
+                    handler(signalSource.Signal).Forget();
+                }
+            }
         }
 
         private void ReleaseBind(Token96Bit bindToken)
         {
             if (SubProgresses.Remove(bindToken, out var subProgress))
             {
-                subProgress.Item2.Dispose();
-                if (subProgress.Item1.IsCompleted)
+                if (subProgress.Progress.IsCompleted)
                 {
-                    var state = subProgress.Item1.State;
+                    var state = subProgress.Progress.State;
                     LocalTotal += state.Total;
                     LocalPass += state.Pass;
+                    RecalcPending();
                 }
             }
         }
         
-        private void CompleteTask(Token96Bit token)
+        private void CompleteStep(Token96Bit token)
         {
             if (StepTokens.Remove(token))
             {
-                LocalPass++;
-                EmitProgressChange();
+                 LocalPass++;
+                 RecalcPending();
+            }
+        }
+
+        private void RecalcPending()
+        {
+            var isCurrentlyPending = isPending;
+            if (isPreviouslyPending != isCurrentlyPending)
+            {
+                isPreviouslyPending = isCurrentlyPending;
+                OnStepRecordChange?.Invoke(isCurrentlyPending);
+            }
+
+            
+            if (!isCurrentlyPending)
+            {
+                // Reset progress
+                LocalTotal = 0;
+                LocalPass = 0;
             }
         }
         
@@ -308,12 +370,13 @@ namespace Metamatic
         {
             OnBeforeReset?.Invoke();
             OnBeforeReset = null;
+            StepTokens.Clear();
+            SubProgresses.Clear();
+            LocalPass = 0;
+            LocalTotal = 0;
             unchecked
             {
                 Version += 1;
-                SubProgresses.Clear();
-                LocalPass = 0;
-                LocalTotal = 0;
             }
         }
     }

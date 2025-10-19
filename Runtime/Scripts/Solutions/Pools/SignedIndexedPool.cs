@@ -227,6 +227,14 @@ namespace Metamatic
             return result;
         }
 
+        public void Clear()
+        {
+            Array.Clear(m_Items, 0, m_Count);
+            m_FreeIndices.Clear();
+            m_Count = 0;
+            m_LastSignature = 0;
+        }
+
         /// <summary>
         /// Увеличивает размер внутреннего массива в 2 раза (пока не достигнем MaxArrayLength).
         /// </summary>
