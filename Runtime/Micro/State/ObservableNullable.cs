@@ -42,14 +42,25 @@ namespace Metamatic
         }
         
         [UsedImplicitly]
-        public DisposableAction Watch(Action<T, bool> action)
+        public DisposableAction Watch(Action<T, bool> action, bool skipInitial = false, Func<T, bool> validator = null)
         {
             OnChange += action;
-            action(m_Value, m_HasValue);
+
+            if (!skipInitial)
+            {
+                action(m_Value, m_HasValue);
+            }
+            
             return new DisposableAction(() =>
             {
                 OnChange -= action;
             });
+            
+            void Handler(T nextValue, bool nextHasValue)
+            {
+                if (validator != null && !validator(nextValue)) return;
+                action(nextValue, nextHasValue);
+            }
         }
 
         public DisposableAction WatchAsync(Func<T, bool, Signal, UniTaskVoid> handler)
@@ -122,6 +133,11 @@ namespace Metamatic
         {
             Debug.LogError("You can't set value of ObservableNullableReadOnly directly. Use ObservableNullable.SetValue instead.");
         }
+        
+        public virtual void SetValidValue(T newValue)
+        {
+            Debug.LogError("You can't set value of ObservableNullableReadOnly directly. Use ObservableNullable.SetValidValue instead.");
+        }
 
         public void Dispose()
         {
@@ -147,6 +163,11 @@ namespace Metamatic
         public override void SetValue(T newValue, bool newHasValue)
         {
             ApplyChange(newValue, newHasValue);
+        }
+
+        public override void SetValidValue(T newValue)
+        {
+            ApplyChange(newValue, true);
         }
         
         public void Clear()
